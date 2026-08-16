@@ -133,7 +133,7 @@ def test_fix_repository_raises_for_duplicate_identifiers():
         repository.get("dup")
 
 
-def test_navaid_filters_are_optional_and_conjunctive():
+def test_navaid_filters_are_optional_and_conjunctive(capsys):
     repository = NavaidRepository(
         {
             "NAV_BASE": pd.DataFrame(
@@ -164,6 +164,7 @@ def test_navaid_filters_are_optional_and_conjunctive():
     with pytest.raises(AmbiguousRecordError) as raised:
         repository.get("dup")
     assert len(raised.value.candidates) == 2
+    assert capsys.readouterr().out == ""
 
 
 def test_navaid_repository_supports_navtype_compatibility_alias():
