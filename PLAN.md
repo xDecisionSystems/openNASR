@@ -1452,7 +1452,7 @@ Tasks:
 - [x] **Agent: Sol.** Make interrupted download and extraction cleanup safe and idempotent.
 - [x] **Agent: Luna.** Make `force=False` reuse a valid cached cycle.
 - [x] **Agent: Sol.** Never delete caller-owned archives during import.
-- [ ] **Agent: Terra.** Implement an injectable FAA cycle provider that discovers only metadata
+- [x] **Agent: Terra.** Implement an injectable FAA cycle provider that discovers only metadata
       and archive URLs. Give live requests a hard two-second timeout and mock
       the provider in all default tests.
 - [ ] **Agent: Terra.** Implement `CycleManager.check_for_updates(force=False)` returning

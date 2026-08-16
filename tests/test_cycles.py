@@ -10,6 +10,7 @@ from openNASR import cycles
 from openNASR.exceptions import ArchiveError
 from openNASR.cycles import (
     CycleManager,
+    FaaCycleProvider,
     locate_csv_source,
     parse_archive_date,
     read_cycle_date,
@@ -220,3 +221,27 @@ def test_get_reuses_cached_cycle_without_rewriting_archive(tmp_path):
     assert cycle.archive_path == archive
     assert archive.stat().st_mtime_ns == before
     assert manager.get(date(2026, 8, 6), force=True) is None
+
+
+def test_faa_provider_discovers_only_mocked_metadata():
+    calls = []
+
+    class Response:
+        def read(self):
+            return b'{"effective_date":"2026-08-06","archive_url":"https://example.test/a.zip"}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    def opener(url, timeout):
+        calls.append((url, timeout))
+        return Response()
+
+    cycle = FaaCycleProvider("https://example.test/metadata", opener).discover()
+
+    assert cycle.effective_date == date(2026, 8, 6)
+    assert cycle.archive_url.endswith("a.zip")
+    assert calls == [("https://example.test/metadata", 2)]

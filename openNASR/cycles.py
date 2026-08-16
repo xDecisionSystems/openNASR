@@ -12,6 +12,7 @@ import re
 import json
 import hashlib
 import tempfile
+from urllib.request import urlopen
 from datetime import date
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -38,6 +39,30 @@ class Cycle:
     archive_path: Path | None = None
     data_path: Path | None = None
     source_url: str | None = None
+
+
+@dataclass(frozen=True)
+class RemoteCycle:
+    """Metadata for a remotely available FAA cycle."""
+
+    effective_date: date
+    archive_url: str
+
+
+class FaaCycleProvider:
+    """Metadata-only FAA cycle provider with an injectable transport."""
+
+    def __init__(self, metadata_url: str, opener=urlopen) -> None:
+        self.metadata_url = metadata_url
+        self.opener = opener
+
+    def discover(self) -> RemoteCycle:
+        with self.opener(self.metadata_url, timeout=2) as response:
+            metadata = json.loads(response.read().decode("utf-8"))
+        return RemoteCycle(
+            effective_date=date.fromisoformat(metadata["effective_date"]),
+            archive_url=metadata["archive_url"],
+        )
 
 
 def resolve_cache_dir(cache_dir: str | Path | None = None) -> Path:
@@ -293,9 +318,11 @@ __all__ = [
     "CACHE_DIR_ENV_VAR",
     "Cycle",
     "CycleManager",
+    "FaaCycleProvider",
     "parse_archive_date",
     "locate_csv_source",
     "read_cycle_date",
+    "RemoteCycle",
     "resolve_cache_dir",
     "sha256_file",
     "validate_archive",
