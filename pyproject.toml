@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openNASR"
+version = "0.0.1"
+description = "Library to access FAA NASR data"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10"
+license = { text = "GNU GENERAL PUBLIC LICENSE Version 3" }
+authors = [
+    { name = "Adan E Vela", email = "adan.vela@ucf.edu" },
+]
+keywords = ["FAA", "NASR"]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "shapely",
+]
+
+[project.urls]
+Homepage = "https://github.com/ADCLab/openNASR"
+
+[tool.setuptools]
+packages = ["openNASR"]

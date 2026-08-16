@@ -28,11 +28,11 @@ access is more convenient.
 
 ## Requirements
 
-- Python 3
+- Python 3.10 or newer
 - pandas
 - NumPy
 - Shapely
-- Matplotlib
+- Matplotlib (optional; required only for plotting)
 
 ## Installation
 
