@@ -58,6 +58,7 @@ from .records import (
     HoldingPatternSpeedAltitudeRecord as HoldingPatternSpeedAltitudeRecord,
 )
 from .records import MilitaryOperationRecord as MilitaryOperationRecord
+from .cycles import CycleManager as CycleManager
 from .cycles import notify_if_update_available
 
 __all__ = [
@@ -82,6 +83,7 @@ __all__ = [
     "CommunicationOutlet",
     "CommunicationOutletRecord",
     "CommunicationOutletRepository",
+    "CycleManager",
     "FIX",
     "Frequency",
     "FrequencyRecord",
