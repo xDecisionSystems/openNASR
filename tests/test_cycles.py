@@ -10,6 +10,7 @@ from openNASR import cycles
 from openNASR.exceptions import ArchiveError
 from openNASR.cycles import (
     CycleManager,
+    locate_csv_source,
     parse_archive_date,
     read_cycle_date,
     resolve_cache_dir,
@@ -171,3 +172,19 @@ def test_archive_extraction_rejects_unsafe_members(tmp_path, member):
         CycleManager(tmp_path / "cache").extract_archive(archive)
 
     assert not (tmp_path / "escape.csv").exists()
+
+
+def test_csv_source_locator_accepts_nested_directories_and_archives(tmp_path):
+    directory_cycle = tmp_path / "directory-cycle"
+    csv_dir = directory_cycle / "arbitrary" / "CSV_Data" / "cycle"
+    csv_dir.mkdir(parents=True)
+    (csv_dir / "APT_BASE.csv").write_text("ARPT_ID\nBWI\n", encoding="utf-8")
+    archive_cycle = tmp_path / "archive-cycle"
+    archive_cycle.mkdir()
+    nested_archive = archive_cycle / "arbitrary" / "faa-data.zip"
+    nested_archive.parent.mkdir()
+    with ZipFile(nested_archive, "w") as output:
+        output.writestr("APT_BASE.csv", "ARPT_ID\nBWI\n")
+
+    assert locate_csv_source(directory_cycle) == csv_dir
+    assert locate_csv_source(archive_cycle) == nested_archive

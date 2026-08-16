@@ -108,6 +108,19 @@ def validate_archive(path: str | Path) -> None:
         raise ValueError(f"Invalid NASR archive: {archive}")
 
 
+def locate_csv_source(data_path: str | Path) -> Path:
+    """Locate a nested CSV directory or FAA CSV archive within a cycle."""
+
+    root = Path(data_path)
+    csv_files = sorted(root.rglob("*.csv"))
+    if csv_files:
+        return csv_files[0].parent
+    archives = sorted(path for path in root.rglob("*.zip") if is_zipfile(path))
+    if archives:
+        return archives[0]
+    raise ArchiveError(f"No NASR CSV directory or archive found in {root}")
+
+
 class CycleManager:
     """Manage locally cached FAA NASR cycles.
 
@@ -231,8 +244,7 @@ class CycleManager:
                     if path.is_absolute() or ".." in path.parts:
                         raise ArchiveError(f"Unsafe archive member: {member.filename}")
                 source.extractall(temporary)
-            if not any(temporary.rglob("*.csv")):
-                raise ArchiveError(f"Archive contains no NASR CSV files: {archive}")
+            locate_csv_source(temporary)
             (temporary / "metadata.json").write_text(
                 json.dumps({"effective_date": effective_date.isoformat()}) + "\n",
                 encoding="utf-8",
@@ -257,6 +269,7 @@ __all__ = [
     "Cycle",
     "CycleManager",
     "parse_archive_date",
+    "locate_csv_source",
     "read_cycle_date",
     "resolve_cache_dir",
     "sha256_file",

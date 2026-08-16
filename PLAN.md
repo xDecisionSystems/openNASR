@@ -1447,7 +1447,7 @@ Tasks:
 - [x] **Agent: Sol.** Extract into a temporary directory, validate it, then atomically publish
       the completed cycle.
 - [x] **Agent: Sol.** Protect extraction against absolute paths and `..` path traversal.
-- [ ] **Agent: Terra.** Locate the nested FAA CSV archive or CSV directory without assuming one
+- [x] **Agent: Terra.** Locate the nested FAA CSV archive or CSV directory without assuming one
       exact intermediate folder name.
 - [ ] **Agent: Sol.** Make interrupted download and extraction cleanup safe and idempotent.
 - [ ] **Agent: Luna.** Make `force=False` reuse a valid cached cycle.
