@@ -1626,7 +1626,7 @@ Plural repository attributes are not callable methods. Search always uses
 `.find(...)`; exact lookup uses `.get(...)` or a singular convenience method.
 Later `1.x` milestones add repositories using the same contract.
 
-- [ ] **Agent: Terra.** Add tests proving repository `.get()` and the singular convenience method
+- [x] **Agent: Terra.** Add tests proving repository `.get()` and the singular convenience method
       return equivalent rich objects.
 - [ ] **Agent: Terra.** Add repository-wide identifier normalization tests for stripping and
       uppercasing, including composite identifiers and optional filters.

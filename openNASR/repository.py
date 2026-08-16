@@ -7,7 +7,8 @@ from pathlib import Path
 
 from pandas import DataFrame, read_csv
 
-from .exceptions import TableNotFoundError
+from .exceptions import AmbiguousRecordError, RecordNotFoundError, TableNotFoundError
+from .records import FaaRecord
 
 
 def discover_tables(cycle_path: str | Path) -> tuple[str, ...]:
@@ -103,4 +104,42 @@ class TableRepository(Mapping[str, DataFrame]):
         return len(self.available_tables)
 
 
-__all__ = ["TableRepository", "discover_tables", "normalize_table_name"]
+class AirportRepository:
+    """Lookup lossless airport records in a loaded NASR cycle."""
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        self._nasr = nasr
+
+    @property
+    def _table(self) -> DataFrame:
+        return self._nasr["APT_BASE"]
+
+    @staticmethod
+    def _normalized(value: object) -> str:
+        return str(value).strip().upper()
+
+    def get(self, identifier: str) -> FaaRecord:
+        """Return one airport matching FAA or ICAO identifier case-insensitively."""
+        normalized_identifier = self._normalized(identifier)
+        rows = self._table[
+            self._table["ARPT_ID"].map(self._normalized).eq(normalized_identifier)
+            | self._table["ICAO_ID"].map(self._normalized).eq(normalized_identifier)
+        ]
+        records = tuple(FaaRecord(row) for row in rows.to_dict(orient="records"))
+        if not records:
+            raise RecordNotFoundError(entity_type="Airport", identifier=identifier)
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type="Airport",
+                identifier=identifier,
+                candidates=records,
+            )
+        return records[0]
+
+
+__all__ = [
+    "AirportRepository",
+    "TableRepository",
+    "discover_tables",
+    "normalize_table_name",
+]
