@@ -13,7 +13,14 @@ from openNASR.exceptions import SchemaMismatchError
 from openNASR.nasr import NASR
 import openNASR.nasr as nasr_module
 from openNASR.records import FaaRecord
-from openNASR.registry import TableRegistry, TableSpec
+from openNASR.registry import (
+    AIRPORT_LINKED_TABLES,
+    AIRPORT_SITE_KEY,
+    IndexSpec,
+    RelationshipSpec,
+    TableRegistry,
+    TableSpec,
+)
 from openNASR.schemas import (
     SchemaCatalog,
     parse_schema_description,
@@ -122,8 +129,53 @@ def test_registry_covers_every_operational_table_and_schema_variant():
                 for column in catalog.table(table_name, variant.schema_id).columns
             }
             assert variant.required_columns <= declared
-            assert variant.identity_key is None
-            assert variant.relationships == ()
+            if table_name not in AIRPORT_LINKED_TABLES:
+                assert variant.identity_key is None
+                assert variant.relationships == ()
+
+
+@pytest.mark.parametrize("schema_id", SCHEMA_IDS)
+@pytest.mark.parametrize("table_name", sorted(AIRPORT_LINKED_TABLES))
+def test_airport_linked_registry_keys_are_verified(table_name, schema_id):
+    catalog = SchemaCatalog()
+    variant = TableRegistry(catalog=catalog).spec(table_name, schema_id)
+
+    assert variant.identity_key == AIRPORT_SITE_KEY
+    assert variant.indexes == (
+        IndexSpec("site", AIRPORT_SITE_KEY, unique=True),
+        IndexSpec("airport_id", ("ARPT_ID",), unique=False),
+    )
+    assert variant.relationships == (
+        RelationshipSpec("airport", "APT_BASE", AIRPORT_SITE_KEY, AIRPORT_SITE_KEY),
+    )
+
+    local_columns = {
+        column.name for column in catalog.table(table_name, schema_id).columns
+    }
+    airport_columns = {
+        column.name for column in catalog.table("APT_BASE", schema_id).columns
+    }
+    assert set(AIRPORT_SITE_KEY) <= local_columns
+    assert set(AIRPORT_SITE_KEY) <= airport_columns
+
+
+@pytest.mark.parametrize("schema_id", SCHEMA_IDS)
+def test_representative_rows_require_the_full_airport_site_key(schema_id):
+    fixture_path = FIXTURE_ROOT / "relationships" / "airport_linked.json"
+    rows = json.loads(fixture_path.read_text(encoding="utf-8"))[schema_id]
+    airports_by_site = {
+        tuple(row[column] for column in AIRPORT_SITE_KEY): row
+        for row in rows["APT_BASE"]
+    }
+
+    assert len({row["ARPT_ID"] for row in rows["APT_BASE"]}) == 1
+    for table_name in AIRPORT_LINKED_TABLES:
+        identities = []
+        for row in rows[table_name]:
+            site_key = tuple(row[column] for column in AIRPORT_SITE_KEY)
+            identities.append(site_key)
+            assert airports_by_site[site_key]["ARPT_ID"] == row["ARPT_ID"]
+        assert len(identities) == len(set(identities))
 
 
 def test_test_local_registry_reports_and_rejects_unmodeled_tables():

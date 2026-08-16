@@ -11,6 +11,10 @@ from .records import FaaRecord
 from .schemas import SchemaCatalog
 
 
+AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
+AIRPORT_LINKED_TABLES = frozenset({"CLS_ARSP", "MIL_OPS"})
+
+
 @dataclass(frozen=True)
 class IndexSpec:
     """Columns used by a named lookup index."""
@@ -81,9 +85,29 @@ class TableRegistry:
                 if table_name not in manifest["tables"]:
                     continue
                 schema = self.catalog.table(table_name, schema_id)
+                identity_key: tuple[str, ...] | None = None
+                indexes: tuple[IndexSpec, ...] = ()
+                relationships: tuple[RelationshipSpec, ...] = ()
+                if table_name in AIRPORT_LINKED_TABLES:
+                    identity_key = AIRPORT_SITE_KEY
+                    indexes = (
+                        IndexSpec("site", AIRPORT_SITE_KEY, unique=True),
+                        IndexSpec("airport_id", ("ARPT_ID",), unique=False),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "airport",
+                            "APT_BASE",
+                            AIRPORT_SITE_KEY,
+                            AIRPORT_SITE_KEY,
+                        ),
+                    )
                 variants.append(
                     TableVariantSpec(
                         schema_id=schema_id,
+                        identity_key=identity_key,
+                        indexes=indexes,
+                        relationships=relationships,
                         required_columns=frozenset(
                             column.name for column in schema.columns
                         ),
@@ -147,6 +171,8 @@ class TableRegistry:
 
 
 __all__ = [
+    "AIRPORT_LINKED_TABLES",
+    "AIRPORT_SITE_KEY",
     "IndexSpec",
     "RelationshipSpec",
     "TableRegistry",

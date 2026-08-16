@@ -126,7 +126,7 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | --- | --- | --- | --- | --- |
 | `ARB_BASE` | `airspace.py` | `ArtccRecord` | `Artcc`; `nasr.artccs`; `nasr.artcc()` | Existing |
 | `ARB_SEG` | `airspace.py` | `ArtccBoundarySegmentRecord` | `ArtccBoundary`; `Artcc.boundaries` | Existing |
-| `CLS_ARSP` | `airspace.py` | `ClassAirspaceRecord` | `Airport.class_airspace` and `nasr.class_airspaces` | Proposed |
+| `CLS_ARSP` | `airspace.py` | `ClassAirspaceRecord` | `Airport.class_airspace` and `nasr.class_airspaces` | Keys verified; implementation pending |
 | `MAA_BASE` | `airspace.py` | `MaaRecord` | `Maa`; `nasr.maas`; `nasr.maa()` | Needs FAA review |
 | `MAA_CON` | `airspace.py` | `MaaContactRecord` | `Maa.contacts` | Needs FAA review |
 | `MAA_RMK` | `airspace.py` | `MaaRemarkRecord` | `Maa.remarks` | Needs FAA review |
@@ -225,7 +225,7 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `MIL_OPS` | `military.py` | `MilitaryOperationRecord` | `Airport.military_operations` | Proposed |
+| `MIL_OPS` | `military.py` | `MilitaryOperationRecord` | `Airport.military_operations` | Keys verified; implementation pending |
 | `MTR_BASE` | `military.py` | `MilitaryTrainingRouteRecord` | `MilitaryTrainingRoute`; `nasr.military_training_routes` | Proposed |
 | `MTR_AGY` | `military.py` | `MilitaryTrainingRouteAgencyRecord` | `MilitaryTrainingRoute.agencies` | Proposed |
 | `MTR_PT` | `military.py` | `MilitaryTrainingRoutePointRecord` | `MilitaryTrainingRoute.points` | Proposed |

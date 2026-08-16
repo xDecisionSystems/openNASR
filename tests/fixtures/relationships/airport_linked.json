@@ -1,0 +1,30 @@
+{
+  "pre_2026_09": {
+    "APT_BASE": [
+      {"SITE_NO": "00000001A", "SITE_TYPE_CODE": "A", "ARPT_ID": "DUP"},
+      {"SITE_NO": "00000002H", "SITE_TYPE_CODE": "H", "ARPT_ID": "DUP"}
+    ],
+    "CLS_ARSP": [
+      {"SITE_NO": "00000001A", "SITE_TYPE_CODE": "A", "ARPT_ID": "DUP"},
+      {"SITE_NO": "00000002H", "SITE_TYPE_CODE": "H", "ARPT_ID": "DUP"}
+    ],
+    "MIL_OPS": [
+      {"SITE_NO": "00000001A", "SITE_TYPE_CODE": "A", "ARPT_ID": "DUP"},
+      {"SITE_NO": "00000002H", "SITE_TYPE_CODE": "H", "ARPT_ID": "DUP"}
+    ]
+  },
+  "nasr_2026_09": {
+    "APT_BASE": [
+      {"SITE_NO": "00000003A", "SITE_TYPE_CODE": "A", "ARPT_ID": "DUP"},
+      {"SITE_NO": "00000004H", "SITE_TYPE_CODE": "H", "ARPT_ID": "DUP"}
+    ],
+    "CLS_ARSP": [
+      {"SITE_NO": "00000003A", "SITE_TYPE_CODE": "A", "ARPT_ID": "DUP"},
+      {"SITE_NO": "00000004H", "SITE_TYPE_CODE": "H", "ARPT_ID": "DUP"}
+    ],
+    "MIL_OPS": [
+      {"SITE_NO": "00000003A", "SITE_TYPE_CODE": "A", "ARPT_ID": "DUP"},
+      {"SITE_NO": "00000004H", "SITE_TYPE_CODE": "H", "ARPT_ID": "DUP"}
+    ]
+  }
+}

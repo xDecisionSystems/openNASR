@@ -1810,7 +1810,7 @@ Goal: add rich objects for the two airport-linked tables deferred from the
 
 Tasks:
 
-- [ ] **Agent: Sol.** **8.1** Verify identity, index, and airport/site relationship keys for both
+- [x] **Agent: Sol.** **8.1** Verify identity, index, and airport/site relationship keys for both
       tables against both supported schema generations and representative rows.
 - [ ] **Agent: Terra.** **8.2** Implement `ClassAirspaceRecord` and a rich `ClassAirspace` object
       in `airspace.py`, exposed through `nasr.class_airspaces` and
