@@ -159,6 +159,15 @@ class CycleManager:
             f"28DaySubscription_Effective_{effective_date.isoformat()}.zip.part"
         )
 
+    def write_download_part(self, effective_date: date, chunks) -> Path:
+        """Stream byte chunks to the temporary download path."""
+
+        part_path = self.download_part_path(effective_date)
+        with part_path.open("wb") as output:
+            for chunk in chunks:
+                output.write(chunk)
+        return part_path
+
 
 __all__ = [
     "CACHE_DIR_ENV_VAR",

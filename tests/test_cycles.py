@@ -100,3 +100,11 @@ def test_downloads_use_a_temporary_part_path(tmp_path):
     assert part_path.parent == tmp_path / "downloads"
     assert part_path.name.endswith(".zip.part")
     assert not part_path.exists()
+
+
+def test_download_data_is_written_in_chunks_to_the_part_file(tmp_path):
+    manager = CycleManager(tmp_path)
+
+    part_path = manager.write_download_part(date(2026, 8, 6), [b"first", b"second"])
+
+    assert part_path.read_bytes() == b"firstsecond"
