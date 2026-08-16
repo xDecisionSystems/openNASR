@@ -141,8 +141,63 @@ class FaaRecord(Mapping[str, object]):
             raise AttributeError(name) from error
 
 
+class AirportRecord(FaaRecord):
+    """Airport record with nullable typed conveniences over lossless FAA fields."""
+
+    def _field_context(self, column: str) -> FieldContext:
+        return FieldContext(
+            table="APT_BASE",
+            column=column,
+            record_identity=self._raw.get("ARPT_ID"),
+        )
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None else nullable_text(str(value))
+
+    @property
+    def faa_id(self) -> str | None:
+        """FAA airport identifier, or ``None`` when the source field is empty."""
+        return self._text("ARPT_ID")
+
+    @property
+    def icao_id(self) -> str | None:
+        """ICAO airport identifier, or ``None`` when the source field is empty."""
+        return self._text("ICAO_ID")
+
+    @property
+    def name(self) -> str | None:
+        """Airport name, or ``None`` when the schema does not provide one."""
+        return self._text("ARPT_NAME")
+
+    @property
+    def latitude(self) -> float | None:
+        """Decimal latitude, or ``None`` when the source field is empty."""
+        value = self._raw.get("LAT_DECIMAL")
+        if value is None:
+            return None
+        return coordinate(str(value), context=self._field_context("LAT_DECIMAL"))
+
+    @property
+    def longitude(self) -> float | None:
+        """Decimal longitude, or ``None`` when the source field is empty."""
+        value = self._raw.get("LONG_DECIMAL")
+        if value is None:
+            return None
+        return coordinate(str(value), context=self._field_context("LONG_DECIMAL"))
+
+    @property
+    def elevation_ft(self) -> float | None:
+        """Airport elevation in feet, or ``None`` when the source field is empty."""
+        value = self._raw.get("ELEV")
+        if value is None:
+            return None
+        return float_value(str(value), context=self._field_context("ELEV"))
+
+
 __all__ = [
     "FaaRecord",
+    "AirportRecord",
     "FieldContext",
     "boolean",
     "coordinate",
