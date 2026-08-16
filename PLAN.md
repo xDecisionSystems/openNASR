@@ -1750,7 +1750,7 @@ Tasks:
       to the new facade (`nasr.fix(...)`, `Fix`, `Navaid`, `Artcc`),
       referencing the compatibility aliases documented in "Compatibility
       policy" above.
-- [ ] **Agent: Luna.** **7.7** Add `CHANGELOG.md` using Keep a Changelog format, backfilling
+- [x] **Agent: Luna.** **7.7** Add `CHANGELOG.md` using Keep a Changelog format, backfilling
       entries for the Milestone 0-7 work already completed at the time this
       task runs.
 - [ ] **Agent: Luna.** **7.8** Add contributor instructions (e.g. `CONTRIBUTING.md`) covering:
