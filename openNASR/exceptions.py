@@ -33,6 +33,37 @@ class TableNotFoundError(OpenNASRError):
     """Raised when a required NASR CSV table is unavailable."""
 
 
+class FieldConversionError(OpenNASRError):
+    """Raised when a non-empty FAA field cannot become its typed value."""
+
+    def __init__(
+        self,
+        *,
+        cycle: Any | None,
+        table: str | None,
+        column: str | None,
+        raw_value: str,
+        record_identity: Any | None,
+        expected_type: type[Any],
+    ) -> None:
+        self.cycle = cycle
+        self.table = table
+        self.column = column
+        self.raw_value = raw_value
+        self.record_identity = record_identity
+        self.expected_type = expected_type
+        location = ".".join(part for part in (table, column) if part) or "field"
+        message = (
+            f"Cannot convert {location} value {raw_value!r} to "
+            f"{expected_type.__name__}"
+        )
+        if cycle is not None:
+            message += f" for cycle {cycle}"
+        if record_identity is not None:
+            message += f" (record {record_identity!r})"
+        super().__init__(message)
+
+
 class SchemaMismatchError(OpenNASRError):
     """Raised when FAA data differs from a supported schema.
 
@@ -121,6 +152,7 @@ __all__ = [
     "ConfigurationError",
     "CycleNotFoundError",
     "DownloadError",
+    "FieldConversionError",
     "OpenNASRError",
     "RecordNotFoundError",
     "SchemaMismatchError",

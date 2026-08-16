@@ -8,8 +8,49 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, TypeVar
 
+from .exceptions import FieldConversionError
+
 
 EnumValue = TypeVar("EnumValue", bound=Enum)
+
+
+class FieldContext:
+    """Source metadata included when a typed FAA field cannot be converted."""
+
+    def __init__(
+        self,
+        *,
+        cycle: Any | None = None,
+        table: str | None = None,
+        column: str | None = None,
+        record_identity: Any | None = None,
+    ) -> None:
+        self.cycle = cycle
+        self.table = table
+        self.column = column
+        self.record_identity = record_identity
+
+
+def _convert(
+    raw: str,
+    expected_type: type[Any],
+    converter,
+    context: FieldContext | None,
+):
+    if raw == "":
+        return None
+    try:
+        return converter(raw)
+    except (ArithmeticError, TypeError, ValueError) as error:
+        details = context or FieldContext()
+        raise FieldConversionError(
+            cycle=details.cycle,
+            table=details.table,
+            column=details.column,
+            raw_value=raw,
+            record_identity=details.record_identity,
+            expected_type=expected_type,
+        ) from error
 
 
 def nullable_text(raw: str) -> str | None:
@@ -17,24 +58,24 @@ def nullable_text(raw: str) -> str | None:
     return None if raw == "" else raw
 
 
-def iso_date(raw: str) -> date | None:
+def iso_date(raw: str, *, context: FieldContext | None = None) -> date | None:
     """Convert an empty-or-ISO-date FAA field to :class:`datetime.date`."""
-    return None if raw == "" else date.fromisoformat(raw)
+    return _convert(raw, date, date.fromisoformat, context)
 
 
-def integer(raw: str) -> int | None:
+def integer(raw: str, *, context: FieldContext | None = None) -> int | None:
     """Convert an empty-or-integer FAA field without changing its raw text."""
-    return None if raw == "" else int(raw)
+    return _convert(raw, int, int, context)
 
 
-def decimal(raw: str) -> Decimal | None:
+def decimal(raw: str, *, context: FieldContext | None = None) -> Decimal | None:
     """Convert an empty-or-decimal FAA field to an exact :class:`Decimal`."""
-    return None if raw == "" else Decimal(raw)
+    return _convert(raw, Decimal, Decimal, context)
 
 
-def float_value(raw: str) -> float | None:
+def float_value(raw: str, *, context: FieldContext | None = None) -> float | None:
     """Convert an empty-or-floating-point FAA field to :class:`float`."""
-    return None if raw == "" else float(raw)
+    return _convert(raw, float, float, context)
 
 
 def boolean(
@@ -42,27 +83,33 @@ def boolean(
     *,
     true_codes: frozenset[str] = frozenset({"1", "TRUE", "Y", "YES"}),
     false_codes: frozenset[str] = frozenset({"0", "FALSE", "N", "NO"}),
+    context: FieldContext | None = None,
 ) -> bool | None:
     """Convert a documented FAA boolean code, accepting case and space variants."""
-    if raw == "":
-        return None
+    def convert(value: str) -> bool:
+        code = value.strip().upper()
+        if code in true_codes:
+            return True
+        if code in false_codes:
+            return False
+        raise ValueError(f"Unsupported boolean code: {value!r}")
 
-    code = raw.strip().upper()
-    if code in true_codes:
-        return True
-    if code in false_codes:
-        return False
-    raise ValueError(f"Unsupported boolean code: {raw!r}")
+    return _convert(raw, bool, convert, context)
 
 
-def coordinate(raw: str) -> float | None:
+def coordinate(raw: str, *, context: FieldContext | None = None) -> float | None:
     """Convert an empty-or-decimal coordinate field to :class:`float`."""
-    return float_value(raw)
+    return float_value(raw, context=context)
 
 
-def enum_value(raw: str, enum_type: type[EnumValue]) -> EnumValue | None:
+def enum_value(
+    raw: str,
+    enum_type: type[EnumValue],
+    *,
+    context: FieldContext | None = None,
+) -> EnumValue | None:
     """Convert an empty FAA code to a member of ``enum_type``."""
-    return None if raw == "" else enum_type(raw)
+    return _convert(raw, enum_type, enum_type, context)
 
 
 class FaaRecord(Mapping[str, object]):
@@ -96,6 +143,7 @@ class FaaRecord(Mapping[str, object]):
 
 __all__ = [
     "FaaRecord",
+    "FieldContext",
     "boolean",
     "coordinate",
     "decimal",

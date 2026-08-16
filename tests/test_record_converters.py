@@ -4,7 +4,9 @@ from enum import Enum
 
 import pytest
 
+from openNASR.exceptions import FieldConversionError
 from openNASR.records import (
+    FieldContext,
     boolean,
     coordinate,
     decimal,
@@ -63,5 +65,22 @@ def test_shared_converters_return_none_for_an_empty_field(converter, arguments):
 
 
 def test_boolean_rejects_unknown_nonempty_code():
-    with pytest.raises(ValueError, match="Unsupported boolean code"):
-        boolean("MAYBE")
+    context = FieldContext(
+        cycle="2026-09-03",
+        table="APT_BASE",
+        column="ACTIVE",
+        record_identity={"ARPT_ID": "0012"},
+    )
+
+    with pytest.raises(FieldConversionError) as raised:
+        boolean("MAYBE", context=context)
+
+    error = raised.value
+    assert error.cycle == "2026-09-03"
+    assert error.table == "APT_BASE"
+    assert error.column == "ACTIVE"
+    assert error.raw_value == "MAYBE"
+    assert error.record_identity == {"ARPT_ID": "0012"}
+    assert error.expected_type is bool
+    assert "APT_BASE.ACTIVE" in str(error)
+    assert "MAYBE" in str(error)
