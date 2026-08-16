@@ -13,7 +13,7 @@ def test_coverage_report_counts_all_supported_fixture_files():
         assert schema_report["operational_csv_files"] == 63
         assert schema_report["schema_description_files"] == 24
         assert schema_report["matched_table_spec_count"] == 63
-        assert schema_report["rich_record_table_count"] == 16
+        assert schema_report["rich_record_table_count"] == 22
         assert schema_report["rich_record_tables"] == [
             "AWY_BASE",
             "AWY_SEG_ALT",
@@ -31,6 +31,12 @@ def test_coverage_report_counts_all_supported_fixture_files():
             "HPF_SPD_ALT",
             "MIL_OPS",
             "NAV_BASE",
+            "PFR_BASE",
+            "PFR_RMT_FMT",
+            "PFR_SEG",
+            "STAR_APT",
+            "STAR_BASE",
+            "STAR_RTE",
         ]
         assert schema_report["unmodeled_operational_files"] == []
         assert len(schema_report["unmatched_files"]) == 24
@@ -66,4 +72,10 @@ def test_coverage_report_cli_writes_only_to_requested_scratch_path(
         "HPF_SPD_ALT",
         "MIL_OPS",
         "NAV_BASE",
+        "PFR_BASE",
+        "PFR_RMT_FMT",
+        "PFR_SEG",
+        "STAR_APT",
+        "STAR_BASE",
+        "STAR_RTE",
     ]
