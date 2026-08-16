@@ -1590,7 +1590,7 @@ An immutable dataclass or read-only mapping wrapper is preferred. It must:
 - [x] **Agent: Terra.** Raise `FieldConversionError` for invalid non-empty values with cycle,
       table, column, raw value, record identity when available, and expected
       type.
-- [ ] **Agent: Terra.** Test that leading zeros and empty strings survive raw access while typed
+- [x] **Agent: Terra.** Test that leading zeros and empty strings survive raw access while typed
       properties return the approved Python values or `None`.
 
 ### NASR facade methods

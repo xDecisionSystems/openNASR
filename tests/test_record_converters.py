@@ -6,6 +6,7 @@ import pytest
 
 from openNASR.exceptions import FieldConversionError
 from openNASR.records import (
+    FaaRecord,
     FieldContext,
     boolean,
     coordinate,
@@ -21,6 +22,22 @@ from openNASR.records import (
 class Surface(Enum):
     ASPHALT = "A"
     CONCRETE = "C"
+
+
+class TypedRunway(FaaRecord):
+    @property
+    def sequence(self) -> int | None:
+        return integer(
+            self["SEQUENCE"],
+            context=FieldContext(table="RWY", column="SEQUENCE"),
+        )
+
+    @property
+    def width(self) -> int | None:
+        return integer(
+            self["WIDTH"],
+            context=FieldContext(table="RWY", column="WIDTH"),
+        )
 
 
 def test_shared_converters_return_typed_values_without_altering_raw_text():
@@ -84,3 +101,14 @@ def test_boolean_rejects_unknown_nonempty_code():
     assert error.expected_type is bool
     assert "APT_BASE.ACTIVE" in str(error)
     assert "MAYBE" in str(error)
+
+
+def test_typed_properties_do_not_change_leading_zero_or_empty_raw_fields():
+    record = TypedRunway({"SEQUENCE": "0012", "WIDTH": ""})
+
+    assert record.raw["SEQUENCE"] == "0012"
+    assert record.raw["WIDTH"] == ""
+    assert record.sequence == 12
+    assert record.width is None
+    assert record.raw["SEQUENCE"] == "0012"
+    assert record.raw["WIDTH"] == ""
