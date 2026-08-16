@@ -15,6 +15,7 @@ from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import copy2
+from zipfile import is_zipfile
 
 from platformdirs import user_cache_dir
 
@@ -95,6 +96,15 @@ def sha256_file(path: str | Path) -> str:
     return digest.hexdigest()
 
 
+def validate_archive(path: str | Path) -> None:
+    """Reject HTML responses and files that are not ZIP archives."""
+
+    archive = Path(path)
+    prefix = archive.read_bytes()[:512].lstrip().lower()
+    if prefix.startswith((b"<!doctype html", b"<html")) or not is_zipfile(archive):
+        raise ValueError(f"Invalid NASR archive: {archive}")
+
+
 class CycleManager:
     """Manage locally cached FAA NASR cycles.
 
@@ -155,6 +165,7 @@ class CycleManager:
             raise ValueError(
                 f"Archive date {effective_date} does not match {expected_cycle}"
             )
+        validate_archive(source)
         self.archives_dir.mkdir(parents=True, exist_ok=True)
         destination = self.archives_dir / source.name
         if source.resolve() != destination.resolve():
@@ -210,4 +221,5 @@ __all__ = [
     "read_cycle_date",
     "resolve_cache_dir",
     "sha256_file",
+    "validate_archive",
 ]

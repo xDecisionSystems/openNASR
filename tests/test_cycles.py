@@ -2,6 +2,9 @@
 
 from datetime import date
 from pathlib import Path
+from zipfile import ZipFile
+
+import pytest
 
 from openNASR import cycles
 from openNASR.cycles import (
@@ -10,6 +13,7 @@ from openNASR.cycles import (
     read_cycle_date,
     resolve_cache_dir,
     sha256_file,
+    validate_archive,
 )
 
 
@@ -86,13 +90,15 @@ def test_cycle_date_falls_back_to_a_validated_archive_name(tmp_path):
 
 def test_import_archive_copies_the_source_without_modifying_it(tmp_path):
     source = tmp_path / "28DaySubscription_Effective_2026-08-06.zip"
-    source.write_bytes(b"fixture archive")
+    with ZipFile(source, "w") as archive:
+        archive.writestr("fixture.txt", "fixture archive")
+    source_bytes = source.read_bytes()
 
     cycle = CycleManager(tmp_path / "cache").import_archive(source)
 
-    assert source.read_bytes() == b"fixture archive"
+    assert source.read_bytes() == source_bytes
     assert cycle.effective_date == date(2026, 8, 6)
-    assert cycle.archive_path.read_bytes() == b"fixture archive"
+    assert cycle.archive_path.read_bytes() == source_bytes
 
 
 def test_downloads_use_a_temporary_part_path(tmp_path):
@@ -129,3 +135,14 @@ def test_sha256_digest_and_metadata_are_stored_for_an_archive(tmp_path):
     metadata = manager.store_sha256_metadata(archive)
 
     assert sha256_file(archive) in metadata.read_text(encoding="utf-8")
+
+
+def test_html_and_non_zip_archives_are_rejected(tmp_path):
+    html = tmp_path / "error.html"
+    html.write_text("<html>error</html>", encoding="utf-8")
+    invalid = tmp_path / "invalid.zip"
+    invalid.write_bytes(b"not a zip")
+
+    for archive in (html, invalid):
+        with pytest.raises(ValueError, match="Invalid NASR archive"):
+            validate_archive(archive)

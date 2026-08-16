@@ -1443,7 +1443,7 @@ Tasks:
 - [x] **Agent: Terra.** Stream downloads instead of reading the entire archive into memory.
 - [x] **Agent: Terra.** Atomically rename successful downloads.
 - [x] **Agent: Luna.** Compute and store SHA-256 metadata.
-- [ ] **Agent: Terra.** Reject HTML error pages and obviously invalid archives.
+- [x] **Agent: Terra.** Reject HTML error pages and obviously invalid archives.
 - [ ] **Agent: Sol.** Extract into a temporary directory, validate it, then atomically publish
       the completed cycle.
 - [ ] **Agent: Sol.** Protect extraction against absolute paths and `..` path traversal.
