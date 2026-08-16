@@ -13,7 +13,7 @@ def test_coverage_report_counts_all_supported_fixture_files():
         assert schema_report["operational_csv_files"] == 63
         assert schema_report["schema_description_files"] == 24
         assert schema_report["matched_table_spec_count"] == 63
-        assert schema_report["rich_record_table_count"] == 30
+        assert schema_report["rich_record_table_count"] == 32
         assert schema_report["rich_record_tables"] == [
             "ATC_ATIS",
             "ATC_BASE",
@@ -30,6 +30,8 @@ def test_coverage_report_counts_all_supported_fixture_files():
             "DP_RTE",
             "FIX_BASE",
             "FRQ",
+            "FSS_BASE",
+            "FSS_RMK",
             "HPF_BASE",
             "HPF_CHRT",
             "HPF_RMK",
@@ -79,6 +81,8 @@ def test_coverage_report_cli_writes_only_to_requested_scratch_path(
         "DP_RTE",
         "FIX_BASE",
         "FRQ",
+        "FSS_BASE",
+        "FSS_RMK",
         "HPF_BASE",
         "HPF_CHRT",
         "HPF_RMK",

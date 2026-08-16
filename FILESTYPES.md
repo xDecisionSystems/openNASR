@@ -193,8 +193,8 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `FSS_BASE` | `fss.py` | `FlightServiceStationRecord` | `FlightServiceStation`; `nasr.flight_service_stations` | Proposed |
-| `FSS_RMK` | `fss.py` | `FlightServiceStationRemarkRecord` | `FlightServiceStation.remarks` | Proposed |
+| `FSS_BASE` | `fss.py` | `FlightServiceStationRecord` | `FlightServiceStation`; `nasr.flight_service_stations`; `nasr.flight_service_station()` | Existing |
+| `FSS_RMK` | `fss.py` | `FlightServiceStationRemarkRecord` | `FlightServiceStation.remarks` | Existing |
 
 ## Holding pattern files
 

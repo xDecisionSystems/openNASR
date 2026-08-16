@@ -1910,7 +1910,7 @@ Tasks:
 - [x] **Agent: Terra.** **11.5** Implement `WeatherLocationRecord`, `WeatherServiceRecord`, and
       rich `WeatherLocation` objects through `nasr.weather_locations` and their
       service collections.
-- [ ] **Agent: Terra.** **11.6** Implement `FlightServiceStationRecord`,
+- [x] **Agent: Terra.** **11.6** Implement `FlightServiceStationRecord`,
       `FlightServiceStationRemarkRecord`, and rich `FlightServiceStation`
       objects through `nasr.flight_service_stations`.
 - [ ] **Agent: Terra.** **11.7** Implement `LocationIdentifierRecord` and rich standalone
