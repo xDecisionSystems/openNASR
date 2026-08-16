@@ -1905,7 +1905,7 @@ Tasks:
       `nasr.atc_facilities` and `nasr.atc_facility()`.
 - [x] **Agent: Terra.** **11.3** Implement `RadarRecord` and a standalone rich `Radar` repository,
       adding facility relationships only when the full key is reliable.
-- [ ] **Agent: Terra.** **11.4** Implement `AutomatedWeatherStationRecord` and rich
+- [x] **Agent: Terra.** **11.4** Implement `AutomatedWeatherStationRecord` and rich
       `AutomatedWeatherStation` objects through `nasr.weather_stations`.
 - [ ] **Agent: Terra.** **11.5** Implement `WeatherLocationRecord`, `WeatherServiceRecord`, and
       rich `WeatherLocation` objects through `nasr.weather_locations` and their

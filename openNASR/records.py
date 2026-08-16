@@ -166,6 +166,10 @@ class RadarRecord(FaaRecord):
     """Lossless typed marker for a radar facility row."""
 
 
+class AutomatedWeatherStationRecord(FaaRecord):
+    """Lossless typed marker for an automated weather-station row."""
+
+
 class RunwayRecord(FaaRecord):
     """Lossless typed marker for an airport runway row."""
 
