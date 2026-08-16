@@ -35,6 +35,19 @@ def test_airport_faa_and_icao_lookups_have_identical_related_collections(
     assert airport_by_faa.rwy.getRaw()["10/28"].RWY_ID == "10/28"
 
 
+@pytest.mark.parametrize("identifier", ["BWI", "KBWI"])
+def test_airport_identifiers_canonicalize_to_the_faa_identifier(
+    make_nasr_from_fixture, identifier
+):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    exists, matched_column, faa_identifier = nasr.isAirport(identifier)
+
+    assert exists
+    assert matched_column == "ARPT_ID"
+    assert faa_identifier == "BWI"
+
+
 def test_raw_attribute_delegation_is_safe():
     raw = Raw(SimpleNamespace(SITE_ELEVATION=123))
 
