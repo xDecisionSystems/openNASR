@@ -8,6 +8,8 @@ the public precedence documented in :mod:`PLAN`: an explicit argument, then
 from __future__ import annotations
 
 import os
+import re
+from datetime import date
 from pathlib import Path
 
 from platformdirs import user_cache_dir
@@ -15,6 +17,9 @@ from platformdirs import user_cache_dir
 
 APPLICATION_NAME = "openNASR"
 CACHE_DIR_ENV_VAR = "OPENNASR_CACHE_DIR"
+ARCHIVE_NAME_PATTERN = re.compile(
+    r"^28DaySubscription_Effective_(?P<effective_date>\d{4}-\d{2}-\d{2})\.zip$"
+)
 
 
 def resolve_cache_dir(cache_dir: str | Path | None = None) -> Path:
@@ -28,6 +33,18 @@ def resolve_cache_dir(cache_dir: str | Path | None = None) -> Path:
         return Path(configured).expanduser()
 
     return Path(user_cache_dir(APPLICATION_NAME))
+
+
+def parse_archive_date(path: str | Path) -> date | None:
+    """Return the effective date from a valid FAA archive filename."""
+
+    match = ARCHIVE_NAME_PATTERN.fullmatch(Path(path).name)
+    if match is None:
+        return None
+    try:
+        return date.fromisoformat(match["effective_date"])
+    except ValueError:
+        return None
 
 
 class CycleManager:
@@ -58,7 +75,14 @@ class CycleManager:
         if not self.archives_dir.is_dir():
             return ()
         return tuple(
-            sorted(path for path in self.archives_dir.glob("*.zip") if path.is_file())
+            sorted(
+                (
+                    path
+                    for path in self.archives_dir.glob("*.zip")
+                    if path.is_file() and parse_archive_date(path) is not None
+                ),
+                key=parse_archive_date,
+            )
         )
 
     def extracted_paths(self) -> tuple[Path, ...]:
@@ -71,4 +95,9 @@ class CycleManager:
         )
 
 
-__all__ = ["CACHE_DIR_ENV_VAR", "CycleManager", "resolve_cache_dir"]
+__all__ = [
+    "CACHE_DIR_ENV_VAR",
+    "CycleManager",
+    "parse_archive_date",
+    "resolve_cache_dir",
+]
