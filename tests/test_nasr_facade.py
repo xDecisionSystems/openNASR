@@ -15,6 +15,17 @@ def test_airport_repository_get_and_singular_facade_are_equivalent(fixture_nasr)
     assert from_repository["ICAO_ID"] == from_singular_method["ICAO_ID"] == "KBWI"
 
 
+def test_airport_repository_resolves_faa_and_icao_identifiers_case_insensitively(
+    fixture_nasr,
+):
+    nasr, _ = fixture_nasr
+
+    from_faa = nasr.airports.get(" bwi ")
+    from_icao = nasr.airports.get(" kbwi ")
+
+    assert from_faa["ARPT_ID"] == from_icao["ARPT_ID"] == "BWI"
+
+
 def test_record_repository_normalizes_composite_keys_and_optional_filters():
     repository = RecordRepository(
         pd.DataFrame(

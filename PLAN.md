@@ -1633,7 +1633,7 @@ Later `1.x` milestones add repositories using the same contract.
 
 ### Airport requirements
 
-- [ ] **Agent: Terra.** Resolve FAA and ICAO identifiers case-insensitively.
+- [x] **Agent: Terra.** Resolve FAA and ICAO identifiers case-insensitively.
 - [ ] **Agent: Terra.** Expose `faa_id`, `icao_id`, `name`, `latitude`, `longitude`, and
       `elevation_ft` with documented nullability.
 - [ ] **Agent: Terra.** Expose runways and runway ends as typed immutable collections.
