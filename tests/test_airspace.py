@@ -32,3 +32,5 @@ def test_boundary_uses_a_polygon_for_a_single_ring():
     boundary = Boundary([0, 1, 1, 0, 0], [0, 0, 1, 1, 0])
 
     assert isinstance(boundary.getShape, Polygon)
+    assert boundary.latlon[1] == (0.0, 1.0)
+    assert boundary.lonlat[1] == (1.0, 0.0)

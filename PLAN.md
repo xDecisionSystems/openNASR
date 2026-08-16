@@ -1670,7 +1670,7 @@ Later `1.x` milestones add repositories using the same contract.
 - [x] **Agent: Terra.** Use `Polygon` or `MultiPolygon` according to the data.
 - [x] **Agent: Terra.** Expose bounds in standard Shapely order:
       `(min_x, min_y, max_x, max_y)` or `(min_lon, min_lat, max_lon, max_lat)`.
-- [ ] **Agent: Terra.** Validate and document coordinate order for `latlon` and `lonlat`.
+- [x] **Agent: Terra.** Validate and document coordinate order for `latlon` and `lonlat`.
 
 Acceptance criteria:
 

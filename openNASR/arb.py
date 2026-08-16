@@ -40,10 +40,12 @@ class Boundary:
 
     @property
     def latlon(self):
+        """Boundary vertices as ``(latitude, longitude)`` pairs."""
         return [(lat, lon) for lat, lon in zip(self.lat, self.lon)]
 
     @property
     def lonlat(self):
+        """Boundary vertices as ``(longitude, latitude)`` pairs."""
         return [(lon, lat) for lat, lon in zip(self.lat, self.lon)]
 
     @property
