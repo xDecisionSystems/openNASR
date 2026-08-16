@@ -1534,7 +1534,7 @@ tables.clear()
 
 Tasks:
 
-- [ ] **Agent: Luna.** Discover table names without loading CSV contents.
+- [x] **Agent: Luna.** Discover table names without loading CSV contents.
 - [ ] **Agent: Luna.** Normalize requested table names to uppercase.
 - [ ] **Agent: Terra.** Cache each loaded DataFrame per `NASR` instance.
 - [ ] **Agent: Terra.** Preserve `nasr["APT_BASE"]` compatibility by delegating to the repository.
