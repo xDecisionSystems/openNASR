@@ -137,8 +137,73 @@ class AirportRepository:
         return records[0]
 
 
+class RecordRepository:
+    """Normalized record lookup for tables with documented identifier columns."""
+
+    def __init__(
+        self,
+        frame: DataFrame,
+        *,
+        entity_type: str,
+        identifier_columns: tuple[str, ...],
+    ) -> None:
+        self._frame = frame
+        self.entity_type = entity_type
+        self.identifier_columns = identifier_columns
+
+    @staticmethod
+    def _normalized(value: object) -> str:
+        return str(value).strip().upper()
+
+    def _identifier_values(self, identifier: object) -> tuple[object, ...]:
+        if len(self.identifier_columns) == 1:
+            return (identifier,)
+        if not isinstance(identifier, tuple) or len(identifier) != len(
+            self.identifier_columns
+        ):
+            columns = ", ".join(self.identifier_columns)
+            raise ValueError(f"{self.entity_type} identifiers require ({columns})")
+        return identifier
+
+    def find(
+        self, identifier: object | None = None, **filters: object
+    ) -> tuple[FaaRecord, ...]:
+        """Return records matching a normalized identifier and every supplied filter."""
+        rows = self._frame
+        if identifier is not None:
+            for column, value in zip(
+                self.identifier_columns, self._identifier_values(identifier)
+            ):
+                rows = rows[
+                    rows[column].map(self._normalized).eq(self._normalized(value))
+                ]
+        for column, value in filters.items():
+            if value is not None:
+                rows = rows[
+                    rows[column].map(self._normalized).eq(self._normalized(value))
+                ]
+        return tuple(FaaRecord(row) for row in rows.to_dict(orient="records"))
+
+    def get(self, identifier: object, **filters: object) -> FaaRecord:
+        """Return exactly one normalized identifier match with optional filters."""
+        records = self.find(identifier, **filters)
+        if not records:
+            raise RecordNotFoundError(
+                entity_type=self.entity_type, identifier=identifier, filters=filters
+            )
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type=self.entity_type,
+                identifier=identifier,
+                filters=filters,
+                candidates=records,
+            )
+        return records[0]
+
+
 __all__ = [
     "AirportRepository",
+    "RecordRepository",
     "TableRepository",
     "discover_tables",
     "normalize_table_name",

@@ -1,4 +1,7 @@
+import pandas as pd
+
 from openNASR.records import FaaRecord
+from openNASR.repository import RecordRepository
 
 
 def test_airport_repository_get_and_singular_facade_are_equivalent(fixture_nasr):
@@ -10,3 +13,23 @@ def test_airport_repository_get_and_singular_facade_are_equivalent(fixture_nasr)
     assert isinstance(from_repository, FaaRecord)
     assert from_repository["ARPT_ID"] == from_singular_method["ARPT_ID"] == "BWI"
     assert from_repository["ICAO_ID"] == from_singular_method["ICAO_ID"] == "KBWI"
+
+
+def test_record_repository_normalizes_composite_keys_and_optional_filters():
+    repository = RecordRepository(
+        pd.DataFrame(
+            [
+                {"CENTER": "ZOB", "ALTITUDE": "HIGH", "STATE": "OH"},
+                {"CENTER": "ZOB", "ALTITUDE": "LOW", "STATE": "OH"},
+                {"CENTER": "ZNY", "ALTITUDE": "HIGH", "STATE": "NY"},
+            ]
+        ),
+        entity_type="ARTCC boundary",
+        identifier_columns=("CENTER", "ALTITUDE"),
+    )
+
+    record = repository.get((" zob ", " high "), STATE=" oh ")
+
+    assert record["CENTER"] == "ZOB"
+    assert record["ALTITUDE"] == "HIGH"
+    assert repository.find(("ZOB", "HIGH"), STATE=None) == (record,)
