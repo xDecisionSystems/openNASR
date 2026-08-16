@@ -1698,7 +1698,7 @@ Tasks:
 - [x] **Agent: Sol.** Verify runway width conversion from feet to nautical miles.
 - [x] **Agent: Sol.** Verify ILS magnetic variation sign handling against documented FAA field
       semantics.
-- [ ] **Agent: Terra.** Return Matplotlib `Figure` and `Axes` objects from plotting methods.
+- [x] **Agent: Terra.** Return Matplotlib `Figure` and `Axes` objects from plotting methods.
 - [ ] **Agent: Luna.** Never call `plt.close("all")` by default.
 - [ ] **Agent: Luna.** Do not rely on `plt.gca()` when an axes object is already available.
 - [ ] **Agent: Luna.** Keep Matplotlib imports behind the optional plotting boundary so core

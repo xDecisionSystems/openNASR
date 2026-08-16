@@ -1,5 +1,7 @@
 """Airport construction and collection access use deterministic fixtures only."""
 
+import pytest
+
 from openNASR import Airport
 
 
@@ -29,3 +31,17 @@ def test_airport_collections_are_available_without_plotting(make_nasr_from_fixtu
     assert airport.rwy.ids == ["10/28"]
     assert set(airport.rwyend.ids) == {"10", "28"}
     assert airport.ils.ids == ["10"]
+
+
+def test_airport_plot_returns_figure_and_axes(make_nasr_from_fixture):
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    figure, axes = Airport("BWI", nasr).plot()
+
+    assert isinstance(figure, Figure)
+    assert isinstance(axes, Axes)

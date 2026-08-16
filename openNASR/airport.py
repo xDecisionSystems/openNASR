@@ -73,6 +73,7 @@ class Airport():
         self.gs.plot(self.ax,self.lat,self.lon)
         self.ax.set_title(self.icao_id)
         plt.gca().set_aspect('equal')
+        return self.fig, self.ax
 
     def makeRWYbnds(self):
         for cRWY in self.rwy.ids:
