@@ -17,6 +17,7 @@ from .records import (
     AirportRecord,
     DmeRecord,
     FaaRecord,
+    FixRecord,
     GlideSlopeRecord,
     IlsRecord,
     MarkerRecord,
@@ -264,8 +265,28 @@ class RecordRepository:
         return records[0]
 
 
+class FixRepository(RecordRepository):
+    """Lookup typed fix records by normalized FAA identifier."""
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        super().__init__(
+            nasr["FIX_BASE"], entity_type="Fix", identifier_columns=("FIX_ID",)
+        )
+
+    def find(
+        self, identifier: object | None = None, **filters: object
+    ) -> tuple[FixRecord, ...]:
+        records = super().find(identifier, **filters)
+        return tuple(FixRecord(record.as_dict()) for record in records)
+
+    def get(self, identifier: object, **filters: object) -> FixRecord:
+        record = super().get(identifier, **filters)
+        return FixRecord(record.as_dict())
+
+
 __all__ = [
     "AirportRepository",
+    "FixRepository",
     "RecordRepository",
     "TableRepository",
     "discover_tables",

@@ -103,3 +103,17 @@ def test_record_repository_normalizes_composite_keys_and_optional_filters():
     assert record["CENTER"] == "ZOB"
     assert record["ALTITUDE"] == "HIGH"
     assert repository.find(("ZOB", "HIGH"), STATE=None) == (record,)
+
+
+def test_fix_repository_exposes_typed_source_fields(fixture_nasr):
+    nasr, _ = fixture_nasr
+
+    fix = nasr.fix("aabee")
+
+    assert fix.identifier == "AABEE"
+    assert fix.latitude == 39.0
+    assert fix.longitude == -76.0
+    assert fix.state is None
+    assert fix.country is None
+    assert fix.high_artcc is None
+    assert fix.low_artcc is None
