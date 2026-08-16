@@ -1,9 +1,11 @@
 import pytest
 
 import numpy as np
+from types import SimpleNamespace
 
 from openNASR.coordinates import ll2xy, xy2ll
 from openNASR.airport import makeRWYpoly
+from openNASR.ils import ILSitem
 
 
 def test_projection_uses_latitude_longitude_order():
@@ -63,3 +65,18 @@ def test_runway_width_is_converted_from_feet_to_nautical_miles():
 
     assert polygon.bounds[1] == pytest.approx(-0.5)
     assert polygon.bounds[3] == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize(
+    ("hemisphere", "expected_variation", "expected_true_bearing"),
+    [("E", 10.0, 110.0), ("W", -10.0, 90.0)],
+)
+def test_ils_magnetic_variation_uses_faa_hemisphere_signs(
+    hemisphere, expected_variation, expected_true_bearing
+):
+    ils = ILSitem(
+        SimpleNamespace(APCH_BEAR=100.0, MAG_VAR=10.0, MAG_VAR_HEMIS=hemisphere)
+    )
+
+    assert ils.magVar == expected_variation
+    assert ils.trueBearing == expected_true_bearing

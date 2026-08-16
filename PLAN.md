@@ -1696,7 +1696,7 @@ Tasks:
 - [x] **Agent: Sol.** Reject invalid latitude and longitude values.
 - [x] **Agent: Terra.** Add scalar and NumPy-array tests.
 - [x] **Agent: Sol.** Verify runway width conversion from feet to nautical miles.
-- [ ] **Agent: Sol.** Verify ILS magnetic variation sign handling against documented FAA field
+- [x] **Agent: Sol.** Verify ILS magnetic variation sign handling against documented FAA field
       semantics.
 - [ ] **Agent: Terra.** Return Matplotlib `Figure` and `Axes` objects from plotting methods.
 - [ ] **Agent: Luna.** Never call `plt.close("all")` by default.
