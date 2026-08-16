@@ -146,6 +146,22 @@ class FaaRecord(Mapping[str, object]):
             raise AttributeError(name) from error
 
 
+class AtcFacilityRecord(FaaRecord):
+    """Lossless typed marker for an air-traffic-control facility row."""
+
+
+class AtisRecord(FaaRecord):
+    """Lossless typed marker for an ATC facility ATIS row."""
+
+
+class AtcRemarkRecord(FaaRecord):
+    """Lossless typed marker for an ATC facility remark row."""
+
+
+class AtcServiceRecord(FaaRecord):
+    """Lossless typed marker for an ATC facility service row."""
+
+
 class RunwayRecord(FaaRecord):
     """Lossless typed marker for an airport runway row."""
 

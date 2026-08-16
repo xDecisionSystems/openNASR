@@ -138,10 +138,10 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `ATC_BASE` | `atc.py` | `AtcFacilityRecord` | `AtcFacility`; `nasr.atc_facilities`; `nasr.atc_facility()` | Proposed |
-| `ATC_ATIS` | `atc.py` | `AtisRecord` | `AtcFacility.atis_services` | Proposed |
-| `ATC_RMK` | `atc.py` | `AtcRemarkRecord` | `AtcFacility.remarks` | Proposed |
-| `ATC_SVC` | `atc.py` | `AtcServiceRecord` | `AtcFacility.services` | Proposed |
+| `ATC_BASE` | `atc.py` | `AtcFacilityRecord` | `AtcFacility`; `nasr.atc_facilities`; `nasr.atc_facility()` | Existing |
+| `ATC_ATIS` | `atc.py` | `AtisRecord` | `AtcFacility.atis_services` | Existing |
+| `ATC_RMK` | `atc.py` | `AtcRemarkRecord` | `AtcFacility.remarks` | Existing |
+| `ATC_SVC` | `atc.py` | `AtcServiceRecord` | `AtcFacility.services` | Existing |
 | `RDR` | `atc.py` | `RadarRecord` | `Radar`; `nasr.radars`; `nasr.radar()` | Proposed |
 
 ## Weather files

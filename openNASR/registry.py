@@ -8,6 +8,10 @@ from pathlib import Path
 
 from .exceptions import SchemaMismatchError, TableNotFoundError
 from .records import (
+    AtcFacilityRecord,
+    AtcRemarkRecord,
+    AtcServiceRecord,
+    AtisRecord,
     AirwayRecord,
     AirwaySegmentRecord,
     ClassAirspaceRecord,
@@ -163,6 +167,10 @@ FACILITY_TABLES = frozenset(
     }
 )
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
+    "ATC_BASE": AtcFacilityRecord,
+    "ATC_ATIS": AtisRecord,
+    "ATC_RMK": AtcRemarkRecord,
+    "ATC_SVC": AtcServiceRecord,
     "CDR": CodedDepartureRouteRecord,
     "DP_BASE": DepartureProcedureRecord,
     "DP_APT": DepartureAirportRecord,
