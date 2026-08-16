@@ -1,0 +1,24 @@
+{
+  "pre_2026_09": {
+    "AWY_BASE": [
+      {"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "1", "AWY_DESIGNATION": "V"},
+      {"REGULATORY": "N", "AWY_LOCATION": "A", "AWY_ID": "1", "AWY_DESIGNATION": "J"}
+    ],
+    "AWY_SEG_ALT": [
+      {"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "1", "POINT_SEQ": "010", "FROM_POINT": "BRAVO", "TO_POINT": "CHARLIE"},
+      {"REGULATORY": "N", "AWY_LOCATION": "A", "AWY_ID": "1", "POINT_SEQ": "001", "FROM_POINT": "OTHER", "TO_POINT": "ROUTE"},
+      {"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "1", "POINT_SEQ": "001", "FROM_POINT": "ALPHA", "TO_POINT": "BRAVO"}
+    ]
+  },
+  "nasr_2026_09": {
+    "AWY_BASE": [
+      {"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "1", "AWY_DESIGNATION": "V"},
+      {"REGULATORY": "N", "AWY_LOCATION": "A", "AWY_ID": "1", "AWY_DESIGNATION": "J"}
+    ],
+    "AWY_SEG_ALT": [
+      {"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "1", "POINT_SEQ": "0010", "FROM_POINT": "BRAVO", "TO_POINT": "CHARLIE"},
+      {"REGULATORY": "N", "AWY_LOCATION": "A", "AWY_ID": "1", "POINT_SEQ": "0001", "FROM_POINT": "OTHER", "TO_POINT": "ROUTE"},
+      {"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "1", "POINT_SEQ": "0001", "FROM_POINT": "ALPHA", "TO_POINT": "BRAVO"}
+    ]
+  }
+}

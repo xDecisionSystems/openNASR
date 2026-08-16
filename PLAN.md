@@ -1837,7 +1837,7 @@ and `FRQ`, and connect them to the existing fix/navaid objects where supported.
 
 Tasks:
 
-- [ ] **Agent: Sol.** **9.1** Verify and register identity, ordering, and relationship keys for
+- [x] **Agent: Sol.** **9.1** Verify and register identity, ordering, and relationship keys for
       `AWY_BASE` and `AWY_SEG_ALT` across both schemas.
 - [ ] **Agent: Terra.** **9.2** Implement `AirwayRecord` and
       `AirwaySegmentRecord`; expose the rich

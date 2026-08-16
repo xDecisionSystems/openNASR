@@ -156,8 +156,8 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `AWY_BASE` | `airway.py` | `AirwayRecord` | `Airway`; `nasr.airways`; `nasr.airway()` | Existing |
-| `AWY_SEG_ALT` | `airway.py` | `AirwaySegmentRecord` | Ordered `Airway.segments`, including altitude constraints | Proposed |
+| `AWY_BASE` | `airway.py` | `AirwayRecord` | `Airway`; `nasr.airways`; `nasr.airway()` | Keys verified; rich rewrite pending |
+| `AWY_SEG_ALT` | `airway.py` | `AirwaySegmentRecord` | Ordered `Airway.segments`, including altitude constraints | Keys verified; implementation pending |
 
 ## Procedure and route files
 

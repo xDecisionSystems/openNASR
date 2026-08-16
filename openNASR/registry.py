@@ -13,6 +13,9 @@ from .schemas import SchemaCatalog
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
 AIRPORT_LINKED_TABLES = frozenset({"CLS_ARSP", "MIL_OPS"})
+AIRWAY_KEY = ("REGULATORY", "AWY_LOCATION", "AWY_ID")
+AIRWAY_SEGMENT_KEY = (*AIRWAY_KEY, "POINT_SEQ")
+AIRWAY_TABLES = frozenset({"AWY_BASE", "AWY_SEG_ALT"})
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "CLS_ARSP": ClassAirspaceRecord,
     "MIL_OPS": MilitaryOperationRecord,
@@ -91,6 +94,7 @@ class TableRegistry:
                 schema = self.catalog.table(table_name, schema_id)
                 identity_key: tuple[str, ...] | None = None
                 indexes: tuple[IndexSpec, ...] = ()
+                order_by: tuple[str, ...] = ()
                 relationships: tuple[RelationshipSpec, ...] = ()
                 if table_name in AIRPORT_LINKED_TABLES:
                     identity_key = AIRPORT_SITE_KEY
@@ -106,11 +110,38 @@ class TableRegistry:
                             AIRPORT_SITE_KEY,
                         ),
                     )
+                elif table_name == "AWY_BASE":
+                    identity_key = AIRWAY_KEY
+                    indexes = (IndexSpec("airway", AIRWAY_KEY, unique=True),)
+                    relationships = (
+                        RelationshipSpec(
+                            "segments",
+                            "AWY_SEG_ALT",
+                            AIRWAY_KEY,
+                            AIRWAY_KEY,
+                        ),
+                    )
+                elif table_name == "AWY_SEG_ALT":
+                    identity_key = AIRWAY_SEGMENT_KEY
+                    indexes = (
+                        IndexSpec("segment", AIRWAY_SEGMENT_KEY, unique=True),
+                        IndexSpec("airway", AIRWAY_KEY, unique=False),
+                    )
+                    order_by = ("POINT_SEQ",)
+                    relationships = (
+                        RelationshipSpec(
+                            "airway",
+                            "AWY_BASE",
+                            AIRWAY_KEY,
+                            AIRWAY_KEY,
+                        ),
+                    )
                 variants.append(
                     TableVariantSpec(
                         schema_id=schema_id,
                         identity_key=identity_key,
                         indexes=indexes,
+                        order_by=order_by,
                         relationships=relationships,
                         required_columns=frozenset(
                             column.name for column in schema.columns
@@ -177,6 +208,9 @@ class TableRegistry:
 __all__ = [
     "AIRPORT_LINKED_TABLES",
     "AIRPORT_SITE_KEY",
+    "AIRWAY_KEY",
+    "AIRWAY_SEGMENT_KEY",
+    "AIRWAY_TABLES",
     "IndexSpec",
     "RICH_RECORD_TYPES",
     "RelationshipSpec",

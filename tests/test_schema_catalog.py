@@ -16,6 +16,9 @@ from openNASR.records import FaaRecord
 from openNASR.registry import (
     AIRPORT_LINKED_TABLES,
     AIRPORT_SITE_KEY,
+    AIRWAY_KEY,
+    AIRWAY_SEGMENT_KEY,
+    AIRWAY_TABLES,
     IndexSpec,
     RelationshipSpec,
     TableRegistry,
@@ -129,7 +132,7 @@ def test_registry_covers_every_operational_table_and_schema_variant():
                 for column in catalog.table(table_name, variant.schema_id).columns
             }
             assert variant.required_columns <= declared
-            if table_name not in AIRPORT_LINKED_TABLES:
+            if table_name not in AIRPORT_LINKED_TABLES | AIRWAY_TABLES:
                 assert variant.identity_key is None
                 assert variant.relationships == ()
 
@@ -176,6 +179,66 @@ def test_representative_rows_require_the_full_airport_site_key(schema_id):
             identities.append(site_key)
             assert airports_by_site[site_key]["ARPT_ID"] == row["ARPT_ID"]
         assert len(identities) == len(set(identities))
+
+
+@pytest.mark.parametrize("schema_id", SCHEMA_IDS)
+def test_airway_registry_keys_and_ordering_are_verified(schema_id):
+    catalog = SchemaCatalog()
+    registry = TableRegistry(catalog=catalog)
+    base = registry.spec("AWY_BASE", schema_id)
+    segments = registry.spec("AWY_SEG_ALT", schema_id)
+
+    assert base.identity_key == AIRWAY_KEY
+    assert base.indexes == (IndexSpec("airway", AIRWAY_KEY, unique=True),)
+    assert base.relationships == (
+        RelationshipSpec("segments", "AWY_SEG_ALT", AIRWAY_KEY, AIRWAY_KEY),
+    )
+    assert segments.identity_key == AIRWAY_SEGMENT_KEY
+    assert segments.indexes == (
+        IndexSpec("segment", AIRWAY_SEGMENT_KEY, unique=True),
+        IndexSpec("airway", AIRWAY_KEY, unique=False),
+    )
+    assert segments.order_by == ("POINT_SEQ",)
+    assert segments.relationships == (
+        RelationshipSpec("airway", "AWY_BASE", AIRWAY_KEY, AIRWAY_KEY),
+    )
+
+    for table_name, variant in (("AWY_BASE", base), ("AWY_SEG_ALT", segments)):
+        declared = {
+            column.name for column in catalog.table(table_name, schema_id).columns
+        }
+        assert set(variant.identity_key or ()) <= declared
+        assert set(variant.order_by) <= declared
+        for relationship in variant.relationships:
+            target_columns = {
+                column.name
+                for column in catalog.table(
+                    relationship.target_table, schema_id
+                ).columns
+            }
+            assert set(relationship.local_columns) <= declared
+            assert set(relationship.target_columns) <= target_columns
+
+
+@pytest.mark.parametrize("schema_id", SCHEMA_IDS)
+def test_representative_airway_rows_require_full_key_and_sequence_order(schema_id):
+    fixture_path = FIXTURE_ROOT / "relationships" / "airways.json"
+    rows = json.loads(fixture_path.read_text(encoding="utf-8"))[schema_id]
+    base_keys = {
+        tuple(row[column] for column in AIRWAY_KEY) for row in rows["AWY_BASE"]
+    }
+
+    assert len({row["AWY_ID"] for row in rows["AWY_BASE"]}) == 1
+    for segment in rows["AWY_SEG_ALT"]:
+        assert tuple(segment[column] for column in AIRWAY_KEY) in base_keys
+
+    selected = [
+        segment
+        for segment in rows["AWY_SEG_ALT"]
+        if tuple(segment[column] for column in AIRWAY_KEY) == ("Y", "D", "1")
+    ]
+    ordered = sorted(selected, key=lambda row: int(row["POINT_SEQ"]))
+    assert [row["FROM_POINT"] for row in ordered] == ["ALPHA", "BRAVO"]
 
 
 def test_test_local_registry_reports_and_rejects_unmodeled_tables():
