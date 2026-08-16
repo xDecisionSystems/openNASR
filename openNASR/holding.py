@@ -5,9 +5,9 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
+from .fix import FixRecord
 from .records import (
     FaaRecord,
-    FixRecord,
     integer,
     nullable_text,
 )

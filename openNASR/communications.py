@@ -5,7 +5,8 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import FaaRecord, NavaidRecord, nullable_text
+from .nav import NavaidRecord
+from .records import FaaRecord, nullable_text
 from .relationships import related_record
 
 SERVICED_FACILITY_KEY = (

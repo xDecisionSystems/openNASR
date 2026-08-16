@@ -14,16 +14,16 @@ from .exceptions import (
     TableNotFoundError,
 )
 from .airspace import ClassAirspaceRecord
+from .airport import AirportRecord
+from .fix import FixRecord
 from .military import MilitaryOperationRecord
+from .nav import NavaidRecord
 from .records import (
-    AirportRecord,
     DmeRecord,
     FaaRecord,
-    FixRecord,
     GlideSlopeRecord,
     IlsRecord,
     MarkerRecord,
-    NavaidRecord,
     RunwayEndRecord,
     RunwayRecord,
 )

@@ -7,14 +7,9 @@ from datetime import date
 from decimal import Decimal
 from enum import Enum
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import Any, TypeVar
 
 from .exceptions import FieldConversionError
-
-if TYPE_CHECKING:
-    from .airspace import ClassAirspace
-    from .military import MilitaryOperation
-
 
 EnumValue = TypeVar("EnumValue", bound=Enum)
 
@@ -158,9 +153,12 @@ _COMPATIBILITY_RECORD_MODULES = {
     "WeatherServiceRecord": "weather",
     "FlightServiceStationRecord": "fss",
     "FlightServiceStationRemarkRecord": "fss",
+    "FixRecord": "fix",
     "LocationIdentifierRecord": "locations",
     "ClassAirspaceRecord": "airspace",
     "MilitaryOperationRecord": "military",
+    "NavaidRecord": "nav",
+    "AirportRecord": "airport",
     "AirwayRecord": "airway",
     "AirwaySegmentRecord": "airway",
     "HoldingPatternRecord": "holding",
@@ -225,234 +223,12 @@ class MarkerRecord(FaaRecord):
         return self._text("MIL_OPS_HRS")
 
 
-class FixRecord(FaaRecord):
-    """Fix record with nullable typed conveniences over lossless FAA fields."""
-
-    def _text_from(self, *columns: str) -> str | None:
-        for column in columns:
-            if column in self._raw:
-                value = self._raw[column]
-                if value is None or value != value:
-                    return None
-                return nullable_text(str(value))
-        return None
-
-    @property
-    def identifier(self) -> str | None:
-        return self._text_from("FIX_ID")
-
-    @property
-    def name(self) -> str | None:
-        return self._text_from("FIX_NAME", "NAME")
-
-    @property
-    def latitude(self) -> float | None:
-        value = self._text_from("LAT_DECIMAL")
-        return None if value is None else coordinate(value)
-
-    @property
-    def longitude(self) -> float | None:
-        value = self._text_from("LONG_DECIMAL")
-        return None if value is None else coordinate(value)
-
-    @property
-    def state(self) -> str | None:
-        return self._text_from("STATE_CODE", "STATE")
-
-    @property
-    def country(self) -> str | None:
-        return self._text_from("COUNTRY_CODE", "COUNTRY_NAME")
-
-    @property
-    def high_artcc(self) -> str | None:
-        return self._text_from("ARTCC_ID_HIGH")
-
-    @property
-    def low_artcc(self) -> str | None:
-        return self._text_from("ARTCC_ID_LOW")
-
-
-class NavaidRecord(FaaRecord):
-    """Typed conveniences over a lossless navaid source row."""
-
-    def _text(self, *columns: str) -> str | None:
-        for column in columns:
-            value = self._raw.get(column)
-            if value is not None and value == value:
-                return nullable_text(str(value))
-        return None
-
-    @property
-    def identifier(self) -> str | None:
-        return self._text("NAV_ID")
-
-    @property
-    def nav_type(self) -> str | None:
-        return self._text("NAV_TYPE")
-
-    @property
-    def name(self) -> str | None:
-        return self._text("NAME")
-
-    @property
-    def state(self) -> str | None:
-        return self._text("STATE_CODE")
-
-    @property
-    def country(self) -> str | None:
-        return self._text("COUNTRY_CODE", "COUNTRY_NAME")
-
-    @property
-    def high_artcc(self) -> str | None:
-        return self._text("HIGH_ALT_ARTCC_ID")
-
-    @property
-    def low_artcc(self) -> str | None:
-        return self._text("LOW_ALT_ARTCC_ID")
-
-    @property
-    def frequency(self) -> str | None:
-        return self._text("FREQ")
-
-    @property
-    def latitude(self) -> float | None:
-        value = self._text("LAT_DECIMAL")
-        return None if value is None else coordinate(value)
-
-    @property
-    def longitude(self) -> float | None:
-        value = self._text("LONG_DECIMAL")
-        return None if value is None else coordinate(value)
-
-
-class AirportRecord(FaaRecord):
-    """Airport record with nullable typed conveniences over lossless FAA fields."""
-
-    def __init__(
-        self,
-        raw: Mapping[str, object],
-        *,
-        runways: tuple[RunwayRecord, ...] = (),
-        runway_ends: tuple[RunwayEndRecord, ...] = (),
-        ils: tuple[IlsRecord, ...] = (),
-        dmes: tuple[DmeRecord, ...] = (),
-        glide_slopes: tuple[GlideSlopeRecord, ...] = (),
-        markers: tuple[MarkerRecord, ...] = (),
-        class_airspace: ClassAirspace | None = None,
-        military_operations: tuple[MilitaryOperation, ...] = (),
-    ) -> None:
-        super().__init__(raw)
-        self._runways = runways
-        self._runway_ends = runway_ends
-        self._ils = ils
-        self._dmes = dmes
-        self._glide_slopes = glide_slopes
-        self._markers = markers
-        self._class_airspace = class_airspace
-        self._military_operations = military_operations
-
-    @property
-    def runways(self) -> tuple[RunwayRecord, ...]:
-        """Immutable collection of runways belonging to this airport."""
-        return self._runways
-
-    @property
-    def runway_ends(self) -> tuple[RunwayEndRecord, ...]:
-        """Immutable collection of runway ends belonging to this airport."""
-        return self._runway_ends
-
-    @property
-    def ils(self) -> tuple[IlsRecord, ...]:
-        """Immutable ILS records; empty when the optional table is absent."""
-        return self._ils
-
-    @property
-    def dmes(self) -> tuple[DmeRecord, ...]:
-        """Immutable DME records; empty when the optional table is absent."""
-        return self._dmes
-
-    @property
-    def glide_slopes(self) -> tuple[GlideSlopeRecord, ...]:
-        """Immutable glide-slope records; empty when the optional table is absent."""
-        return self._glide_slopes
-
-    @property
-    def markers(self) -> tuple[MarkerRecord, ...]:
-        """Immutable marker records; empty when the optional table is absent."""
-        return self._markers
-
-    @property
-    def class_airspace(self) -> ClassAirspace | None:
-        """Airport-linked class-airspace data, when exactly one row matches."""
-
-        return self._class_airspace
-
-    @property
-    def military_operations(self) -> tuple[MilitaryOperation, ...]:
-        """Military-operation records linked through the complete site key."""
-
-        return self._military_operations
-
-    def _field_context(self, column: str) -> FieldContext:
-        return FieldContext(
-            table="APT_BASE",
-            column=column,
-            record_identity=self._raw.get("ARPT_ID"),
-        )
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None else nullable_text(str(value))
-
-    @property
-    def faa_id(self) -> str | None:
-        """FAA airport identifier, or ``None`` when the source field is empty."""
-        return self._text("ARPT_ID")
-
-    @property
-    def icao_id(self) -> str | None:
-        """ICAO airport identifier, or ``None`` when the source field is empty."""
-        return self._text("ICAO_ID")
-
-    @property
-    def name(self) -> str | None:
-        """Airport name, or ``None`` when the schema does not provide one."""
-        return self._text("ARPT_NAME")
-
-    @property
-    def latitude(self) -> float | None:
-        """Decimal latitude, or ``None`` when the source field is empty."""
-        value = self._raw.get("LAT_DECIMAL")
-        if value is None:
-            return None
-        return coordinate(str(value), context=self._field_context("LAT_DECIMAL"))
-
-    @property
-    def longitude(self) -> float | None:
-        """Decimal longitude, or ``None`` when the source field is empty."""
-        value = self._raw.get("LONG_DECIMAL")
-        if value is None:
-            return None
-        return coordinate(str(value), context=self._field_context("LONG_DECIMAL"))
-
-    @property
-    def elevation_ft(self) -> float | None:
-        """Airport elevation in feet, or ``None`` when the source field is empty."""
-        value = self._raw.get("ELEV")
-        if value is None:
-            return None
-        return float_value(str(value), context=self._field_context("ELEV"))
-
-
 __all__ = [
     "FaaRecord",
-    "AirportRecord",
     "DmeRecord",
     "GlideSlopeRecord",
-    "FixRecord",
     "IlsRecord",
     "MarkerRecord",
-    "NavaidRecord",
     "RunwayEndRecord",
     "RunwayRecord",
     "FieldContext",

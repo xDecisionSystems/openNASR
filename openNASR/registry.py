@@ -28,6 +28,7 @@ from .departure import (
     PreferredRouteSegmentRecord,
 )
 from .fss import FlightServiceStationRecord, FlightServiceStationRemarkRecord
+from .fix import FixRecord
 from .holding import (
     HoldingPatternChartRecord,
     HoldingPatternRecord,
@@ -36,7 +37,8 @@ from .holding import (
 )
 from .locations import LocationIdentifierRecord
 from .military import MilitaryOperationRecord
-from .records import FaaRecord, FixRecord, NavaidRecord
+from .nav import NavaidRecord
+from .records import FaaRecord
 from .weather import (
     AutomatedWeatherStationRecord,
     WeatherLocationRecord,

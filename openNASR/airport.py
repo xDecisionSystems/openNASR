@@ -1,10 +1,139 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
+
 from .basictypes import Raw, getAirportRecord
 from .ils import ILSBase, ILSitem, ILSDME, DMEitem, ILSGS, GSitem, ILSMKR, MKRitem
 from .rwy import RWY, RWYitem, RWYEnd, RWYEnditem
 from .exceptions import RecordNotFoundError
+from .records import (
+    DmeRecord,
+    FaaRecord,
+    FieldContext,
+    GlideSlopeRecord,
+    IlsRecord,
+    MarkerRecord,
+    RunwayEndRecord,
+    RunwayRecord,
+    coordinate,
+    float_value,
+    nullable_text,
+)
 
 # import wmm2020
 from shapely.geometry import LineString
+
+if TYPE_CHECKING:
+    from .airspace import ClassAirspace
+    from .military import MilitaryOperation
+
+
+class AirportRecord(FaaRecord):
+    """Airport record with nullable typed conveniences over lossless FAA fields."""
+
+    def __init__(
+        self,
+        raw: Mapping[str, object],
+        *,
+        runways: tuple[RunwayRecord, ...] = (),
+        runway_ends: tuple[RunwayEndRecord, ...] = (),
+        ils: tuple[IlsRecord, ...] = (),
+        dmes: tuple[DmeRecord, ...] = (),
+        glide_slopes: tuple[GlideSlopeRecord, ...] = (),
+        markers: tuple[MarkerRecord, ...] = (),
+        class_airspace: ClassAirspace | None = None,
+        military_operations: tuple[MilitaryOperation, ...] = (),
+    ) -> None:
+        super().__init__(raw)
+        self._runways = runways
+        self._runway_ends = runway_ends
+        self._ils = ils
+        self._dmes = dmes
+        self._glide_slopes = glide_slopes
+        self._markers = markers
+        self._class_airspace = class_airspace
+        self._military_operations = military_operations
+
+    @property
+    def runways(self) -> tuple[RunwayRecord, ...]:
+        return self._runways
+
+    @property
+    def runway_ends(self) -> tuple[RunwayEndRecord, ...]:
+        return self._runway_ends
+
+    @property
+    def ils(self) -> tuple[IlsRecord, ...]:
+        return self._ils
+
+    @property
+    def dmes(self) -> tuple[DmeRecord, ...]:
+        return self._dmes
+
+    @property
+    def glide_slopes(self) -> tuple[GlideSlopeRecord, ...]:
+        return self._glide_slopes
+
+    @property
+    def markers(self) -> tuple[MarkerRecord, ...]:
+        return self._markers
+
+    @property
+    def class_airspace(self) -> ClassAirspace | None:
+        return self._class_airspace
+
+    @property
+    def military_operations(self) -> tuple[MilitaryOperation, ...]:
+        return self._military_operations
+
+    def _field_context(self, column: str) -> FieldContext:
+        return FieldContext(
+            table="APT_BASE", column=column, record_identity=self._raw.get("ARPT_ID")
+        )
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None else nullable_text(str(value))
+
+    @property
+    def faa_id(self) -> str | None:
+        return self._text("ARPT_ID")
+
+    @property
+    def icao_id(self) -> str | None:
+        return self._text("ICAO_ID")
+
+    @property
+    def name(self) -> str | None:
+        return self._text("ARPT_NAME")
+
+    @property
+    def latitude(self) -> float | None:
+        value = self._raw.get("LAT_DECIMAL")
+        return (
+            None
+            if value is None
+            else coordinate(str(value), context=self._field_context("LAT_DECIMAL"))
+        )
+
+    @property
+    def longitude(self) -> float | None:
+        value = self._raw.get("LONG_DECIMAL")
+        return (
+            None
+            if value is None
+            else coordinate(str(value), context=self._field_context("LONG_DECIMAL"))
+        )
+
+    @property
+    def elevation_ft(self) -> float | None:
+        value = self._raw.get("ELEV")
+        return (
+            None
+            if value is None
+            else float_value(str(value), context=self._field_context("ELEV"))
+        )
 
 
 class AirportBase(Raw):

@@ -3,7 +3,9 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import FaaRecord, FixRecord, NavaidRecord, integer, nullable_text
+from .fix import FixRecord
+from .nav import NavaidRecord
+from .records import FaaRecord, integer, nullable_text
 from .relationships import related_record
 
 AIRWAY_KEY = ("REGULATORY", "AWY_LOCATION", "AWY_ID")
