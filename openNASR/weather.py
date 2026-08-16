@@ -5,12 +5,15 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import (
-    AutomatedWeatherStationRecord,
-    WeatherLocationRecord,
-    WeatherServiceRecord,
+from .records import FaaRecord
+
+
+WEATHER_LOCATION_KEY = (
+    "WEA_ID",
+    "CITY",
+    "STATE_CODE",
+    "COUNTRY_CODE",
 )
-from .registry import WEATHER_LOCATION_KEY
 
 
 WEATHER_STATION_KEY = (
@@ -20,6 +23,18 @@ WEATHER_STATION_KEY = (
     "CITY",
     "COUNTRY_CODE",
 )
+
+
+class AutomatedWeatherStationRecord(FaaRecord):
+    """Lossless typed marker for an automated weather-station row."""
+
+
+class WeatherLocationRecord(FaaRecord):
+    """Lossless typed marker for a weather-location row."""
+
+
+class WeatherServiceRecord(FaaRecord):
+    """Lossless typed marker for a weather-location service row."""
 
 
 class AutomatedWeatherStation:
@@ -160,7 +175,10 @@ class WeatherLocationRepository:
 
 __all__ = [
     "AutomatedWeatherStation",
+    "AutomatedWeatherStationRecord",
     "AutomatedWeatherStationRepository",
     "WeatherLocation",
+    "WeatherLocationRecord",
     "WeatherLocationRepository",
+    "WeatherServiceRecord",
 ]

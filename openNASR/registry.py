@@ -7,41 +7,40 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .exceptions import SchemaMismatchError, TableNotFoundError
-from .records import (
+from .airspace import ClassAirspaceRecord
+from .airway import AirwayRecord, AirwaySegmentRecord
+from .arrivals import StarAirportRecord, StarProcedureRecord, StarRouteRecord
+from .atc import (
     AtcFacilityRecord,
     AtcRemarkRecord,
     AtcServiceRecord,
     AtisRecord,
-    AutomatedWeatherStationRecord,
-    WeatherLocationRecord,
-    WeatherServiceRecord,
-    AirwayRecord,
-    AirwaySegmentRecord,
-    ClassAirspaceRecord,
-    CommunicationOutletRecord,
+    RadarRecord,
+)
+from .communications import CommunicationOutletRecord, FrequencyRecord
+from .departure import (
     CodedDepartureRouteRecord,
     DepartureAirportRecord,
     DepartureProcedureRecord,
     DepartureRouteRecord,
-    PreferredRouteRecord,
     PreferredRouteFormatRecord,
+    PreferredRouteRecord,
     PreferredRouteSegmentRecord,
-    RadarRecord,
-    StarProcedureRecord,
-    StarAirportRecord,
-    StarRouteRecord,
-    FaaRecord,
-    FixRecord,
-    FlightServiceStationRecord,
-    FlightServiceStationRemarkRecord,
-    FrequencyRecord,
+)
+from .fss import FlightServiceStationRecord, FlightServiceStationRemarkRecord
+from .holding import (
     HoldingPatternChartRecord,
     HoldingPatternRecord,
     HoldingPatternRemarkRecord,
     HoldingPatternSpeedAltitudeRecord,
-    LocationIdentifierRecord,
-    MilitaryOperationRecord,
-    NavaidRecord,
+)
+from .locations import LocationIdentifierRecord
+from .military import MilitaryOperationRecord
+from .records import FaaRecord, FixRecord, NavaidRecord
+from .weather import (
+    AutomatedWeatherStationRecord,
+    WeatherLocationRecord,
+    WeatherServiceRecord,
 )
 from .schemas import SchemaCatalog
 

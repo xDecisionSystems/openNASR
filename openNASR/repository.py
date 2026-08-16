@@ -13,16 +13,16 @@ from .exceptions import (
     SchemaMismatchError,
     TableNotFoundError,
 )
+from .airspace import ClassAirspaceRecord
+from .military import MilitaryOperationRecord
 from .records import (
     AirportRecord,
-    ClassAirspaceRecord,
     DmeRecord,
     FaaRecord,
     FixRecord,
     GlideSlopeRecord,
     IlsRecord,
     MarkerRecord,
-    MilitaryOperationRecord,
     NavaidRecord,
     RunwayEndRecord,
     RunwayRecord,

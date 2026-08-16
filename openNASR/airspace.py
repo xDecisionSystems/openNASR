@@ -7,8 +7,46 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import ClassAirspaceRecord
-from .registry import AIRPORT_SITE_KEY
+from .records import FaaRecord, nullable_text
+
+AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
+
+
+class ClassAirspaceRecord(FaaRecord):
+    """Typed conveniences for one airport-linked class-airspace row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None else nullable_text(str(value))
+
+    @property
+    def site_no(self) -> str | None:
+        return self._text("SITE_NO")
+
+    @property
+    def site_type_code(self) -> str | None:
+        return self._text("SITE_TYPE_CODE")
+
+    @property
+    def airport_id(self) -> str | None:
+        return self._text("ARPT_ID")
+
+    @property
+    def airport_site_key(self) -> tuple[str, str] | None:
+        """Verified key shared with the corresponding ``APT_BASE`` row."""
+
+        if self.site_no is None or self.site_type_code is None:
+            return None
+        return self.site_no, self.site_type_code
+
+    @property
+    def classes(self) -> Mapping[str, str | None]:
+        """Raw FAA class-airspace codes keyed by class letter."""
+
+        return {
+            letter: self._text(f"CLASS_{letter}_AIRSPACE")
+            for letter in ("B", "C", "D", "E")
+        }
 
 
 class ClassAirspace:

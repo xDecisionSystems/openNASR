@@ -5,14 +5,18 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import (
-    AtcFacilityRecord,
-    AtcRemarkRecord,
-    AtcServiceRecord,
-    AtisRecord,
-    RadarRecord,
+from .records import FaaRecord
+
+
+ATC_KEY = (
+    "SITE_NO",
+    "SITE_TYPE_CODE",
+    "FACILITY_TYPE",
+    "STATE_CODE",
+    "FACILITY_ID",
+    "CITY",
+    "COUNTRY_CODE",
 )
-from .registry import ATC_KEY
 
 
 RADAR_KEY = (
@@ -23,6 +27,26 @@ RADAR_KEY = (
     "RADAR_TYPE",
     "RADAR_NO",
 )
+
+
+class AtcFacilityRecord(FaaRecord):
+    """Lossless typed marker for an air-traffic-control facility row."""
+
+
+class AtisRecord(FaaRecord):
+    """Lossless typed marker for an ATC facility ATIS row."""
+
+
+class AtcRemarkRecord(FaaRecord):
+    """Lossless typed marker for an ATC facility remark row."""
+
+
+class AtcServiceRecord(FaaRecord):
+    """Lossless typed marker for an ATC facility service row."""
+
+
+class RadarRecord(FaaRecord):
+    """Lossless typed marker for a radar facility row."""
 
 
 class AtcFacility:
@@ -158,4 +182,14 @@ class RadarRepository:
         return records[0]
 
 
-__all__ = ["AtcFacility", "AtcFacilityRepository", "Radar", "RadarRepository"]
+__all__ = [
+    "AtcFacility",
+    "AtcFacilityRecord",
+    "AtcFacilityRepository",
+    "AtcRemarkRecord",
+    "AtcServiceRecord",
+    "AtisRecord",
+    "Radar",
+    "RadarRecord",
+    "RadarRepository",
+]

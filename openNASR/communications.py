@@ -5,9 +5,105 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import CommunicationOutletRecord, FrequencyRecord, NavaidRecord
-from .registry import FREQUENCY_KEY, SERVICED_FACILITY_KEY
+from .records import FaaRecord, NavaidRecord, nullable_text
 from .relationships import related_record
+
+SERVICED_FACILITY_KEY = (
+    "SERVICED_FACILITY",
+    "SERVICED_SITE_TYPE",
+    "SERVICED_STATE",
+    "SERVICED_COUNTRY",
+)
+FREQUENCY_KEY = (
+    "FACILITY",
+    *SERVICED_FACILITY_KEY,
+    "FREQ",
+    "SECTORIZATION",
+    "FREQ_USE",
+)
+
+
+class CommunicationOutletRecord(FaaRecord):
+    """Typed conveniences for a standalone ``COM`` communication outlet."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def identifier(self) -> str | None:
+        return self._text("COMM_LOC_ID")
+
+    @property
+    def name(self) -> str | None:
+        return self._text("COMM_OUTLET_NAME")
+
+    @property
+    def communication_type(self) -> str | None:
+        return self._text("COMM_TYPE")
+
+
+class FrequencyRecord(FaaRecord):
+    """Typed conveniences for a standalone ``FRQ`` frequency assignment."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def frequency_key(
+        self,
+    ) -> (
+        tuple[
+            str,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            str,
+            str | None,
+            str,
+        ]
+        | None
+    ):
+        facility = self._text("FACILITY")
+        frequency = self._text("FREQ")
+        frequency_use = self._text("FREQ_USE")
+        if facility is None or frequency is None or frequency_use is None:
+            return None
+        return (
+            facility,
+            self._text("SERVICED_FACILITY"),
+            self._text("SERVICED_SITE_TYPE"),
+            self._text("SERVICED_STATE"),
+            self._text("SERVICED_COUNTRY"),
+            frequency,
+            self._text("SECTORIZATION"),
+            frequency_use,
+        )
+
+    @property
+    def serviced_facility_key(
+        self,
+    ) -> tuple[str, str, str | None, str | None] | None:
+        facility = self._text("SERVICED_FACILITY")
+        site_type = self._text("SERVICED_SITE_TYPE")
+        if facility is None or site_type is None:
+            return None
+        return (
+            facility,
+            site_type,
+            self._text("SERVICED_STATE"),
+            self._text("SERVICED_COUNTRY"),
+        )
+
+    @property
+    def facility(self) -> str | None:
+        return self._text("FACILITY")
+
+    @property
+    def frequency(self) -> str | None:
+        return self._text("FREQ")
 
 
 class CommunicationOutlet:

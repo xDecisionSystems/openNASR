@@ -5,8 +5,18 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import FlightServiceStationRecord, FlightServiceStationRemarkRecord
-from .registry import FSS_KEY
+from .records import FaaRecord
+
+
+FSS_KEY = ("FSS_ID", "NAME", "CITY", "STATE_CODE", "COUNTRY_CODE")
+
+
+class FlightServiceStationRecord(FaaRecord):
+    """Lossless typed marker for a flight-service-station row."""
+
+
+class FlightServiceStationRemarkRecord(FaaRecord):
+    """Lossless typed marker for a flight-service-station remark row."""
 
 
 class FlightServiceStation:
@@ -95,4 +105,9 @@ class FlightServiceStationRepository:
         return records[0]
 
 
-__all__ = ["FlightServiceStation", "FlightServiceStationRepository"]
+__all__ = [
+    "FlightServiceStation",
+    "FlightServiceStationRecord",
+    "FlightServiceStationRemarkRecord",
+    "FlightServiceStationRepository",
+]

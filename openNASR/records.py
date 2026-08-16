@@ -6,6 +6,7 @@ from collections.abc import Iterator, Mapping
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from .exceptions import FieldConversionError
@@ -146,48 +147,32 @@ class FaaRecord(Mapping[str, object]):
             raise AttributeError(name) from error
 
 
-class AtcFacilityRecord(FaaRecord):
-    """Lossless typed marker for an air-traffic-control facility row."""
+_COMPATIBILITY_RECORD_MODULES = {
+    "AtcFacilityRecord": "atc",
+    "AtcRemarkRecord": "atc",
+    "AtcServiceRecord": "atc",
+    "AtisRecord": "atc",
+    "RadarRecord": "atc",
+    "AutomatedWeatherStationRecord": "weather",
+    "WeatherLocationRecord": "weather",
+    "WeatherServiceRecord": "weather",
+    "FlightServiceStationRecord": "fss",
+    "FlightServiceStationRemarkRecord": "fss",
+    "LocationIdentifierRecord": "locations",
+    "ClassAirspaceRecord": "airspace",
+    "MilitaryOperationRecord": "military",
+}
 
 
-class AtisRecord(FaaRecord):
-    """Lossless typed marker for an ATC facility ATIS row."""
+def __getattr__(name: str) -> Any:
+    """Lazily preserve legacy record imports after domain ownership moved."""
 
-
-class AtcRemarkRecord(FaaRecord):
-    """Lossless typed marker for an ATC facility remark row."""
-
-
-class AtcServiceRecord(FaaRecord):
-    """Lossless typed marker for an ATC facility service row."""
-
-
-class RadarRecord(FaaRecord):
-    """Lossless typed marker for a radar facility row."""
-
-
-class AutomatedWeatherStationRecord(FaaRecord):
-    """Lossless typed marker for an automated weather-station row."""
-
-
-class WeatherLocationRecord(FaaRecord):
-    """Lossless typed marker for a weather-location row."""
-
-
-class WeatherServiceRecord(FaaRecord):
-    """Lossless typed marker for a weather-location service row."""
-
-
-class FlightServiceStationRecord(FaaRecord):
-    """Lossless typed marker for a flight-service-station row."""
-
-
-class FlightServiceStationRemarkRecord(FaaRecord):
-    """Lossless typed marker for a flight-service-station remark row."""
-
-
-class LocationIdentifierRecord(FaaRecord):
-    """Lossless typed marker for a location-identifier row."""
+    module_name = _COMPATIBILITY_RECORD_MODULES.get(name)
+    if module_name is None:
+        raise AttributeError(name)
+    record_type = getattr(import_module(f"{__package__}.{module_name}"), name)
+    globals()[name] = record_type
+    return record_type
 
 
 class RunwayRecord(FaaRecord):
@@ -212,75 +197,6 @@ class GlideSlopeRecord(FaaRecord):
 
 class MarkerRecord(FaaRecord):
     """Lossless typed marker for an airport ILS marker row."""
-
-
-class ClassAirspaceRecord(FaaRecord):
-    """Typed conveniences for one airport-linked class-airspace row."""
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None else nullable_text(str(value))
-
-    @property
-    def site_no(self) -> str | None:
-        return self._text("SITE_NO")
-
-    @property
-    def site_type_code(self) -> str | None:
-        return self._text("SITE_TYPE_CODE")
-
-    @property
-    def airport_id(self) -> str | None:
-        return self._text("ARPT_ID")
-
-    @property
-    def airport_site_key(self) -> tuple[str, str] | None:
-        """Verified key shared with the corresponding ``APT_BASE`` row."""
-
-        if self.site_no is None or self.site_type_code is None:
-            return None
-        return self.site_no, self.site_type_code
-
-    @property
-    def classes(self) -> Mapping[str, str | None]:
-        """Raw FAA class-airspace codes keyed by class letter."""
-
-        return {
-            letter: self._text(f"CLASS_{letter}_AIRSPACE")
-            for letter in ("B", "C", "D", "E")
-        }
-
-
-class MilitaryOperationRecord(FaaRecord):
-    """Typed conveniences for one airport-linked military-operation row."""
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None else nullable_text(str(value))
-
-    @property
-    def site_no(self) -> str | None:
-        return self._text("SITE_NO")
-
-    @property
-    def site_type_code(self) -> str | None:
-        return self._text("SITE_TYPE_CODE")
-
-    @property
-    def airport_id(self) -> str | None:
-        return self._text("ARPT_ID")
-
-    @property
-    def airport_site_key(self) -> tuple[str, str] | None:
-        """Verified key shared with the corresponding ``APT_BASE`` row."""
-
-        if self.site_no is None or self.site_type_code is None:
-            return None
-        return self.site_no, self.site_type_code
-
-    @property
-    def operating_code(self) -> str | None:
-        return self._text("MIL_OPS_OPER_CODE")
 
     @property
     def call_sign(self) -> str | None:
@@ -761,7 +677,6 @@ __all__ = [
     "AirportRecord",
     "AirwayRecord",
     "AirwaySegmentRecord",
-    "ClassAirspaceRecord",
     "CodedDepartureRouteRecord",
     "DepartureAirportRecord",
     "DepartureProcedureRecord",
@@ -783,7 +698,6 @@ __all__ = [
     "FrequencyRecord",
     "IlsRecord",
     "MarkerRecord",
-    "MilitaryOperationRecord",
     "NavaidRecord",
     "RunwayEndRecord",
     "RunwayRecord",
@@ -796,4 +710,5 @@ __all__ = [
     "integer",
     "iso_date",
     "nullable_text",
+    *_COMPATIBILITY_RECORD_MODULES,
 ]

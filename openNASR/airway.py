@@ -3,9 +3,69 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import AirwayRecord, AirwaySegmentRecord, FixRecord, NavaidRecord
-from .registry import AIRWAY_KEY
+from .records import FaaRecord, FixRecord, NavaidRecord, integer, nullable_text
 from .relationships import related_record
+
+AIRWAY_KEY = ("REGULATORY", "AWY_LOCATION", "AWY_ID")
+
+
+class AirwayRecord(FaaRecord):
+    """Typed conveniences for an ``AWY_BASE`` airway row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None else nullable_text(str(value))
+
+    @property
+    def airway_key(self) -> tuple[str, str, str] | None:
+        values = tuple(
+            self._text(column) for column in ("REGULATORY", "AWY_LOCATION", "AWY_ID")
+        )
+        if any(value is None for value in values):
+            return None
+        return values[0], values[1], values[2]  # type: ignore[return-value]
+
+
+class AirwaySegmentRecord(AirwayRecord):
+    """Typed conveniences for an ordered ``AWY_SEG_ALT`` row."""
+
+    def __init__(
+        self,
+        raw: Mapping[str, object],
+        *,
+        fix: FixRecord | None = None,
+        navaid: NavaidRecord | None = None,
+    ) -> None:
+        super().__init__(raw)
+        self._fix = fix
+        self._navaid = navaid
+
+    @property
+    def fix(self) -> FixRecord | None:
+        """Fix at this airway point, resolved through its complete FAA key."""
+
+        return self._fix
+
+    @property
+    def navaid(self) -> NavaidRecord | None:
+        """Navaid at this airway point, resolved through its complete FAA key."""
+
+        return self._navaid
+
+    @property
+    def point_sequence(self) -> int | None:
+        value = self._text("POINT_SEQ")
+        return None if value is None else integer(value)
+
+    @property
+    def minimum_enroute_altitude(self) -> int | None:
+        value = self._text("MIN_ENROUTE_ALT")
+        return None if value is None else integer(value)
+
+    @property
+    def maximum_authorized_altitude(self) -> int | None:
+        value = self._text("MAX_AUTH_ALT")
+        return None if value is None else integer(value)
 
 
 class Airway:

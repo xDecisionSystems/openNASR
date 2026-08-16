@@ -7,8 +7,49 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import MilitaryOperationRecord
-from .registry import AIRPORT_SITE_KEY
+from .records import FaaRecord, nullable_text
+
+AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
+
+
+class MilitaryOperationRecord(FaaRecord):
+    """Typed conveniences for one airport-linked military-operation row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None else nullable_text(str(value))
+
+    @property
+    def site_no(self) -> str | None:
+        return self._text("SITE_NO")
+
+    @property
+    def site_type_code(self) -> str | None:
+        return self._text("SITE_TYPE_CODE")
+
+    @property
+    def airport_id(self) -> str | None:
+        return self._text("ARPT_ID")
+
+    @property
+    def airport_site_key(self) -> tuple[str, str] | None:
+        """Verified key shared with the corresponding ``APT_BASE`` row."""
+
+        if self.site_no is None or self.site_type_code is None:
+            return None
+        return self.site_no, self.site_type_code
+
+    @property
+    def operating_code(self) -> str | None:
+        return self._text("MIL_OPS_OPER_CODE")
+
+    @property
+    def call_sign(self) -> str | None:
+        return self._text("MIL_OPS_CALL")
+
+    @property
+    def operating_hours(self) -> str | None:
+        return self._text("MIL_OPS_HRS")
 
 
 class MilitaryOperation:

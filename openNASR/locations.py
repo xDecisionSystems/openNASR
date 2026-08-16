@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import LocationIdentifierRecord
+from .records import FaaRecord
 
 
 LOCATION_IDENTIFIER_KEY = (
@@ -17,6 +17,10 @@ LOCATION_IDENTIFIER_KEY = (
     "LID_GROUP",
     "FAC_TYPE",
 )
+
+
+class LocationIdentifierRecord(FaaRecord):
+    """Lossless typed marker for a location-identifier row."""
 
 
 class LocationIdentifier:
@@ -78,4 +82,8 @@ class LocationIdentifierRepository:
         return records[0]
 
 
-__all__ = ["LocationIdentifier", "LocationIdentifierRepository"]
+__all__ = [
+    "LocationIdentifier",
+    "LocationIdentifierRecord",
+    "LocationIdentifierRepository",
+]
