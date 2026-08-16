@@ -1657,7 +1657,7 @@ Later `1.x` milestones add repositories using the same contract.
 - [x] **Agent: Terra.** Raise `AmbiguousRecordError` with candidate summaries when multiple rows
       remain.
 - [x] **Agent: Luna.** Do not print all candidates to stdout.
-- [ ] **Agent: Terra.** Expose navigation type, name, state, country, high/low ARTCC, frequency,
+- [x] **Agent: Terra.** Expose navigation type, name, state, country, high/low ARTCC, frequency,
       and coordinates when available.
 
 ### ARTCC and boundary requirements

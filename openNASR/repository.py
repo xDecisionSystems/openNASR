@@ -21,6 +21,7 @@ from .records import (
     GlideSlopeRecord,
     IlsRecord,
     MarkerRecord,
+    NavaidRecord,
     RunwayEndRecord,
     RunwayRecord,
 )
@@ -301,7 +302,7 @@ class NavaidRepository(RecordRepository):
         artcc: str | None = None,
         nav_type: str | None = None,
         navType: str | None = None,
-    ) -> tuple[FaaRecord, ...]:
+    ) -> tuple[NavaidRecord, ...]:
         if navType is not None:
             if nav_type is not None and self._normalized(navType) != self._normalized(
                 nav_type
@@ -330,9 +331,9 @@ class NavaidRepository(RecordRepository):
                 rows["HIGH_ALT_ARTCC_ID"].map(self._normalized).eq(normalized)
                 | rows["LOW_ALT_ARTCC_ID"].map(self._normalized).eq(normalized)
             ]
-        return tuple(FaaRecord(row) for row in rows.to_dict(orient="records"))
+        return tuple(NavaidRecord(row) for row in rows.to_dict(orient="records"))
 
-    def get(self, identifier: str, **filters: str | None) -> FaaRecord:
+    def get(self, identifier: str, **filters: str | None) -> NavaidRecord:
         records = self.find(identifier, **filters)
         if not records:
             raise RecordNotFoundError(

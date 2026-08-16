@@ -188,3 +188,14 @@ def test_navaid_repository_supports_navtype_compatibility_alias():
     assert repository.get("ABC", navType="vor")["NAV_ID"] == "ABC"
     with pytest.raises(ValueError, match="must agree"):
         repository.find("ABC", nav_type="VOR", navType="NDB")
+
+
+def test_navaid_record_exposes_typed_core_fields(fixture_nasr):
+    nasr, _ = fixture_nasr
+    navaid = nasr.navaid("UNIQ")
+
+    assert navaid.nav_type == "VOR"
+    assert navaid.high_artcc == "ZDC"
+    assert navaid.low_artcc == "ZDC"
+    assert navaid.latitude == 39.1
+    assert navaid.longitude == -76.1

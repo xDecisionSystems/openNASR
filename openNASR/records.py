@@ -86,6 +86,7 @@ def boolean(
     context: FieldContext | None = None,
 ) -> bool | None:
     """Convert a documented FAA boolean code, accepting case and space variants."""
+
     def convert(value: str) -> bool:
         code = value.strip().upper()
         if code in true_codes:
@@ -212,6 +213,55 @@ class FixRecord(FaaRecord):
         return self._text_from("ARTCC_ID_LOW")
 
 
+class NavaidRecord(FaaRecord):
+    """Typed conveniences over a lossless navaid source row."""
+
+    def _text(self, *columns: str) -> str | None:
+        for column in columns:
+            value = self._raw.get(column)
+            if value is not None and value == value:
+                return nullable_text(str(value))
+        return None
+
+    @property
+    def nav_type(self) -> str | None:
+        return self._text("NAV_TYPE")
+
+    @property
+    def name(self) -> str | None:
+        return self._text("NAME")
+
+    @property
+    def state(self) -> str | None:
+        return self._text("STATE_CODE")
+
+    @property
+    def country(self) -> str | None:
+        return self._text("COUNTRY_CODE", "COUNTRY_NAME")
+
+    @property
+    def high_artcc(self) -> str | None:
+        return self._text("HIGH_ALT_ARTCC_ID")
+
+    @property
+    def low_artcc(self) -> str | None:
+        return self._text("LOW_ALT_ARTCC_ID")
+
+    @property
+    def frequency(self) -> str | None:
+        return self._text("FREQ")
+
+    @property
+    def latitude(self) -> float | None:
+        value = self._text("LAT_DECIMAL")
+        return None if value is None else coordinate(value)
+
+    @property
+    def longitude(self) -> float | None:
+        value = self._text("LONG_DECIMAL")
+        return None if value is None else coordinate(value)
+
+
 class AirportRecord(FaaRecord):
     """Airport record with nullable typed conveniences over lossless FAA fields."""
 
@@ -323,6 +373,7 @@ __all__ = [
     "FixRecord",
     "IlsRecord",
     "MarkerRecord",
+    "NavaidRecord",
     "RunwayEndRecord",
     "RunwayRecord",
     "FieldContext",
