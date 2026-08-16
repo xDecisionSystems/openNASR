@@ -1770,7 +1770,7 @@ Tasks:
       small script inspecting the archive listing) that it contains no path
       under `openNASR/data/`, extending the manual check from Task 0.13 into
       an automated, permanent CI check.
-- [ ] **Agent: Terra.** **7.12** Validate README rendering (e.g. render it through the same
+- [x] **Agent: Terra.** **7.12** Validate README rendering (e.g. render it through the same
       Markdown renderer PyPI uses, or at minimum lint it with a Markdown
       linter) and validate package metadata with
       `python -m twine check dist/*`.

@@ -28,3 +28,5 @@ jobs:
           wheel = next(Path('dist').glob('*.whl')); forbidden = [name for name
           in ZipFile(wheel).namelist() if name.startswith('openNASR/data/')];
           assert not forbidden, forbidden"
+      - run: python -m pip install twine
+      - run: python -m twine check dist/*
