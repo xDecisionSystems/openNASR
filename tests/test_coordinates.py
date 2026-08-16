@@ -23,6 +23,8 @@ def test_projection_round_trips_within_coordinate_tolerance():
     x, y, _, _ = ll2xy(latitudes, longitudes, llc=center)
     actual_latitudes, actual_longitudes = xy2ll(x, y, llc=center)
 
+    assert isinstance(x, np.ndarray)
+    assert isinstance(y, np.ndarray)
     assert actual_latitudes == pytest.approx(latitudes, abs=1e-9)
     assert actual_longitudes == pytest.approx(longitudes, abs=1e-9)
 
@@ -33,6 +35,12 @@ def test_inverse_projection_handles_projection_center_without_warnings():
 
     assert latitude == pytest.approx(40.0)
     assert longitude == pytest.approx(-75.0)
+
+
+def test_projection_accepts_scalar_inputs():
+    x, y, _, distance = ll2xy(40.0, -75.0, llc=(40.0, -75.0))
+
+    assert np.ndim(x) == np.ndim(y) == np.ndim(distance) == 0
 
 
 @pytest.mark.parametrize(

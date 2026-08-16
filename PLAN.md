@@ -1694,7 +1694,7 @@ Tasks:
 - [x] **Agent: Sol.** Make `ll2xy` and `xy2ll` round-trip within an agreed tolerance.
 - [x] **Agent: Sol.** Handle projection-center points where `rho == 0` without division by zero.
 - [x] **Agent: Sol.** Reject invalid latitude and longitude values.
-- [ ] **Agent: Terra.** Add scalar and NumPy-array tests.
+- [x] **Agent: Terra.** Add scalar and NumPy-array tests.
 - [ ] **Agent: Sol.** Verify runway width conversion from feet to nautical miles.
 - [ ] **Agent: Sol.** Verify ILS magnetic variation sign handling against documented FAA field
       semantics.
