@@ -1686,7 +1686,7 @@ from interactive plotting.
 
 Tasks:
 
-- [ ] **Agent: Terra.** Rename `cfcn.py` to `coordinates.py` with a compatibility forwarding
+- [x] **Agent: Terra.** Rename `cfcn.py` to `coordinates.py` with a compatibility forwarding
       module.
 - [ ] **Agent: Sol.** Define whether every coordinate argument is `(latitude, longitude)` or
       `(longitude, latitude)` and enforce that convention.

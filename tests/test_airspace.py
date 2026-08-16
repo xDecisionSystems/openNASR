@@ -1,6 +1,8 @@
 """ARTCC access uses the deterministic core fixture."""
 
 from openNASR.arb import Boundary
+from openNASR.coordinates import ll2xy
+from openNASR.cfcn import ll2xy as legacy_ll2xy
 from shapely.geometry import MultiPolygon, Polygon
 
 
@@ -34,3 +36,7 @@ def test_boundary_uses_a_polygon_for_a_single_ring():
     assert isinstance(boundary.getShape, Polygon)
     assert boundary.latlon[1] == (0.0, 1.0)
     assert boundary.lonlat[1] == (1.0, 0.0)
+
+
+def test_coordinates_module_preserves_cfcn_compatibility():
+    assert ll2xy is legacy_ll2xy
