@@ -29,3 +29,16 @@ def test_platform_cache_directory_is_used_without_overrides(monkeypatch, tmp_pat
     monkeypatch.setattr(cycles, "user_cache_dir", lambda _: str(default))
 
     assert resolve_cache_dir() == Path(default)
+
+
+def test_archives_and_extracted_cycles_are_discovered_independently(tmp_path):
+    manager = CycleManager(tmp_path)
+    manager.archives_dir.mkdir()
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    archive.touch()
+    manager.cycles_dir.mkdir()
+    extracted = manager.cycles_dir / "2026-09-03"
+    extracted.mkdir()
+
+    assert manager.archive_paths() == (archive,)
+    assert manager.extracted_paths() == (extracted,)
