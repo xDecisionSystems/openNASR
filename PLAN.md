@@ -1753,7 +1753,7 @@ Tasks:
 - [x] **Agent: Luna.** **7.7** Add `CHANGELOG.md` using Keep a Changelog format, backfilling
       entries for the Milestone 0-7 work already completed at the time this
       task runs.
-- [ ] **Agent: Luna.** **7.8** Add contributor instructions (e.g. `CONTRIBUTING.md`) covering:
+- [x] **Agent: Luna.** **7.8** Add contributor instructions (e.g. `CONTRIBUTING.md`) covering:
       environment setup (`pip install -e ".[dev,plot]"`), how to run the
       full verification command list from "Testing matrix" below, and where
       test fixtures live.

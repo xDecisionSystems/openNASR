@@ -29,6 +29,7 @@ access is more convenient.
 See the [API reference](docs/API.md) for public classes and methods.
 See [MIGRATION.md](MIGRATION.md) when updating code from legacy constructors.
 See [CHANGELOG.md](CHANGELOG.md) for release history.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and verification instructions.
 
 ## Requirements
 
