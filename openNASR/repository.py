@@ -45,7 +45,10 @@ class TableRepository(Mapping[str, DataFrame]):
             path = self.table_path(normalized)
             if not path.is_file():
                 raise TableNotFoundError(f"NASR table {normalized!r} was not found")
-            self._cache[normalized] = read_csv(path)
+            try:
+                self._cache[normalized] = read_csv(path)
+            except UnicodeDecodeError:
+                self._cache[normalized] = read_csv(path, encoding="latin-1")
         return self._cache[normalized]
 
     def table(self, name: str, *, copy: bool = False) -> DataFrame:

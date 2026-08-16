@@ -1544,7 +1544,7 @@ Tasks:
 - [x] **Agent: Terra.** Make the default return the cached DataFrame and document mutation risk.
 - [x] **Agent: Luna.** Return a defensive copy when `copy=True`.
 - [x] **Agent: Terra.** Add clear errors for missing or unreadable tables.
-- [ ] **Agent: Terra.** Handle encoding fallback narrowly; never catch every exception and retry
+- [x] **Agent: Terra.** Handle encoding fallback narrowly; never catch every exception and retry
       indiscriminately.
 - [ ] **Agent: Terra.** Preserve meaningful pandas parser errors as exception causes.
 - [ ] **Agent: Terra.** Create indexes lazily for frequently queried identifier columns.

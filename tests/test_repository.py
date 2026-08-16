@@ -22,6 +22,14 @@ def test_missing_table_raises_a_clear_typed_error(tmp_path):
         TableRepository(tmp_path).load("missing")
 
 
+def test_table_loading_retries_only_for_text_encoding_errors(tmp_path):
+    (tmp_path / "APT_BASE.csv").write_bytes(b"ARPT_ID,NAME\nBWI,Montr\xe9al\n")
+
+    table = TableRepository(tmp_path).load("APT_BASE")
+
+    assert table.loc[0, "NAME"] == "Montréal"
+
+
 def test_loaded_dataframes_are_cached_per_repository_instance(tmp_path):
     (tmp_path / "APT_BASE.csv").write_text("ARPT_ID\nBWI\n", encoding="utf-8")
     repository = TableRepository(tmp_path)
