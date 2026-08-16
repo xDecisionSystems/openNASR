@@ -1818,7 +1818,7 @@ Tasks:
 - [x] **Agent: Terra.** **8.3** Implement `MilitaryOperationRecord` and a rich
       `MilitaryOperation` object in `military.py`, exposed through
       `nasr.military_operations` and `Airport.military_operations`.
-- [ ] **Agent: Terra.** **8.4** Add raw/typed converter tests, repository `.get()`/`.find()` tests,
+- [x] **Agent: Terra.** **8.4** Add raw/typed converter tests, repository `.get()`/`.find()` tests,
       ambiguous/missing relationship tests, and synthetic rows for both schemas.
 - [ ] **Agent: Terra.** **8.5** Export and document both rich APIs, then update the coverage report
       and changelog for `1.1.0`.
