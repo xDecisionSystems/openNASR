@@ -1,5 +1,4 @@
 from .basictypes import Raw, RawDict
-from .cfcn import ll2xy
 from math import pi, cos, sin, radians
 
 

@@ -13,7 +13,6 @@ class Airway(object):
         self.base = SimpleNamespace(
             **AWY_BASE[AWY_BASE["AWY_ID"] == airway].to_dict(orient="records")[0]
         )
-        # myNASR['APT_BASE'][myNASR['APT_BASE']['ARPT_ID']=='DCA'].to_dict(orient='records')[0]
 
     @property
     def waypts(self):

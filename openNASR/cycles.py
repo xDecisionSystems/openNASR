@@ -210,7 +210,7 @@ class CycleManager:
                     for path in self.archives_dir.glob("*.zip")
                     if path.is_file() and parse_archive_date(path) is not None
                 ),
-                key=parse_archive_date,
+                key=lambda path: parse_archive_date(path) or date.min,
             )
         )
 
@@ -285,7 +285,11 @@ class CycleManager:
     def _update_status(
         self, remote, checked_at, source_url, from_cache
     ) -> UpdateStatus:
-        cached_dates = [parse_archive_date(path) for path in self.archive_paths()]
+        cached_dates = [
+            effective_date
+            for path in self.archive_paths()
+            if (effective_date := parse_archive_date(path)) is not None
+        ]
         newest_cached = max(cached_dates) if cached_dates else None
         return UpdateStatus(
             remote,
@@ -346,6 +350,48 @@ class CycleManager:
             part_path.unlink(missing_ok=True)
             raise
         return part_path
+
+    def download(self, effective_date: date, *, force: bool = False) -> Cycle:
+        """Download the provider's advertised archive for ``effective_date``."""
+
+        cached = self.get(effective_date, force=force)
+        if cached is not None:
+            return cached
+        if self.provider is None:
+            raise ValueError("A FAA cycle provider is required for downloads")
+        try:
+            remote_cycle = self.provider.discover()
+            if remote_cycle.effective_date != effective_date:
+                raise ValueError(
+                    f"Provider does not offer NASR cycle {effective_date.isoformat()}"
+                )
+            with urlopen(remote_cycle.archive_url, timeout=2) as response:
+                part_path = self.write_download_part(
+                    effective_date,
+                    iter(lambda: response.read(1024 * 1024), b""),
+                )
+            validate_archive(part_path)
+            cycle = self.publish_download(effective_date)
+            assert cycle.archive_path is not None
+            self.store_sha256_metadata(cycle.archive_path)
+            return Cycle(
+                effective_date=cycle.effective_date,
+                archive_path=cycle.archive_path,
+                source_url=remote_cycle.archive_url,
+            )
+        except Exception as error:
+            self.download_part_path(effective_date).unlink(missing_ok=True)
+            if isinstance(error, (DownloadError, ValueError)):
+                raise
+            raise DownloadError(
+                f"FAA cycle download failed for {effective_date.isoformat()}"
+            ) from error
+
+    def download_latest(self, *, force: bool = False) -> Cycle:
+        """Download the latest cycle advertised by the configured provider."""
+
+        status = self.check_for_updates(force=force)
+        return self.download(status.newest_remote_cycle, force=force)
 
     def publish_download(self, effective_date: date) -> Cycle:
         """Atomically move a completed temporary download into the archive cache."""

@@ -294,23 +294,36 @@ class NavaidRepository(RecordRepository):
         )
 
     def find(
-        self,
-        identifier: object | None = None,
-        *,
-        state: str | None = None,
-        country: str | None = None,
-        artcc: str | None = None,
-        nav_type: str | None = None,
-        navType: str | None = None,
+        self, identifier: object | None = None, **filters: object
     ) -> tuple[NavaidRecord, ...]:
-        if navType is not None:
-            if nav_type is not None and self._normalized(navType) != self._normalized(
-                nav_type
-            ):
+        state = filters.pop("state", None)
+        country = filters.pop("country", None)
+        artcc = filters.pop("artcc", None)
+        nav_type = filters.pop("nav_type", None)
+        nav_type_alias = filters.pop("navType", None)
+        if nav_type_alias is not None:
+            if not isinstance(nav_type_alias, str):
+                raise ValueError("navType must be a string")
+            if nav_type is not None and not isinstance(nav_type, str):
+                raise ValueError("nav_type must be a string")
+            if nav_type is not None and self._normalized(
+                nav_type_alias
+            ) != self._normalized(nav_type):
                 raise ValueError(
                     "navType and nav_type must agree when both are supplied"
                 )
-            nav_type = navType
+            nav_type = nav_type_alias
+        if filters:
+            unexpected = ", ".join(sorted(filters))
+            raise ValueError(f"Unsupported Navaid filters: {unexpected}")
+        for name, value in (
+            ("state", state),
+            ("country", country),
+            ("artcc", artcc),
+            ("nav_type", nav_type),
+        ):
+            if value is not None and not isinstance(value, str):
+                raise ValueError(f"{name} must be a string")
         rows = self._frame
         if identifier is not None:
             rows = rows[
@@ -333,7 +346,7 @@ class NavaidRepository(RecordRepository):
             ]
         return tuple(NavaidRecord(row) for row in rows.to_dict(orient="records"))
 
-    def get(self, identifier: str, **filters: str | None) -> NavaidRecord:
+    def get(self, identifier: object, **filters: object) -> NavaidRecord:
         records = self.find(identifier, **filters)
         if not records:
             raise RecordNotFoundError(

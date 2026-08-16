@@ -29,7 +29,6 @@ class Airport:
         isAirport, airportIDCol, airport = nasr.isAirport(airport, forceFAA=True)
         if isAirport:
             self.base = AirportBase(airport, nasr["APT_BASE"], airportIDCol)
-            # self.decl = wmm2020.wmm_point(self.lat,self.lon, self.elevation,NASR.yearDecimal)['decl']
             self.rwy = RWY(
                 RWYitem, airport, nasr["APT_RWY"], airportIDCol, useRWYID=True
             )

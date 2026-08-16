@@ -47,7 +47,6 @@ class Point:
 class Raw:
     def __init__(self, sm):
         self._raw = sm
-        # self._raw = SimpleNamespace(  **nasrDF[nasrDF[airportIDCol]==airport].to_dict(orient='records')[0]  )
 
     def getRaw(self):
         return self._raw

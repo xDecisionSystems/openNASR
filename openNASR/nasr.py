@@ -15,10 +15,8 @@ import calendar
 def timestampToYearDecimal(useDate):
     # Convert the timestamp to a datetime object
     dt = datetime.strptime(useDate, "%Y-%m-%d")
-    # Extract the year, month, and day
+    # Extract the year.
     year = dt.year
-    month = dt.month
-    day = dt.day
 
     # Calculate the total number of days in the year
     if calendar.isleap(year):

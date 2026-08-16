@@ -3,14 +3,8 @@ from numpy import (
     cos,
     sin,
     median,
-    radians,
     sqrt,
-    percentile,
-    float64,
     array,
-    matmul,
-    generic,
-    ndarray,
     arctan2,
     arcsin,
     degrees,
@@ -19,7 +13,6 @@ from numpy import (
     any as np_any,
     isfinite,
 )
-import time
 
 
 def _validate_latlon(latitudes, longitudes):

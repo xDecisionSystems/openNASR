@@ -16,4 +16,3 @@ class FIX(Raw):
                 **FIX_BASE[FIX_BASE["FIX_ID"] == fix].to_dict(orient="records")[0]
             )
         )
-        # self.base = SimpleNamespace( **FIX_BASE[FIX_BASE['FIX_ID']==fix].to_dict(orient='records')[0] )
