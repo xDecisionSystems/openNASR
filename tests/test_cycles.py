@@ -8,6 +8,7 @@ import pytest
 
 from openNASR import cycles
 from openNASR.exceptions import ArchiveError
+from openNASR.exceptions import CycleNotFoundError
 from openNASR.exceptions import DownloadError
 from openNASR.cycles import (
     CycleManager,
@@ -59,6 +60,61 @@ def test_archives_and_extracted_cycles_are_discovered_independently(tmp_path):
 
     assert manager.archive_paths() == (archive,)
     assert manager.extracted_paths() == (extracted,)
+
+
+def test_available_cycles_unions_valid_archives_and_extracted_data(tmp_path):
+    manager = CycleManager(tmp_path)
+    manager.archives_dir.mkdir()
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    archive.touch()
+    manager.cycles_dir.mkdir()
+    (manager.cycles_dir / "2026-08-06").mkdir()
+    (manager.cycles_dir / "2026-09-03").mkdir()
+    (manager.cycles_dir / "not-a-cycle").mkdir()
+
+    assert manager.available_cycles() == (date(2026, 8, 6), date(2026, 9, 3))
+
+
+def test_latest_requires_a_cached_cycle_and_handles_independent_storage(tmp_path):
+    manager = CycleManager(tmp_path)
+
+    assert manager.available_cycles() == ()
+    with pytest.raises(CycleNotFoundError, match=str(tmp_path)):
+        manager.latest()
+
+    manager.archives_dir.mkdir()
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    with ZipFile(archive, "w") as output:
+        output.writestr("APT_BASE.csv", "ARPT_ID\nBWI\n")
+    assert manager.latest().archive_path == archive
+
+    archive.unlink()
+    manager.cycles_dir.mkdir()
+    extracted = manager.cycles_dir / "2026-09-03"
+    extracted.mkdir()
+    assert manager.latest().data_path == extracted
+
+
+def test_remove_can_select_archive_or_extracted_data_independently(tmp_path):
+    manager = CycleManager(tmp_path)
+    manager.archives_dir.mkdir()
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    archive.touch()
+    manager.cycles_dir.mkdir()
+    extracted = manager.cycles_dir / "2026-08-06"
+    extracted.mkdir()
+
+    manager.remove(date(2026, 8, 6), archive=False)
+    assert archive.exists()
+    assert not extracted.exists()
+
+    extracted.mkdir()
+    manager.remove(date(2026, 8, 6), extracted=False)
+    assert not archive.exists()
+    assert extracted.exists()
+
+    with pytest.raises(ValueError, match="At least one"):
+        manager.remove(date(2026, 8, 6), archive=False, extracted=False)
 
 
 def test_archive_dates_are_validated_and_ordered_by_parsed_dates(tmp_path):

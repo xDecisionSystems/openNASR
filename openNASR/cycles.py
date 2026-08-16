@@ -22,7 +22,7 @@ from zipfile import ZipFile, is_zipfile
 
 from platformdirs import user_cache_dir
 
-from .exceptions import ArchiveError, DownloadError
+from .exceptions import ArchiveError, CycleNotFoundError, DownloadError
 
 
 APPLICATION_NAME = "openNASR"
@@ -235,15 +235,65 @@ class CycleManager:
             return Cycle(effective_date=effective_date, data_path=data_path)
         return None
 
-    def remove(self, effective_date: date) -> None:
-        """Remove the exact cached archive and extracted cycle when present."""
+    def available_cycles(self) -> tuple[date, ...]:
+        """Return every valid effective date represented in the local cache."""
 
-        archive = self.archives_dir / (
+        archive_dates = {
+            effective_date
+            for path in self.archive_paths()
+            if (effective_date := parse_archive_date(path)) is not None
+        }
+        extracted_dates = {
+            effective_date
+            for path in self.extracted_paths()
+            if (effective_date := self._extracted_cycle_date(path)) is not None
+        }
+        return tuple(sorted(archive_dates | extracted_dates))
+
+    def latest(self) -> Cycle:
+        """Return the newest cached cycle.
+
+        Raises:
+            CycleNotFoundError: If neither archives nor extracted data are cached.
+        """
+
+        available = self.available_cycles()
+        if not available:
+            raise CycleNotFoundError(
+                f"No NASR cycles were found in cache directory {self.cache_dir}"
+            )
+        latest = self.get(available[-1])
+        assert latest is not None
+        return latest
+
+    @staticmethod
+    def _extracted_cycle_date(path: Path) -> date | None:
+        """Return the date encoded by a standard extracted-cycle directory."""
+
+        try:
+            return date.fromisoformat(path.name)
+        except ValueError:
+            return None
+
+    def remove(
+        self,
+        effective_date: date,
+        *,
+        archive: bool = True,
+        extracted: bool = True,
+    ) -> None:
+        """Remove selected local representations of an exact cached cycle."""
+
+        if not archive and not extracted:
+            raise ValueError("At least one of archive or extracted must be True")
+
+        archive_path = self.archives_dir / (
             f"28DaySubscription_Effective_{effective_date}.zip"
         )
-        archive.unlink(missing_ok=True)
+        if archive:
+            archive_path.unlink(missing_ok=True)
         data_path = self.cycles_dir / effective_date.isoformat()
-        if data_path.is_dir():
+        if extracted and data_path.is_dir():
             rmtree(data_path)
 
     def check_for_updates(self, *, force: bool = False) -> UpdateStatus:

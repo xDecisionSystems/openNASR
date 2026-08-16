@@ -84,4 +84,17 @@ def test_remove_requires_confirmation_unless_yes(tmp_path, capsys):
     assert archive.exists()
     main(["remove", "2026-08-06", "--yes"], manager=manager)
     assert not archive.exists()
-    assert "removed: 2026-08-06" in capsys.readouterr().out
+    assert "removed archive: 2026-08-06" in capsys.readouterr().out
+
+
+def test_remove_reports_each_cached_representation_that_was_removed(tmp_path, capsys):
+    from openNASR.cycles import CycleManager
+
+    manager = CycleManager(tmp_path)
+    manager.cycles_dir.mkdir()
+    extracted = manager.cycles_dir / "2026-08-06"
+    extracted.mkdir()
+
+    assert main(["remove", "2026-08-06", "--yes"], manager=manager) == 0
+    assert not extracted.exists()
+    assert "removed extracted: 2026-08-06" in capsys.readouterr().out

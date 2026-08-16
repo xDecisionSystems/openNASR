@@ -61,6 +61,17 @@ def main(argv: list[str] | None = None, *, manager=None, confirm=input) -> int:
         )
         if not confirmed:
             return ExitCode.SUCCESS
+        archive_path = active_manager.archives_dir / (
+            f"28DaySubscription_Effective_{effective_date.isoformat()}.zip"
+        )
+        data_path = active_manager.cycles_dir / effective_date.isoformat()
+        removed_archive = archive_path.is_file()
+        removed_extracted = data_path.is_dir()
         active_manager.remove(effective_date)
-        print(f"removed: {effective_date}")
+        if removed_archive:
+            print(f"removed archive: {effective_date}")
+        if removed_extracted:
+            print(f"removed extracted: {effective_date}")
+        if not removed_archive and not removed_extracted:
+            print(f"no cached data found: {effective_date}")
     return ExitCode.SUCCESS
