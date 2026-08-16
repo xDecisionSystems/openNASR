@@ -1230,7 +1230,7 @@ Tasks:
       every discovered CSV is either in `TableRegistry.supported_tables()` or
       reported by `unmodeled_tables()` and rejected during normal loading.
       Keep real-cycle integration behind `OPENNASR_REAL_CYCLE_DIR`.
-- [ ] **Agent: Luna.** **1B.9** Produce a machine-readable coverage report (e.g. a small
+- [x] **Agent: Luna.** **1B.9** Produce a machine-readable coverage report (e.g. a small
       script or test-generated JSON under a scratch/report path, not
       committed generated output) listing, for each supported manifest: total
       CSV files found, how many matched a `TableSpec`, and which did not.
