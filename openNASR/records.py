@@ -457,6 +457,18 @@ class CodedDepartureRouteRecord(FaaRecord):
         return self._text("Dest")
 
 
+class DepartureProcedureRecord(FaaRecord):
+    """Typed marker for a ``DP_BASE`` departure procedure row."""
+
+
+class DepartureAirportRecord(FaaRecord):
+    """Typed marker for a ``DP_APT`` departure airport row."""
+
+
+class DepartureRouteRecord(FaaRecord):
+    """Typed marker for an ordered ``DP_RTE`` departure route row."""
+
+
 class FixRecord(FaaRecord):
     """Fix record with nullable typed conveniences over lossless FAA fields."""
 
@@ -683,6 +695,9 @@ __all__ = [
     "AirwaySegmentRecord",
     "ClassAirspaceRecord",
     "CodedDepartureRouteRecord",
+    "DepartureAirportRecord",
+    "DepartureProcedureRecord",
+    "DepartureRouteRecord",
     "CommunicationOutletRecord",
     "DmeRecord",
     "GlideSlopeRecord",

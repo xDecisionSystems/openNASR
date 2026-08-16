@@ -8,7 +8,7 @@ from .airspace import ClassAirspaceRepository
 from .airway import AirwayRepository
 from .holding import HoldingPatternRepository
 from .communications import CommunicationOutletRepository, FrequencyRepository
-from .routes import CodedDepartureRouteRepository
+from .routes import CodedDepartureRouteRepository, DepartureProcedureRepository
 from .military import MilitaryOperationRepository
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
@@ -52,6 +52,7 @@ class NASR(dict):
         self.communication_outlets = CommunicationOutletRepository(self)
         self.frequencies = FrequencyRepository(self)
         self.coded_departure_routes = CodedDepartureRouteRepository(self)
+        self.departures = DepartureProcedureRepository(self)
         self.military_operations = MilitaryOperationRepository(self)
         self.airports = AirportRepository(self)
         self.fixes = FixRepository(self)
@@ -242,6 +243,10 @@ class NASR(dict):
     def coded_departure_route(self, identifier: str):
         """Return the coded departure route selected by FAA route code."""
         return self.coded_departure_routes.get(identifier)
+
+    def departure(self, identifier: tuple[object, ...]):
+        """Return a departure procedure selected by its complete FAA key."""
+        return self.departures.get(identifier)
 
     def isAirway(self, airway: str):
         return airway in self["AWY_BASE"]["AWY_ID"].to_list()

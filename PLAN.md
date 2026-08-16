@@ -1872,7 +1872,7 @@ Tasks:
       and ordering columns for both supported schemas.
 - [x] **Agent: Terra.** **10.2** Implement `CodedDepartureRouteRecord` and rich
       `CodedDepartureRoute` objects through `nasr.coded_departure_routes`.
-- [ ] **Agent: Terra.** **10.3** Implement `DepartureProcedureRecord`, `DepartureAirportRecord`,
+- [x] **Agent: Terra.** **10.3** Implement `DepartureProcedureRecord`, `DepartureAirportRecord`,
       and `DepartureRouteRecord`; expose rich `DepartureProcedure` objects via
       `nasr.departures`, `nasr.departure()`, airports, and ordered routes.
 - [ ] **Agent: Terra.** **10.4** Implement `PreferredRouteRecord`,

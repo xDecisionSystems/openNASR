@@ -13,12 +13,16 @@ def test_coverage_report_counts_all_supported_fixture_files():
         assert schema_report["operational_csv_files"] == 63
         assert schema_report["schema_description_files"] == 24
         assert schema_report["matched_table_spec_count"] == 63
-        assert schema_report["rich_record_table_count"] == 12
+        assert schema_report["rich_record_table_count"] == 16
         assert schema_report["rich_record_tables"] == [
             "AWY_BASE",
             "AWY_SEG_ALT",
+            "CDR",
             "CLS_ARSP",
             "COM",
+            "DP_APT",
+            "DP_BASE",
+            "DP_RTE",
             "FIX_BASE",
             "FRQ",
             "HPF_BASE",
@@ -48,8 +52,12 @@ def test_coverage_report_cli_writes_only_to_requested_scratch_path(
     assert document["schemas"]["pre_2026_09"]["rich_record_tables"] == [
         "AWY_BASE",
         "AWY_SEG_ALT",
+        "CDR",
         "CLS_ARSP",
         "COM",
+        "DP_APT",
+        "DP_BASE",
+        "DP_RTE",
         "FIX_BASE",
         "FRQ",
         "HPF_BASE",

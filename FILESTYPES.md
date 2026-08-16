@@ -165,7 +165,7 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | --- | --- | --- | --- | --- |
 | `CDR` | `routes.py` | `CodedDepartureRouteRecord` | `CodedDepartureRoute`; `nasr.coded_departure_routes` | Existing |
 | `DP_BASE` | `routes.py` | `DepartureProcedureRecord` | `DepartureProcedure`; `nasr.departures`; `nasr.departure()` | Existing |
-| `DP_APT` | `routes.py` | `DepartureAirportRecord` | `DepartureProcedure.airports` | Proposed |
+| `DP_APT` | `routes.py` | `DepartureAirportRecord` | `DepartureProcedure.airports` | Existing |
 | `DP_RTE` | `routes.py` | `DepartureRouteRecord` | `DepartureProcedure.routes` | Existing |
 | `PFR_BASE` | `routes.py` | `PreferredRouteRecord` | `PreferredRoute`; `nasr.preferred_routes` | Proposed |
 | `PFR_RMT_FMT` | `routes.py` | `PreferredRouteFormatRecord` | `PreferredRoute.formats` | Proposed |
