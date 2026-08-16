@@ -4,7 +4,7 @@ from warnings import warn
 from zipfile import ZipFile
 from pandas import read_csv
 from .arb import ARB
-from .exceptions import CycleNotFoundError
+from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
 from .schemas import SCHEMA_SUFFIX, SchemaCatalog
 import calendar
@@ -166,6 +166,14 @@ class NASR(dict):
                             table_spec=table_spec,
                             record_class=table_spec.record_type,
                         )
+
+        if "APT_BASE" in self and "ARPT_ID" not in self["APT_BASE"].columns:
+            raise SchemaMismatchError(
+                "APT_BASE is missing required identifier column ARPT_ID",
+                cycle=self.__useDate,
+                table="APT_BASE",
+                missing_columns=("ARPT_ID",),
+            )
 
 
     def isAirport(self,airport : str, forceFAA: bool = True):

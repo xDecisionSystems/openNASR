@@ -34,7 +34,8 @@ class Airport():
             # self.ils.setDecl(self.decl)
             self.dme = ILSDME(DMEitem,airport,nasr['ILS_DME'],airportIDCol)
             self.gs = ILSGS(GSitem,airport,nasr['ILS_GS'],airportIDCol)
-            self.mkr = ILSMKR(MKRitem,airport,nasr['ILS_MKR'],airportIDCol)
+            marker_table = nasr.get("ILS_MKR", nasr["ILS_BASE"].iloc[0:0])
+            self.mkr = ILSMKR(MKRitem,airport,marker_table,airportIDCol)
             self.rwyend = RWYEnd(RWYEnditem,airport,nasr['APT_RWY_END'],airportIDCol)
             self.makeRWYbnds()
 
