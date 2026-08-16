@@ -15,6 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--force", action="store_true", help="refresh metadata")
     download = subcommands.add_parser("download", help="download a NASR cycle")
     download.add_argument("cycle", help="latest or an ISO cycle date")
+    subcommands.add_parser("list", help="list cached NASR cycles")
     return parser
 
 
@@ -34,4 +35,10 @@ def main(argv: list[str] | None = None, *, manager=None) -> int:
         else:
             cycle = active_manager.download(date.fromisoformat(args.cycle))
         print(f"downloaded: {cycle.effective_date}")
+    elif args.command == "list":
+        active_manager = manager or CycleManager()
+        for archive in active_manager.archive_paths():
+            print(f"archive {archive.name} {archive.stat().st_size} {archive}")
+        for cycle_path in active_manager.extracted_paths():
+            print(f"extracted {cycle_path.name} {cycle_path}")
     return 0

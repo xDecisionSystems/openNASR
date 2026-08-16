@@ -46,3 +46,19 @@ def test_download_commands_delegate_to_cycle_manager(capsys):
     assert "downloaded: 2026-09-03" in capsys.readouterr().out
     assert main(["download", "2026-08-06"], manager=manager) == 0
     assert "downloaded: 2026-08-06" in capsys.readouterr().out
+
+
+def test_list_reports_cached_archive_and_extracted_cycle(tmp_path, capsys):
+    from openNASR.cycles import CycleManager
+
+    manager = CycleManager(tmp_path)
+    manager.archives_dir.mkdir()
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    archive.write_bytes(b"data")
+    manager.cycles_dir.mkdir()
+    (manager.cycles_dir / "2026-08-06").mkdir()
+
+    assert main(["list"], manager=manager) == 0
+    output = capsys.readouterr().out
+    assert "archive 28DaySubscription_Effective_2026-08-06.zip 4" in output
+    assert "extracted 2026-08-06" in output

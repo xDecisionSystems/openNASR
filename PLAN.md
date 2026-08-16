@@ -1481,7 +1481,7 @@ Tasks:
 - [x] **Agent: Terra.** Implement `opennasr download latest` and
       `opennasr download YYYY-MM-DD`, delegating to `CycleManager` rather than
       duplicating network or extraction logic.
-- [ ] **Agent: Terra.** Implement `opennasr list`, showing cached and archived cycles with their
+- [x] **Agent: Terra.** Implement `opennasr list`, showing cached and archived cycles with their
       paths, sizes, validation state, and effective dates.
 - [ ] **Agent: Terra.** Implement `opennasr remove YYYY-MM-DD`; require interactive confirmation
       unless `--yes` is supplied, resolve the exact cycle before deletion, and
