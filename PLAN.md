@@ -1760,7 +1760,7 @@ Tasks:
 - [x] **Agent: Terra.** **7.9** Add CI configuration (e.g. GitHub Actions) running the test
       suite on the minimum supported Python version (Task 0.1) and the
       newest released Python version.
-- [ ] **Agent: Terra.** **7.10** In the same CI configuration, add required (non-`continue-on-error`)
+- [x] **Agent: Terra.** **7.10** In the same CI configuration, add required (non-`continue-on-error`)
       steps for `ruff format --check`, `ruff check`, and `mypy`. This is the
       enforcement step deferred from Milestone 0 — remove any `--exit-zero`
       or equivalent soft-fail flag added there. Fix whatever findings this

@@ -12,7 +12,5 @@ from openNASR.nasr import timestampToYearDecimal
         ("2025-07-02", 2025 + 182 / 365),
     ],
 )
-def test_timestamp_to_year_decimal_handles_leap_and_common_years(
-    timestamp, expected
-):
+def test_timestamp_to_year_decimal_handles_leap_and_common_years(timestamp, expected):
     assert timestampToYearDecimal(timestamp) == pytest.approx(expected)

@@ -54,8 +54,7 @@ class FieldConversionError(OpenNASRError):
         self.expected_type = expected_type
         location = ".".join(part for part in (table, column) if part) or "field"
         message = (
-            f"Cannot convert {location} value {raw_value!r} to "
-            f"{expected_type.__name__}"
+            f"Cannot convert {location} value {raw_value!r} to {expected_type.__name__}"
         )
         if cycle is not None:
             message += f" for cycle {cycle}"

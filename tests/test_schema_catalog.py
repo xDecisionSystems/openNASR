@@ -98,9 +98,7 @@ def test_validation_reports_structural_and_declared_type_drift():
 
     assert report.missing_required_columns == ("EFF_DATE",)
     assert report.unexpected_columns == ("FUTURE_COLUMN",)
-    assert report.type_differences == (
-        "ARPT_ID: expected VARCHAR, got NUMBER",
-    )
+    assert report.type_differences == ("ARPT_ID: expected VARCHAR, got NUMBER",)
     with pytest.raises(SchemaMismatchError) as error:
         report.require_compatible(cycle="fixture-cycle")
     assert error.value.table == "APT_BASE"
@@ -131,12 +129,10 @@ def test_registry_covers_every_operational_table_and_schema_variant():
 def test_test_local_registry_reports_and_rejects_unmodeled_tables():
     registry = TableRegistry(specs=[TableSpec("APT_BASE", FaaRecord, ())])
 
-    assert registry.unmodeled_tables(["APT_BASE.csv", "FUTURE.csv"]) == {
+    assert registry.unmodeled_tables(["APT_BASE.csv", "FUTURE.csv"]) == {"FUTURE"}
+    assert registry.require_modeled(["APT_BASE", "FUTURE"], diagnostic=True) == {
         "FUTURE"
     }
-    assert registry.require_modeled(
-        ["APT_BASE", "FUTURE"], diagnostic=True
-    ) == {"FUTURE"}
     with pytest.raises(SchemaMismatchError, match="FUTURE"):
         registry.require_modeled(["APT_BASE", "FUTURE"])
 

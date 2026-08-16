@@ -144,9 +144,7 @@ def parse_schema_description_tables(path: str | Path) -> dict[str, TableSchema]:
     }
 
 
-def parse_schema_description(
-    path: str | Path, table_name: str
-) -> list[ColumnSchema]:
+def parse_schema_description(path: str | Path, table_name: str) -> list[ColumnSchema]:
     """Return the declared columns for one table in a schema-description file."""
 
     tables = parse_schema_description_tables(path)

@@ -252,10 +252,13 @@ def test_faa_provider_discovers_only_mocked_metadata():
 
 def test_update_checks_reuse_successful_metadata(tmp_path):
     class Provider:
-        def __init__(self): self.calls = 0
+        def __init__(self):
+            self.calls = 0
+
         def discover(self):
             self.calls += 1
             return RemoteCycle(date(2026, 8, 6), "https://example.test/a.zip")
+
     provider = Provider()
     manager = CycleManager(tmp_path, provider=provider)
     fresh = manager.check_for_updates()

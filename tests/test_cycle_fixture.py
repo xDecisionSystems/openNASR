@@ -10,11 +10,7 @@ from tools.build_synthetic_fixtures import CORE_CYCLE_STEM
 
 def test_cycle_fixture_has_expected_nested_layout_and_core_tables():
     csv_root = (
-        Path(__file__).parent
-        / "fixtures"
-        / "cycle"
-        / "CSV_Data"
-        / CORE_CYCLE_STEM
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     )
 
     assert csv_root.is_dir()
@@ -35,11 +31,7 @@ def test_cycle_fixture_has_expected_nested_layout_and_core_tables():
 
 def test_cycle_fixture_airport_base_is_minimal_and_has_two_identifiers():
     csv_root = (
-        Path(__file__).parent
-        / "fixtures"
-        / "cycle"
-        / "CSV_Data"
-        / CORE_CYCLE_STEM
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     )
     lines = (csv_root / "APT_BASE.csv").read_text(encoding="utf-8").splitlines()
 
@@ -57,11 +49,7 @@ def test_cycle_fixture_airport_base_is_minimal_and_has_two_identifiers():
 
 def test_cycle_fixture_contains_reciprocal_runway_ends():
     csv_root = (
-        Path(__file__).parent
-        / "fixtures"
-        / "cycle"
-        / "CSV_Data"
-        / CORE_CYCLE_STEM
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     )
     runway_rows = (csv_root / "APT_RWY.csv").read_text(encoding="utf-8").splitlines()
     end_rows = (csv_root / "APT_RWY_END.csv").read_text(encoding="utf-8").splitlines()
@@ -72,11 +60,7 @@ def test_cycle_fixture_contains_reciprocal_runway_ends():
 
 def test_cycle_fixture_ils_components_share_runway_end_key():
     csv_root = (
-        Path(__file__).parent
-        / "fixtures"
-        / "cycle"
-        / "CSV_Data"
-        / CORE_CYCLE_STEM
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     )
 
     for table_name in ("ILS_BASE", "ILS_DME", "ILS_GS", "ILS_MKR"):
@@ -91,11 +75,7 @@ def test_cycle_fixture_ils_components_share_runway_end_key():
 
 def test_cycle_fixture_contains_one_unique_fix():
     csv_root = (
-        Path(__file__).parent
-        / "fixtures"
-        / "cycle"
-        / "CSV_Data"
-        / CORE_CYCLE_STEM
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     )
 
     with (csv_root / "FIX_BASE.csv").open(newline="", encoding="utf-8") as handle:
@@ -106,11 +86,7 @@ def test_cycle_fixture_contains_one_unique_fix():
 
 def test_cycle_fixture_contains_unique_and_state_type_distinct_navaids():
     csv_root = (
-        Path(__file__).parent
-        / "fixtures"
-        / "cycle"
-        / "CSV_Data"
-        / CORE_CYCLE_STEM
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     )
 
     with (csv_root / "NAV_BASE.csv").open(newline="", encoding="utf-8") as handle:
@@ -121,18 +97,15 @@ def test_cycle_fixture_contains_unique_and_state_type_distinct_navaids():
         by_id.setdefault(row["NAV_ID"], []).append(row)
     assert len(by_id["UNIQ"]) == 1
     assert len(by_id["DUP"]) == 2
-    assert {
-        (row["STATE_CODE"], row["NAV_TYPE"]) for row in by_id["DUP"]
-    } == {("IN", "VOR"), ("OH", "NDB")}
+    assert {(row["STATE_CODE"], row["NAV_TYPE"]) for row in by_id["DUP"]} == {
+        ("IN", "VOR"),
+        ("OH", "NDB"),
+    }
 
 
 def test_cycle_fixture_artcc_high_and_low_boundaries_are_valid():
     csv_root = (
-        Path(__file__).parent
-        / "fixtures"
-        / "cycle"
-        / "CSV_Data"
-        / CORE_CYCLE_STEM
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     )
 
     with (csv_root / "ARB_SEG.csv").open(newline="", encoding="utf-8") as handle:
