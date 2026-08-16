@@ -1444,9 +1444,9 @@ Tasks:
 - [x] **Agent: Terra.** Atomically rename successful downloads.
 - [x] **Agent: Luna.** Compute and store SHA-256 metadata.
 - [x] **Agent: Terra.** Reject HTML error pages and obviously invalid archives.
-- [ ] **Agent: Sol.** Extract into a temporary directory, validate it, then atomically publish
+- [x] **Agent: Sol.** Extract into a temporary directory, validate it, then atomically publish
       the completed cycle.
-- [ ] **Agent: Sol.** Protect extraction against absolute paths and `..` path traversal.
+- [x] **Agent: Sol.** Protect extraction against absolute paths and `..` path traversal.
 - [ ] **Agent: Terra.** Locate the nested FAA CSV archive or CSV directory without assuming one
       exact intermediate folder name.
 - [ ] **Agent: Sol.** Make interrupted download and extraction cleanup safe and idempotent.

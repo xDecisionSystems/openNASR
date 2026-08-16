@@ -7,6 +7,7 @@ from zipfile import ZipFile
 import pytest
 
 from openNASR import cycles
+from openNASR.exceptions import ArchiveError
 from openNASR.cycles import (
     CycleManager,
     parse_archive_date,
@@ -146,3 +147,27 @@ def test_html_and_non_zip_archives_are_rejected(tmp_path):
     for archive in (html, invalid):
         with pytest.raises(ValueError, match="Invalid NASR archive"):
             validate_archive(archive)
+
+
+def test_archive_is_extracted_and_published_atomically(tmp_path):
+    archive = tmp_path / "28DaySubscription_Effective_2026-08-06.zip"
+    with ZipFile(archive, "w") as output:
+        output.writestr("nested/CSV_Data/APT_BASE.csv", "ARPT_ID\nBWI\n")
+
+    cycle = CycleManager(tmp_path / "cache").extract_archive(archive)
+
+    assert cycle.data_path.name == "2026-08-06"
+    assert (cycle.data_path / "nested/CSV_Data/APT_BASE.csv").is_file()
+    assert not list(cycle.data_path.parent.glob(".extract-*"))
+
+
+@pytest.mark.parametrize("member", ["../escape.csv", "/absolute.csv"])
+def test_archive_extraction_rejects_unsafe_members(tmp_path, member):
+    archive = tmp_path / "28DaySubscription_Effective_2026-08-06.zip"
+    with ZipFile(archive, "w") as output:
+        output.writestr(member, "unsafe")
+
+    with pytest.raises(ArchiveError, match="Unsafe archive member"):
+        CycleManager(tmp_path / "cache").extract_archive(archive)
+
+    assert not (tmp_path / "escape.csv").exists()

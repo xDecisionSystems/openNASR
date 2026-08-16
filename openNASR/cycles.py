@@ -11,13 +11,16 @@ import os
 import re
 import json
 import hashlib
+import tempfile
 from datetime import date
 from dataclasses import dataclass
-from pathlib import Path
-from shutil import copy2
-from zipfile import is_zipfile
+from pathlib import Path, PurePosixPath
+from shutil import copy2, rmtree
+from zipfile import ZipFile, is_zipfile
 
 from platformdirs import user_cache_dir
+
+from .exceptions import ArchiveError
 
 
 APPLICATION_NAME = "openNASR"
@@ -211,6 +214,42 @@ class CycleManager:
             encoding="utf-8",
         )
         return metadata_path
+
+    def extract_archive(self, archive_path: str | Path) -> Cycle:
+        """Safely extract, validate, and atomically publish a cached cycle."""
+
+        archive = Path(archive_path)
+        validate_archive(archive)
+        effective_date = read_cycle_date(archive_path=archive)
+        self.cycles_dir.mkdir(parents=True, exist_ok=True)
+        destination = self.cycles_dir / effective_date.isoformat()
+        temporary = Path(tempfile.mkdtemp(prefix=".extract-", dir=self.cycles_dir))
+        try:
+            with ZipFile(archive) as source:
+                for member in source.infolist():
+                    path = PurePosixPath(member.filename)
+                    if path.is_absolute() or ".." in path.parts:
+                        raise ArchiveError(f"Unsafe archive member: {member.filename}")
+                source.extractall(temporary)
+            if not any(temporary.rglob("*.csv")):
+                raise ArchiveError(f"Archive contains no NASR CSV files: {archive}")
+            (temporary / "metadata.json").write_text(
+                json.dumps({"effective_date": effective_date.isoformat()}) + "\n",
+                encoding="utf-8",
+            )
+            if destination.exists():
+                rmtree(temporary)
+            else:
+                temporary.replace(destination)
+            return Cycle(
+                effective_date=effective_date,
+                archive_path=archive,
+                data_path=destination,
+            )
+        except Exception:
+            if temporary.exists():
+                rmtree(temporary)
+            raise
 
 
 __all__ = [

@@ -21,6 +21,10 @@ class CycleNotFoundError(OpenNASRError):
     """Raised when a requested NASR data cycle is unavailable."""
 
 
+class ArchiveError(OpenNASRError):
+    """Raised when a NASR archive is invalid or unsafe to extract."""
+
+
 class TableNotFoundError(OpenNASRError):
     """Raised when a required NASR CSV table is unavailable."""
 
@@ -109,6 +113,7 @@ class AmbiguousRecordError(OpenNASRError):
 
 __all__ = [
     "AmbiguousRecordError",
+    "ArchiveError",
     "ConfigurationError",
     "CycleNotFoundError",
     "OpenNASRError",
