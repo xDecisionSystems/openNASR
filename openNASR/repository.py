@@ -43,6 +43,12 @@ class TableRepository(Mapping[str, DataFrame]):
             self._cache[normalized] = read_csv(self.table_path(normalized))
         return self._cache[normalized]
 
+    def table(self, name: str, *, copy: bool = False) -> DataFrame:
+        """Return the cached table; callers may request a defensive copy."""
+
+        frame = self.load(name)
+        return frame.copy(deep=True) if copy else frame
+
     def is_loaded(self, name: str) -> bool:
         return normalize_table_name(name) in self._cache
 

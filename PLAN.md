@@ -1540,7 +1540,7 @@ Tasks:
 - [x] **Agent: Terra.** Preserve `nasr["APT_BASE"]` compatibility by delegating to the repository.
 - [x] **Agent: Terra.** Implement `collections.abc.Mapping` instead of subclassing `dict` if
       behavior can remain compatible.
-- [ ] **Agent: Terra.** Provide `nasr.table(name, *, copy=False)`.
+- [x] **Agent: Terra.** Provide `nasr.table(name, *, copy=False)`.
 - [ ] **Agent: Terra.** Make the default return the cached DataFrame and document mutation risk.
 - [ ] **Agent: Luna.** Return a defensive copy when `copy=True`.
 - [ ] **Agent: Terra.** Add clear errors for missing or unreadable tables.
