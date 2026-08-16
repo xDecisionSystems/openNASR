@@ -62,6 +62,70 @@ FREQUENCY_KEY = (
     "SECTORIZATION",
     "FREQ_USE",
 )
+CDR_KEY = ("RCode",)
+DEPARTURE_KEY = ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE")
+DEPARTURE_AIRPORT_KEY = (
+    *DEPARTURE_KEY,
+    "BODY_NAME",
+    "BODY_SEQ",
+    "ARPT_ID",
+    "RWY_END_ID",
+)
+DEPARTURE_ROUTE_KEY = (
+    *DEPARTURE_KEY,
+    "ROUTE_PORTION_TYPE",
+    "ROUTE_NAME",
+    "BODY_SEQ",
+    "TRANSITION_COMPUTER_CODE",
+    "POINT_SEQ",
+)
+DEPARTURE_ROUTE_ORDER = (
+    "BODY_SEQ",
+    "ROUTE_PORTION_TYPE",
+    "ROUTE_NAME",
+    "TRANSITION_COMPUTER_CODE",
+    "POINT_SEQ",
+)
+PREFERRED_ROUTE_KEY = ("ORIGIN_ID", "DSTN_ID", "PFR_TYPE_CODE", "ROUTE_NO")
+PREFERRED_ROUTE_FORMAT_KEY = ("Orig", "Dest", "Type", "Seq")
+PREFERRED_ROUTE_SEGMENT_KEY = (*PREFERRED_ROUTE_KEY, "SEGMENT_SEQ")
+STAR_KEY = ("STAR_COMPUTER_CODE", "ARTCC")
+STAR_AIRPORT_KEY = (
+    *STAR_KEY,
+    "BODY_NAME",
+    "BODY_SEQ",
+    "ARPT_ID",
+    "RWY_END_ID",
+)
+STAR_ROUTE_KEY = (
+    *STAR_KEY,
+    "ROUTE_PORTION_TYPE",
+    "ROUTE_NAME",
+    "BODY_SEQ",
+    "TRANSITION_COMPUTER_CODE",
+    "POINT_SEQ",
+)
+STAR_ROUTE_ORDER = (
+    "BODY_SEQ",
+    "ROUTE_PORTION_TYPE",
+    "ROUTE_NAME",
+    "TRANSITION_COMPUTER_CODE",
+    "POINT_SEQ",
+)
+PROCEDURE_ROUTE_TABLES = frozenset(
+    {
+        "CDR",
+        "DP_BASE",
+        "DP_APT",
+        "DP_RTE",
+        "PFR_BASE",
+        "PFR_RMT_FMT",
+        "PFR_SEG",
+        "STAR_BASE",
+        "STAR_APT",
+        "STAR_RTE",
+    }
+)
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "AWY_BASE": AirwayRecord,
     "AWY_SEG_ALT": AirwaySegmentRecord,
@@ -324,6 +388,117 @@ class TableRegistry:
                             "serviced_facility", SERVICED_FACILITY_KEY, unique=False
                         ),
                     )
+                elif table_name == "CDR":
+                    identity_key = CDR_KEY
+                    indexes = (IndexSpec("route_code", CDR_KEY, unique=True),)
+                elif table_name == "DP_BASE":
+                    identity_key = DEPARTURE_KEY
+                    indexes = (
+                        IndexSpec("departure", DEPARTURE_KEY, unique=True),
+                        IndexSpec("computer_code", ("DP_COMPUTER_CODE",)),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "airports", "DP_APT", DEPARTURE_KEY, DEPARTURE_KEY
+                        ),
+                        RelationshipSpec(
+                            "routes", "DP_RTE", DEPARTURE_KEY, DEPARTURE_KEY
+                        ),
+                    )
+                elif table_name == "DP_APT":
+                    identity_key = DEPARTURE_AIRPORT_KEY
+                    indexes = (
+                        IndexSpec("departure", DEPARTURE_KEY),
+                        IndexSpec("airport_id", ("ARPT_ID",)),
+                    )
+                    order_by = ("BODY_SEQ", "ARPT_ID", "RWY_END_ID")
+                    relationships = (
+                        RelationshipSpec(
+                            "departure", "DP_BASE", DEPARTURE_KEY, DEPARTURE_KEY
+                        ),
+                    )
+                elif table_name == "DP_RTE":
+                    identity_key = DEPARTURE_ROUTE_KEY
+                    indexes = (IndexSpec("departure", DEPARTURE_KEY),)
+                    order_by = DEPARTURE_ROUTE_ORDER
+                    relationships = (
+                        RelationshipSpec(
+                            "departure", "DP_BASE", DEPARTURE_KEY, DEPARTURE_KEY
+                        ),
+                    )
+                elif table_name == "PFR_BASE":
+                    identity_key = PREFERRED_ROUTE_KEY
+                    indexes = (
+                        IndexSpec("preferred_route", PREFERRED_ROUTE_KEY, unique=True),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "formats",
+                            "PFR_RMT_FMT",
+                            PREFERRED_ROUTE_KEY,
+                            PREFERRED_ROUTE_FORMAT_KEY,
+                        ),
+                        RelationshipSpec(
+                            "segments",
+                            "PFR_SEG",
+                            PREFERRED_ROUTE_KEY,
+                            PREFERRED_ROUTE_KEY,
+                        ),
+                    )
+                elif table_name == "PFR_RMT_FMT":
+                    identity_key = PREFERRED_ROUTE_FORMAT_KEY
+                    indexes = (
+                        IndexSpec(
+                            "preferred_route", PREFERRED_ROUTE_FORMAT_KEY, unique=True
+                        ),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "preferred_route",
+                            "PFR_BASE",
+                            PREFERRED_ROUTE_FORMAT_KEY,
+                            PREFERRED_ROUTE_KEY,
+                        ),
+                    )
+                elif table_name == "PFR_SEG":
+                    identity_key = PREFERRED_ROUTE_SEGMENT_KEY
+                    indexes = (IndexSpec("preferred_route", PREFERRED_ROUTE_KEY),)
+                    order_by = ("SEGMENT_SEQ",)
+                    relationships = (
+                        RelationshipSpec(
+                            "preferred_route",
+                            "PFR_BASE",
+                            PREFERRED_ROUTE_KEY,
+                            PREFERRED_ROUTE_KEY,
+                        ),
+                    )
+                elif table_name == "STAR_BASE":
+                    identity_key = STAR_KEY
+                    indexes = (
+                        IndexSpec("star", STAR_KEY, unique=True),
+                        IndexSpec("computer_code", ("STAR_COMPUTER_CODE",)),
+                    )
+                    relationships = (
+                        RelationshipSpec("airports", "STAR_APT", STAR_KEY, STAR_KEY),
+                        RelationshipSpec("routes", "STAR_RTE", STAR_KEY, STAR_KEY),
+                    )
+                elif table_name == "STAR_APT":
+                    identity_key = STAR_AIRPORT_KEY
+                    indexes = (
+                        IndexSpec("star", STAR_KEY),
+                        IndexSpec("airport_id", ("ARPT_ID",)),
+                    )
+                    order_by = ("BODY_SEQ", "ARPT_ID", "RWY_END_ID")
+                    relationships = (
+                        RelationshipSpec("star", "STAR_BASE", STAR_KEY, STAR_KEY),
+                    )
+                elif table_name == "STAR_RTE":
+                    identity_key = STAR_ROUTE_KEY
+                    indexes = (IndexSpec("star", STAR_KEY),)
+                    order_by = STAR_ROUTE_ORDER
+                    relationships = (
+                        RelationshipSpec("star", "STAR_BASE", STAR_KEY, STAR_KEY),
+                    )
                 variants.append(
                     TableVariantSpec(
                         schema_id=schema_id,
@@ -401,13 +576,26 @@ __all__ = [
     "AIRWAY_TABLES",
     "AIRWAY_FIX_KEY",
     "AIRWAY_NAVAID_KEY",
+    "CDR_KEY",
     "COMMUNICATION_NAVAID_KEY",
     "FIX_KEY",
+    "DEPARTURE_AIRPORT_KEY",
+    "DEPARTURE_KEY",
+    "DEPARTURE_ROUTE_KEY",
+    "DEPARTURE_ROUTE_ORDER",
     "HOLDING_PATTERN_KEY",
     "HOLDING_PATTERN_TABLES",
     "FREQUENCY_KEY",
     "NAVAID_KEY",
+    "PREFERRED_ROUTE_FORMAT_KEY",
+    "PREFERRED_ROUTE_KEY",
+    "PREFERRED_ROUTE_SEGMENT_KEY",
+    "PROCEDURE_ROUTE_TABLES",
     "SERVICED_FACILITY_KEY",
+    "STAR_AIRPORT_KEY",
+    "STAR_KEY",
+    "STAR_ROUTE_KEY",
+    "STAR_ROUTE_ORDER",
     "IndexSpec",
     "RICH_RECORD_TYPES",
     "RelationshipSpec",

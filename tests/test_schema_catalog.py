@@ -25,6 +25,7 @@ from openNASR.registry import (
     HOLDING_PATTERN_TABLES,
     IndexSpec,
     NAVAID_KEY,
+    PROCEDURE_ROUTE_TABLES,
     RelationshipSpec,
     TableRegistry,
     TableSpec,
@@ -141,6 +142,7 @@ def test_registry_covers_every_operational_table_and_schema_variant():
                 AIRPORT_LINKED_TABLES
                 | AIRWAY_TABLES
                 | HOLDING_PATTERN_TABLES
+                | PROCEDURE_ROUTE_TABLES
                 | {"COM", "FRQ", "FIX_BASE", "NAV_BASE"}
             )
             if table_name not in rich_metadata_tables:
