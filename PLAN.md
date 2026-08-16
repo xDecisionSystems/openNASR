@@ -1878,7 +1878,7 @@ Tasks:
 - [x] **Agent: Terra.** **10.4** Implement `PreferredRouteRecord`,
       `PreferredRouteFormatRecord`, and `PreferredRouteSegmentRecord`; expose
       `nasr.preferred_routes` with ordered segments and formats.
-- [ ] **Agent: Terra.** **10.5** Implement `StarProcedureRecord`, `StarAirportRecord`, and
+- [x] **Agent: Terra.** **10.5** Implement `StarProcedureRecord`, `StarAirportRecord`, and
       `StarRouteRecord`; expose rich `StarProcedure` objects through
       `nasr.stars`, `nasr.star()`, airports, and ordered routes.
 - [ ] **Agent: Terra.** **10.6** Add both-schema fixtures, exact/ambiguous lookup tests, sequence

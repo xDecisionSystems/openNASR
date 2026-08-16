@@ -481,6 +481,18 @@ class PreferredRouteSegmentRecord(FaaRecord):
     pass
 
 
+class StarProcedureRecord(FaaRecord):
+    pass
+
+
+class StarAirportRecord(FaaRecord):
+    pass
+
+
+class StarRouteRecord(FaaRecord):
+    pass
+
+
 class FixRecord(FaaRecord):
     """Fix record with nullable typed conveniences over lossless FAA fields."""
 
@@ -713,6 +725,9 @@ __all__ = [
     "PreferredRouteRecord",
     "PreferredRouteFormatRecord",
     "PreferredRouteSegmentRecord",
+    "StarProcedureRecord",
+    "StarAirportRecord",
+    "StarRouteRecord",
     "CommunicationOutletRecord",
     "DmeRecord",
     "GlideSlopeRecord",

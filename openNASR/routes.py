@@ -11,8 +11,10 @@ from .records import (
     DepartureProcedureRecord,
     DepartureRouteRecord,
 )
+from .records import StarProcedureRecord, StarAirportRecord, StarRouteRecord
 from .registry import DEPARTURE_KEY
 from .registry import PREFERRED_ROUTE_KEY
+from .registry import STAR_KEY
 from .records import (
     PreferredRouteRecord,
     PreferredRouteFormatRecord,
@@ -194,6 +196,64 @@ class PreferredRouteRepository:
         return records[0]
 
 
+class StarProcedure:
+    def __init__(self, record, airports, routes):
+        self.record, self.airports, self.routes = record, airports, routes
+
+
+class StarProcedureRepository:
+    def __init__(self, nasr):
+        self._nasr = nasr
+
+    def find(self, identifier=None):
+        rows = self._nasr["STAR_BASE"]
+        if identifier is not None:
+            for c, v in zip(STAR_KEY, identifier):
+                rows = rows[
+                    rows[c]
+                    .map(lambda x: str(x).strip().upper())
+                    .eq(str(v).strip().upper())
+                ]
+        result = []
+        for row in rows.to_dict(orient="records"):
+            key = tuple(row[c] for c in STAR_KEY)
+
+            def related(name):
+                data = self._nasr[name]
+                for c, v in zip(STAR_KEY, key):
+                    data = data[
+                        data[c]
+                        .map(lambda x: str(x).strip().upper())
+                        .eq(str(v).strip().upper())
+                    ]
+                return data.to_dict(orient="records")
+
+            routes = sorted(
+                related("STAR_RTE"),
+                key=lambda x: (int(x["BODY_SEQ"]), int(x["POINT_SEQ"])),
+            )
+            result.append(
+                StarProcedure(
+                    StarProcedureRecord(row),
+                    tuple(StarAirportRecord(x) for x in related("STAR_APT")),
+                    tuple(StarRouteRecord(x) for x in routes),
+                )
+            )
+        return tuple(result)
+
+    def get(self, identifier):
+        records = self.find(identifier)
+        if not records:
+            raise RecordNotFoundError(
+                entity_type="StarProcedure", identifier=identifier
+            )
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type="StarProcedure", identifier=identifier, candidates=records
+            )
+        return records[0]
+
+
 __all__ = [
     "CodedDepartureRoute",
     "CodedDepartureRouteRepository",
@@ -201,4 +261,6 @@ __all__ = [
     "DepartureProcedureRepository",
     "PreferredRoute",
     "PreferredRouteRepository",
+    "StarProcedure",
+    "StarProcedureRepository",
 ]
