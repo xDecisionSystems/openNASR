@@ -1437,7 +1437,7 @@ Tasks:
 - [x] **Agent: Terra.** Resolve the cache path according to the documented precedence.
 - [x] **Agent: Terra.** Discover valid extracted cycles and archives independently.
 - [x] **Agent: Terra.** Validate archive names without relying solely on lexical sorting.
-- [ ] **Agent: Terra.** Read the cycle date from trusted metadata or a validated filename.
+- [x] **Agent: Terra.** Read the cycle date from trusted metadata or a validated filename.
 - [ ] **Agent: Terra.** Import an existing archive without modifying the original file.
 - [ ] **Agent: Terra.** Download to a temporary `.part` file in the cache.
 - [ ] **Agent: Terra.** Stream downloads instead of reading the entire archive into memory.

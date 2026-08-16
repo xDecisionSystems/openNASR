@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+import json
 from datetime import date
 from pathlib import Path
 
@@ -45,6 +46,30 @@ def parse_archive_date(path: str | Path) -> date | None:
         return date.fromisoformat(match["effective_date"])
     except ValueError:
         return None
+
+
+def read_cycle_date(
+    *, archive_path: str | Path | None = None, data_path: str | Path | None = None
+) -> date:
+    """Read a cycle date from extracted metadata or a validated archive name."""
+
+    if data_path is not None:
+        metadata_path = Path(data_path) / "metadata.json"
+        if metadata_path.is_file():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            try:
+                return date.fromisoformat(metadata["effective_date"])
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(
+                    f"Invalid effective_date in {metadata_path}"
+                ) from error
+
+    if archive_path is not None:
+        effective_date = parse_archive_date(archive_path)
+        if effective_date is not None:
+            return effective_date
+
+    raise ValueError("A metadata file or validated NASR archive filename is required")
 
 
 class CycleManager:
@@ -99,5 +124,6 @@ __all__ = [
     "CACHE_DIR_ENV_VAR",
     "CycleManager",
     "parse_archive_date",
+    "read_cycle_date",
     "resolve_cache_dir",
 ]
