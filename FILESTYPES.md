@@ -167,9 +167,9 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | `DP_BASE` | `routes.py` | `DepartureProcedureRecord` | `DepartureProcedure`; `nasr.departures`; `nasr.departure()` | Existing |
 | `DP_APT` | `routes.py` | `DepartureAirportRecord` | `DepartureProcedure.airports` | Existing |
 | `DP_RTE` | `routes.py` | `DepartureRouteRecord` | `DepartureProcedure.routes` | Existing |
-| `PFR_BASE` | `routes.py` | `PreferredRouteRecord` | `PreferredRoute`; `nasr.preferred_routes` | Proposed |
-| `PFR_RMT_FMT` | `routes.py` | `PreferredRouteFormatRecord` | `PreferredRoute.formats` | Proposed |
-| `PFR_SEG` | `routes.py` | `PreferredRouteSegmentRecord` | `PreferredRoute.segments` | Proposed |
+| `PFR_BASE` | `routes.py` | `PreferredRouteRecord` | `PreferredRoute`; `nasr.preferred_routes` | Existing |
+| `PFR_RMT_FMT` | `routes.py` | `PreferredRouteFormatRecord` | `PreferredRoute.formats` | Existing |
+| `PFR_SEG` | `routes.py` | `PreferredRouteSegmentRecord` | `PreferredRoute.segments` | Existing |
 | `STAR_BASE` | `routes.py` | `StarProcedureRecord` | `StarProcedure`; `nasr.stars`; `nasr.star()` | Proposed |
 | `STAR_APT` | `routes.py` | `StarAirportRecord` | `StarProcedure.airports` | Proposed |
 | `STAR_RTE` | `routes.py` | `StarRouteRecord` | `StarProcedure.routes` | Proposed |

@@ -12,6 +12,12 @@ from .records import (
     DepartureRouteRecord,
 )
 from .registry import DEPARTURE_KEY
+from .registry import PREFERRED_ROUTE_KEY
+from .records import (
+    PreferredRouteRecord,
+    PreferredRouteFormatRecord,
+    PreferredRouteSegmentRecord,
+)
 
 
 class CodedDepartureRoute:
@@ -124,9 +130,75 @@ class DepartureProcedureRepository:
         return records[0]
 
 
+class PreferredRoute:
+    def __init__(self, record, formats, segments):
+        self.record, self.formats, self.segments = record, formats, segments
+
+
+class PreferredRouteRepository:
+    def __init__(self, nasr):
+        self._nasr = nasr
+
+    def _rows(self, frame, key):
+        rows = frame
+        for col, value in zip(PREFERRED_ROUTE_KEY, key):
+            rows = rows[
+                rows[col]
+                .map(lambda x: str(x).strip().upper())
+                .eq(str(value).strip().upper())
+            ]
+        return rows
+
+    def find(self, identifier=None):
+        rows = (
+            self._nasr["PFR_BASE"]
+            if identifier is None
+            else self._rows(self._nasr["PFR_BASE"], identifier)
+        )
+        result = []
+        for row in rows.to_dict(orient="records"):
+            key = tuple(row[x] for x in PREFERRED_ROUTE_KEY)
+            formats = self._nasr["PFR_RMT_FMT"]
+            for col, value in zip(("Orig", "Dest", "Type", "Seq"), key):
+                formats = formats[
+                    formats[col]
+                    .map(lambda x: str(x).strip().upper())
+                    .eq(str(value).strip().upper())
+                ]
+            segments = sorted(
+                self._rows(self._nasr["PFR_SEG"], key).to_dict(orient="records"),
+                key=lambda x: int(x["SEGMENT_SEQ"]),
+            )
+            result.append(
+                PreferredRoute(
+                    PreferredRouteRecord(row),
+                    tuple(
+                        PreferredRouteFormatRecord(x)
+                        for x in formats.to_dict(orient="records")
+                    ),
+                    tuple(PreferredRouteSegmentRecord(x) for x in segments),
+                )
+            )
+        return tuple(result)
+
+    def get(self, identifier):
+        records = self.find(identifier)
+        if not records:
+            raise RecordNotFoundError(
+                entity_type="PreferredRoute", identifier=identifier
+            )
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type="PreferredRoute", identifier=identifier, candidates=records
+            )
+        return records[0]
+
+
 __all__ = [
     "CodedDepartureRoute",
     "CodedDepartureRouteRepository",
     "DepartureProcedure",
     "DepartureProcedureRepository",
+    "PreferredRoute",
+    "PreferredRouteRepository",
 ]

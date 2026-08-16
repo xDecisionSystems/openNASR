@@ -1875,7 +1875,7 @@ Tasks:
 - [x] **Agent: Terra.** **10.3** Implement `DepartureProcedureRecord`, `DepartureAirportRecord`,
       and `DepartureRouteRecord`; expose rich `DepartureProcedure` objects via
       `nasr.departures`, `nasr.departure()`, airports, and ordered routes.
-- [ ] **Agent: Terra.** **10.4** Implement `PreferredRouteRecord`,
+- [x] **Agent: Terra.** **10.4** Implement `PreferredRouteRecord`,
       `PreferredRouteFormatRecord`, and `PreferredRouteSegmentRecord`; expose
       `nasr.preferred_routes` with ordered segments and formats.
 - [ ] **Agent: Terra.** **10.5** Implement `StarProcedureRecord`, `StarAirportRecord`, and

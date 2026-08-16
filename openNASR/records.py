@@ -469,6 +469,18 @@ class DepartureRouteRecord(FaaRecord):
     """Typed marker for an ordered ``DP_RTE`` departure route row."""
 
 
+class PreferredRouteRecord(FaaRecord):
+    pass
+
+
+class PreferredRouteFormatRecord(FaaRecord):
+    pass
+
+
+class PreferredRouteSegmentRecord(FaaRecord):
+    pass
+
+
 class FixRecord(FaaRecord):
     """Fix record with nullable typed conveniences over lossless FAA fields."""
 
@@ -698,6 +710,9 @@ __all__ = [
     "DepartureAirportRecord",
     "DepartureProcedureRecord",
     "DepartureRouteRecord",
+    "PreferredRouteRecord",
+    "PreferredRouteFormatRecord",
+    "PreferredRouteSegmentRecord",
     "CommunicationOutletRecord",
     "DmeRecord",
     "GlideSlopeRecord",
