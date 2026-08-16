@@ -1488,7 +1488,7 @@ Tasks:
       report which cached archive and extracted data were removed.
 - [x] **Agent: Terra.** Give CLI commands documented stable exit codes for success, usage error,
       unavailable network/data, validation failure, and internal failure.
-- [ ] **Agent: Terra.** Test every CLI command using temporary caches and mocked transports. No
+- [x] **Agent: Terra.** Test every CLI command using temporary caches and mocked transports. No
       CLI test may access the live FAA service or the user's real cache.
 
 Network-test requirements:
