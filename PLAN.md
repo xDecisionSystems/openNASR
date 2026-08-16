@@ -1692,7 +1692,7 @@ Tasks:
       `(longitude, latitude)` and enforce that convention.
 - [x] **Agent: Terra.** Document that projection distances are nautical miles.
 - [x] **Agent: Sol.** Make `ll2xy` and `xy2ll` round-trip within an agreed tolerance.
-- [ ] **Agent: Sol.** Handle projection-center points where `rho == 0` without division by zero.
+- [x] **Agent: Sol.** Handle projection-center points where `rho == 0` without division by zero.
 - [ ] **Agent: Sol.** Reject invalid latitude and longitude values.
 - [ ] **Agent: Terra.** Add scalar and NumPy-array tests.
 - [ ] **Agent: Sol.** Verify runway width conversion from feet to nautical miles.

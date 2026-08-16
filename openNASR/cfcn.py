@@ -1,4 +1,4 @@
-from numpy import radians, cos, sin, median, radians, sqrt, percentile, float64, array, matmul, generic, ndarray, arctan2, arcsin,degrees
+from numpy import radians, cos, sin, median, radians, sqrt, percentile, float64, array, matmul, generic, ndarray, arctan2, arcsin,degrees, where
 import time
 
 
@@ -57,6 +57,7 @@ def xy2ll(x,y, latc=None, lonc=None, llc=None):
     R_center = radiusOfEarth(latc)
     # Calculate rho (distance from the center of the projection)
     rho = sqrt(x**2 + y**2)
+    safe_rho = where(rho == 0, 1.0, rho)
     # Calculate the angular distance c
     c = arctan2(rho, R_center)
     
@@ -64,8 +65,10 @@ def xy2ll(x,y, latc=None, lonc=None, llc=None):
     sin_c = sin(c)
     cos_c = cos(c)
     
-    latitudes_rad = arcsin(cos_c * sin(latc) + (y * sin_c * cos(latc)) / rho)
-    longitudes_rad = lonc + arctan2(x * sin_c, rho * cos(latc) * cos_c - y * sin(latc) * sin_c)
+    latitudes_rad = arcsin(cos_c * sin(latc) + (y * sin_c * cos(latc)) / safe_rho)
+    longitudes_rad = lonc + arctan2(x * sin_c, safe_rho * cos(latc) * cos_c - y * sin(latc) * sin_c)
+    latitudes_rad = where(rho == 0, latc, latitudes_rad)
+    longitudes_rad = where(rho == 0, lonc, longitudes_rad)
     
     # Convert radians back to degrees
     latitudes = degrees(latitudes_rad)

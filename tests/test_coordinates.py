@@ -25,3 +25,11 @@ def test_projection_round_trips_within_coordinate_tolerance():
 
     assert actual_latitudes == pytest.approx(latitudes, abs=1e-9)
     assert actual_longitudes == pytest.approx(longitudes, abs=1e-9)
+
+
+def test_inverse_projection_handles_projection_center_without_warnings():
+    with np.errstate(divide="raise", invalid="raise"):
+        latitude, longitude = xy2ll(0.0, 0.0, llc=(40.0, -75.0))
+
+    assert latitude == pytest.approx(40.0)
+    assert longitude == pytest.approx(-75.0)
