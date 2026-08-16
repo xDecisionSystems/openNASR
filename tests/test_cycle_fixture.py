@@ -85,3 +85,18 @@ def test_cycle_fixture_ils_components_share_runway_end_key():
         assert rows
         assert all(row["ARPT_ID"] == "BWI" for row in rows)
         assert all(row["RWY_END_ID"] == "10" for row in rows)
+
+
+def test_cycle_fixture_contains_one_unique_fix():
+    csv_root = (
+        Path(__file__).parent
+        / "fixtures"
+        / "cycle"
+        / "CSV_Data"
+        / CORE_CYCLE_STEM
+    )
+
+    with (csv_root / "FIX_BASE.csv").open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    assert [row["FIX_ID"] for row in rows] == ["AABEE"]
