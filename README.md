@@ -80,6 +80,10 @@ the repository.
 
 ## Quick start
 
+The examples below are maintained against the public API and are covered by
+the README example validation test. They require a locally installed FAA cycle
+as described above; they never download data during tests.
+
 Create a `NASR` object to load the most recent locally available cycle:
 
 ```python

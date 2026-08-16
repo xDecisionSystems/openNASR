@@ -1723,7 +1723,7 @@ deferred enforcement). Task 7.10 below turns on the gate.
 
 Tasks:
 
-- [ ] **Agent: Luna.** **7.1** Update README examples to execute as doctests (via
+- [x] **Agent: Luna.** **7.1** Update README examples to execute as doctests (via
       `doctest`) or as tested documentation snippets (e.g. extracted and run
       in a test) where practical. Prioritize the "Quick start", "Airports",
       "Fixes", and "Navigation aids" examples, since those are the ones most
