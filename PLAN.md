@@ -1339,7 +1339,7 @@ Tasks:
       `tests/test_fix.py`, and `tests/main_test_NASR_navaid.py` into
       `tests/test_navaid.py`, each using the Task 2.15 fixture instead of a
       bare `NASR()` call against real local data.
-- [ ] **Agent: Luna.** **2.13** Confirm no default Milestone 2 test invokes interactive plotting.
+- [x] **Agent: Luna.** **2.13** Confirm no default Milestone 2 test invokes interactive plotting.
       Add a comment or marker pointing to Milestone 6 rather than asserting a
       future `Figure`/`Axes` return contract prematurely.
 - [ ] **Agent: Terra.** **2.14** Add error-path tests using the Task 2.8 and 2.9 fixtures:
