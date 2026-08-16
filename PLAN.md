@@ -1664,7 +1664,7 @@ Later `1.x` milestones add repositories using the same contract.
 
 - [x] **Agent: Terra.** Replace dynamic attributes as the sole boundary interface with an
       explicit mapping keyed by altitude or boundary type.
-- [ ] **Agent: Terra.** Retain `.high` and `.low` compatibility properties where meaningful.
+- [x] **Agent: Terra.** Retain `.high` and `.low` compatibility properties where meaningful.
 - [ ] **Agent: Terra.** Preserve disjoint polygon parts; do not accidentally join independent
       rings into one invalid polygon.
 - [ ] **Agent: Terra.** Use `Polygon` or `MultiPolygon` according to the data.
