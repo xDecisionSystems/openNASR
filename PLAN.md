@@ -1543,7 +1543,7 @@ Tasks:
 - [x] **Agent: Terra.** Provide `nasr.table(name, *, copy=False)`.
 - [x] **Agent: Terra.** Make the default return the cached DataFrame and document mutation risk.
 - [x] **Agent: Luna.** Return a defensive copy when `copy=True`.
-- [ ] **Agent: Terra.** Add clear errors for missing or unreadable tables.
+- [x] **Agent: Terra.** Add clear errors for missing or unreadable tables.
 - [ ] **Agent: Terra.** Handle encoding fallback narrowly; never catch every exception and retry
       indiscriminately.
 - [ ] **Agent: Terra.** Preserve meaningful pandas parser errors as exception causes.

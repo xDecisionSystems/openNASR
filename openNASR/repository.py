@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pandas import DataFrame, read_csv
 
+from .exceptions import TableNotFoundError
+
 
 def discover_tables(cycle_path: str | Path) -> tuple[str, ...]:
     """Return CSV table names without opening CSV contents."""
@@ -40,7 +42,10 @@ class TableRepository(Mapping[str, DataFrame]):
 
         normalized = normalize_table_name(name)
         if normalized not in self._cache:
-            self._cache[normalized] = read_csv(self.table_path(normalized))
+            path = self.table_path(normalized)
+            if not path.is_file():
+                raise TableNotFoundError(f"NASR table {normalized!r} was not found")
+            self._cache[normalized] = read_csv(path)
         return self._cache[normalized]
 
     def table(self, name: str, *, copy: bool = False) -> DataFrame:
