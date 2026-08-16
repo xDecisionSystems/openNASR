@@ -1458,7 +1458,7 @@ Tasks:
 - [x] **Agent: Terra.** Implement `CycleManager.check_for_updates(force=False)` returning
       `UpdateStatus`. Reuse a successful result for 24 hours; `force=True`
       bypasses it. Write cache metadata atomically outside the package.
-- [ ] **Agent: Terra.** Do not overwrite the last successful update metadata with a failed check.
+- [x] **Agent: Terra.** Do not overwrite the last successful update metadata with a failed check.
       The explicit method raises a typed `DownloadError` with its cause, while
       the import wrapper suppresses the failure after diagnostic logging.
 - [ ] **Agent: Terra.** Add `notify_if_update_available()` and call it from `openNASR/__init__.py`.

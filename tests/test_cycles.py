@@ -265,3 +265,24 @@ def test_update_checks_reuse_successful_metadata(tmp_path):
         False,
     )
     assert provider.calls == 2
+
+
+def test_failed_update_check_does_not_overwrite_successful_metadata(tmp_path):
+    class Provider:
+        def discover(self):
+            return RemoteCycle(date(2026, 8, 6), "https://example.test/a.zip")
+
+    manager = CycleManager(tmp_path, provider=Provider())
+    manager.check_for_updates()
+    metadata_path = tmp_path / "update-status.json"
+    successful = metadata_path.read_text(encoding="utf-8")
+
+    class FailingProvider:
+        def discover(self):
+            raise OSError("timeout")
+
+    manager.provider = FailingProvider()
+    with pytest.raises(OSError, match="timeout"):
+        manager.check_for_updates(force=True)
+
+    assert metadata_path.read_text(encoding="utf-8") == successful
