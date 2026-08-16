@@ -1334,7 +1334,7 @@ Tasks:
       plotting tests after the plotting return contract is implemented.
       Delete the large commented-out block (`main_test_NASR_airport.py:16-72`)
       rather than carrying it into the new file.
-- [ ] **Agent: Terra.** **2.12** Convert `tests/main_test_NASR_airspace.py` into
+- [x] **Agent: Terra.** **2.12** Convert `tests/main_test_NASR_airspace.py` into
       `tests/test_airspace.py`, `tests/main_test_NASR_fix.py` into
       `tests/test_fix.py`, and `tests/main_test_NASR_navaid.py` into
       `tests/test_navaid.py`, each using the Task 2.15 fixture instead of a
