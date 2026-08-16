@@ -89,6 +89,18 @@ For example, `CycleManager(cache_dir="/data/nasr")` uses `/data/nasr`
 regardless of environment settings. Within that directory, archives are kept
 under `archives/` and extracted cycles under `cycles/`.
 
+To import an archive downloaded manually, use the explicit import workflow:
+
+```python
+from openNASR import CycleManager
+
+cycle = CycleManager().import_archive("/downloads/28DaySubscription_Effective_2024-06-13.zip")
+```
+
+Automatic downloads are a separate provider-backed workflow (`download()` or
+`download_latest()`); they should be used only when a download provider is
+configured. Importing a local archive never performs a network request.
+
 ## Quick start
 
 The examples below are maintained against the public API and are covered by

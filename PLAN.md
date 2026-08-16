@@ -1732,7 +1732,7 @@ Tasks:
       `cache_dir` argument > `OPENNASR_CACHE_DIR` env var > platform default)
       from Milestone 3's "Data location" design, in the README's data-setup
       section.
-- [ ] **Agent: Luna.** **7.3** Document manual archive import (`CycleManager.import_archive`)
+- [x] **Agent: Luna.** **7.3** Document manual archive import (`CycleManager.import_archive`)
       and automatic download (`CycleManager.download` /
       `download_latest`) as two clearly separate workflows in the README,
       matching Milestone 3's API.
