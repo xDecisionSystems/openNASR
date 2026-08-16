@@ -1839,7 +1839,7 @@ Tasks:
 
 - [x] **Agent: Sol.** **9.1** Verify and register identity, ordering, and relationship keys for
       `AWY_BASE` and `AWY_SEG_ALT` across both schemas.
-- [ ] **Agent: Terra.** **9.2** Implement `AirwayRecord` and
+- [x] **Agent: Terra.** **9.2** Implement `AirwayRecord` and
       `AirwaySegmentRecord`; expose the rich
       `Airway` through `nasr.airways`, `nasr.airway()`, ordered segments, and
       segment altitude constraints.

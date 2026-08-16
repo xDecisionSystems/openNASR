@@ -5,6 +5,7 @@ from zipfile import ZipFile
 from pandas import read_csv
 from .arb import ARB
 from .airspace import ClassAirspaceRepository
+from .airway import AirwayRepository
 from .military import MilitaryOperationRepository
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
@@ -43,6 +44,7 @@ class NASR(dict):
         self.__diagnostic = diagnostic
         self.setupFiles(useDate)
         self.class_airspaces = ClassAirspaceRepository(self)
+        self.airways = AirwayRepository(self)
         self.military_operations = MilitaryOperationRepository(self)
         self.airports = AirportRepository(self)
         self.fixes = FixRepository(self)
@@ -213,6 +215,10 @@ class NASR(dict):
     def navaid(self, identifier: str, **filters):
         """Return the navaid selected by :attr:`navaids`."""
         return self.navaids.get(identifier, **filters)
+
+    def airway(self, identifier: tuple[str, str, str]):
+        """Return the airway selected by its complete FAA composite key."""
+        return self.airways.get(identifier)
 
     def isAirway(self, airway: str):
         return airway in self["AWY_BASE"]["AWY_ID"].to_list()
