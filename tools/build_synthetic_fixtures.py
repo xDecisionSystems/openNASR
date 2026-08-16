@@ -13,6 +13,16 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_DIR = ROOT / "tests" / "fixtures" / "manifests"
 FIXTURE_DIR = ROOT / "tests" / "fixtures"
 CORE_CYCLE_STEM = "28DaySubscription_Effective_2099-01-01"
+CORE_CYCLE_COLUMNS = {
+    "APT_BASE": (
+        "ARPT_ID",
+        "ICAO_ID",
+        "LAT_DECIMAL",
+        "LONG_DECIMAL",
+        "ELEV",
+        "SITE_ELEVATION",
+    ),
+}
 
 
 def read_manifest(schema_id: str) -> dict[str, Any]:
@@ -272,7 +282,15 @@ def build_core_fixture() -> None:
             for column in manifest["tables"][table_name]["columns"]
         ]
         for destination in destinations:
-            write_csv(destination / f"{table_name}.csv", header, table_rows)
+            cycle_header = CORE_CYCLE_COLUMNS.get(table_name, header)
+            if destination.name == CORE_CYCLE_STEM:
+                write_csv(
+                    destination / f"{table_name}.csv",
+                    list(cycle_header),
+                    table_rows,
+                )
+            else:
+                write_csv(destination / f"{table_name}.csv", header, table_rows)
 
 
 def main() -> None:

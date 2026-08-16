@@ -1280,7 +1280,7 @@ Tasks:
       pattern the loader parses (e.g. use a clearly fake near-future or
       fixture-only date so it can never collide with a real downloaded
       cycle).
-- [ ] **Agent: Luna.** **2.2** Verify or extend `APT_BASE.csv` to contain exactly two airport rows.
+- [x] **Agent: Luna.** **2.2** Verify or extend `APT_BASE.csv` to contain exactly two airport rows.
       Include only the columns `AirportBase` and its properties actually
       read (`ARPT_ID`, `ICAO_ID`, `LAT_DECIMAL`, `LONG_DECIMAL`, `ELEV`,
       `SITE_ELEVATION` per `basictypes.py:61` and `airport.py:14-23`) plus

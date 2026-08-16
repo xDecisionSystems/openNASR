@@ -28,3 +28,25 @@ def test_cycle_fixture_has_expected_nested_layout_and_core_tables():
         "ILS_MKR.csv",
         "NAV_BASE.csv",
     } <= {path.name for path in csv_root.glob("*.csv")}
+
+
+def test_cycle_fixture_airport_base_is_minimal_and_has_two_identifiers():
+    csv_root = (
+        Path(__file__).parent
+        / "fixtures"
+        / "cycle"
+        / "CSV_Data"
+        / CORE_CYCLE_STEM
+    )
+    lines = (csv_root / "APT_BASE.csv").read_text(encoding="utf-8").splitlines()
+
+    assert lines[0].split(",") == [
+        "ARPT_ID",
+        "ICAO_ID",
+        "LAT_DECIMAL",
+        "LONG_DECIMAL",
+        "ELEV",
+        "SITE_ELEVATION",
+    ]
+    assert len(lines) == 3
+    assert {line.split(",")[0] for line in lines[1:]} == {"BWI", "DCA"}
