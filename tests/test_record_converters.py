@@ -6,8 +6,10 @@ import pytest
 
 from openNASR.exceptions import FieldConversionError
 from openNASR.records import (
+    AirwaySegmentRecord,
     FaaRecord,
     FieldContext,
+    HoldingPatternRemarkRecord,
     boolean,
     coordinate,
     decimal,
@@ -112,3 +114,21 @@ def test_typed_properties_do_not_change_leading_zero_or_empty_raw_fields():
     assert record.width is None
     assert record.raw["SEQUENCE"] == "0012"
     assert record.raw["WIDTH"] == ""
+
+
+def test_navigation_record_converters_preserve_raw_text_and_return_typed_values():
+    segment = AirwaySegmentRecord({"POINT_SEQ": "0002", "MIN_ENROUTE_ALT": "5000"})
+    remark = HoldingPatternRemarkRecord({"REF_COL_SEQ_NO": "0003"})
+
+    assert segment.point_sequence == 2
+    assert segment.minimum_enroute_altitude == 5000
+    assert remark.sequence == 3
+    assert segment.raw["POINT_SEQ"] == "0002"
+    assert remark.raw["REF_COL_SEQ_NO"] == "0003"
+
+
+def test_navigation_record_converters_raise_for_invalid_typed_values():
+    with pytest.raises(FieldConversionError):
+        AirwaySegmentRecord({"POINT_SEQ": "not-a-number"}).point_sequence
+    with pytest.raises(FieldConversionError):
+        HoldingPatternRemarkRecord({"REF_COL_SEQ_NO": "not-a-number"}).sequence

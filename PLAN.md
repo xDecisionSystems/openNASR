@@ -1851,7 +1851,7 @@ Tasks:
       `nasr.frequencies` repositories.
 - [x] **Agent: Sol.** **9.5** Add relationships from fixes, navaids, airways, holding patterns,
       and serviced facilities only where full FAA composite keys are verified.
-- [ ] **Agent: Terra.** **9.6** Add synthetic relationship fixtures for both schemas, ordering and
+- [x] **Agent: Terra.** **9.6** Add synthetic relationship fixtures for both schemas, ordering and
       ambiguity tests, raw/typed converter tests, public exports, documentation,
       coverage reporting, and the `1.2.0` changelog entry.
 

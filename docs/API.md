@@ -25,6 +25,19 @@
 - `nasr.military_operations.get((site_no, site_type_code))` returns a
   `MilitaryOperation`; `find(airport_id=...)` supports non-unique short
   airport-ID searches.
+- `nasr.airways.get((regulatory, airway_location, airway_id))` /
+  `nasr.airway(...)` return an `Airway` with FAA-sequence-ordered `segments`.
+- `nasr.holding_patterns.get((name, number, state, country))` /
+  `nasr.holding_pattern(...)` return a `HoldingPattern` with `charts`,
+  `remarks`, and `speed_altitude_limits`.
+- `nasr.communication_outlets.get(identifier)` /
+  `nasr.communication_outlet(...)` return standalone `CommunicationOutlet`
+  records. Communication location IDs are not assumed unique.
+- `nasr.frequencies.get((facility, serviced_facility, serviced_site_type,
+  serviced_state, serviced_country, frequency, sectorization, frequency_use))`
+  /
+  `nasr.frequency(...)` return a `Frequency`; `find(serviced_facility=(...))`
+  requires the complete serviced-facility context.
 
 Use repository `find(...)` methods for searches. Identifiers are normalized by
 stripping surrounding whitespace and uppercasing. Exact duplicate matches raise
@@ -34,13 +47,17 @@ stripping surrounding whitespace and uppercasing. Exact duplicate matches raise
 
 - `FaaRecord` is the lossless mapping base class; use `raw` or `as_dict()` to
   access source fields.
-- `AirportRecord`, `FixRecord`, `NavaidRecord`, `ClassAirspaceRecord`, and
-  `MilitaryOperationRecord` expose typed convenience properties while
-  preserving raw FAA values.
+- `AirportRecord`, `FixRecord`, `NavaidRecord`, `ClassAirspaceRecord`,
+  `MilitaryOperationRecord`, `AirwayRecord`, `AirwaySegmentRecord`,
+  `HoldingPatternRecord`, `CommunicationOutletRecord`, and `FrequencyRecord`
+  expose typed convenience properties while preserving raw FAA values.
 - `AirportRecord.class_airspace` returns one `ClassAirspace` only when the
   complete `(SITE_NO, SITE_TYPE_CODE)` relationship is unambiguous.
   `AirportRecord.military_operations` returns an immutable tuple of matching
   `MilitaryOperation` objects.
+- Airway-point, holding-pattern, and communication-outlet links resolve only
+  when all documented key fields match. Frequency records retain a composite
+  serviced-facility lookup and never join on a display name alone.
 - `TableRepository(cycle_path)` lazily discovers and loads CSV tables;
   `table(name, copy=False)` returns the cached table.
 

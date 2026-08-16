@@ -14,6 +14,10 @@ and purpose-built synthetic values. They contain no FAA operational records.
 - `relationships/airways.json` contains fabricated, deliberately out-of-order
   airway segments for both schemas and colliding short airway IDs that require
   the complete regulatory/location/ID key.
+- `relationships/navigation_network.json` covers `AWY_*`, `HPF_*`, `COM`, and
+  `FRQ` for both schemas. It includes deliberately out-of-order segments and
+  remarks, colliding short communication IDs, and complete fix/navaid and
+  serviced-facility keys.
 
 Run `python tools/build_synthetic_fixtures.py` after intentionally changing a
 manifest or synthetic fixture definition.

@@ -7,6 +7,22 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [1.2.0] - Unreleased
+
+### Added
+
+- Rich airway, holding-pattern, communication-outlet, and frequency APIs with
+  ordered airway/remark collections and public repository exports.
+- Verified composite-key links from airway points, holding patterns, and
+  communication outlets to their matching fix or navaid records.
+- Synthetic navigation-network fixtures and coverage checks for both supported
+  FAA schema generations.
+
+### Fixed
+
+- Frequency lookups now require their complete serviced-facility context;
+  communication and frequency links never rely on display names alone.
+
 ## [1.1.0] - Unreleased
 
 ### Added

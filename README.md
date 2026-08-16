@@ -23,6 +23,8 @@ access is more convenient.
 - Inspect airport runways, runway ends, ILS, glide-slope, DME, and marker data.
 - Inspect airport-linked class airspace and military-operation data through the
   typed repository facade.
+- Inspect airways, holding patterns, communication outlets, and frequencies
+  through typed repositories with composite-key relationships.
 - Look up fixes and navigation aids.
 - Build ARTCC boundary polygons with Shapely.
 - Convert latitude/longitude coordinates to local nautical-mile coordinates.
@@ -209,6 +211,28 @@ print(military_operation.call_sign)
 
 When an airport site has matching data, `nasr.airport(...)` exposes it as
 `airport.class_airspace` and `airport.military_operations`.
+
+## Navigation network
+
+Airways and holding patterns use their complete FAA composite identifiers;
+their ordered child records retain FAA sequence values. Communication outlets
+remain standalone because a communication location ID can be ambiguous.
+
+```python
+airway = nasr.airway(("Y", "D", "1"))
+holding = nasr.holding_pattern(("ALPHA", "1", "FL", "US"))
+frequency = nasr.frequency(
+    ("ALPHA", "A1", "A", "FL", "US", "121.5", "", "EMERGENCY")
+)
+
+print([segment.point_sequence for segment in airway.segments])
+print([remark.sequence for remark in holding.remarks])
+print(frequency.record.serviced_facility_key)
+```
+
+`nasr.frequencies.find(serviced_facility=("A1", "A", "FL", "US"))`
+requires the full serviced-facility context; it does not use a display name as
+a relationship key.
 
 ## Navigation aids
 
