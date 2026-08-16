@@ -1298,7 +1298,7 @@ Tasks:
       (e.g. `AABEE`, matching the identifier already used in the README's
       quick-start example and the existing `main_test_NASR_fix.py`, so the
       README example itself becomes testable per Task 7.1).
-- [ ] **Agent: Luna.** **2.6** Verify or extend `NAV_BASE.csv` with one navaid with a globally
+- [x] **Agent: Luna.** **2.6** Verify or extend `NAV_BASE.csv` with one navaid with a globally
       unique `NAV_ID`, and two navaid rows sharing one `NAV_ID` but
       differing in `STATE_CODE` and `NAV_TYPE` (so Milestone 1's
       AND-filter and `AmbiguousRecordError` regression tests, Tasks 1.7-1.9,

@@ -100,3 +100,25 @@ def test_cycle_fixture_contains_one_unique_fix():
         rows = list(csv.DictReader(handle))
 
     assert [row["FIX_ID"] for row in rows] == ["AABEE"]
+
+
+def test_cycle_fixture_contains_unique_and_state_type_distinct_navaids():
+    csv_root = (
+        Path(__file__).parent
+        / "fixtures"
+        / "cycle"
+        / "CSV_Data"
+        / CORE_CYCLE_STEM
+    )
+
+    with (csv_root / "NAV_BASE.csv").open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    by_id = {}
+    for row in rows:
+        by_id.setdefault(row["NAV_ID"], []).append(row)
+    assert len(by_id["UNIQ"]) == 1
+    assert len(by_id["DUP"]) == 2
+    assert {
+        (row["STATE_CODE"], row["NAV_TYPE"]) for row in by_id["DUP"]
+    } == {("IN", "VOR"), ("OH", "NDB")}
