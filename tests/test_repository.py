@@ -43,6 +43,17 @@ def test_parser_errors_are_not_retried_or_hidden(monkeypatch, tmp_path):
         TableRepository(tmp_path).load("APT_BASE")
 
 
+def test_identifier_indexes_are_built_lazily_and_cached(tmp_path):
+    (tmp_path / "APT_BASE.csv").write_text("ARPT_ID\nBWI\nBWI\n", encoding="utf-8")
+    repository = TableRepository(tmp_path)
+
+    first = repository.index("APT_BASE", "ARPT_ID")
+    second = repository.index("APT_BASE", "ARPT_ID")
+
+    assert first == {"BWI": (0, 1)}
+    assert first is second
+
+
 def test_loaded_dataframes_are_cached_per_repository_instance(tmp_path):
     (tmp_path / "APT_BASE.csv").write_text("ARPT_ID\nBWI\n", encoding="utf-8")
     repository = TableRepository(tmp_path)
