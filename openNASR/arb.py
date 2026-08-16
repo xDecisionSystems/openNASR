@@ -1,17 +1,42 @@
-from shapely.geometry import Polygon
+from shapely.geometry import MultiPolygon, Polygon
 
 
 class Boundary:
     def __init__(self, lons=None, lats=None):
-        self.__boundary = Polygon([(lon, lat) for lon, lat in zip(lons, lats)])
+        points = [(lon, lat) for lon, lat in zip(lons, lats)]
+        parts = self._rings(points)
+        polygons = [Polygon(part) for part in parts]
+        self.__boundary = polygons[0] if len(polygons) == 1 else MultiPolygon(polygons)
+
+    @staticmethod
+    def _rings(points):
+        """Split explicitly closed source rings without joining disjoint parts."""
+        rings = []
+        current = []
+        for point in points:
+            current.append(point)
+            if len(current) >= 4 and point == current[0]:
+                rings.append(current)
+                current = []
+        if current:
+            rings.append(current)
+        return rings
 
     @property
     def lat(self):
-        return self.__boundary.exterior.coords.xy[1].tolist()
+        return (
+            self.__boundary.geoms[0].exterior.coords.xy[1].tolist()
+            if isinstance(self.__boundary, MultiPolygon)
+            else self.__boundary.exterior.coords.xy[1].tolist()
+        )
 
     @property
     def lon(self):
-        return self.__boundary.exterior.coords.xy[0].tolist()
+        return (
+            self.__boundary.geoms[0].exterior.coords.xy[0].tolist()
+            if isinstance(self.__boundary, MultiPolygon)
+            else self.__boundary.exterior.coords.xy[0].tolist()
+        )
 
     @property
     def latlon(self):
