@@ -1739,7 +1739,7 @@ Tasks:
 - [x] **Agent: Luna.** **7.4** Document duplicate-record behavior (`AmbiguousRecordError`)
       and the full exception hierarchy from `exceptions.py`, with one
       example of catching a typed exception.
-- [ ] **Agent: Terra.** **7.5** Add an API reference for public classes and methods. This can
+- [x] **Agent: Terra.** **7.5** Add an API reference for public classes and methods. This can
       be a generated reference (e.g. via `pdoc` or `mkdocs` + `mkdocstrings`)
       or a hand-written Markdown reference page — pick whichever this
       project's docs tooling (introduced in this same task, if none exists)

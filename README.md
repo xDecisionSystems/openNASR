@@ -26,6 +26,8 @@ access is more convenient.
 - Convert latitude/longitude coordinates to local nautical-mile coordinates.
 - Plot airport runways and ILS information with Matplotlib.
 
+See the [API reference](docs/API.md) for public classes and methods.
+
 ## Requirements
 
 - Python 3.10 or newer
