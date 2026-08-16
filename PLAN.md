@@ -1354,7 +1354,7 @@ Tasks:
       from the Task 2.1 tree, for Milestone 3's import/extraction tests),
       and a ready-to-use `NASR` instance constructed against the fixture
       cycle.
-- [ ] **Agent: Terra.** **2.16** Add unit tests for `timestampToYearDecimal` (`nasr.py:10`)
+- [x] **Agent: Terra.** **2.16** Add unit tests for `timestampToYearDecimal` (`nasr.py:10`)
       covering a leap year and a non-leap year.
 - [ ] **Agent: Terra.** **2.17** Add only the identifier-normalization tests needed by existing
       Milestone 1 behavior. Milestone 5 owns the final repository-wide
