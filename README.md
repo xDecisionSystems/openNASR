@@ -21,6 +21,8 @@ access is more convenient.
   `NAV_BASE`.
 - Look up airports using FAA or ICAO identifiers.
 - Inspect airport runways, runway ends, ILS, glide-slope, DME, and marker data.
+- Inspect airport-linked class airspace and military-operation data through the
+  typed repository facade.
 - Look up fixes and navigation aids.
 - Build ARTCC boundary polygons with Shapely.
 - Convert latitude/longitude coordinates to local nautical-mile coordinates.
@@ -190,6 +192,23 @@ print(fix.getRaw())
 ```
 
 `getRaw()` returns the complete FAA record as a `SimpleNamespace`.
+
+## Airport-linked airspace and military operations
+
+The rich facade exposes airport-linked tables by the complete FAA site key;
+short airport identifiers are intentionally not used as relationship keys:
+
+```python
+site_key = ("00000001A", "A")
+class_airspace = nasr.class_airspaces.get(site_key)
+military_operation = nasr.military_operations.get(site_key)
+
+print(class_airspace.classes)
+print(military_operation.call_sign)
+```
+
+When an airport site has matching data, `nasr.airport(...)` exposes it as
+`airport.class_airspace` and `airport.military_operations`.
 
 ## Navigation aids
 

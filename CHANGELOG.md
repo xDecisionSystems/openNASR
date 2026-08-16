@@ -7,8 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [1.1.0] - Unreleased
+
 ### Added
 
+- Airport-linked `ClassAirspace` and `MilitaryOperation` records, repositories,
+  and airport relationships using the verified `(SITE_NO, SITE_TYPE_CODE)` key.
 - Lossless FAA records with shared typed converters and contextual conversion errors.
 - Cycle discovery, caching, archive validation, and update-status handling.
 - Airport, Fix, and Navaid repositories with normalized lookups and typed fields.

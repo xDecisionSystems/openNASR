@@ -6,6 +6,14 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from openNASR import (
+    ClassAirspace,
+    ClassAirspaceRecord as ExportedClassAirspaceRecord,
+    ClassAirspaceRepository as ExportedClassAirspaceRepository,
+    MilitaryOperation,
+    MilitaryOperationRecord as ExportedMilitaryOperationRecord,
+    MilitaryOperationRepository as ExportedMilitaryOperationRepository,
+)
 from openNASR.airspace import ClassAirspaceRepository
 from openNASR.exceptions import AmbiguousRecordError, RecordNotFoundError
 from openNASR.military import MilitaryOperationRepository
@@ -16,6 +24,15 @@ from openNASR.repository import AirportRepository
 RELATIONSHIPS = (
     Path(__file__).parent / "fixtures" / "relationships" / "airport_linked.json"
 )
+
+
+def test_airport_linked_public_types_are_exported():
+    assert ExportedClassAirspaceRecord is ClassAirspaceRecord
+    assert ExportedClassAirspaceRepository is ClassAirspaceRepository
+    assert ExportedMilitaryOperationRecord is MilitaryOperationRecord
+    assert ExportedMilitaryOperationRepository is MilitaryOperationRepository
+    assert ClassAirspace.__name__ == "ClassAirspace"
+    assert MilitaryOperation.__name__ == "MilitaryOperation"
 
 
 def _nasr_tables():

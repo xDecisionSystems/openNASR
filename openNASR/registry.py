@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 from .exceptions import SchemaMismatchError, TableNotFoundError
-from .records import FaaRecord
+from .records import ClassAirspaceRecord, FaaRecord, MilitaryOperationRecord
 from .schemas import SchemaCatalog
 
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
 AIRPORT_LINKED_TABLES = frozenset({"CLS_ARSP", "MIL_OPS"})
+RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
+    "CLS_ARSP": ClassAirspaceRecord,
+    "MIL_OPS": MilitaryOperationRecord,
+}
 
 
 @dataclass(frozen=True)
@@ -116,7 +120,7 @@ class TableRegistry:
             specs.append(
                 TableSpec(
                     name=table_name,
-                    record_type=FaaRecord,
+                    record_type=RICH_RECORD_TYPES.get(table_name, FaaRecord),
                     variants=tuple(variants),
                 )
             )
@@ -174,6 +178,7 @@ __all__ = [
     "AIRPORT_LINKED_TABLES",
     "AIRPORT_SITE_KEY",
     "IndexSpec",
+    "RICH_RECORD_TYPES",
     "RelationshipSpec",
     "TableRegistry",
     "TableSpec",

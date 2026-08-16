@@ -19,6 +19,12 @@
 - `nasr.fixes.get(identifier)` / `nasr.fix(identifier)`
 - `nasr.navaids.get(identifier, *, state=None, country=None, artcc=None,
   nav_type=None)` / `nasr.navaid(...)`
+- `nasr.class_airspaces.get((site_no, site_type_code))` returns a
+  `ClassAirspace`; `find(airport_id=...)` supports non-unique short airport-ID
+  searches.
+- `nasr.military_operations.get((site_no, site_type_code))` returns a
+  `MilitaryOperation`; `find(airport_id=...)` supports non-unique short
+  airport-ID searches.
 
 Use repository `find(...)` methods for searches. Identifiers are normalized by
 stripping surrounding whitespace and uppercasing. Exact duplicate matches raise
@@ -28,8 +34,13 @@ stripping surrounding whitespace and uppercasing. Exact duplicate matches raise
 
 - `FaaRecord` is the lossless mapping base class; use `raw` or `as_dict()` to
   access source fields.
-- `AirportRecord`, `FixRecord`, and `NavaidRecord` expose typed convenience
-  properties while preserving raw FAA values.
+- `AirportRecord`, `FixRecord`, `NavaidRecord`, `ClassAirspaceRecord`, and
+  `MilitaryOperationRecord` expose typed convenience properties while
+  preserving raw FAA values.
+- `AirportRecord.class_airspace` returns one `ClassAirspace` only when the
+  complete `(SITE_NO, SITE_TYPE_CODE)` relationship is unambiguous.
+  `AirportRecord.military_operations` returns an immutable tuple of matching
+  `MilitaryOperation` objects.
 - `TableRepository(cycle_path)` lazily discovers and loads CSV tables;
   `table(name, copy=False)` returns the cached table.
 

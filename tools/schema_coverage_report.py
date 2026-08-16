@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from openNASR.registry import TableRegistry
+from openNASR.records import FaaRecord
 from openNASR.schemas import SCHEMA_SUFFIX, SchemaCatalog
 
 
@@ -33,13 +34,16 @@ def build_report(
         operational_files = [
             path for path in files if not path.stem.endswith(SCHEMA_SUFFIX)
         ]
-        schema_files = [
-            path for path in files if path.stem.endswith(SCHEMA_SUFFIX)
-        ]
+        schema_files = [path for path in files if path.stem.endswith(SCHEMA_SUFFIX)]
         matched = sorted(
             path.name
             for path in operational_files
             if path.stem.upper() in registry.supported_tables()
+        )
+        rich_record_tables = sorted(
+            table_name
+            for table_name in registry.supported_tables()
+            if registry.table(table_name).record_type is not FaaRecord
         )
         unmatched = sorted(
             path.name
@@ -53,6 +57,8 @@ def build_report(
             "schema_description_files": len(schema_files),
             "matched_table_spec_count": len(matched),
             "matched_table_spec_files": matched,
+            "rich_record_table_count": len(rich_record_tables),
+            "rich_record_tables": rich_record_tables,
             "unmatched_files": unmatched,
             "unmodeled_operational_files": [
                 name for name in unmatched if not name.endswith(f"{SCHEMA_SUFFIX}.csv")
