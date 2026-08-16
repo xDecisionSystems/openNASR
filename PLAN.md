@@ -1703,7 +1703,7 @@ Tasks:
 - [x] **Agent: Luna.** Do not rely on `plt.gca()` when an axes object is already available.
 - [x] **Agent: Luna.** Keep Matplotlib imports behind the optional plotting boundary so core
       table access works without the `plot` extra.
-- [ ] **Agent: Terra.** Use noninteractive plotting tests that inspect artists and geometry.
+- [x] **Agent: Terra.** Use noninteractive plotting tests that inspect artists and geometry.
 
 Acceptance criteria:
 

@@ -45,3 +45,15 @@ def test_airport_plot_returns_figure_and_axes(make_nasr_from_fixture):
 
     assert isinstance(figure, Figure)
     assert isinstance(axes, Axes)
+
+
+def test_airport_plot_uses_noninteractive_artists(make_nasr_from_fixture):
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+    figure, axes = Airport("BWI", nasr).plot()
+
+    assert figure.axes == [axes]
+    assert axes.patches
+    assert axes.get_aspect() == 1.0
