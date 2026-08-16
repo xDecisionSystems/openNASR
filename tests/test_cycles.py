@@ -13,6 +13,7 @@ from openNASR.cycles import (
     FaaCycleProvider,
     RemoteCycle,
     locate_csv_source,
+    notify_if_update_available,
     parse_archive_date,
     read_cycle_date,
     resolve_cache_dir,
@@ -286,3 +287,24 @@ def test_failed_update_check_does_not_overwrite_successful_metadata(tmp_path):
         manager.check_for_updates(force=True)
 
     assert metadata_path.read_text(encoding="utf-8") == successful
+
+
+def test_update_notification_is_concise_and_suppresses_failures(capsys):
+    class Manager:
+        def check_for_updates(self):
+            return type(
+                "Status",
+                (),
+                {"update_available": True, "newest_remote_cycle": date(2026, 8, 6)},
+            )()
+
+    assert notify_if_update_available(Manager())
+    assert capsys.readouterr().err == (
+        "A newer FAA NASR cycle is available: 2026-08-06\n"
+    )
+
+    class FailingManager:
+        def check_for_updates(self):
+            raise OSError("offline")
+
+    assert not notify_if_update_available(FailingManager())

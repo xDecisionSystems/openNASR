@@ -12,6 +12,7 @@ import re
 import json
 import hashlib
 import tempfile
+import sys
 from urllib.request import urlopen
 from datetime import date, datetime, timedelta, timezone
 from dataclasses import dataclass
@@ -154,6 +155,22 @@ def locate_csv_source(data_path: str | Path) -> Path:
     if archives:
         return archives[0]
     raise ArchiveError(f"No NASR CSV directory or archive found in {root}")
+
+
+def notify_if_update_available(manager=None) -> bool:
+    """Safely emit one update notice; failures never escape package import."""
+
+    try:
+        status = (manager or CycleManager()).check_for_updates()
+    except Exception:
+        return False
+    if status.update_available:
+        print(
+            f"A newer FAA NASR cycle is available: {status.newest_remote_cycle}",
+            file=sys.stderr,
+        )
+        return True
+    return False
 
 
 class CycleManager:
@@ -379,6 +396,7 @@ __all__ = [
     "FaaCycleProvider",
     "parse_archive_date",
     "locate_csv_source",
+    "notify_if_update_available",
     "read_cycle_date",
     "RemoteCycle",
     "UpdateStatus",

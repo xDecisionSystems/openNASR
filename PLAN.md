@@ -1461,7 +1461,7 @@ Tasks:
 - [x] **Agent: Terra.** Do not overwrite the last successful update metadata with a failed check.
       The explicit method raises a typed `DownloadError` with its cause, while
       the import wrapper suppresses the failure after diagnostic logging.
-- [ ] **Agent: Terra.** Add `notify_if_update_available()` and call it from `openNASR/__init__.py`.
+- [x] **Agent: Terra.** Add `notify_if_update_available()` and call it from `openNASR/__init__.py`.
       It performs only the metadata check, never downloads, and prints exactly
       one concise message to `stderr` only when the remote cycle is newer than
       the newest cached cycle. It must catch every update-check/cache failure so
