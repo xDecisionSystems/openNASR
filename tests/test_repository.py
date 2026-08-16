@@ -22,3 +22,4 @@ def test_loaded_dataframes_are_cached_per_repository_instance(tmp_path):
 
     assert repository.is_loaded("APT_BASE")
     assert first is second
+    assert repository["APT_BASE"] is first

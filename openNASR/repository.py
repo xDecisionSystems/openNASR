@@ -45,5 +45,10 @@ class TableRepository:
     def is_loaded(self, name: str) -> bool:
         return normalize_table_name(name) in self._cache
 
+    def __getitem__(self, name: str) -> DataFrame:
+        """Provide mapping-style compatibility for legacy table access."""
+
+        return self.load(name)
+
 
 __all__ = ["TableRepository", "discover_tables", "normalize_table_name"]
