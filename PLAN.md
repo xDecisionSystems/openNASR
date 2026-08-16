@@ -1367,7 +1367,7 @@ Tasks:
       `@pytest.mark.skipif` gated on an explicit environment variable (e.g.
       `OPENNASR_REAL_CYCLE_DIR`), and confirm the default `pytest` run skips
       them with no environment configured.
-- [ ] **Agent: Terra.** **2.20** Audit the full new `tests/` tree for anything that opens a
+- [x] **Agent: Terra.** **2.20** Audit the full new `tests/` tree for anything that opens a
       socket, resolves a hostname, or otherwise reaches the network by
       default, and fix or explicitly mark it per Task 2.19.
 
