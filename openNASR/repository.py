@@ -12,6 +12,12 @@ def discover_tables(cycle_path: str | Path) -> tuple[str, ...]:
     return tuple(sorted({path.stem.upper() for path in root.glob("*.csv")}))
 
 
+def normalize_table_name(name: str) -> str:
+    """Normalize a requested table name to its canonical uppercase form."""
+
+    return name.strip().upper()
+
+
 class TableRepository:
     """Repository shell exposing filesystem-backed table discovery."""
 
@@ -22,5 +28,8 @@ class TableRepository:
     def available_tables(self) -> tuple[str, ...]:
         return discover_tables(self.cycle_path)
 
+    def table_path(self, name: str) -> Path:
+        return self.cycle_path / f"{normalize_table_name(name)}.csv"
 
-__all__ = ["TableRepository", "discover_tables"]
+
+__all__ = ["TableRepository", "discover_tables", "normalize_table_name"]
