@@ -22,7 +22,7 @@ from zipfile import ZipFile, is_zipfile
 
 from platformdirs import user_cache_dir
 
-from .exceptions import ArchiveError
+from .exceptions import ArchiveError, DownloadError
 
 
 APPLICATION_NAME = "openNASR"
@@ -251,7 +251,10 @@ class CycleManager:
                 )
         if self.provider is None:
             raise ValueError("A FAA cycle provider is required for update checks")
-        remote_cycle = self.provider.discover()
+        try:
+            remote_cycle = self.provider.discover()
+        except Exception as error:
+            raise DownloadError("FAA cycle metadata check failed") from error
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
         metadata_path.write_text(
             json.dumps(

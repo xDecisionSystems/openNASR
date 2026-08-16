@@ -1468,7 +1468,7 @@ Tasks:
       package import always succeeds.
 - [x] **Agent: Luna.** Support `OPENNASR_DISABLE_UPDATE_CHECK=1` for deterministic deployments
       and environments whose policy prohibits import-time network access.
-- [ ] **Agent: Terra.** Test import with: a fresh successful response, a valid cached response,
+- [x] **Agent: Terra.** Test import with: a fresh successful response, a valid cached response,
       cache older than 24 hours, `force=True`, no update, update available,
       timeout, DNS/TLS/HTTP failure, malformed response, unwritable cache, and
       the disable environment variable. Assert failures emit no user-facing

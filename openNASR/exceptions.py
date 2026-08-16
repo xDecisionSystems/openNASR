@@ -21,6 +21,10 @@ class CycleNotFoundError(OpenNASRError):
     """Raised when a requested NASR data cycle is unavailable."""
 
 
+class DownloadError(OpenNASRError):
+    """Raised when a NASR download or metadata request fails."""
+
+
 class ArchiveError(OpenNASRError):
     """Raised when a NASR archive is invalid or unsafe to extract."""
 
@@ -116,6 +120,7 @@ __all__ = [
     "ArchiveError",
     "ConfigurationError",
     "CycleNotFoundError",
+    "DownloadError",
     "OpenNASRError",
     "RecordNotFoundError",
     "SchemaMismatchError",

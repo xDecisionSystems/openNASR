@@ -8,6 +8,7 @@ import pytest
 
 from openNASR import cycles
 from openNASR.exceptions import ArchiveError
+from openNASR.exceptions import DownloadError
 from openNASR.cycles import (
     CycleManager,
     FaaCycleProvider,
@@ -283,9 +284,10 @@ def test_failed_update_check_does_not_overwrite_successful_metadata(tmp_path):
             raise OSError("timeout")
 
     manager.provider = FailingProvider()
-    with pytest.raises(OSError, match="timeout"):
+    with pytest.raises(DownloadError, match="metadata check failed") as error:
         manager.check_for_updates(force=True)
 
+    assert isinstance(error.value.__cause__, OSError)
     assert metadata_path.read_text(encoding="utf-8") == successful
 
 
