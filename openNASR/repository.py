@@ -44,7 +44,10 @@ class TableRepository(Mapping[str, DataFrame]):
         return self._cache[normalized]
 
     def table(self, name: str, *, copy: bool = False) -> DataFrame:
-        """Return the cached table; callers may request a defensive copy."""
+        """Return the cached table; mutate it only if that shared state is intended.
+
+        Pass ``copy=True`` when callers need an isolated DataFrame.
+        """
 
         frame = self.load(name)
         return frame.copy(deep=True) if copy else frame

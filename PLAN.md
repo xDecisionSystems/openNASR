@@ -1541,7 +1541,7 @@ Tasks:
 - [x] **Agent: Terra.** Implement `collections.abc.Mapping` instead of subclassing `dict` if
       behavior can remain compatible.
 - [x] **Agent: Terra.** Provide `nasr.table(name, *, copy=False)`.
-- [ ] **Agent: Terra.** Make the default return the cached DataFrame and document mutation risk.
+- [x] **Agent: Terra.** Make the default return the cached DataFrame and document mutation risk.
 - [ ] **Agent: Luna.** Return a defensive copy when `copy=True`.
 - [ ] **Agent: Terra.** Add clear errors for missing or unreadable tables.
 - [ ] **Agent: Terra.** Handle encoding fallback narrowly; never catch every exception and retry
