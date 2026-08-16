@@ -9,6 +9,7 @@ from openNASR.cycles import (
     parse_archive_date,
     read_cycle_date,
     resolve_cache_dir,
+    sha256_file,
 )
 
 
@@ -118,3 +119,13 @@ def test_completed_download_is_atomically_published_to_archives(tmp_path):
 
     assert cycle.archive_path.read_bytes() == b"archive"
     assert not manager.download_part_path(date(2026, 8, 6)).exists()
+
+
+def test_sha256_digest_and_metadata_are_stored_for_an_archive(tmp_path):
+    archive = tmp_path / "archive.zip"
+    archive.write_bytes(b"archive contents")
+    manager = CycleManager(tmp_path / "cache")
+
+    metadata = manager.store_sha256_metadata(archive)
+
+    assert sha256_file(archive) in metadata.read_text(encoding="utf-8")

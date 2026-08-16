@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import re
 import json
+import hashlib
 from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,6 +83,16 @@ def read_cycle_date(
             return effective_date
 
     raise ValueError("A metadata file or validated NASR archive filename is required")
+
+
+def sha256_file(path: str | Path) -> str:
+    """Compute a file's SHA-256 digest using bounded reads."""
+
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 class CycleManager:
@@ -179,6 +190,17 @@ class CycleManager:
         part_path.replace(destination)
         return Cycle(effective_date=effective_date, archive_path=destination)
 
+    def store_sha256_metadata(self, archive_path: str | Path) -> Path:
+        """Write a JSON sidecar containing the archive's SHA-256 digest."""
+
+        archive = Path(archive_path)
+        metadata_path = archive.with_name(f"{archive.name}.json")
+        metadata_path.write_text(
+            json.dumps({"sha256": sha256_file(archive)}, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return metadata_path
+
 
 __all__ = [
     "CACHE_DIR_ENV_VAR",
@@ -187,4 +209,5 @@ __all__ = [
     "parse_archive_date",
     "read_cycle_date",
     "resolve_cache_dir",
+    "sha256_file",
 ]
