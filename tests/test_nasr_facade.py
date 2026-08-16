@@ -161,6 +161,9 @@ def test_navaid_filters_are_optional_and_conjunctive():
 
     assert len(repository.find("dup")) == 2
     assert repository.get("dup", state=" oh ", artcc="zob")["STATE_CODE"] == "OH"
+    with pytest.raises(AmbiguousRecordError) as raised:
+        repository.get("dup")
+    assert len(raised.value.candidates) == 2
 
 
 def test_navaid_repository_supports_navtype_compatibility_alias():
