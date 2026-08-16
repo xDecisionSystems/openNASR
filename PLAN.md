@@ -1757,7 +1757,7 @@ Tasks:
       environment setup (`pip install -e ".[dev,plot]"`), how to run the
       full verification command list from "Testing matrix" below, and where
       test fixtures live.
-- [ ] **Agent: Terra.** **7.9** Add CI configuration (e.g. GitHub Actions) running the test
+- [x] **Agent: Terra.** **7.9** Add CI configuration (e.g. GitHub Actions) running the test
       suite on the minimum supported Python version (Task 0.1) and the
       newest released Python version.
 - [ ] **Agent: Terra.** **7.10** In the same CI configuration, add required (non-`continue-on-error`)
