@@ -168,6 +168,17 @@ class CycleManager:
                 output.write(chunk)
         return part_path
 
+    def publish_download(self, effective_date: date) -> Cycle:
+        """Atomically move a completed temporary download into the archive cache."""
+
+        part_path = self.download_part_path(effective_date)
+        destination = self.archives_dir / (
+            f"28DaySubscription_Effective_{effective_date.isoformat()}.zip"
+        )
+        self.archives_dir.mkdir(parents=True, exist_ok=True)
+        part_path.replace(destination)
+        return Cycle(effective_date=effective_date, archive_path=destination)
+
 
 __all__ = [
     "CACHE_DIR_ENV_VAR",

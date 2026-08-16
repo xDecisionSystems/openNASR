@@ -1441,7 +1441,7 @@ Tasks:
 - [x] **Agent: Terra.** Import an existing archive without modifying the original file.
 - [x] **Agent: Terra.** Download to a temporary `.part` file in the cache.
 - [x] **Agent: Terra.** Stream downloads instead of reading the entire archive into memory.
-- [ ] **Agent: Terra.** Atomically rename successful downloads.
+- [x] **Agent: Terra.** Atomically rename successful downloads.
 - [ ] **Agent: Luna.** Compute and store SHA-256 metadata.
 - [ ] **Agent: Terra.** Reject HTML error pages and obviously invalid archives.
 - [ ] **Agent: Sol.** Extract into a temporary directory, validate it, then atomically publish

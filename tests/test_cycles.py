@@ -108,3 +108,13 @@ def test_download_data_is_written_in_chunks_to_the_part_file(tmp_path):
     part_path = manager.write_download_part(date(2026, 8, 6), [b"first", b"second"])
 
     assert part_path.read_bytes() == b"firstsecond"
+
+
+def test_completed_download_is_atomically_published_to_archives(tmp_path):
+    manager = CycleManager(tmp_path)
+    manager.write_download_part(date(2026, 8, 6), [b"archive"])
+
+    cycle = manager.publish_download(date(2026, 8, 6))
+
+    assert cycle.archive_path.read_bytes() == b"archive"
+    assert not manager.download_part_path(date(2026, 8, 6)).exists()
