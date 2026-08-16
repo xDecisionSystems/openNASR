@@ -8,7 +8,7 @@ from pathlib import Path
 from pandas import DataFrame, read_csv
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError, TableNotFoundError
-from .records import AirportRecord, FaaRecord
+from .records import AirportRecord, FaaRecord, RunwayEndRecord, RunwayRecord
 
 
 def discover_tables(cycle_path: str | Path) -> tuple[str, ...]:
@@ -125,7 +125,9 @@ class AirportRepository:
             self._table["ARPT_ID"].map(self._normalized).eq(normalized_identifier)
             | self._table["ICAO_ID"].map(self._normalized).eq(normalized_identifier)
         ]
-        records = tuple(AirportRecord(row) for row in rows.to_dict(orient="records"))
+        records = tuple(
+            self._airport_record(row) for row in rows.to_dict(orient="records")
+        )
         if not records:
             raise RecordNotFoundError(entity_type="Airport", identifier=identifier)
         if len(records) > 1:
@@ -135,6 +137,23 @@ class AirportRepository:
                 candidates=records,
             )
         return records[0]
+
+    def _airport_record(self, row: dict[str, object]) -> AirportRecord:
+        identifier = self._normalized(row["ARPT_ID"])
+        return AirportRecord(
+            row,
+            runways=self._related_records("APT_RWY", identifier, RunwayRecord),
+            runway_ends=self._related_records(
+                "APT_RWY_END", identifier, RunwayEndRecord
+            ),
+        )
+
+    def _related_records(self, table: str, identifier: str, record_type):
+        frame = self._nasr.get(table)
+        if frame is None or "ARPT_ID" not in frame.columns:
+            return ()
+        rows = frame[frame["ARPT_ID"].map(self._normalized).eq(identifier)]
+        return tuple(record_type(row) for row in rows.to_dict(orient="records"))
 
 
 class RecordRepository:

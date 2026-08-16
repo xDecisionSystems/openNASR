@@ -141,8 +141,37 @@ class FaaRecord(Mapping[str, object]):
             raise AttributeError(name) from error
 
 
+class RunwayRecord(FaaRecord):
+    """Lossless typed marker for an airport runway row."""
+
+
+class RunwayEndRecord(FaaRecord):
+    """Lossless typed marker for an airport runway-end row."""
+
+
 class AirportRecord(FaaRecord):
     """Airport record with nullable typed conveniences over lossless FAA fields."""
+
+    def __init__(
+        self,
+        raw: Mapping[str, object],
+        *,
+        runways: tuple[RunwayRecord, ...] = (),
+        runway_ends: tuple[RunwayEndRecord, ...] = (),
+    ) -> None:
+        super().__init__(raw)
+        self._runways = runways
+        self._runway_ends = runway_ends
+
+    @property
+    def runways(self) -> tuple[RunwayRecord, ...]:
+        """Immutable collection of runways belonging to this airport."""
+        return self._runways
+
+    @property
+    def runway_ends(self) -> tuple[RunwayEndRecord, ...]:
+        """Immutable collection of runway ends belonging to this airport."""
+        return self._runway_ends
 
     def _field_context(self, column: str) -> FieldContext:
         return FieldContext(
@@ -198,6 +227,8 @@ class AirportRecord(FaaRecord):
 __all__ = [
     "FaaRecord",
     "AirportRecord",
+    "RunwayEndRecord",
+    "RunwayRecord",
     "FieldContext",
     "boolean",
     "coordinate",

@@ -47,6 +47,17 @@ def test_airport_record_exposes_typed_nullable_properties():
     assert AirportRecord({"ARPT_ID": ""}).faa_id is None
 
 
+def test_airport_record_exposes_immutable_typed_runway_collections(fixture_nasr):
+    nasr, _ = fixture_nasr
+
+    airport = nasr.airports.get("BWI")
+
+    assert isinstance(airport.runways, tuple)
+    assert isinstance(airport.runway_ends, tuple)
+    assert airport.runways[0]["RWY_ID"] == "10/28"
+    assert airport.runway_ends[0]["RWY_END_ID"] == 10
+
+
 def test_record_repository_normalizes_composite_keys_and_optional_filters():
     repository = RecordRepository(
         pd.DataFrame(
