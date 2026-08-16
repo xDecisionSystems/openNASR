@@ -1359,7 +1359,7 @@ Tasks:
 - [x] **Agent: Terra.** **2.17** Add only the identifier-normalization tests needed by existing
       Milestone 1 behavior. Milestone 5 owns the final repository-wide
       normalization contract; do not add skipped future tests.
-- [ ] **Agent: Luna.** **2.18** Move projection round-trip coverage to Milestone 6, where the
+- [x] **Agent: Luna.** **2.18** Move projection round-trip coverage to Milestone 6, where the
       corrected coordinate contract is implemented. Milestone 2 only verifies
       that importing core lookup functionality does not require plotting.
 - [ ] **Agent: Luna.** **2.19** Mark any test that requires a real, multi-gigabyte local FAA
