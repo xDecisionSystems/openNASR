@@ -186,8 +186,8 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `COM` | `communications.py` | `CommunicationOutletRecord` | `CommunicationOutlet`; `nasr.communication_outlets` | Proposed |
-| `FRQ` | `communications.py` | `FrequencyRecord` | `Frequency`; `nasr.frequencies` | Proposed |
+| `COM` | `communications.py` | `CommunicationOutletRecord` | `CommunicationOutlet`; `nasr.communication_outlets` | Existing |
+| `FRQ` | `communications.py` | `FrequencyRecord` | `Frequency`; `nasr.frequencies` | Existing |
 
 ## Flight service station files
 

@@ -331,6 +331,58 @@ class HoldingPatternSpeedAltitudeRecord(HoldingPatternRecord):
         return self._text("ALTITUDE")
 
 
+class CommunicationOutletRecord(FaaRecord):
+    """Typed conveniences for a standalone ``COM`` communication outlet."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def identifier(self) -> str | None:
+        return self._text("COMM_LOC_ID")
+
+    @property
+    def name(self) -> str | None:
+        return self._text("COMM_OUTLET_NAME")
+
+    @property
+    def communication_type(self) -> str | None:
+        return self._text("COMM_TYPE")
+
+
+class FrequencyRecord(FaaRecord):
+    """Typed conveniences for a standalone ``FRQ`` frequency assignment."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def frequency_key(
+        self,
+    ) -> tuple[str, str, str | None, str | None, str | None] | None:
+        facility = self._text("FACILITY")
+        frequency = self._text("FREQ")
+        if facility is None or frequency is None:
+            return None
+        return (
+            facility,
+            frequency,
+            self._text("FREQ_SUFFIX"),
+            self._text("USE_CODE"),
+            self._text("FREQ_USE"),
+        )
+
+    @property
+    def facility(self) -> str | None:
+        return self._text("FACILITY")
+
+    @property
+    def frequency(self) -> str | None:
+        return self._text("FREQ")
+
+
 class FixRecord(FaaRecord):
     """Fix record with nullable typed conveniences over lossless FAA fields."""
 
@@ -552,6 +604,7 @@ __all__ = [
     "AirwayRecord",
     "AirwaySegmentRecord",
     "ClassAirspaceRecord",
+    "CommunicationOutletRecord",
     "DmeRecord",
     "GlideSlopeRecord",
     "HoldingPatternChartRecord",
@@ -559,6 +612,7 @@ __all__ = [
     "HoldingPatternRemarkRecord",
     "HoldingPatternSpeedAltitudeRecord",
     "FixRecord",
+    "FrequencyRecord",
     "IlsRecord",
     "MarkerRecord",
     "MilitaryOperationRecord",

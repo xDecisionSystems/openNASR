@@ -7,6 +7,7 @@ from .arb import ARB
 from .airspace import ClassAirspaceRepository
 from .airway import AirwayRepository
 from .holding import HoldingPatternRepository
+from .communications import CommunicationOutletRepository, FrequencyRepository
 from .military import MilitaryOperationRepository
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
@@ -47,6 +48,8 @@ class NASR(dict):
         self.class_airspaces = ClassAirspaceRepository(self)
         self.airways = AirwayRepository(self)
         self.holding_patterns = HoldingPatternRepository(self)
+        self.communication_outlets = CommunicationOutletRepository(self)
+        self.frequencies = FrequencyRepository(self)
         self.military_operations = MilitaryOperationRepository(self)
         self.airports = AirportRepository(self)
         self.fixes = FixRepository(self)
@@ -225,6 +228,16 @@ class NASR(dict):
     def holding_pattern(self, identifier: tuple[str, str, str | None, str]):
         """Return the holding pattern selected by its complete FAA key."""
         return self.holding_patterns.get(identifier)
+
+    def communication_outlet(self, identifier: str):
+        """Return the communication outlet selected by its FAA identifier."""
+        return self.communication_outlets.get(identifier)
+
+    def frequency(
+        self, identifier: tuple[str, str, str | None, str | None, str | None]
+    ):
+        """Return the frequency selected by its complete FAA composite key."""
+        return self.frequencies.get(identifier)
 
     def isAirway(self, airway: str):
         return airway in self["AWY_BASE"]["AWY_ID"].to_list()

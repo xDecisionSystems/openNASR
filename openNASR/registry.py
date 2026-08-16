@@ -9,12 +9,14 @@ from pathlib import Path
 from .exceptions import SchemaMismatchError, TableNotFoundError
 from .records import (
     ClassAirspaceRecord,
+    CommunicationOutletRecord,
     FaaRecord,
     HoldingPatternChartRecord,
     HoldingPatternRecord,
     HoldingPatternRemarkRecord,
     HoldingPatternSpeedAltitudeRecord,
     MilitaryOperationRecord,
+    FrequencyRecord,
 )
 from .schemas import SchemaCatalog
 
@@ -26,6 +28,7 @@ AIRWAY_SEGMENT_KEY = (*AIRWAY_KEY, "POINT_SEQ")
 AIRWAY_TABLES = frozenset({"AWY_BASE", "AWY_SEG_ALT"})
 HOLDING_PATTERN_KEY = ("HP_NAME", "HP_NO", "STATE_CODE", "COUNTRY_CODE")
 HOLDING_PATTERN_TABLES = frozenset({"HPF_BASE", "HPF_CHRT", "HPF_RMK", "HPF_SPD_ALT"})
+FREQUENCY_KEY = ("FACILITY", "FREQ", "FREQ_SUFFIX", "USE_CODE", "FREQ_USE")
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "CLS_ARSP": ClassAirspaceRecord,
     "MIL_OPS": MilitaryOperationRecord,
@@ -33,6 +36,8 @@ RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "HPF_CHRT": HoldingPatternChartRecord,
     "HPF_RMK": HoldingPatternRemarkRecord,
     "HPF_SPD_ALT": HoldingPatternSpeedAltitudeRecord,
+    "COM": CommunicationOutletRecord,
+    "FRQ": FrequencyRecord,
 }
 
 
@@ -214,6 +219,17 @@ class TableRegistry:
                             HOLDING_PATTERN_KEY,
                         ),
                     )
+                elif table_name == "COM":
+                    identity_key = ("COMM_LOC_ID",)
+                    indexes = (
+                        IndexSpec("communication_outlet", identity_key, unique=True),
+                    )
+                elif table_name == "FRQ":
+                    identity_key = FREQUENCY_KEY
+                    indexes = (
+                        IndexSpec("frequency", FREQUENCY_KEY, unique=True),
+                        IndexSpec("facility", ("FACILITY",), unique=False),
+                    )
                 variants.append(
                     TableVariantSpec(
                         schema_id=schema_id,
@@ -291,6 +307,7 @@ __all__ = [
     "AIRWAY_TABLES",
     "HOLDING_PATTERN_KEY",
     "HOLDING_PATTERN_TABLES",
+    "FREQUENCY_KEY",
     "IndexSpec",
     "RICH_RECORD_TYPES",
     "RelationshipSpec",
