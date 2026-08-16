@@ -1362,7 +1362,7 @@ Tasks:
 - [x] **Agent: Luna.** **2.18** Move projection round-trip coverage to Milestone 6, where the
       corrected coordinate contract is implemented. Milestone 2 only verifies
       that importing core lookup functionality does not require plotting.
-- [ ] **Agent: Luna.** **2.19** Mark any test that requires a real, multi-gigabyte local FAA
+- [x] **Agent: Luna.** **2.19** Mark any test that requires a real, multi-gigabyte local FAA
       cycle (as opposed to the Task 2.1 fixture) with
       `@pytest.mark.skipif` gated on an explicit environment variable (e.g.
       `OPENNASR_REAL_CYCLE_DIR`), and confirm the default `pytest` run skips

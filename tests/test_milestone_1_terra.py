@@ -1,5 +1,7 @@
 """Regression coverage for the Terra-owned Milestone 1 fixes."""
 
+import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -87,13 +89,25 @@ def test_airport_and_fix_construction_against_core_fixture(make_nasr_from_fixtur
 
 def test_nasr_cycle_selection_artcc_and_preload_behavior(make_nasr_from_fixture):
     nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
-    exact_cycle = NASR(useDate="2026-08-06")
-
-    assert exact_cycle._NASR__useDate == "2026-08-06"
     nasr.loadARTCC()
     assert nasr.artcc.getARTCC("ZOB").high.getShape.is_valid
     with pytest.raises(NotImplementedError, match="preloadAll"):
         NASR(preloadAll=True)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("OPENNASR_REAL_CYCLE_DIR"),
+    reason="requires an explicitly configured real FAA NASR cycle",
+)
+def test_real_cycle_selection_uses_configured_cycle(monkeypatch):
+    import openNASR.nasr as nasr_module
+
+    cycle_root = Path(os.environ["OPENNASR_REAL_CYCLE_DIR"])
+    monkeypatch.setattr(nasr_module, "__file__", str(cycle_root / "nasr.py"))
+
+    exact_cycle = NASR(useDate="2026-08-06")
+
+    assert exact_cycle._NASR__useDate == "2026-08-06"
 
 
 def test_missing_cycle_raises_typed_error(monkeypatch, tmp_path):
