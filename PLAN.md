@@ -1287,7 +1287,7 @@ Tasks:
       any column a Milestone 1 regression test also needs. Give the two
       airports different FAA and ICAO identifiers so Task 1.12's
       ICAO-resolution regression test is meaningful.
-- [ ] **Agent: Luna.** **2.3** Verify or extend `APT_RWY.csv` and `APT_RWY_END.csv` with at least
+- [x] **Agent: Luna.** **2.3** Verify or extend `APT_RWY.csv` and `APT_RWY_END.csv` with at least
       one reciprocal runway pair (e.g. `01/19`) for one of the two Task 2.2
       airports, including both runway ends so `Airport.makeRWYbnds`
       (`airport.py:75-81`) has real geometry to build.

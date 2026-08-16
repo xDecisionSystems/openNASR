@@ -50,3 +50,18 @@ def test_cycle_fixture_airport_base_is_minimal_and_has_two_identifiers():
     ]
     assert len(lines) == 3
     assert {line.split(",")[0] for line in lines[1:]} == {"BWI", "DCA"}
+
+
+def test_cycle_fixture_contains_reciprocal_runway_ends():
+    csv_root = (
+        Path(__file__).parent
+        / "fixtures"
+        / "cycle"
+        / "CSV_Data"
+        / CORE_CYCLE_STEM
+    )
+    runway_rows = (csv_root / "APT_RWY.csv").read_text(encoding="utf-8").splitlines()
+    end_rows = (csv_root / "APT_RWY_END.csv").read_text(encoding="utf-8").splitlines()
+
+    assert any("BWI" in row and "10/28" in row for row in runway_rows[1:])
+    assert {row.split(",")[8] for row in end_rows[1:]} >= {"10", "28"}
