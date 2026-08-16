@@ -1310,7 +1310,7 @@ Tasks:
       into a valid simple polygon (no self-intersection) — validate this
       with `shapely.geometry.Polygon(...).is_valid` in the fixture-building
       test itself, not just by eyeballing the coordinates.
-- [ ] **Agent: Terra.** **2.8** Add at least one malformed fixture (e.g. a CSV with a missing
+- [x] **Agent: Terra.** **2.8** Add at least one malformed fixture (e.g. a CSV with a missing
       required column, or a row with an unparseable coordinate value) under
       `tests/fixtures/malformed/` for the error-path tests in Task 2.13.
 - [ ] **Agent: Terra.** **2.9** Add at least one fixture cycle variant under

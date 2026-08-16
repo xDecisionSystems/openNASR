@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_DIR = ROOT / "tests" / "fixtures" / "manifests"
 FIXTURE_DIR = ROOT / "tests" / "fixtures"
 CORE_CYCLE_STEM = "28DaySubscription_Effective_2099-01-01"
+MALFORMED_CYCLE_STEM = "28DaySubscription_Effective_2099-01-02"
+MISSING_TABLE_CYCLE_STEM = "28DaySubscription_Effective_2099-01-03"
 CORE_CYCLE_COLUMNS = {
     "APT_BASE": (
         "ARPT_ID",
@@ -291,6 +293,25 @@ def build_core_fixture() -> None:
                 )
             else:
                 write_csv(destination / f"{table_name}.csv", header, table_rows)
+
+    malformed_destination = (
+        FIXTURE_DIR / "malformed" / "CSV_Data" / MALFORMED_CYCLE_STEM
+    )
+    malformed_destination.mkdir(parents=True, exist_ok=True)
+    for table_name, table_rows in rows.items():
+        header = list(CORE_CYCLE_COLUMNS.get(table_name, ()))
+        if not header:
+            header = [
+                column["name"]
+                for column in manifest["tables"][table_name]["columns"]
+            ]
+        if table_name == "APT_BASE":
+            header.remove("ARPT_ID")
+        projected_rows = [
+            {name: value for name, value in row.items() if name in header}
+            for row in table_rows
+        ]
+        write_csv(malformed_destination / f"{table_name}.csv", header, projected_rows)
 
 
 def main() -> None:
