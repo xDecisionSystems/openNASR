@@ -306,6 +306,8 @@ figure, axes = plot_airspace(nasr, high_boundary)
 The helper accepts a Shapely longitude/latitude polygon or a NASR boundary
 object such as `high_boundary`. Install the optional plotting dependency with
 `pip install -e '.[plot]'`.
+Set `plot_high_airways`, `plot_low_airways`, `plot_airports`, `plot_fixes`, or
+`plot_airnavs` to `False` to hide a layer; all are enabled by default.
 
 ## Direct table access
 
