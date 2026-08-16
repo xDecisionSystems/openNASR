@@ -33,6 +33,9 @@ dev = ["pytest", "ruff", "mypy"]
 [project.urls]
 Homepage = "https://github.com/ADCLab/openNASR"
 
+[project.scripts]
+opennasr = "openNASR.cli:main"
+
 [tool.setuptools]
 packages = ["openNASR"]
 

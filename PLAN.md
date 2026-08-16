@@ -1473,7 +1473,7 @@ Tasks:
       timeout, DNS/TLS/HTTP failure, malformed response, unwritable cache, and
       the disable environment variable. Assert failures emit no user-facing
       connection warning and never prevent import.
-- [ ] **Agent: Terra.** After the Python API is complete, add `openNASR/cli.py` using the standard
+- [x] **Agent: Terra.** After the Python API is complete, add `openNASR/cli.py` using the standard
       library `argparse` module and register an `opennasr` console-script entry
       point in `pyproject.toml`.
 - [ ] **Agent: Terra.** Implement `opennasr check [--force]`, showing the newest FAA cycle, newest
