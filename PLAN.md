@@ -1439,7 +1439,7 @@ Tasks:
 - [x] **Agent: Terra.** Validate archive names without relying solely on lexical sorting.
 - [x] **Agent: Terra.** Read the cycle date from trusted metadata or a validated filename.
 - [x] **Agent: Terra.** Import an existing archive without modifying the original file.
-- [ ] **Agent: Terra.** Download to a temporary `.part` file in the cache.
+- [x] **Agent: Terra.** Download to a temporary `.part` file in the cache.
 - [ ] **Agent: Terra.** Stream downloads instead of reading the entire archive into memory.
 - [ ] **Agent: Terra.** Atomically rename successful downloads.
 - [ ] **Agent: Luna.** Compute and store SHA-256 metadata.

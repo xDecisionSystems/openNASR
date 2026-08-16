@@ -150,6 +150,15 @@ class CycleManager:
             copy2(source, destination)
         return Cycle(effective_date=effective_date, archive_path=destination)
 
+    def download_part_path(self, effective_date: date) -> Path:
+        """Return the temporary cache path reserved for a cycle download."""
+
+        downloads_dir = self.cache_dir / "downloads"
+        downloads_dir.mkdir(parents=True, exist_ok=True)
+        return downloads_dir / (
+            f"28DaySubscription_Effective_{effective_date.isoformat()}.zip.part"
+        )
+
 
 __all__ = [
     "CACHE_DIR_ENV_VAR",

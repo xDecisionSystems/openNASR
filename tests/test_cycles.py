@@ -92,3 +92,11 @@ def test_import_archive_copies_the_source_without_modifying_it(tmp_path):
     assert source.read_bytes() == b"fixture archive"
     assert cycle.effective_date == date(2026, 8, 6)
     assert cycle.archive_path.read_bytes() == b"fixture archive"
+
+
+def test_downloads_use_a_temporary_part_path(tmp_path):
+    part_path = CycleManager(tmp_path).download_part_path(date(2026, 8, 6))
+
+    assert part_path.parent == tmp_path / "downloads"
+    assert part_path.name.endswith(".zip.part")
+    assert not part_path.exists()
