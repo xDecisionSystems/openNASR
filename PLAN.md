@@ -1870,7 +1870,7 @@ Tasks:
 
 - [x] **Agent: Sol.** **10.1** Verify procedure codes, airport associations, route identifiers,
       and ordering columns for both supported schemas.
-- [ ] **Agent: Terra.** **10.2** Implement `CodedDepartureRouteRecord` and rich
+- [x] **Agent: Terra.** **10.2** Implement `CodedDepartureRouteRecord` and rich
       `CodedDepartureRoute` objects through `nasr.coded_departure_routes`.
 - [ ] **Agent: Terra.** **10.3** Implement `DepartureProcedureRecord`, `DepartureAirportRecord`,
       and `DepartureRouteRecord`; expose rich `DepartureProcedure` objects via

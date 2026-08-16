@@ -437,6 +437,26 @@ class FrequencyRecord(FaaRecord):
         return self._text("FREQ")
 
 
+class CodedDepartureRouteRecord(FaaRecord):
+    """Typed conveniences for a standalone ``CDR`` coded departure route."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def route_code(self) -> str | None:
+        return self._text("RCode")
+
+    @property
+    def origin(self) -> str | None:
+        return self._text("Orig")
+
+    @property
+    def destination(self) -> str | None:
+        return self._text("Dest")
+
+
 class FixRecord(FaaRecord):
     """Fix record with nullable typed conveniences over lossless FAA fields."""
 
@@ -662,6 +682,7 @@ __all__ = [
     "AirwayRecord",
     "AirwaySegmentRecord",
     "ClassAirspaceRecord",
+    "CodedDepartureRouteRecord",
     "CommunicationOutletRecord",
     "DmeRecord",
     "GlideSlopeRecord",

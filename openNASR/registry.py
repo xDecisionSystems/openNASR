@@ -12,6 +12,7 @@ from .records import (
     AirwaySegmentRecord,
     ClassAirspaceRecord,
     CommunicationOutletRecord,
+    CodedDepartureRouteRecord,
     FaaRecord,
     FixRecord,
     FrequencyRecord,
@@ -127,6 +128,7 @@ PROCEDURE_ROUTE_TABLES = frozenset(
     }
 )
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
+    "CDR": CodedDepartureRouteRecord,
     "AWY_BASE": AirwayRecord,
     "AWY_SEG_ALT": AirwaySegmentRecord,
     "CLS_ARSP": ClassAirspaceRecord,

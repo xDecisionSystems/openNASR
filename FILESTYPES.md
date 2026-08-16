@@ -163,7 +163,7 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `CDR` | `routes.py` | `CodedDepartureRouteRecord` | `CodedDepartureRoute`; `nasr.coded_departure_routes` | Proposed |
+| `CDR` | `routes.py` | `CodedDepartureRouteRecord` | `CodedDepartureRoute`; `nasr.coded_departure_routes` | Existing |
 | `DP_BASE` | `routes.py` | `DepartureProcedureRecord` | `DepartureProcedure`; `nasr.departures`; `nasr.departure()` | Existing |
 | `DP_APT` | `routes.py` | `DepartureAirportRecord` | `DepartureProcedure.airports` | Proposed |
 | `DP_RTE` | `routes.py` | `DepartureRouteRecord` | `DepartureProcedure.routes` | Existing |
