@@ -308,3 +308,13 @@ def test_update_notification_is_concise_and_suppresses_failures(capsys):
             raise OSError("offline")
 
     assert not notify_if_update_available(FailingManager())
+
+
+def test_disable_update_check_skips_provider(monkeypatch):
+    monkeypatch.setenv("OPENNASR_DISABLE_UPDATE_CHECK", "1")
+
+    class FailingManager:
+        def check_for_updates(self):
+            raise AssertionError("provider should not be called")
+
+    assert not notify_if_update_available(FailingManager())

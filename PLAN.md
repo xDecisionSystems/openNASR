@@ -1466,7 +1466,7 @@ Tasks:
       one concise message to `stderr` only when the remote cycle is newer than
       the newest cached cycle. It must catch every update-check/cache failure so
       package import always succeeds.
-- [ ] **Agent: Luna.** Support `OPENNASR_DISABLE_UPDATE_CHECK=1` for deterministic deployments
+- [x] **Agent: Luna.** Support `OPENNASR_DISABLE_UPDATE_CHECK=1` for deterministic deployments
       and environments whose policy prohibits import-time network access.
 - [ ] **Agent: Terra.** Test import with: a fresh successful response, a valid cached response,
       cache older than 24 hours, `force=True`, no update, update available,

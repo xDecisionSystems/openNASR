@@ -160,6 +160,8 @@ def locate_csv_source(data_path: str | Path) -> Path:
 def notify_if_update_available(manager=None) -> bool:
     """Safely emit one update notice; failures never escape package import."""
 
+    if os.environ.get("OPENNASR_DISABLE_UPDATE_CHECK") == "1":
+        return False
     try:
         status = (manager or CycleManager()).check_for_updates()
     except Exception:
