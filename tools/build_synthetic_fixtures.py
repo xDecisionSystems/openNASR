@@ -12,6 +12,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_DIR = ROOT / "tests" / "fixtures" / "manifests"
 FIXTURE_DIR = ROOT / "tests" / "fixtures"
+CORE_CYCLE_STEM = "28DaySubscription_Effective_2099-01-01"
 
 
 def read_manifest(schema_id: str) -> dict[str, Any]:
@@ -69,7 +70,12 @@ def build_schema_only(schema_id: str) -> None:
 def build_core_fixture() -> None:
     schema_id = "pre_2026_09"
     manifest = read_manifest(schema_id)
-    destination = fixture_csv_dir("core", schema_id)
+    destinations = (
+        fixture_csv_dir("core", schema_id),
+        FIXTURE_DIR / "cycle" / "CSV_Data" / CORE_CYCLE_STEM,
+    )
+    for destination in destinations:
+        destination.mkdir(parents=True, exist_ok=True)
     rows = {
         "APT_BASE": [
             {
@@ -265,7 +271,8 @@ def build_core_fixture() -> None:
             column["name"]
             for column in manifest["tables"][table_name]["columns"]
         ]
-        write_csv(destination / f"{table_name}.csv", header, table_rows)
+        for destination in destinations:
+            write_csv(destination / f"{table_name}.csv", header, table_rows)
 
 
 def main() -> None:

@@ -1271,7 +1271,7 @@ so no agent tries to "convert" it as-is.
 
 Tasks:
 
-- [ ] **Agent: Terra.** **2.1** Promote the Milestone 0B core fixture to
+- [x] **Agent: Terra.** **2.1** Promote the Milestone 0B core fixture to
       `tests/fixtures/cycle/CSV_Data/<stem>/` (matching the
       nested layout `NASR.checkForDecompressed` expects at `nasr.py:82-91`,
       i.e. a `CSV_Data/` directory containing one subdirectory of `.csv`
