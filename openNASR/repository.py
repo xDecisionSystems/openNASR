@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
 from pathlib import Path
 
 from pandas import DataFrame, read_csv
@@ -20,7 +21,7 @@ def normalize_table_name(name: str) -> str:
     return name.strip().upper()
 
 
-class TableRepository:
+class TableRepository(Mapping[str, DataFrame]):
     """Repository shell exposing filesystem-backed table discovery."""
 
     def __init__(self, cycle_path: str | Path) -> None:
@@ -49,6 +50,12 @@ class TableRepository:
         """Provide mapping-style compatibility for legacy table access."""
 
         return self.load(name)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.available_tables)
+
+    def __len__(self) -> int:
+        return len(self.available_tables)
 
 
 __all__ = ["TableRepository", "discover_tables", "normalize_table_name"]

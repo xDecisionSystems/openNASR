@@ -1538,7 +1538,7 @@ Tasks:
 - [x] **Agent: Luna.** Normalize requested table names to uppercase.
 - [x] **Agent: Terra.** Cache each loaded DataFrame per `NASR` instance.
 - [x] **Agent: Terra.** Preserve `nasr["APT_BASE"]` compatibility by delegating to the repository.
-- [ ] **Agent: Terra.** Implement `collections.abc.Mapping` instead of subclassing `dict` if
+- [x] **Agent: Terra.** Implement `collections.abc.Mapping` instead of subclassing `dict` if
       behavior can remain compatible.
 - [ ] **Agent: Terra.** Provide `nasr.table(name, *, copy=False)`.
 - [ ] **Agent: Terra.** Make the default return the cached DataFrame and document mutation risk.

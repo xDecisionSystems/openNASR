@@ -1,4 +1,5 @@
 from openNASR.repository import TableRepository, discover_tables, normalize_table_name
+from collections.abc import Mapping
 
 
 def test_table_discovery_uses_filenames_without_reading_csv_contents(tmp_path):
@@ -23,3 +24,5 @@ def test_loaded_dataframes_are_cached_per_repository_instance(tmp_path):
     assert repository.is_loaded("APT_BASE")
     assert first is second
     assert repository["APT_BASE"] is first
+    assert isinstance(repository, Mapping)
+    assert list(repository) == ["APT_BASE"]
