@@ -11,7 +11,9 @@ import os
 import re
 import json
 from datetime import date
+from dataclasses import dataclass
 from pathlib import Path
+from shutil import copy2
 
 from platformdirs import user_cache_dir
 
@@ -21,6 +23,16 @@ CACHE_DIR_ENV_VAR = "OPENNASR_CACHE_DIR"
 ARCHIVE_NAME_PATTERN = re.compile(
     r"^28DaySubscription_Effective_(?P<effective_date>\d{4}-\d{2}-\d{2})\.zip$"
 )
+
+
+@dataclass(frozen=True)
+class Cycle:
+    """A locally known NASR cycle."""
+
+    effective_date: date
+    archive_path: Path | None = None
+    data_path: Path | None = None
+    source_url: str | None = None
 
 
 def resolve_cache_dir(cache_dir: str | Path | None = None) -> Path:
@@ -119,9 +131,29 @@ class CycleManager:
             sorted(path for path in self.cycles_dir.iterdir() if path.is_dir())
         )
 
+    def import_archive(
+        self, path: str | Path, *, expected_cycle: date | None = None
+    ) -> Cycle:
+        """Copy a validated archive into the cache without altering its source."""
+
+        source = Path(path)
+        effective_date = parse_archive_date(source)
+        if effective_date is None:
+            raise ValueError(f"Invalid NASR archive filename: {source.name}")
+        if expected_cycle is not None and effective_date != expected_cycle:
+            raise ValueError(
+                f"Archive date {effective_date} does not match {expected_cycle}"
+            )
+        self.archives_dir.mkdir(parents=True, exist_ok=True)
+        destination = self.archives_dir / source.name
+        if source.resolve() != destination.resolve():
+            copy2(source, destination)
+        return Cycle(effective_date=effective_date, archive_path=destination)
+
 
 __all__ = [
     "CACHE_DIR_ENV_VAR",
+    "Cycle",
     "CycleManager",
     "parse_archive_date",
     "read_cycle_date",

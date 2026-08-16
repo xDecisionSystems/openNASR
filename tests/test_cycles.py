@@ -81,3 +81,14 @@ def test_cycle_date_falls_back_to_a_validated_archive_name(tmp_path):
     archive = tmp_path / "28DaySubscription_Effective_2026-08-06.zip"
 
     assert read_cycle_date(archive_path=archive) == date(2026, 8, 6)
+
+
+def test_import_archive_copies_the_source_without_modifying_it(tmp_path):
+    source = tmp_path / "28DaySubscription_Effective_2026-08-06.zip"
+    source.write_bytes(b"fixture archive")
+
+    cycle = CycleManager(tmp_path / "cache").import_archive(source)
+
+    assert source.read_bytes() == b"fixture archive"
+    assert cycle.effective_date == date(2026, 8, 6)
+    assert cycle.archive_path.read_bytes() == b"fixture archive"
