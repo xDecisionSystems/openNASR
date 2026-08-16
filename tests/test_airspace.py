@@ -8,5 +8,7 @@ def test_load_artcc_and_access_high_boundary(make_nasr_from_fixture):
     zob = nasr.artcc.getARTCC("ZOB")
 
     assert zob is not None
+    assert zob.boundaries["high"] is zob.high
+    assert zob.boundaries["low"] is zob.low
     assert zob.high.getShape.is_valid
     assert zob.low.getShape.is_valid

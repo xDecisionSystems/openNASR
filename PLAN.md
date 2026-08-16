@@ -1662,7 +1662,7 @@ Later `1.x` milestones add repositories using the same contract.
 
 ### ARTCC and boundary requirements
 
-- [ ] **Agent: Terra.** Replace dynamic attributes as the sole boundary interface with an
+- [x] **Agent: Terra.** Replace dynamic attributes as the sole boundary interface with an
       explicit mapping keyed by altitude or boundary type.
 - [ ] **Agent: Terra.** Retain `.high` and `.low` compatibility properties where meaningful.
 - [ ] **Agent: Terra.** Preserve disjoint polygon parts; do not accidentally join independent
