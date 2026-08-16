@@ -37,6 +37,7 @@ def test_airport_record_exposes_typed_nullable_properties():
             "LAT_DECIMAL": "39.1754",
             "LONG_DECIMAL": "-76.6684",
             "ELEV": "146",
+            "UNMODELED_FAA_FIELD": "preserved verbatim",
         }
     )
 
@@ -46,6 +47,7 @@ def test_airport_record_exposes_typed_nullable_properties():
     assert airport.latitude == 39.1754
     assert airport.longitude == -76.6684
     assert airport.elevation_ft == 146.0
+    assert airport.raw["UNMODELED_FAA_FIELD"] == "preserved verbatim"
     assert AirportRecord({"ARPT_ID": ""}).faa_id is None
 
 
