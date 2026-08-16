@@ -1476,7 +1476,7 @@ Tasks:
 - [x] **Agent: Terra.** After the Python API is complete, add `openNASR/cli.py` using the standard
       library `argparse` module and register an `opennasr` console-script entry
       point in `pyproject.toml`.
-- [ ] **Agent: Terra.** Implement `opennasr check [--force]`, showing the newest FAA cycle, newest
+- [x] **Agent: Terra.** Implement `opennasr check [--force]`, showing the newest FAA cycle, newest
       cached cycle, cache age, and whether a download is available.
 - [ ] **Agent: Terra.** Implement `opennasr download latest` and
       `opennasr download YYYY-MM-DD`, delegating to `CycleManager` rather than
