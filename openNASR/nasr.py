@@ -6,7 +6,7 @@ from pandas import read_csv
 from .arb import ARB
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
-from .repository import AirportRepository, FixRepository
+from .repository import AirportRepository, FixRepository, NavaidRepository
 from .schemas import SCHEMA_SUFFIX, SchemaCatalog
 import calendar
 # from .airport import AIRPORT
@@ -44,6 +44,7 @@ class NASR(dict):
         self.setupFiles(useDate)
         self.airports = AirportRepository(self)
         self.fixes = FixRepository(self)
+        self.navaids = NavaidRepository(self)
 
 
 
@@ -206,6 +207,10 @@ class NASR(dict):
     def fix(self, identifier: str):
         """Return the fix selected by :attr:`fixes`."""
         return self.fixes.get(identifier)
+
+    def navaid(self, identifier: str, **filters):
+        """Return the navaid selected by :attr:`navaids`."""
+        return self.navaids.get(identifier, **filters)
 
     def isAirway(self,airway  : str):
         return airway in self['AWY_BASE']['AWY_ID'].to_list()

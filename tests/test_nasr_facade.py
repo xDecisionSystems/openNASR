@@ -3,7 +3,12 @@ import pytest
 
 from openNASR.exceptions import AmbiguousRecordError, SchemaMismatchError
 from openNASR.records import AirportRecord, FaaRecord
-from openNASR.repository import AirportRepository, FixRepository, RecordRepository
+from openNASR.repository import (
+    AirportRepository,
+    FixRepository,
+    NavaidRepository,
+    RecordRepository,
+)
 
 
 def test_airport_repository_get_and_singular_facade_are_equivalent(fixture_nasr):
@@ -126,3 +131,33 @@ def test_fix_repository_raises_for_duplicate_identifiers():
 
     with pytest.raises(AmbiguousRecordError):
         repository.get("dup")
+
+
+def test_navaid_filters_are_optional_and_conjunctive():
+    repository = NavaidRepository(
+        {
+            "NAV_BASE": pd.DataFrame(
+                [
+                    {
+                        "NAV_ID": "DUP",
+                        "STATE_CODE": "OH",
+                        "COUNTRY_CODE": "US",
+                        "NAV_TYPE": "VOR",
+                        "HIGH_ALT_ARTCC_ID": "ZOB",
+                        "LOW_ALT_ARTCC_ID": "ZOB",
+                    },
+                    {
+                        "NAV_ID": "DUP",
+                        "STATE_CODE": "NY",
+                        "COUNTRY_CODE": "US",
+                        "NAV_TYPE": "VOR",
+                        "HIGH_ALT_ARTCC_ID": "ZNY",
+                        "LOW_ALT_ARTCC_ID": "ZNY",
+                    },
+                ]
+            )
+        }
+    )
+
+    assert len(repository.find("dup")) == 2
+    assert repository.get("dup", state=" oh ", artcc="zob")["STATE_CODE"] == "OH"

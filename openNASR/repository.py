@@ -284,9 +284,65 @@ class FixRepository(RecordRepository):
         return FixRecord(record.as_dict())
 
 
+class NavaidRepository(RecordRepository):
+    """Lookup navaids with optional conjunctive location and type filters."""
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        super().__init__(
+            nasr["NAV_BASE"], entity_type="Navaid", identifier_columns=("NAV_ID",)
+        )
+
+    def find(
+        self,
+        identifier: object | None = None,
+        *,
+        state: str | None = None,
+        country: str | None = None,
+        artcc: str | None = None,
+        nav_type: str | None = None,
+    ) -> tuple[FaaRecord, ...]:
+        rows = self._frame
+        if identifier is not None:
+            rows = rows[
+                rows["NAV_ID"].map(self._normalized).eq(self._normalized(identifier))
+            ]
+        for column, value in (
+            ("STATE_CODE", state),
+            ("COUNTRY_CODE", country),
+            ("NAV_TYPE", nav_type),
+        ):
+            if value is not None:
+                rows = rows[
+                    rows[column].map(self._normalized).eq(self._normalized(value))
+                ]
+        if artcc is not None:
+            normalized = self._normalized(artcc)
+            rows = rows[
+                rows["HIGH_ALT_ARTCC_ID"].map(self._normalized).eq(normalized)
+                | rows["LOW_ALT_ARTCC_ID"].map(self._normalized).eq(normalized)
+            ]
+        return tuple(FaaRecord(row) for row in rows.to_dict(orient="records"))
+
+    def get(self, identifier: str, **filters: str | None) -> FaaRecord:
+        records = self.find(identifier, **filters)
+        if not records:
+            raise RecordNotFoundError(
+                entity_type="Navaid", identifier=identifier, filters=filters
+            )
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type="Navaid",
+                identifier=identifier,
+                filters=filters,
+                candidates=records,
+            )
+        return records[0]
+
+
 __all__ = [
     "AirportRepository",
     "FixRepository",
+    "NavaidRepository",
     "RecordRepository",
     "TableRepository",
     "discover_tables",

@@ -1651,7 +1651,7 @@ Later `1.x` milestones add repositories using the same contract.
 
 ### Navaid requirements
 
-- [ ] **Agent: Terra.** Make every filter optional but conjunctive.
+- [x] **Agent: Terra.** Make every filter optional but conjunctive.
 - [ ] **Agent: Terra.** Normalize aliases such as `navType` to the new `nav_type` parameter during
       the compatibility period.
 - [ ] **Agent: Terra.** Raise `AmbiguousRecordError` with candidate summaries when multiple rows
