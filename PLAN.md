@@ -1291,7 +1291,7 @@ Tasks:
       one reciprocal runway pair (e.g. `01/19`) for one of the two Task 2.2
       airports, including both runway ends so `Airport.makeRWYbnds`
       (`airport.py:75-81`) has real geometry to build.
-- [ ] **Agent: Luna.** **2.4** Verify or extend `ILS_BASE.csv`, `ILS_DME.csv`, `ILS_GS.csv`, and
+- [x] **Agent: Luna.** **2.4** Verify or extend `ILS_BASE.csv`, `ILS_DME.csv`, `ILS_GS.csv`, and
       `ILS_MKR.csv` with one ILS record tied to one of the Task 2.3 runway
       ends.
 - [ ] **Agent: Luna.** **2.5** Verify or extend `FIX_BASE.csv` with one uniquely identified fix

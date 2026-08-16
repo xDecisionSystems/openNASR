@@ -1,5 +1,6 @@
 """The extracted fixture cycle matches the legacy NASR loader layout."""
 
+import csv
 from pathlib import Path
 
 from tools.build_synthetic_fixtures import CORE_CYCLE_STEM
@@ -65,3 +66,22 @@ def test_cycle_fixture_contains_reciprocal_runway_ends():
 
     assert any("BWI" in row and "10/28" in row for row in runway_rows[1:])
     assert {row.split(",")[8] for row in end_rows[1:]} >= {"10", "28"}
+
+
+def test_cycle_fixture_ils_components_share_runway_end_key():
+    csv_root = (
+        Path(__file__).parent
+        / "fixtures"
+        / "cycle"
+        / "CSV_Data"
+        / CORE_CYCLE_STEM
+    )
+
+    for table_name in ("ILS_BASE", "ILS_DME", "ILS_GS", "ILS_MKR"):
+        with (csv_root / f"{table_name}.csv").open(
+            newline="", encoding="utf-8"
+        ) as handle:
+            rows = list(csv.DictReader(handle))
+        assert rows
+        assert all(row["ARPT_ID"] == "BWI" for row in rows)
+        assert all(row["RWY_END_ID"] == "10" for row in rows)
