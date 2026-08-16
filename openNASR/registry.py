@@ -7,7 +7,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .exceptions import SchemaMismatchError, TableNotFoundError
-from .records import ClassAirspaceRecord, FaaRecord, MilitaryOperationRecord
+from .records import (
+    ClassAirspaceRecord,
+    FaaRecord,
+    HoldingPatternChartRecord,
+    HoldingPatternRecord,
+    HoldingPatternRemarkRecord,
+    HoldingPatternSpeedAltitudeRecord,
+    MilitaryOperationRecord,
+)
 from .schemas import SchemaCatalog
 
 
@@ -16,9 +24,15 @@ AIRPORT_LINKED_TABLES = frozenset({"CLS_ARSP", "MIL_OPS"})
 AIRWAY_KEY = ("REGULATORY", "AWY_LOCATION", "AWY_ID")
 AIRWAY_SEGMENT_KEY = (*AIRWAY_KEY, "POINT_SEQ")
 AIRWAY_TABLES = frozenset({"AWY_BASE", "AWY_SEG_ALT"})
+HOLDING_PATTERN_KEY = ("HP_NAME", "HP_NO", "STATE_CODE", "COUNTRY_CODE")
+HOLDING_PATTERN_TABLES = frozenset({"HPF_BASE", "HPF_CHRT", "HPF_RMK", "HPF_SPD_ALT"})
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "CLS_ARSP": ClassAirspaceRecord,
     "MIL_OPS": MilitaryOperationRecord,
+    "HPF_BASE": HoldingPatternRecord,
+    "HPF_CHRT": HoldingPatternChartRecord,
+    "HPF_RMK": HoldingPatternRemarkRecord,
+    "HPF_SPD_ALT": HoldingPatternSpeedAltitudeRecord,
 }
 
 
@@ -136,6 +150,70 @@ class TableRegistry:
                             AIRWAY_KEY,
                         ),
                     )
+                elif table_name == "HPF_BASE":
+                    identity_key = HOLDING_PATTERN_KEY
+                    indexes = (
+                        IndexSpec("holding_pattern", HOLDING_PATTERN_KEY, unique=True),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "charts",
+                            "HPF_CHRT",
+                            HOLDING_PATTERN_KEY,
+                            HOLDING_PATTERN_KEY,
+                        ),
+                        RelationshipSpec(
+                            "remarks",
+                            "HPF_RMK",
+                            HOLDING_PATTERN_KEY,
+                            HOLDING_PATTERN_KEY,
+                        ),
+                        RelationshipSpec(
+                            "speed_altitude_limits",
+                            "HPF_SPD_ALT",
+                            HOLDING_PATTERN_KEY,
+                            HOLDING_PATTERN_KEY,
+                        ),
+                    )
+                elif table_name == "HPF_CHRT":
+                    identity_key = (*HOLDING_PATTERN_KEY, "CHARTING_TYPE_DESC")
+                    indexes = (IndexSpec("holding_pattern", HOLDING_PATTERN_KEY),)
+                    relationships = (
+                        RelationshipSpec(
+                            "holding_pattern",
+                            "HPF_BASE",
+                            HOLDING_PATTERN_KEY,
+                            HOLDING_PATTERN_KEY,
+                        ),
+                    )
+                elif table_name == "HPF_RMK":
+                    identity_key = (
+                        *HOLDING_PATTERN_KEY,
+                        "TAB_NAME",
+                        "REF_COL_NAME",
+                        "REF_COL_SEQ_NO",
+                    )
+                    indexes = (IndexSpec("holding_pattern", HOLDING_PATTERN_KEY),)
+                    order_by = ("TAB_NAME", "REF_COL_NAME", "REF_COL_SEQ_NO")
+                    relationships = (
+                        RelationshipSpec(
+                            "holding_pattern",
+                            "HPF_BASE",
+                            HOLDING_PATTERN_KEY,
+                            HOLDING_PATTERN_KEY,
+                        ),
+                    )
+                elif table_name == "HPF_SPD_ALT":
+                    identity_key = (*HOLDING_PATTERN_KEY, "SPEED_RANGE", "ALTITUDE")
+                    indexes = (IndexSpec("holding_pattern", HOLDING_PATTERN_KEY),)
+                    relationships = (
+                        RelationshipSpec(
+                            "holding_pattern",
+                            "HPF_BASE",
+                            HOLDING_PATTERN_KEY,
+                            HOLDING_PATTERN_KEY,
+                        ),
+                    )
                 variants.append(
                     TableVariantSpec(
                         schema_id=schema_id,
@@ -211,6 +289,8 @@ __all__ = [
     "AIRWAY_KEY",
     "AIRWAY_SEGMENT_KEY",
     "AIRWAY_TABLES",
+    "HOLDING_PATTERN_KEY",
+    "HOLDING_PATTERN_TABLES",
     "IndexSpec",
     "RICH_RECORD_TYPES",
     "RelationshipSpec",

@@ -200,10 +200,10 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `HPF_BASE` | `holding.py` | `HoldingPatternRecord` | `HoldingPattern`; `nasr.holding_patterns` | Proposed |
-| `HPF_CHRT` | `holding.py` | `HoldingPatternChartRecord` | `HoldingPattern.charts` | Proposed |
-| `HPF_RMK` | `holding.py` | `HoldingPatternRemarkRecord` | `HoldingPattern.remarks` | Proposed |
-| `HPF_SPD_ALT` | `holding.py` | `HoldingPatternSpeedAltitudeRecord` | `HoldingPattern.speed_altitude_limits` | Proposed |
+| `HPF_BASE` | `holding.py` | `HoldingPatternRecord` | `HoldingPattern`; `nasr.holding_patterns` | Existing |
+| `HPF_CHRT` | `holding.py` | `HoldingPatternChartRecord` | `HoldingPattern.charts` | Existing |
+| `HPF_RMK` | `holding.py` | `HoldingPatternRemarkRecord` | `HoldingPattern.remarks` | Existing |
+| `HPF_SPD_ALT` | `holding.py` | `HoldingPatternSpeedAltitudeRecord` | `HoldingPattern.speed_altitude_limits` | Existing |
 
 ## Instrument landing system files
 

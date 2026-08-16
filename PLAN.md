@@ -1843,7 +1843,7 @@ Tasks:
       `AirwaySegmentRecord`; expose the rich
       `Airway` through `nasr.airways`, `nasr.airway()`, ordered segments, and
       segment altitude constraints.
-- [ ] **Agent: Terra.** **9.3** Verify and register keys for `HPF_BASE`, `HPF_CHRT`, `HPF_RMK`, and
+- [x] **Agent: Terra.** **9.3** Verify and register keys for `HPF_BASE`, `HPF_CHRT`, `HPF_RMK`, and
       `HPF_SPD_ALT`; implement their approved record classes and rich
       `HoldingPattern` repository, charts, remarks, and speed/altitude limits.
 - [ ] **Agent: Terra.** **9.4** Implement `CommunicationOutletRecord`/`CommunicationOutlet` and

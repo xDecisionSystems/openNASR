@@ -6,6 +6,7 @@ from pandas import read_csv
 from .arb import ARB
 from .airspace import ClassAirspaceRepository
 from .airway import AirwayRepository
+from .holding import HoldingPatternRepository
 from .military import MilitaryOperationRepository
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
@@ -45,6 +46,7 @@ class NASR(dict):
         self.setupFiles(useDate)
         self.class_airspaces = ClassAirspaceRepository(self)
         self.airways = AirwayRepository(self)
+        self.holding_patterns = HoldingPatternRepository(self)
         self.military_operations = MilitaryOperationRepository(self)
         self.airports = AirportRepository(self)
         self.fixes = FixRepository(self)
@@ -219,6 +221,10 @@ class NASR(dict):
     def airway(self, identifier: tuple[str, str, str]):
         """Return the airway selected by its complete FAA composite key."""
         return self.airways.get(identifier)
+
+    def holding_pattern(self, identifier: tuple[str, str, str | None, str]):
+        """Return the holding pattern selected by its complete FAA key."""
+        return self.holding_patterns.get(identifier)
 
     def isAirway(self, airway: str):
         return airway in self["AWY_BASE"]["AWY_ID"].to_list()

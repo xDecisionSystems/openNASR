@@ -283,6 +283,54 @@ class AirwaySegmentRecord(AirwayRecord):
         return None if value is None else integer(value)
 
 
+class HoldingPatternRecord(FaaRecord):
+    """Typed conveniences for an ``HPF_BASE`` holding-pattern row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def holding_pattern_key(self) -> tuple[str, str, str | None, str] | None:
+        """Verified key shared by every holding-pattern source table."""
+
+        name = self._text("HP_NAME")
+        number = self._text("HP_NO")
+        country = self._text("COUNTRY_CODE")
+        if name is None or number is None or country is None:
+            return None
+        return name, number, self._text("STATE_CODE"), country
+
+
+class HoldingPatternChartRecord(HoldingPatternRecord):
+    """Typed conveniences for an ``HPF_CHRT`` charting row."""
+
+    @property
+    def charting_type(self) -> str | None:
+        return self._text("CHARTING_TYPE_DESC")
+
+
+class HoldingPatternRemarkRecord(HoldingPatternRecord):
+    """Typed conveniences for an ordered ``HPF_RMK`` remark row."""
+
+    @property
+    def sequence(self) -> int | None:
+        value = self._text("REF_COL_SEQ_NO")
+        return None if value is None else integer(value)
+
+
+class HoldingPatternSpeedAltitudeRecord(HoldingPatternRecord):
+    """Typed conveniences for an ``HPF_SPD_ALT`` restriction row."""
+
+    @property
+    def speed_range(self) -> str | None:
+        return self._text("SPEED_RANGE")
+
+    @property
+    def altitude(self) -> str | None:
+        return self._text("ALTITUDE")
+
+
 class FixRecord(FaaRecord):
     """Fix record with nullable typed conveniences over lossless FAA fields."""
 
@@ -506,6 +554,10 @@ __all__ = [
     "ClassAirspaceRecord",
     "DmeRecord",
     "GlideSlopeRecord",
+    "HoldingPatternChartRecord",
+    "HoldingPatternRecord",
+    "HoldingPatternRemarkRecord",
+    "HoldingPatternSpeedAltitudeRecord",
     "FixRecord",
     "IlsRecord",
     "MarkerRecord",
