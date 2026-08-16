@@ -1313,7 +1313,7 @@ Tasks:
 - [x] **Agent: Terra.** **2.8** Add at least one malformed fixture (e.g. a CSV with a missing
       required column, or a row with an unparseable coordinate value) under
       `tests/fixtures/malformed/` for the error-path tests in Task 2.13.
-- [ ] **Agent: Terra.** **2.9** Add at least one fixture cycle variant under
+- [x] **Agent: Terra.** **2.9** Add at least one fixture cycle variant under
       `tests/fixtures/missing_table_cycle/` that omits one optional table
       entirely, to exercise the "missing optional table affects only its
       related optional property" requirement from the coverage-tests list

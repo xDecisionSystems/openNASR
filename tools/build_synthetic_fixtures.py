@@ -313,6 +313,29 @@ def build_core_fixture() -> None:
         ]
         write_csv(malformed_destination / f"{table_name}.csv", header, projected_rows)
 
+    missing_table_destination = (
+        FIXTURE_DIR / "missing_table_cycle" / "CSV_Data" / MISSING_TABLE_CYCLE_STEM
+    )
+    missing_table_destination.mkdir(parents=True, exist_ok=True)
+    for table_name, table_rows in rows.items():
+        if table_name == "ILS_MKR":
+            continue
+        header = list(CORE_CYCLE_COLUMNS.get(table_name, ()))
+        if not header:
+            header = [
+                column["name"]
+                for column in manifest["tables"][table_name]["columns"]
+            ]
+        projected_rows = [
+            {name: value for name, value in row.items() if name in header}
+            for row in table_rows
+        ]
+        write_csv(
+            missing_table_destination / f"{table_name}.csv",
+            header,
+            projected_rows,
+        )
+
 
 def main() -> None:
     build_schema_only("pre_2026_09")
