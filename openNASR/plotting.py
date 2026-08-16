@@ -87,6 +87,88 @@ def _airway_segments(
     return tuple(segments)
 
 
+def _navigation_endpoints(
+    nasr: Mapping[str, DataFrame],
+) -> dict[str, list[tuple[float, float]]]:
+    endpoints: dict[str, list[tuple[float, float]]] = {}
+    for table, identifier in (("FIX_BASE", "FIX_ID"), ("NAV_BASE", "NAV_ID")):
+        frame = nasr.get(table)
+        if frame is not None:
+            for name, coordinates in _coordinates(frame, identifier).items():
+                endpoints.setdefault(name, []).extend(coordinates)
+    return endpoints
+
+
+def _airport_identifier(airport: object) -> str:
+    if isinstance(airport, str):
+        return _text(airport)
+    for attribute in ("faa_id", "airport_id"):
+        value = getattr(airport, attribute, None)
+        if value is not None:
+            return _text(value)
+    if isinstance(airport, Mapping):
+        return _text(airport.get("ARPT_ID"))
+    raise TypeError(
+        "airport must be an FAA identifier, airport object, or ARPT_ID mapping"
+    )
+
+
+def _procedure_segments(
+    nasr: Mapping[str, DataFrame],
+    airport_id: str,
+    association_table: str,
+    route_table: str,
+    key_columns: tuple[str, ...],
+) -> tuple[LineString, ...]:
+    associations = nasr.get(association_table)
+    routes = nasr.get(route_table)
+    if associations is None or routes is None or "ARPT_ID" not in associations.columns:
+        return ()
+    keys = {
+        tuple(_text(row.get(column)) for column in key_columns)
+        for row in associations.to_dict(orient="records")
+        if _text(row.get("ARPT_ID")) == airport_id
+    }
+    endpoints = _navigation_endpoints(nasr)
+    segments = []
+    for row in routes.to_dict(orient="records"):
+        key = tuple(_text(row.get(column)) for column in key_columns)
+        if key not in keys:
+            continue
+        starts = endpoints.get(_text(row.get("POINT")), ())
+        ends = endpoints.get(_text(row.get("NEXT_POINT")), ())
+        if len(starts) == 1 and len(ends) == 1 and starts[0] != ends[0]:
+            segments.append(LineString((starts[0], ends[0])))
+    return tuple(segments)
+
+
+def _runway_segments(
+    nasr: Mapping[str, DataFrame], airport_id: str
+) -> tuple[LineString, ...]:
+    ends = nasr.get("APT_RWY_END")
+    if ends is None or not {
+        "ARPT_ID",
+        "RWY_ID",
+        "LAT_DECIMAL",
+        "LONG_DECIMAL",
+    }.issubset(ends.columns):
+        return ()
+    grouped: dict[str, list[tuple[float, float]]] = {}
+    for row in ends.to_dict(orient="records"):
+        if _text(row.get("ARPT_ID")) != airport_id:
+            continue
+        try:
+            point = float(row["LONG_DECIMAL"]), float(row["LAT_DECIMAL"])
+        except (TypeError, ValueError):
+            continue
+        grouped.setdefault(_text(row.get("RWY_ID")), []).append(point)
+    return tuple(
+        LineString((points[0], points[1]))
+        for points in grouped.values()
+        if len(points) >= 2 and points[0] != points[1]
+    )
+
+
 def _plot_points(
     axes: Any,
     frame: DataFrame | None,
@@ -181,4 +263,51 @@ def plot_airspace(
     return figure, axes
 
 
-__all__ = ["plot_airspace"]
+def plot_airport_procedures(
+    nasr: Mapping[str, DataFrame], airport: object, *, axes: Any | None = None
+) -> tuple[Any, Any]:
+    """Plot an airport's runways and its associated arrival/departure legs.
+
+    ``airport`` may be an FAA identifier, an airport object with ``faa_id``, or
+    a mapping with ``ARPT_ID``. Departure and STAR legs are included only when
+    both endpoint identifiers resolve uniquely to a fix or navaid.
+    """
+
+    from matplotlib import pyplot as plt
+
+    airport_id = _airport_identifier(airport)
+    if not airport_id:
+        raise ValueError("airport must provide a non-empty FAA identifier")
+    if axes is None:
+        figure, axes = plt.subplots()
+    else:
+        figure = axes.figure
+    for segment in _runway_segments(nasr, airport_id):
+        x_values, y_values = segment.xy
+        axes.plot(x_values, y_values, color="black", linewidth=3)
+    for segment in _procedure_segments(
+        nasr,
+        airport_id,
+        "DP_APT",
+        "DP_RTE",
+        ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
+    ):
+        x_values, y_values = segment.xy
+        axes.plot(x_values, y_values, color="tab:blue", linewidth=1)
+    for segment in _procedure_segments(
+        nasr,
+        airport_id,
+        "STAR_APT",
+        "STAR_RTE",
+        ("STAR_COMPUTER_CODE", "ARTCC"),
+    ):
+        x_values, y_values = segment.xy
+        axes.plot(x_values, y_values, color="tab:green", linewidth=1)
+    axes.set_title(f"{airport_id} procedures")
+    axes.set_xlabel("Longitude")
+    axes.set_ylabel("Latitude")
+    axes.set_aspect("equal", adjustable="datalim")
+    return figure, axes
+
+
+__all__ = ["plot_airport_procedures", "plot_airspace"]

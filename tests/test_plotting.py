@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from shapely.geometry import Polygon
 
-from openNASR.plotting import plot_airspace
+from openNASR.plotting import plot_airport_procedures, plot_airspace
 
 
 def test_plot_airspace_draws_contained_airports_and_intersecting_airways():
@@ -112,3 +112,70 @@ def test_plot_airspace_visibility_switches_filter_airway_levels_and_points():
 def test_plot_airspace_rejects_objects_without_geometry():
     with pytest.raises(TypeError, match="Shapely geometry"):
         plot_airspace({}, object())
+
+
+def test_plot_airport_procedures_draws_runways_departures_and_arrivals():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_RWY_END": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "0",
+                    "LONG_DECIMAL": "0",
+                },
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "1",
+                    "LONG_DECIMAL": "0",
+                },
+            ]
+        ),
+        "FIX_BASE": pd.DataFrame(
+            [
+                {"FIX_ID": "ONE", "LAT_DECIMAL": "1", "LONG_DECIMAL": "1"},
+                {"FIX_ID": "TWO", "LAT_DECIMAL": "2", "LONG_DECIMAL": "2"},
+            ]
+        ),
+        "NAV_BASE": pd.DataFrame(),
+        "DP_APT": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "DP_NAME": "DEP",
+                    "ARTCC": "Z",
+                    "DP_COMPUTER_CODE": "DEP1",
+                }
+            ]
+        ),
+        "DP_RTE": pd.DataFrame(
+            [
+                {
+                    "DP_NAME": "DEP",
+                    "ARTCC": "Z",
+                    "DP_COMPUTER_CODE": "DEP1",
+                    "POINT": "ONE",
+                    "NEXT_POINT": "TWO",
+                }
+            ]
+        ),
+        "STAR_APT": pd.DataFrame(
+            [{"ARPT_ID": "AAA", "STAR_COMPUTER_CODE": "ARR1", "ARTCC": "Z"}]
+        ),
+        "STAR_RTE": pd.DataFrame(
+            [
+                {
+                    "STAR_COMPUTER_CODE": "ARR1",
+                    "ARTCC": "Z",
+                    "POINT": "TWO",
+                    "NEXT_POINT": "ONE",
+                }
+            ]
+        ),
+    }
+
+    _, axes = plot_airport_procedures(tables, "AAA")
+
+    assert len(axes.lines) == 3

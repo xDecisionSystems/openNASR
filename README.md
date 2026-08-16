@@ -309,6 +309,9 @@ object such as `high_boundary`. Install the optional plotting dependency with
 Set `plot_high_airways`, `plot_low_airways`, `plot_airports`, `plot_fixes`, or
 `plot_airnavs` to `False` to hide a layer; all are enabled by default.
 
+Use `plot_airport_procedures(nasr, "BWI")` to draw an airport's runways,
+departure procedures, and standard terminal arrival routes.
+
 ## Direct table access
 
 `NASR` subclasses `dict`, so the original FAA tables can be queried directly
