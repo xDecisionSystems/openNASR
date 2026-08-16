@@ -1318,7 +1318,7 @@ Tasks:
       entirely, to exercise the "missing optional table affects only its
       related optional property" requirement from the coverage-tests list
       above.
-- [ ] **Agent: Luna.** **2.10** Delete `tests/main_test_NASR.py`. Its `trino`/OpenSky data
+- [x] **Agent: Luna.** **2.10** Delete `tests/main_test_NASR.py`. Its `trino`/OpenSky data
       pull is unrelated to `openNASR`'s scope (it consumes `openNASR` output
       to query a third-party flight-tracking service) and it no longer even
       imports successfully. If any part of its logic is worth keeping as a
