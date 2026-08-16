@@ -31,3 +31,18 @@ def test_check_reports_cycle_status(capsys):
     assert "cached: 2026-08-06" in output
     assert "cache age:" in output
     assert "update available: yes" in output
+
+
+def test_download_commands_delegate_to_cycle_manager(capsys):
+    class Manager:
+        def download_latest(self):
+            return type("Cycle", (), {"effective_date": date(2026, 9, 3)})()
+
+        def download(self, effective_date):
+            return type("Cycle", (), {"effective_date": effective_date})()
+
+    manager = Manager()
+    assert main(["download", "latest"], manager=manager) == 0
+    assert "downloaded: 2026-09-03" in capsys.readouterr().out
+    assert main(["download", "2026-08-06"], manager=manager) == 0
+    assert "downloaded: 2026-08-06" in capsys.readouterr().out

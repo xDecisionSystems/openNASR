@@ -1478,7 +1478,7 @@ Tasks:
       point in `pyproject.toml`.
 - [x] **Agent: Terra.** Implement `opennasr check [--force]`, showing the newest FAA cycle, newest
       cached cycle, cache age, and whether a download is available.
-- [ ] **Agent: Terra.** Implement `opennasr download latest` and
+- [x] **Agent: Terra.** Implement `opennasr download latest` and
       `opennasr download YYYY-MM-DD`, delegating to `CycleManager` rather than
       duplicating network or extraction logic.
 - [ ] **Agent: Terra.** Implement `opennasr list`, showing cached and archived cycles with their

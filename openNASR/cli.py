@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from .cycles import CycleManager
 
@@ -13,6 +13,8 @@ def build_parser() -> argparse.ArgumentParser:
     subcommands = parser.add_subparsers(dest="command", required=True)
     check = subcommands.add_parser("check", help="check cached and remote cycles")
     check.add_argument("--force", action="store_true", help="refresh metadata")
+    download = subcommands.add_parser("download", help="download a NASR cycle")
+    download.add_argument("cycle", help="latest or an ISO cycle date")
     return parser
 
 
@@ -25,4 +27,11 @@ def main(argv: list[str] | None = None, *, manager=None) -> int:
         print(f"cached: {status.newest_cached_cycle or 'none'}")
         print(f"cache age: {int(age.total_seconds())}s")
         print(f"update available: {'yes' if status.update_available else 'no'}")
+    elif args.command == "download":
+        active_manager = manager or CycleManager()
+        if args.cycle == "latest":
+            cycle = active_manager.download_latest()
+        else:
+            cycle = active_manager.download(date.fromisoformat(args.cycle))
+        print(f"downloaded: {cycle.effective_date}")
     return 0
