@@ -125,8 +125,8 @@ The completed API should support the following:
 ```python
 from openNASR import NASR
 
-nasr = NASR()                         # newest cached cycle
-nasr = NASR(cycle="2026-08-06")      # exact cached cycle
+nasr = NASR()  # newest cached cycle
+nasr = NASR(cycle="2026-08-06")  # exact cached cycle
 nasr = NASR(cache_dir="/data/nasr")  # caller-controlled cache
 
 print(nasr.cycle)
@@ -320,15 +320,35 @@ Create the following public exceptions:
 
 ```python
 class OpenNASRError(Exception): ...
+
+
 class ConfigurationError(OpenNASRError): ...
+
+
 class CycleNotFoundError(OpenNASRError): ...
+
+
 class DownloadError(OpenNASRError): ...
+
+
 class ArchiveError(OpenNASRError): ...
+
+
 class TableNotFoundError(OpenNASRError): ...
+
+
 class SchemaMismatchError(OpenNASRError): ...
+
+
 class FieldConversionError(OpenNASRError): ...
+
+
 class RecordNotFoundError(OpenNASRError): ...
+
+
 class AmbiguousRecordError(OpenNASRError): ...
+
+
 class InvalidGeometryError(OpenNASRError): ...
 ```
 
@@ -463,10 +483,12 @@ class ColumnSchema:
     max_length: str | None
     nullable: bool
 
+
 @dataclass(frozen=True)
 class TableSchema:
     name: str
     columns: tuple[ColumnSchema, ...]
+
 
 @dataclass(frozen=True)
 class TableVariantSpec:
@@ -478,22 +500,26 @@ class TableVariantSpec:
     required_columns: frozenset[str]
     optional: bool = False
 
+
 @dataclass(frozen=True)
 class TableSpec:
     name: str
     record_type: type[FaaRecord]
     variants: tuple[TableVariantSpec, ...]
 
+
 class SchemaCatalog:
     def identify_schema(cycle_path: Path) -> str: ...
     def table(name: str, schema_id: str) -> TableSchema: ...
     def validate(name: str, frame: DataFrame, schema_id: str) -> ValidationReport: ...
+
 
 class TableRegistry:
     def spec(name: str, schema_id: str) -> TableVariantSpec: ...
     def table(name: str) -> TableSpec: ...
     def supported_tables() -> frozenset[str]: ...
     def unmodeled_tables(available: Iterable[str]) -> frozenset[str]: ...
+
 
 class FaaRecord(Mapping[str, object]):
     @property
@@ -1915,7 +1941,7 @@ Tasks:
       objects through `nasr.flight_service_stations`.
 - [x] **Agent: Terra.** **11.7** Implement `LocationIdentifierRecord` and rich standalone
       `LocationIdentifier` objects through `nasr.location_identifiers`.
-- [ ] **Agent: Terra.** **11.8** Add both-schema fixtures, repository and relationship tests,
+- [x] **Agent: Terra.** **11.8** Add both-schema fixtures, repository and relationship tests,
       converter tests, exports, documentation, coverage reporting, and the
       `1.4.0` changelog entry.
 

@@ -25,6 +25,8 @@ access is more convenient.
   typed repository facade.
 - Inspect airways, holding patterns, communication outlets, and frequencies
   through typed repositories with composite-key relationships.
+- Inspect ATC facilities, radar, weather stations and locations, flight service
+  stations, and location identifiers through typed FAA-keyed repositories.
 - Look up fixes and navigation aids.
 - Build ARTCC boundary polygons with Shapely.
 - Convert latitude/longitude coordinates to local nautical-mile coordinates.
@@ -103,7 +105,9 @@ To import an archive downloaded manually, use the explicit import workflow:
 ```python
 from openNASR import CycleManager
 
-cycle = CycleManager().import_archive("/downloads/28DaySubscription_Effective_2024-06-13.zip")
+cycle = CycleManager().import_archive(
+    "/downloads/28DaySubscription_Effective_2024-06-13.zip"
+)
 ```
 
 Automatic downloads are a separate provider-backed workflow (`download()` or
@@ -177,6 +181,7 @@ Plot the airport layout using Matplotlib:
 bwi.plot(pltILSBnd=True)
 
 from matplotlib import pyplot as plt
+
 plt.show()
 ```
 
@@ -221,9 +226,7 @@ remain standalone because a communication location ID can be ambiguous.
 ```python
 airway = nasr.airway(("Y", "D", "1"))
 holding = nasr.holding_pattern(("ALPHA", "1", "FL", "US"))
-frequency = nasr.frequency(
-    ("ALPHA", "A1", "A", "FL", "US", "121.5", "", "EMERGENCY")
-)
+frequency = nasr.frequency(("ALPHA", "A1", "A", "FL", "US", "121.5", "", "EMERGENCY"))
 
 print([segment.point_sequence for segment in airway.segments])
 print([remark.sequence for remark in holding.remarks])

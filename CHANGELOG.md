@@ -7,6 +7,13 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [1.4.0] - Unreleased
+
+### Added
+
+- Rich ATC, radar, weather, flight-service-station, and location-identifier
+  repositories using verified FAA composite keys and child collections.
+
 ## [1.3.0] - Unreleased
 
 ### Added
