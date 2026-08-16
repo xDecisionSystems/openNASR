@@ -25,5 +25,8 @@ def test_loaded_dataframes_are_cached_per_repository_instance(tmp_path):
     assert first is second
     assert repository["APT_BASE"] is first
     assert repository.table("APT_BASE") is first
+    isolated = repository.table("APT_BASE", copy=True)
+    isolated.loc[0, "ARPT_ID"] = "MUTATED"
+    assert first.loc[0, "ARPT_ID"] == "BWI"
     assert isinstance(repository, Mapping)
     assert list(repository) == ["APT_BASE"]
