@@ -1550,7 +1550,7 @@ Tasks:
 - [x] **Agent: Terra.** Create indexes lazily for frequently queried identifier columns.
 - [x] **Agent: Terra.** Cache normalized identifier mappings rather than scanning entire columns
       for every lookup.
-- [ ] **Agent: Terra.** Avoid global caches that can leak data between cycles.
+- [x] **Agent: Terra.** Avoid global caches that can leak data between cycles.
 
 Performance targets, measured with a representative real cycle when available:
 
