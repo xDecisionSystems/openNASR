@@ -1455,7 +1455,7 @@ Tasks:
 - [x] **Agent: Terra.** Implement an injectable FAA cycle provider that discovers only metadata
       and archive URLs. Give live requests a hard two-second timeout and mock
       the provider in all default tests.
-- [ ] **Agent: Terra.** Implement `CycleManager.check_for_updates(force=False)` returning
+- [x] **Agent: Terra.** Implement `CycleManager.check_for_updates(force=False)` returning
       `UpdateStatus`. Reuse a successful result for 24 hours; `force=True`
       bypasses it. Write cache metadata atomically outside the package.
 - [ ] **Agent: Terra.** Do not overwrite the last successful update metadata with a failed check.

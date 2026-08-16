@@ -11,6 +11,7 @@ from openNASR.exceptions import ArchiveError
 from openNASR.cycles import (
     CycleManager,
     FaaCycleProvider,
+    RemoteCycle,
     locate_csv_source,
     parse_archive_date,
     read_cycle_date,
@@ -245,3 +246,22 @@ def test_faa_provider_discovers_only_mocked_metadata():
     assert cycle.effective_date == date(2026, 8, 6)
     assert cycle.archive_url.endswith("a.zip")
     assert calls == [("https://example.test/metadata", 2)]
+
+
+def test_update_checks_reuse_successful_metadata(tmp_path):
+    class Provider:
+        def __init__(self): self.calls = 0
+        def discover(self):
+            self.calls += 1
+            return RemoteCycle(date(2026, 8, 6), "https://example.test/a.zip")
+    provider = Provider()
+    manager = CycleManager(tmp_path, provider=provider)
+    fresh = manager.check_for_updates()
+    reused = manager.check_for_updates()
+    forced = manager.check_for_updates(force=True)
+    assert (fresh.from_cache, reused.from_cache, forced.from_cache) == (
+        False,
+        True,
+        False,
+    )
+    assert provider.calls == 2

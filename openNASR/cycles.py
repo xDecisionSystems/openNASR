@@ -13,7 +13,7 @@ import json
 import hashlib
 import tempfile
 from urllib.request import urlopen
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from shutil import copy2, rmtree
@@ -47,6 +47,16 @@ class RemoteCycle:
 
     effective_date: date
     archive_url: str
+
+
+@dataclass(frozen=True)
+class UpdateStatus:
+    newest_remote_cycle: date
+    newest_cached_cycle: date | None
+    update_available: bool
+    checked_at: datetime
+    source_url: str
+    from_cache: bool
 
 
 class FaaCycleProvider:
@@ -153,8 +163,9 @@ class CycleManager:
     remaining cycle operations are added by the subsequent Milestone 3 tasks.
     """
 
-    def __init__(self, cache_dir: str | Path | None = None) -> None:
+    def __init__(self, cache_dir: str | Path | None = None, *, provider=None) -> None:
         self.cache_dir = resolve_cache_dir(cache_dir)
+        self.provider = provider
 
     @property
     def archives_dir(self) -> Path:
@@ -204,6 +215,53 @@ class CycleManager:
         if data_path.is_dir():
             return Cycle(effective_date=effective_date, data_path=data_path)
         return None
+
+    def check_for_updates(self, *, force: bool = False) -> UpdateStatus:
+        """Return remote-cycle status, reusing successful metadata for 24 hours."""
+
+        metadata_path = self.cache_dir / "update-status.json"
+        now = datetime.now(timezone.utc)
+        cached = None
+        if metadata_path.is_file() and not force:
+            cached = json.loads(metadata_path.read_text(encoding="utf-8"))
+            checked_at = datetime.fromisoformat(cached["checked_at"])
+            if now - checked_at < timedelta(hours=24):
+                remote = date.fromisoformat(cached["effective_date"])
+                return self._update_status(
+                    remote, checked_at, cached["source_url"], True
+                )
+        if self.provider is None:
+            raise ValueError("A FAA cycle provider is required for update checks")
+        remote_cycle = self.provider.discover()
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+        metadata_path.write_text(
+            json.dumps(
+                {
+                    "effective_date": remote_cycle.effective_date.isoformat(),
+                    "source_url": remote_cycle.archive_url,
+                    "checked_at": now.isoformat(),
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return self._update_status(
+            remote_cycle.effective_date, now, remote_cycle.archive_url, False
+        )
+
+    def _update_status(
+        self, remote, checked_at, source_url, from_cache
+    ) -> UpdateStatus:
+        cached_dates = [parse_archive_date(path) for path in self.archive_paths()]
+        newest_cached = max(cached_dates) if cached_dates else None
+        return UpdateStatus(
+            remote,
+            newest_cached,
+            newest_cached is None or remote > newest_cached,
+            checked_at,
+            source_url,
+            from_cache,
+        )
 
     def extracted_paths(self) -> tuple[Path, ...]:
         """Return extracted cycle candidates without requiring an archive."""
@@ -323,6 +381,7 @@ __all__ = [
     "locate_csv_source",
     "read_cycle_date",
     "RemoteCycle",
+    "UpdateStatus",
     "resolve_cache_dir",
     "sha256_file",
     "validate_archive",
