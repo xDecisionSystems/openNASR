@@ -17,6 +17,8 @@ and versions follow Semantic Versioning.
 
 ### Changed
 
+- Designated `1.0.0` as the first supported release while retaining the
+  pre-release package version until all release blockers are resolved.
 - Airport plotting returns its `Figure` and `Axes` and no longer closes all figures
   by default.
 - Coordinate helpers expose explicit latitude/longitude ordering and nautical-mile

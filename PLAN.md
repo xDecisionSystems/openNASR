@@ -1774,7 +1774,7 @@ Tasks:
       Markdown renderer PyPI uses, or at minimum lint it with a Markdown
       linter) and validate package metadata with
       `python -m twine check dist/*`.
-- [ ] **Agent: Sol.** **7.13** Decide the initial supported release version number based on
+- [x] **Agent: Sol.** **7.13** Decide the initial supported release version number based on
       compatibility (see "Compatibility policy" below for the pre-`1.0.0`
       rules); do not publish while any Milestone 0-6 acceptance criterion is
       unmet or any P1/P2 defect from "Current repository state" remains
@@ -2128,6 +2128,7 @@ report has no operational table without a rich API.
 | 2026-08-15 | Defer Ruff/mypy enforcement (Milestone 0) to a required CI gate only in Milestone 7 (Task 7.10). | Milestones 1-6 rewrite most of the source tree; gating on strict lint/type checks before that churn wastes agent effort on code about to be replaced. |
 | 2026-08-15 | Split full 63-table/87-file CSV coverage out of the `1.0.0` scope; only raw coverage of all tables plus record/domain coverage of the already-public families (airport, fix, navaid, ARTCC) is required for `1.0.0`. | The complete coverage matrix is a multi-month follow-on effort; conflating it with `1.0.0` blocked a clear release definition and left Milestone 7's acceptance criteria silent on how much of the matrix was actually required. |
 | 2026-08-15 | Add Milestone 0B before correctness work and retain Milestone 1B for the inventory/schema implementation. | Regression and schema tests require deterministic supported-schema manifests and fixtures before implementation begins. |
+| 2026-08-16 | Designate `1.0.0` as the first supported release, but retain package metadata at `0.0.1` until the release blockers in `RELEASE.md` are cleared. | The stable facade and `1.x` compatibility promises justify the major-version boundary, while unresolved exact-cycle, external-cache, lazy-loading, and public cycle-API defects prohibit publishing it. |
 | 2026-08-15 | Delete `tests/main_test_NASR.py` outright rather than converting it (Milestone 2, Task 2.10). | It imports the already-removed top-level `nasr` package and depends on a third-party `trino`/OpenSky connection with a hardcoded username; it cannot run and is out of `openNASR`'s scope. |
 | 2026-08-15 | Provide rich domain objects for all 63 operational tables, using standalone rich objects where no reliable parent relationship exists. | The user wants a consistently object-oriented API while avoiding invented cross-table joins. |
 | 2026-08-15 | Treat schema drift as an error during normal loading and expose unfamiliar raw data only through explicit diagnostic inspection mode. | FAA format changes require code, registry, fixture, and documentation review rather than silent best-effort parsing. |
