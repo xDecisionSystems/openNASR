@@ -1695,7 +1695,7 @@ Tasks:
 - [x] **Agent: Sol.** Handle projection-center points where `rho == 0` without division by zero.
 - [x] **Agent: Sol.** Reject invalid latitude and longitude values.
 - [x] **Agent: Terra.** Add scalar and NumPy-array tests.
-- [ ] **Agent: Sol.** Verify runway width conversion from feet to nautical miles.
+- [x] **Agent: Sol.** Verify runway width conversion from feet to nautical miles.
 - [ ] **Agent: Sol.** Verify ILS magnetic variation sign handling against documented FAA field
       semantics.
 - [ ] **Agent: Terra.** Return Matplotlib `Figure` and `Axes` objects from plotting methods.

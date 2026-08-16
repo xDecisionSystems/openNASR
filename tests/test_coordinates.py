@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 
 from openNASR.coordinates import ll2xy, xy2ll
+from openNASR.airport import makeRWYpoly
 
 
 def test_projection_uses_latitude_longitude_order():
@@ -55,3 +56,10 @@ def test_projection_rejects_invalid_geographic_coordinates(latitude, longitude):
 def test_inverse_projection_rejects_an_invalid_center():
     with pytest.raises(ValueError, match="latitude"):
         xy2ll(0.0, 0.0, llc=(100.0, 0.0))
+
+
+def test_runway_width_is_converted_from_feet_to_nautical_miles():
+    polygon = makeRWYpoly((0.0, 0.0), (1.0, 0.0), width=6076.1)
+
+    assert polygon.bounds[1] == pytest.approx(-0.5)
+    assert polygon.bounds[3] == pytest.approx(0.5)
