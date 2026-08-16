@@ -27,6 +27,7 @@ access is more convenient.
 - Plot airport runways and ILS information with Matplotlib.
 
 See the [API reference](docs/API.md) for public classes and methods.
+See [MIGRATION.md](MIGRATION.md) when updating code from legacy constructors.
 
 ## Requirements
 

@@ -1745,7 +1745,7 @@ Tasks:
       project's docs tooling (introduced in this same task, if none exists)
       supports; do not hand-maintain a reference that duplicates docstrings
       if a generator is available.
-- [ ] **Agent: Luna.** **7.6** Add a migration guide (e.g. `MIGRATION.md`) from the old
+- [x] **Agent: Luna.** **7.6** Add a migration guide (e.g. `MIGRATION.md`) from the old
       `nasr` namespace and legacy uppercase classes (`FIX`, `NAVAID`, `ARB`)
       to the new facade (`nasr.fix(...)`, `Fix`, `Navaid`, `Artcc`),
       referencing the compatibility aliases documented in "Compatibility
