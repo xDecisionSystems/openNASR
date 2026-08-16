@@ -3,6 +3,8 @@
 import csv
 from pathlib import Path
 
+from shapely.geometry import Polygon
+
 from tools.build_synthetic_fixtures import CORE_CYCLE_STEM
 
 
@@ -122,3 +124,27 @@ def test_cycle_fixture_contains_unique_and_state_type_distinct_navaids():
     assert {
         (row["STATE_CODE"], row["NAV_TYPE"]) for row in by_id["DUP"]
     } == {("IN", "VOR"), ("OH", "NDB")}
+
+
+def test_cycle_fixture_artcc_high_and_low_boundaries_are_valid():
+    csv_root = (
+        Path(__file__).parent
+        / "fixtures"
+        / "cycle"
+        / "CSV_Data"
+        / CORE_CYCLE_STEM
+    )
+
+    with (csv_root / "ARB_SEG.csv").open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    polygons = {}
+    for altitude in {row["ALTITUDE"] for row in rows}:
+        points = [
+            (float(row["LONG_DECIMAL"]), float(row["LAT_DECIMAL"]))
+            for row in rows
+            if row["ALTITUDE"] == altitude
+        ]
+        polygons[altitude] = Polygon(points)
+
+    assert set(polygons) == {"HIGH", "LOW"}
+    assert all(polygon.is_valid and polygon.is_simple for polygon in polygons.values())

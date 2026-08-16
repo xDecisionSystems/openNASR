@@ -1303,7 +1303,7 @@ Tasks:
       differing in `STATE_CODE` and `NAV_TYPE` (so Milestone 1's
       AND-filter and `AmbiguousRecordError` regression tests, Tasks 1.7-1.9,
       have real duplicate data to resolve against).
-- [ ] **Agent: Luna.** **2.7** Verify or extend `ARB_BASE.csv` and `ARB_SEG.csv` with one ARTCC
+- [x] **Agent: Luna.** **2.7** Verify or extend `ARB_BASE.csv` and `ARB_SEG.csv` with one ARTCC
       (reuse a real three-letter ARTCC identifier such as `ZOB` for
       familiarity) that has both a high-altitude and a low-altitude
       boundary. Construct the boundary segment coordinates so each closes
