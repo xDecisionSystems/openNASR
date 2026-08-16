@@ -149,6 +149,22 @@ class RunwayEndRecord(FaaRecord):
     """Lossless typed marker for an airport runway-end row."""
 
 
+class IlsRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS row."""
+
+
+class DmeRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS DME row."""
+
+
+class GlideSlopeRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS glide-slope row."""
+
+
+class MarkerRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS marker row."""
+
+
 class AirportRecord(FaaRecord):
     """Airport record with nullable typed conveniences over lossless FAA fields."""
 
@@ -158,10 +174,18 @@ class AirportRecord(FaaRecord):
         *,
         runways: tuple[RunwayRecord, ...] = (),
         runway_ends: tuple[RunwayEndRecord, ...] = (),
+        ils: tuple[IlsRecord, ...] = (),
+        dmes: tuple[DmeRecord, ...] = (),
+        glide_slopes: tuple[GlideSlopeRecord, ...] = (),
+        markers: tuple[MarkerRecord, ...] = (),
     ) -> None:
         super().__init__(raw)
         self._runways = runways
         self._runway_ends = runway_ends
+        self._ils = ils
+        self._dmes = dmes
+        self._glide_slopes = glide_slopes
+        self._markers = markers
 
     @property
     def runways(self) -> tuple[RunwayRecord, ...]:
@@ -172,6 +196,26 @@ class AirportRecord(FaaRecord):
     def runway_ends(self) -> tuple[RunwayEndRecord, ...]:
         """Immutable collection of runway ends belonging to this airport."""
         return self._runway_ends
+
+    @property
+    def ils(self) -> tuple[IlsRecord, ...]:
+        """Immutable ILS records; empty when the optional table is absent."""
+        return self._ils
+
+    @property
+    def dmes(self) -> tuple[DmeRecord, ...]:
+        """Immutable DME records; empty when the optional table is absent."""
+        return self._dmes
+
+    @property
+    def glide_slopes(self) -> tuple[GlideSlopeRecord, ...]:
+        """Immutable glide-slope records; empty when the optional table is absent."""
+        return self._glide_slopes
+
+    @property
+    def markers(self) -> tuple[MarkerRecord, ...]:
+        """Immutable marker records; empty when the optional table is absent."""
+        return self._markers
 
     def _field_context(self, column: str) -> FieldContext:
         return FieldContext(
@@ -227,6 +271,10 @@ class AirportRecord(FaaRecord):
 __all__ = [
     "FaaRecord",
     "AirportRecord",
+    "DmeRecord",
+    "GlideSlopeRecord",
+    "IlsRecord",
+    "MarkerRecord",
     "RunwayEndRecord",
     "RunwayRecord",
     "FieldContext",

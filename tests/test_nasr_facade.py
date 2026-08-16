@@ -1,7 +1,7 @@
 import pandas as pd
 
 from openNASR.records import AirportRecord, FaaRecord
-from openNASR.repository import RecordRepository
+from openNASR.repository import AirportRepository, RecordRepository
 
 
 def test_airport_repository_get_and_singular_facade_are_equivalent(fixture_nasr):
@@ -56,6 +56,20 @@ def test_airport_record_exposes_immutable_typed_runway_collections(fixture_nasr)
     assert isinstance(airport.runway_ends, tuple)
     assert airport.runways[0]["RWY_ID"] == "10/28"
     assert airport.runway_ends[0]["RWY_END_ID"] == 10
+
+
+def test_airport_record_associates_optional_ils_component_collections(fixture_nasr):
+    nasr, _ = fixture_nasr
+
+    airport = nasr.airports.get("BWI")
+
+    assert airport.ils[0]["ARPT_ID"] == "BWI"
+    assert airport.dmes[0]["ARPT_ID"] == "BWI"
+    assert airport.glide_slopes[0]["ARPT_ID"] == "BWI"
+    assert airport.markers[0]["ARPT_ID"] == "BWI"
+
+    reduced = AirportRepository({"APT_BASE": nasr["APT_BASE"]})
+    assert reduced.get("BWI").ils == ()
 
 
 def test_record_repository_normalizes_composite_keys_and_optional_filters():

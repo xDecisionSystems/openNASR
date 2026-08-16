@@ -8,7 +8,16 @@ from pathlib import Path
 from pandas import DataFrame, read_csv
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError, TableNotFoundError
-from .records import AirportRecord, FaaRecord, RunwayEndRecord, RunwayRecord
+from .records import (
+    AirportRecord,
+    DmeRecord,
+    FaaRecord,
+    GlideSlopeRecord,
+    IlsRecord,
+    MarkerRecord,
+    RunwayEndRecord,
+    RunwayRecord,
+)
 
 
 def discover_tables(cycle_path: str | Path) -> tuple[str, ...]:
@@ -146,6 +155,10 @@ class AirportRepository:
             runway_ends=self._related_records(
                 "APT_RWY_END", identifier, RunwayEndRecord
             ),
+            ils=self._related_records("ILS_BASE", identifier, IlsRecord),
+            dmes=self._related_records("ILS_DME", identifier, DmeRecord),
+            glide_slopes=self._related_records("ILS_GS", identifier, GlideSlopeRecord),
+            markers=self._related_records("ILS_MKR", identifier, MarkerRecord),
         )
 
     def _related_records(self, table: str, identifier: str, record_type):

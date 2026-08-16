@@ -1637,7 +1637,7 @@ Later `1.x` milestones add repositories using the same contract.
 - [x] **Agent: Terra.** Expose `faa_id`, `icao_id`, `name`, `latitude`, `longitude`, and
       `elevation_ft` with documented nullability.
 - [x] **Agent: Terra.** Expose runways and runway ends as typed immutable collections.
-- [ ] **Agent: Terra.** Associate ILS, DME, glide-slope, and marker records without assuming every
+- [x] **Agent: Terra.** Associate ILS, DME, glide-slope, and marker records without assuming every
       optional table or field exists.
 - [ ] **Agent: Terra.** Validate reciprocal runway identifiers before building polygons.
 - [ ] **Agent: Terra.** Keep raw records available for fields without typed properties.
