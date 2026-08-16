@@ -1,6 +1,7 @@
 from openNASR.repository import TableRepository, discover_tables, normalize_table_name
 from collections.abc import Mapping
 import pytest
+from pandas.errors import ParserError
 
 from openNASR.exceptions import TableNotFoundError
 
@@ -28,6 +29,18 @@ def test_table_loading_retries_only_for_text_encoding_errors(tmp_path):
     table = TableRepository(tmp_path).load("APT_BASE")
 
     assert table.loc[0, "NAME"] == "Montréal"
+
+
+def test_parser_errors_are_not_retried_or_hidden(monkeypatch, tmp_path):
+    path = tmp_path / "APT_BASE.csv"
+    path.write_text("ARPT_ID\nBWI\n", encoding="utf-8")
+
+    def malformed_csv(*_args, **_kwargs):
+        raise ParserError("malformed row")
+
+    monkeypatch.setattr("openNASR.repository.read_csv", malformed_csv)
+    with pytest.raises(ParserError, match="malformed row"):
+        TableRepository(tmp_path).load("APT_BASE")
 
 
 def test_loaded_dataframes_are_cached_per_repository_instance(tmp_path):

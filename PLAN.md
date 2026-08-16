@@ -1546,7 +1546,7 @@ Tasks:
 - [x] **Agent: Terra.** Add clear errors for missing or unreadable tables.
 - [x] **Agent: Terra.** Handle encoding fallback narrowly; never catch every exception and retry
       indiscriminately.
-- [ ] **Agent: Terra.** Preserve meaningful pandas parser errors as exception causes.
+- [x] **Agent: Terra.** Preserve meaningful pandas parser errors as exception causes.
 - [ ] **Agent: Terra.** Create indexes lazily for frequently queried identifier columns.
 - [ ] **Agent: Terra.** Cache normalized identifier mappings rather than scanning entire columns
       for every lookup.
