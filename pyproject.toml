@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,13 +8,12 @@ version = "0.0.1"
 description = "Library to access FAA NASR data"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
-license = { text = "GNU GENERAL PUBLIC LICENSE Version 3" }
+license = "GPL-3.0-only"
 authors = [
     { name = "Adan E Vela", email = "adan.vela@ucf.edu" },
 ]
 keywords = ["FAA", "NASR"]
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -26,8 +25,26 @@ dependencies = [
     "shapely",
 ]
 
+[project.optional-dependencies]
+plot = ["matplotlib"]
+dev = ["pytest", "ruff", "mypy"]
+
 [project.urls]
 Homepage = "https://github.com/ADCLab/openNASR"
 
 [tool.setuptools]
 packages = ["openNASR"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

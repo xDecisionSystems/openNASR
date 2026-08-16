@@ -1,0 +1,427 @@
+{
+  "from_schema": "pre_2026_09",
+  "to_schema": "nasr_2026_09",
+  "effective_date": "2026-09-03",
+  "review_status": "reviewed against FAA NASR 26-01 DPN and test headers",
+  "sources": [
+    "06_Aug_2026_CSV.zip",
+    "03_Sep_2026_CSV.zip",
+    "NASR_10_1_TEST_CSV.zip",
+    "NASR_26-01_DPN_10.1_Subscriber_Enhancement.pdf"
+  ],
+  "summary": {
+    "tables_added": 0,
+    "tables_removed": 0,
+    "tables_changed": 4,
+    "columns_added": 2,
+    "columns_removed": 1,
+    "column_definitions_changed": 6,
+    "faa_type_changes": 0,
+    "max_length_changes": 6,
+    "nullability_changes": 0,
+    "one_to_one_column_renames": 0
+  },
+  "tables_added": [],
+  "tables_removed": [],
+  "table_changes": {
+    "APT_RWY": {
+      "columns_added": [
+        {
+          "name": "PAVEMENT_CLASSIFICATION",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "PCN_PCR_NUMBER",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        }
+      ],
+      "columns_removed": [
+        {
+          "name": "PCN",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        }
+      ],
+      "columns_changed": [],
+      "column_order_before": [
+        "EFF_DATE",
+        "SITE_NO",
+        "SITE_TYPE_CODE",
+        "STATE_CODE",
+        "ARPT_ID",
+        "CITY",
+        "COUNTRY_CODE",
+        "RWY_ID",
+        "RWY_LEN",
+        "RWY_WIDTH",
+        "SURFACE_TYPE_CODE",
+        "COND",
+        "TREATMENT_CODE",
+        "PCN",
+        "PAVEMENT_TYPE_CODE",
+        "SUBGRADE_STRENGTH_CODE",
+        "TIRE_PRES_CODE",
+        "DTRM_METHOD_CODE",
+        "RWY_LGT_CODE",
+        "RWY_LEN_SOURCE",
+        "LENGTH_SOURCE_DATE",
+        "GROSS_WT_SW",
+        "GROSS_WT_DW",
+        "GROSS_WT_DTW",
+        "GROSS_WT_DDTW"
+      ],
+      "column_order_after": [
+        "EFF_DATE",
+        "SITE_NO",
+        "SITE_TYPE_CODE",
+        "STATE_CODE",
+        "ARPT_ID",
+        "CITY",
+        "COUNTRY_CODE",
+        "RWY_ID",
+        "RWY_LEN",
+        "RWY_WIDTH",
+        "SURFACE_TYPE_CODE",
+        "COND",
+        "TREATMENT_CODE",
+        "PAVEMENT_CLASSIFICATION",
+        "PCN_PCR_NUMBER",
+        "PAVEMENT_TYPE_CODE",
+        "SUBGRADE_STRENGTH_CODE",
+        "TIRE_PRES_CODE",
+        "DTRM_METHOD_CODE",
+        "RWY_LGT_CODE",
+        "RWY_LEN_SOURCE",
+        "LENGTH_SOURCE_DATE",
+        "GROSS_WT_SW",
+        "GROSS_WT_DW",
+        "GROSS_WT_DTW",
+        "GROSS_WT_DDTW"
+      ]
+    },
+    "AWY_SEG_ALT": {
+      "columns_added": [],
+      "columns_removed": [],
+      "columns_changed": [
+        {
+          "name": "POINT_SEQ",
+          "before": {
+            "name": "POINT_SEQ",
+            "faa_type": "NUMBER",
+            "max_length": "(3,0)",
+            "nullable": false
+          },
+          "after": {
+            "name": "POINT_SEQ",
+            "faa_type": "NUMBER",
+            "max_length": "(4,0)",
+            "nullable": false
+          }
+        }
+      ],
+      "column_order_before": [
+        "EFF_DATE",
+        "REGULATORY",
+        "AWY_LOCATION",
+        "AWY_ID",
+        "POINT_SEQ",
+        "FROM_POINT",
+        "FROM_PT_TYPE",
+        "NAV_NAME",
+        "NAV_CITY",
+        "ARTCC",
+        "ICAO_REGION_CODE",
+        "STATE_CODE",
+        "COUNTRY_CODE",
+        "TO_POINT",
+        "MAG_COURSE",
+        "OPP_MAG_COURSE",
+        "MAG_COURSE_DIST",
+        "CHGOVR_PT",
+        "CHGOVR_PT_NAME",
+        "CHGOVR_PT_DIST",
+        "AWY_SEG_GAP_FLAG",
+        "SIGNAL_GAP_FLAG",
+        "DOGLEG",
+        "NEXT_MEA_PT",
+        "MIN_ENROUTE_ALT",
+        "MIN_ENROUTE_ALT_DIR",
+        "MIN_ENROUTE_ALT_OPPOSITE",
+        "MIN_ENROUTE_ALT_OPPOSITE_DIR",
+        "GPS_MIN_ENROUTE_ALT",
+        "GPS_MIN_ENROUTE_ALT_DIR",
+        "GPS_MIN_ENROUTE_ALT_OPPOSITE",
+        "GPS_MEA_OPPOSITE_DIR",
+        "DD_IRU_MEA",
+        "DD_IRU_MEA_DIR",
+        "DD_I_MEA_OPPOSITE",
+        "DD_I_MEA_OPPOSITE_DIR",
+        "MIN_OBSTN_CLNC_ALT",
+        "MIN_CROSS_ALT",
+        "MIN_CROSS_ALT_DIR",
+        "MIN_CROSS_ALT_NAV_PT",
+        "MIN_CROSS_ALT_OPPOSITE",
+        "MIN_CROSS_ALT_OPPOSITE_DIR",
+        "MIN_RECEP_ALT",
+        "MAX_AUTH_ALT",
+        "MEA_GAP",
+        "REQD_NAV_PERFORMANCE",
+        "REMARK"
+      ],
+      "column_order_after": [
+        "EFF_DATE",
+        "REGULATORY",
+        "AWY_LOCATION",
+        "AWY_ID",
+        "POINT_SEQ",
+        "FROM_POINT",
+        "FROM_PT_TYPE",
+        "NAV_NAME",
+        "NAV_CITY",
+        "ARTCC",
+        "ICAO_REGION_CODE",
+        "STATE_CODE",
+        "COUNTRY_CODE",
+        "TO_POINT",
+        "MAG_COURSE",
+        "OPP_MAG_COURSE",
+        "MAG_COURSE_DIST",
+        "CHGOVR_PT",
+        "CHGOVR_PT_NAME",
+        "CHGOVR_PT_DIST",
+        "AWY_SEG_GAP_FLAG",
+        "SIGNAL_GAP_FLAG",
+        "DOGLEG",
+        "NEXT_MEA_PT",
+        "MIN_ENROUTE_ALT",
+        "MIN_ENROUTE_ALT_DIR",
+        "MIN_ENROUTE_ALT_OPPOSITE",
+        "MIN_ENROUTE_ALT_OPPOSITE_DIR",
+        "GPS_MIN_ENROUTE_ALT",
+        "GPS_MIN_ENROUTE_ALT_DIR",
+        "GPS_MIN_ENROUTE_ALT_OPPOSITE",
+        "GPS_MEA_OPPOSITE_DIR",
+        "DD_IRU_MEA",
+        "DD_IRU_MEA_DIR",
+        "DD_I_MEA_OPPOSITE",
+        "DD_I_MEA_OPPOSITE_DIR",
+        "MIN_OBSTN_CLNC_ALT",
+        "MIN_CROSS_ALT",
+        "MIN_CROSS_ALT_DIR",
+        "MIN_CROSS_ALT_NAV_PT",
+        "MIN_CROSS_ALT_OPPOSITE",
+        "MIN_CROSS_ALT_OPPOSITE_DIR",
+        "MIN_RECEP_ALT",
+        "MAX_AUTH_ALT",
+        "MEA_GAP",
+        "REQD_NAV_PERFORMANCE",
+        "REMARK"
+      ]
+    },
+    "PFR_BASE": {
+      "columns_added": [],
+      "columns_removed": [],
+      "columns_changed": [
+        {
+          "name": "SPECIAL_AREA_DESCRIP",
+          "before": {
+            "name": "SPECIAL_AREA_DESCRIP",
+            "faa_type": "VARCHAR",
+            "max_length": "75",
+            "nullable": true
+          },
+          "after": {
+            "name": "SPECIAL_AREA_DESCRIP",
+            "faa_type": "VARCHAR",
+            "max_length": "150",
+            "nullable": true
+          }
+        },
+        {
+          "name": "AIRCRAFT",
+          "before": {
+            "name": "AIRCRAFT",
+            "faa_type": "VARCHAR",
+            "max_length": "50",
+            "nullable": true
+          },
+          "after": {
+            "name": "AIRCRAFT",
+            "faa_type": "VARCHAR",
+            "max_length": "100",
+            "nullable": true
+          }
+        },
+        {
+          "name": "DESIGNATOR",
+          "before": {
+            "name": "DESIGNATOR",
+            "faa_type": "VARCHAR",
+            "max_length": "5",
+            "nullable": true
+          },
+          "after": {
+            "name": "DESIGNATOR",
+            "faa_type": "VARCHAR",
+            "max_length": "16",
+            "nullable": true
+          }
+        }
+      ],
+      "column_order_before": [
+        "EFF_DATE",
+        "ORIGIN_ID",
+        "ORIGIN_CITY",
+        "ORIGIN_STATE_CODE",
+        "ORIGIN_COUNTRY_CODE",
+        "DSTN_ID",
+        "DSTN_CITY",
+        "DSTN_STATE_CODE",
+        "DSTN_COUNTRY_CODE",
+        "PFR_TYPE_CODE",
+        "ROUTE_NO",
+        "SPECIAL_AREA_DESCRIP",
+        "ALT_DESCRIP",
+        "AIRCRAFT",
+        "HOURS",
+        "ROUTE_DIR_DESCRIP",
+        "DESIGNATOR",
+        "NAR_TYPE",
+        "INLAND_FAC_FIX",
+        "COASTAL_FIX",
+        "DESTINATION",
+        "ROUTE_STRING"
+      ],
+      "column_order_after": [
+        "EFF_DATE",
+        "ORIGIN_ID",
+        "ORIGIN_CITY",
+        "ORIGIN_STATE_CODE",
+        "ORIGIN_COUNTRY_CODE",
+        "DSTN_ID",
+        "DSTN_CITY",
+        "DSTN_STATE_CODE",
+        "DSTN_COUNTRY_CODE",
+        "PFR_TYPE_CODE",
+        "ROUTE_NO",
+        "SPECIAL_AREA_DESCRIP",
+        "ALT_DESCRIP",
+        "AIRCRAFT",
+        "HOURS",
+        "ROUTE_DIR_DESCRIP",
+        "DESIGNATOR",
+        "NAR_TYPE",
+        "INLAND_FAC_FIX",
+        "COASTAL_FIX",
+        "DESTINATION",
+        "ROUTE_STRING"
+      ]
+    },
+    "PFR_RMT_FMT": {
+      "columns_added": [],
+      "columns_removed": [],
+      "columns_changed": [
+        {
+          "name": "Area",
+          "before": {
+            "name": "Area",
+            "faa_type": "VARCHAR",
+            "max_length": "75",
+            "nullable": true
+          },
+          "after": {
+            "name": "Area",
+            "faa_type": "VARCHAR",
+            "max_length": "150",
+            "nullable": true
+          }
+        },
+        {
+          "name": "Aircraft",
+          "before": {
+            "name": "Aircraft",
+            "faa_type": "VARCHAR",
+            "max_length": "50",
+            "nullable": true
+          },
+          "after": {
+            "name": "Aircraft",
+            "faa_type": "VARCHAR",
+            "max_length": "100",
+            "nullable": true
+          }
+        }
+      ],
+      "column_order_before": [
+        "Orig",
+        "Route String",
+        "Dest",
+        "Hours1",
+        "Type",
+        "Area",
+        "Altitude",
+        "Aircraft",
+        "Direction",
+        "Seq",
+        "DCNTR",
+        "ACNTR"
+      ],
+      "column_order_after": [
+        "Orig",
+        "Route String",
+        "Dest",
+        "Hours1",
+        "Type",
+        "Area",
+        "Altitude",
+        "Aircraft",
+        "Direction",
+        "Seq",
+        "DCNTR",
+        "ACNTR"
+      ]
+    }
+  },
+  "reviewed_replacements": [
+    {
+      "table": "APT_RWY",
+      "removed": [
+        "PCN"
+      ],
+      "added": [
+        "PAVEMENT_CLASSIFICATION",
+        "PCN_PCR_NUMBER"
+      ],
+      "basis": "FAA NASR 26-01 DPN, CSV Subscriber Updates section B.1"
+    }
+  ],
+  "value_domain_changes_without_structural_schema_changes": [
+    {
+      "tables": [
+        "AWY_BASE"
+      ],
+      "fields": [
+        "AWY_DESIGNATION"
+      ],
+      "change": "SP special-route designation added",
+      "basis": "FAA NASR 26-01 DPN, CSV Subscriber Updates section B.3"
+    },
+    {
+      "tables": [
+        "FIX_BASE",
+        "FIX_CHRT"
+      ],
+      "fields": [
+        "CHARTS",
+        "CHARTING_TYPE_DESC"
+      ],
+      "change": "SPECIAL ENROUTE charting type added",
+      "basis": "FAA NASR 26-01 DPN, CSV Subscriber Updates section B.2"
+    }
+  ]
+}

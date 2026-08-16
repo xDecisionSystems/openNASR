@@ -1,0 +1,7691 @@
+{
+  "schema_id": "pre_2026_09",
+  "effective_date": "2026-08-06",
+  "source_artifact": "06_Aug_2026_CSV.zip",
+  "inventory": {
+    "csv_file_count": 87,
+    "operational_table_count": 63,
+    "schema_description_file_count": 24
+  },
+  "csv_files": [
+    {
+      "name": "APT_ARS.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "APT_ATT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "APT_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "APT_CON.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "APT_RMK.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "APT_RWY.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "APT_RWY_END.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ARB_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ARB_SEG.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ATC_ATIS.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ATC_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ATC_RMK.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ATC_SVC.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "AWOS.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "AWY_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "AWY_SEG_ALT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "CDR.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "CLS_ARSP.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "COM.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "DP_APT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "DP_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "DP_RTE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "FIX_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "FIX_CHRT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "FIX_NAV.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "FRQ.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "FSS_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "FSS_RMK.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "HPF_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "HPF_CHRT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "HPF_RMK.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "HPF_SPD_ALT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ILS_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ILS_DME.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ILS_GS.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ILS_MKR.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "ILS_RMK.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "LID.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MAA_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MAA_CON.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MAA_RMK.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MAA_SHP.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MIL_OPS.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MTR_AGY.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MTR_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MTR_PT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MTR_SOP.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MTR_TERR.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "MTR_WDTH.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "NAV_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "NAV_CKPT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "NAV_RMK.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "PFR_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "PFR_RMT_FMT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "PFR_SEG.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "PJA_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "PJA_CON.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "RDR.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "STAR_APT.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "STAR_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "STAR_RTE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "WXL_BASE.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "WXL_SVC.csv",
+      "kind": "operational"
+    },
+    {
+      "name": "APT_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "ARB_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "ATC_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "AWOS_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "AWY_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "CDR_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "CLS_ARSP_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "COM_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "DP_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "FIX_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "FRQ_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "FSS_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "HPF_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "ILS_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "LID_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "MAA_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "MIL_OPS_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "MTR_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "NAV_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "PFR_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "PJA_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "RDR_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "STAR_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    },
+    {
+      "name": "WXL_CSV_DATA_STRUCTURE.csv",
+      "kind": "schema_description"
+    }
+  ],
+  "schema_description_files": [
+    "APT_CSV_DATA_STRUCTURE.csv",
+    "ARB_CSV_DATA_STRUCTURE.csv",
+    "ATC_CSV_DATA_STRUCTURE.csv",
+    "AWOS_CSV_DATA_STRUCTURE.csv",
+    "AWY_CSV_DATA_STRUCTURE.csv",
+    "CDR_CSV_DATA_STRUCTURE.csv",
+    "CLS_ARSP_CSV_DATA_STRUCTURE.csv",
+    "COM_CSV_DATA_STRUCTURE.csv",
+    "DP_CSV_DATA_STRUCTURE.csv",
+    "FIX_CSV_DATA_STRUCTURE.csv",
+    "FRQ_CSV_DATA_STRUCTURE.csv",
+    "FSS_CSV_DATA_STRUCTURE.csv",
+    "HPF_CSV_DATA_STRUCTURE.csv",
+    "ILS_CSV_DATA_STRUCTURE.csv",
+    "LID_CSV_DATA_STRUCTURE.csv",
+    "MAA_CSV_DATA_STRUCTURE.csv",
+    "MIL_OPS_CSV_DATA_STRUCTURE.csv",
+    "MTR_CSV_DATA_STRUCTURE.csv",
+    "NAV_CSV_DATA_STRUCTURE.csv",
+    "PFR_CSV_DATA_STRUCTURE.csv",
+    "PJA_CSV_DATA_STRUCTURE.csv",
+    "RDR_CSV_DATA_STRUCTURE.csv",
+    "STAR_CSV_DATA_STRUCTURE.csv",
+    "WXL_CSV_DATA_STRUCTURE.csv"
+  ],
+  "schema_description_header": [
+    "CSV File",
+    "Column Name",
+    "Max Length",
+    "Data Type",
+    "Nullable"
+  ],
+  "schema_description_metadata_note": "FAA schema-description CSVs are self-describing catalogs and do not declare their own types, lengths, or nullability.",
+  "tables": {
+    "APT_ARS": {
+      "csv_file": "APT_ARS.csv",
+      "schema_description_file": "APT_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ARREST_DEVICE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        }
+      ]
+    },
+    "APT_ATT": {
+      "csv_file": "APT_ATT.csv",
+      "schema_description_file": "APT_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "SKED_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "MONTH",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "DAY",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "HOUR",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        }
+      ]
+    },
+    "APT_BASE": {
+      "csv_file": "APT_BASE.csv",
+      "schema_description_file": "APT_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "ADO_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "STATE_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "COUNTY_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "21",
+          "nullable": false
+        },
+        {
+          "name": "COUNTY_ASSOC_STATE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ARPT_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": false
+        },
+        {
+          "name": "OWNERSHIP_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "FACILITY_USE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "SURVEY_METHOD_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "ELEV",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": false
+        },
+        {
+          "name": "ELEV_METHOD_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MAG_VARN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "MAG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MAG_VARN_YEAR",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        },
+        {
+          "name": "TPA",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        },
+        {
+          "name": "CHART_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "DIST_CITY_TO_AIRPORT",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "DIRECTION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "ACREAGE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "RESP_ARTCC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "COMPUTER_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "FSS_ON_ARPT_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "FSS_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "PHONE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "TOLL_FREE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "ALT_FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "ALT_FSS_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "ALT_TOLL_FREE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "NOTAM_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "NOTAM_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "ACTIVATION_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "FAR_139_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "FAR_139_CARRIER_SER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "ARFF_CERT_TYPE_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "NASP_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "ASP_ANLYS_DTRM_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "13",
+          "nullable": true
+        },
+        {
+          "name": "CUST_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "LNDG_RIGHTS_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "JOINT_USE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MIL_LNDG_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "INSPECT_METHOD_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "INSPECTOR_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAST_INSPECTION",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "LAST_INFO_RESPONSE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "FUEL_TYPES",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "AIRFRAME_REPAIR_SER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "PWR_PLANT_REPAIR_SER",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "BOTTLED_OXY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "BULK_OXY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "LGT_SKED",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "BCN_LGT_SKED",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "TWR_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "SEG_CIRCLE_MKR_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "BCN_LENS_COLOR",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "LNDG_FEE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MEDICAL_USE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_PSN_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "POSITION_SRC_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ELEV_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "ELEVATION_SRC_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "CONTR_FUEL_AVBL",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TRNS_STRG_BUOY_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TRNS_STRG_HGR_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TRNS_STRG_TIE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "OTHER_SERVICES",
+          "faa_type": "VARCHAR",
+          "max_length": "110",
+          "nullable": true
+        },
+        {
+          "name": "WIND_INDCR_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "ICAO_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "MIN_OP_NETWORK",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "USER_FEE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "CTA",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        }
+      ]
+    },
+    "APT_CON": {
+      "csv_file": "APT_CON.csv",
+      "schema_description_file": "APT_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "TITLE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "35",
+          "nullable": true
+        },
+        {
+          "name": "ADDRESS1",
+          "faa_type": "VARCHAR",
+          "max_length": "35",
+          "nullable": true
+        },
+        {
+          "name": "ADDRESS2",
+          "faa_type": "VARCHAR",
+          "max_length": "35",
+          "nullable": true
+        },
+        {
+          "name": "TITLE_CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "STATE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ZIP_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "ZIP_PLUS_FOUR",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "PHONE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        }
+      ]
+    },
+    "APT_RMK": {
+      "csv_file": "APT_RMK.csv",
+      "schema_description_file": "APT_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "LEGACY_ELEMENT_NUMBER",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "TAB_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ELEMENT",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "REF_COL_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": false
+        }
+      ]
+    },
+    "APT_RWY": {
+      "csv_file": "APT_RWY.csv",
+      "schema_description_file": "APT_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": false
+        },
+        {
+          "name": "RWY_LEN",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": false
+        },
+        {
+          "name": "RWY_WIDTH",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": false
+        },
+        {
+          "name": "SURFACE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "COND",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": true
+        },
+        {
+          "name": "TREATMENT_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "PCN",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "PAVEMENT_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "SUBGRADE_STRENGTH_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TIRE_PRES_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "DTRM_METHOD_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "RWY_LGT_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "RWY_LEN_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "LENGTH_SOURCE_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "GROSS_WT_SW",
+          "faa_type": "NUMBER",
+          "max_length": "(5,1)",
+          "nullable": true
+        },
+        {
+          "name": "GROSS_WT_DW",
+          "faa_type": "NUMBER",
+          "max_length": "(5,1)",
+          "nullable": true
+        },
+        {
+          "name": "GROSS_WT_DTW",
+          "faa_type": "NUMBER",
+          "max_length": "(5,1)",
+          "nullable": true
+        },
+        {
+          "name": "GROSS_WT_DDTW",
+          "faa_type": "NUMBER",
+          "max_length": "(5,1)",
+          "nullable": true
+        }
+      ]
+    },
+    "APT_RWY_END": {
+      "csv_file": "APT_RWY_END.csv",
+      "schema_description_file": "APT_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "TRUE_ALIGNMENT",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "ILS_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "RIGHT_HAND_TRAFFIC_PAT_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "RWY_MARKING_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "RWY_MARKING_COND",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_ELEV",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "THR_CROSSING_HGT",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "VISUAL_GLIDE_PATH_ANGLE",
+          "faa_type": "NUMBER",
+          "max_length": "(3,2)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "LAT_DISPLACED_THR_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "LONG_DISPLACED_THR_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_ELEV",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "DISPLACED_THR_LEN",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        },
+        {
+          "name": "TDZ_ELEV",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "VGSI_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "RWY_VISUAL_RANGE_EQUIP_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "RWY_VSBY_VALUE_EQUIP_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "APCH_LGT_SYSTEM_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LGTS_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "CNTRLN_LGTS_AVBL_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TDZ_LGT_AVBL_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "OBSTN_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "11",
+          "nullable": true
+        },
+        {
+          "name": "OBSTN_MRKD_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "FAR_PART_77_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "OBSTN_CLNC_SLOPE",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "OBSTN_HGT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "DIST_FROM_THR",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "CNTRLN_OFFSET",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        },
+        {
+          "name": "CNTRLN_DIR_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "RWY_GRAD",
+          "faa_type": "NUMBER",
+          "max_length": "(4,3)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_GRAD_DIRECTION",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_PSN_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_PSN_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_ELEV_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_ELEV_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "DSPL_THR_PSN_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_DSPL_THR_PSN_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "DSPL_THR_ELEV_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_DSPL_THR_ELEV_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "TDZ_ELEV_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_TDZ_ELEV_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "TKOF_RUN_AVBL",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "TKOF_DIST_AVBL",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "ACLT_STOP_DIST_AVBL",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "LNDG_DIST_AVBL",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "LAHSO_ALD",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_INTERSECT_LAHSO",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "LAHSO_DESC",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "LAHSO_LAT",
+          "faa_type": "VARCHAR",
+          "max_length": "14",
+          "nullable": true
+        },
+        {
+          "name": "LAT_LAHSO_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": true
+        },
+        {
+          "name": "LAHSO_LONG",
+          "faa_type": "VARCHAR",
+          "max_length": "15",
+          "nullable": true
+        },
+        {
+          "name": "LONG_LAHSO_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": true
+        },
+        {
+          "name": "LAHSO_PSN_SOURCE",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "RWY_END_LAHSO_PSN_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        }
+      ]
+    },
+    "ARB_BASE": {
+      "csv_file": "ARB_BASE.csv",
+      "schema_description_file": "ARB_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "LOCATION_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "LOCATION_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "COMPUTER_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ICAO_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "LOCATION_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "STATE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "CROSS_REF",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        }
+      ]
+    },
+    "ARB_SEG": {
+      "csv_file": "ARB_SEG.csv",
+      "schema_description_file": "ARB_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "REC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "14",
+          "nullable": false
+        },
+        {
+          "name": "LOCATION_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "LOCATION_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "ALTITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "POINT_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "BNDRY_PT_DESCRIP",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": true
+        },
+        {
+          "name": "NAS_DESCRIP_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        }
+      ]
+    },
+    "ATC_ATIS": {
+      "csv_file": "ATC_ATIS.csv",
+      "schema_description_file": "ATC_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "FACILITY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ATIS_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "DESCRIPTION",
+          "faa_type": "VARCHAR",
+          "max_length": "100",
+          "nullable": true
+        },
+        {
+          "name": "ATIS_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": false
+        },
+        {
+          "name": "ATIS_PHONE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "18",
+          "nullable": true
+        }
+      ]
+    },
+    "ATC_BASE": {
+      "csv_file": "ATC_BASE.csv",
+      "schema_description_file": "ATC_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": true
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ICAO_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": false
+        },
+        {
+          "name": "REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "TWR_OPERATOR_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": true
+        },
+        {
+          "name": "TWR_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "TWR_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        },
+        {
+          "name": "PRIMARY_APCH_RADIO_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "APCH_P_PROVIDER",
+          "faa_type": "VARCHAR",
+          "max_length": "700",
+          "nullable": true
+        },
+        {
+          "name": "APCH_P_PROV_TYPE_CD",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "SECONDARY_APCH_RADIO_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "APCH_S_PROVIDER",
+          "faa_type": "VARCHAR",
+          "max_length": "700",
+          "nullable": true
+        },
+        {
+          "name": "APCH_S_PROV_TYPE_CD",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "PRIMARY_DEP_RADIO_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "DEP_P_PROVIDER",
+          "faa_type": "VARCHAR",
+          "max_length": "700",
+          "nullable": true
+        },
+        {
+          "name": "DEP_P_PROV_TYPE_CD",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "SECONDARY_DEP_RADIO_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "DEP_S_PROVIDER",
+          "faa_type": "VARCHAR",
+          "max_length": "700",
+          "nullable": true
+        },
+        {
+          "name": "DEP_S_PROV_TYPE_CD",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "CTL_FAC_APCH_DEP_CALLS",
+          "faa_type": "VARCHAR",
+          "max_length": "54",
+          "nullable": true
+        },
+        {
+          "name": "APCH_DEP_OPER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "CTL_PRVDING_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        },
+        {
+          "name": "SECONDARY_CTL_PRVDING_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        }
+      ]
+    },
+    "ATC_RMK": {
+      "csv_file": "ATC_RMK.csv",
+      "schema_description_file": "ATC_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": true
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "LEGACY_ELEMENT_NUMBER",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "TAB_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REMARK_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": false
+        }
+      ]
+    },
+    "ATC_SVC": {
+      "csv_file": "ATC_SVC.csv",
+      "schema_description_file": "ATC_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": true
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "CTL_SVC",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": false
+        }
+      ]
+    },
+    "AWOS": {
+      "csv_file": "AWOS.csv",
+      "schema_description_file": "AWOS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ASOS_AWOS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "ASOS_AWOS_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "COMMISSIONED_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "NAVAID_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": true
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": true
+        },
+        {
+          "name": "ELEV",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "SURVEY_METHOD_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "PHONE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "14",
+          "nullable": true
+        },
+        {
+          "name": "SECOND_PHONE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "14",
+          "nullable": true
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": true
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "AWY_BASE": {
+      "csv_file": "AWY_BASE.csv",
+      "schema_description_file": "AWY_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "REGULATORY",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "AWY_DESIGNATION",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "AWY_LOCATION",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "AWY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "UPDATE_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        },
+        {
+          "name": "AIRWAY_STRING",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": false
+        }
+      ]
+    },
+    "AWY_SEG_ALT": {
+      "csv_file": "AWY_SEG_ALT.csv",
+      "schema_description_file": "AWY_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "REGULATORY",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "AWY_LOCATION",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "AWY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "POINT_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "FROM_POINT",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "FROM_PT_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "NAV_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "NAV_CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "TO_POINT",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "MAG_COURSE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "OPP_MAG_COURSE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "MAG_COURSE_DIST",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "CHGOVR_PT",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "CHGOVR_PT_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "CHGOVR_PT_DIST",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "AWY_SEG_GAP_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "SIGNAL_GAP_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "DOGLEG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "NEXT_MEA_PT",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "MIN_ENROUTE_ALT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MIN_ENROUTE_ALT_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "MIN_ENROUTE_ALT_OPPOSITE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MIN_ENROUTE_ALT_OPPOSITE_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "GPS_MIN_ENROUTE_ALT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "GPS_MIN_ENROUTE_ALT_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "GPS_MIN_ENROUTE_ALT_OPPOSITE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "GPS_MEA_OPPOSITE_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "DD_IRU_MEA",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "DD_IRU_MEA_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "DD_I_MEA_OPPOSITE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "DD_I_MEA_OPPOSITE_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "MIN_OBSTN_CLNC_ALT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MIN_CROSS_ALT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MIN_CROSS_ALT_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "MIN_CROSS_ALT_NAV_PT",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "MIN_CROSS_ALT_OPPOSITE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MIN_CROSS_ALT_OPPOSITE_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": true
+        },
+        {
+          "name": "MIN_RECEP_ALT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MAX_AUTH_ALT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MEA_GAP",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "REQD_NAV_PERFORMANCE",
+          "faa_type": "NUMBER",
+          "max_length": "(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "CDR": {
+      "csv_file": "CDR.csv",
+      "schema_description_file": "CDR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "RCode",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": false,
+          "faa_declared_name": "RCODE"
+        },
+        {
+          "name": "Orig",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false,
+          "faa_declared_name": "ORIG"
+        },
+        {
+          "name": "Dest",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false,
+          "faa_declared_name": "DEST"
+        },
+        {
+          "name": "DepFix",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false,
+          "faa_declared_name": "DEPFIX"
+        },
+        {
+          "name": "Route String",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": false,
+          "faa_declared_name": "ROUTE STRING"
+        },
+        {
+          "name": "DCNTR",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ACNTR",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "TCNTRs",
+          "faa_type": "VARCHAR",
+          "max_length": "100",
+          "nullable": true,
+          "faa_declared_name": "TCNTRS"
+        },
+        {
+          "name": "CoordReq",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false,
+          "faa_declared_name": "COORDREQ"
+        },
+        {
+          "name": "Play",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true,
+          "faa_declared_name": "PLAY"
+        },
+        {
+          "name": "NavEqp",
+          "faa_type": "NUMBER",
+          "max_length": "(1,0)",
+          "nullable": false,
+          "faa_declared_name": "NAVEQP"
+        },
+        {
+          "name": "Length",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true,
+          "faa_declared_name": "LENGTH"
+        }
+      ]
+    },
+    "CLS_ARSP": {
+      "csv_file": "CLS_ARSP.csv",
+      "schema_description_file": "CLS_ARSP_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "CLASS_B_AIRSPACE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "CLASS_C_AIRSPACE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "CLASS_D_AIRSPACE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "CLASS_E_AIRSPACE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "AIRSPACE_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": true
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "COM": {
+      "csv_file": "COM.csv",
+      "schema_description_file": "COM_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "COMM_LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": true
+        },
+        {
+          "name": "COMM_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "COMM_OUTLET_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "FACILITY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "FACILITY_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ALT_FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "ALT_FSS_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "OPR_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "65",
+          "nullable": true
+        },
+        {
+          "name": "COMM_STATUS_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "COMM_STATUS_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "DP_APT": {
+      "csv_file": "DP_APT.csv",
+      "schema_description_file": "DP_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "DP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": true
+        },
+        {
+          "name": "DP_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "BODY_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "110",
+          "nullable": false
+        },
+        {
+          "name": "BODY_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(1,0)",
+          "nullable": false
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        }
+      ]
+    },
+    "DP_BASE": {
+      "csv_file": "DP_BASE.csv",
+      "schema_description_file": "DP_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "DP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "AMENDMENT_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": true
+        },
+        {
+          "name": "DP_AMEND_EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "RNAV_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "DP_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "GRAPHICAL_DP_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SERVED_ARPT",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": false
+        }
+      ]
+    },
+    "DP_RTE": {
+      "csv_file": "DP_RTE.csv",
+      "schema_description_file": "DP_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "DP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": true
+        },
+        {
+          "name": "DP_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_PORTION_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "110",
+          "nullable": false
+        },
+        {
+          "name": "BODY_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(1,0)",
+          "nullable": false
+        },
+        {
+          "name": "TRANSITION_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": true
+        },
+        {
+          "name": "POINT_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "POINT",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "POINT_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": false
+        },
+        {
+          "name": "NEXT_POINT",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_RWY_ASSOC",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "FIX_BASE": {
+      "csv_file": "FIX_BASE.csv",
+      "schema_description_file": "FIX_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "FIX_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false,
+          "faa_declared_name": "COUNTRY_CODE  "
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "FIX_ID_OLD",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "CHARTING_REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "38",
+          "nullable": true
+        },
+        {
+          "name": "FIX_USE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC_ID_HIGH",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "ARTCC_ID_LOW",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "PITCH_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "CATCH_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "SUA_ATCAA_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "MIN_RECEP_ALT",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "COMPULSORY",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "CHARTS",
+          "faa_type": "VARCHAR",
+          "max_length": "600",
+          "nullable": true
+        }
+      ]
+    },
+    "FIX_CHRT": {
+      "csv_file": "FIX_CHRT.csv",
+      "schema_description_file": "FIX_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "FIX_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "CHARTING_TYPE_DESC",
+          "faa_type": "VARCHAR",
+          "max_length": "22",
+          "nullable": false
+        }
+      ]
+    },
+    "FIX_NAV": {
+      "csv_file": "FIX_NAV.csv",
+      "schema_description_file": "FIX_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "FIX_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": false
+        },
+        {
+          "name": "BEARING",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "DISTANCE",
+          "faa_type": "NUMBER",
+          "max_length": "(7,2)",
+          "nullable": true
+        }
+      ]
+    },
+    "FRQ": {
+      "csv_file": "FRQ.csv",
+      "schema_description_file": "FRQ_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "FACILITY",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "FAC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "FACILITY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC_OR_FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "CPDLC",
+          "faa_type": "VARCHAR",
+          "max_length": "100",
+          "nullable": true
+        },
+        {
+          "name": "TOWER_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        },
+        {
+          "name": "SERVICED_FACILITY",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "SERVICED_FAC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "SERVICED_SITE_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": true
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": true
+        },
+        {
+          "name": "SERVICED_CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "SERVICED_STATE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "SERVICED_COUNTRY",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "TOWER_OR_COMM_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "PRIMARY_APPROACH_RADIO_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "FREQ",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "SECTORIZATION",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "FREQ_USE",
+          "faa_type": "VARCHAR",
+          "max_length": "600",
+          "nullable": true
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "FSS_BASE": {
+      "csv_file": "FSS_BASE.csv",
+      "schema_description_file": "FSS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "UPDATE_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "FSS_FAC_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": false
+        },
+        {
+          "name": "VOICE_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "OPR_HOURS",
+          "faa_type": "VARCHAR",
+          "max_length": "65",
+          "nullable": false
+        },
+        {
+          "name": "FAC_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "ALTERNATE_FSS",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "WEA_RADAR_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "PHONE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        },
+        {
+          "name": "TOLL_FREE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "16",
+          "nullable": true
+        }
+      ]
+    },
+    "FSS_RMK": {
+      "csv_file": "FSS_RMK.csv",
+      "schema_description_file": "FSS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": false
+        }
+      ]
+    },
+    "HPF_BASE": {
+      "csv_file": "HPF_BASE.csv",
+      "schema_description_file": "HPF_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "HP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": false
+        },
+        {
+          "name": "HP_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "FIX_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": true
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "HOLD_DIRECTION",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "HOLD_DEG_OR_CRS",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "AZIMUTH",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "COURSE_INBOUND_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "TURN_DIRECTION",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "LEG_LENGTH_DIST",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        }
+      ]
+    },
+    "HPF_CHRT": {
+      "csv_file": "HPF_CHRT.csv",
+      "schema_description_file": "HPF_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "HP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": false
+        },
+        {
+          "name": "HP_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "CHARTING_TYPE_DESC",
+          "faa_type": "VARCHAR",
+          "max_length": "22",
+          "nullable": false
+        }
+      ]
+    },
+    "HPF_RMK": {
+      "csv_file": "HPF_RMK.csv",
+      "schema_description_file": "HPF_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "HP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": false
+        },
+        {
+          "name": "HP_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "TAB_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": false
+        }
+      ]
+    },
+    "HPF_SPD_ALT": {
+      "csv_file": "HPF_SPD_ALT.csv",
+      "schema_description_file": "HPF_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "HP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": false
+        },
+        {
+          "name": "HP_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "SPEED_RANGE",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": false
+        },
+        {
+          "name": "ALTITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        }
+      ]
+    },
+    "ILS_BASE": {
+      "csv_file": "ILS_BASE.csv",
+      "schema_description_file": "ILS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ILS_LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "SYSTEM_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "STATE_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "RWY_LEN",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": false
+        },
+        {
+          "name": "RWY_WIDTH",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": false
+        },
+        {
+          "name": "CATEGORY",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "OWNER",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "OPERATOR",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "APCH_BEAR",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "MAG_VAR",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "MAG_VAR_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_LONG_SOURCE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "SITE_ELEVATION",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "LOC_FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(6,2)",
+          "nullable": false
+        },
+        {
+          "name": "BK_COURSE_STATUS_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        }
+      ]
+    },
+    "ILS_DME": {
+      "csv_file": "ILS_DME.csv",
+      "schema_description_file": "ILS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ILS_LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "SYSTEM_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_LONG_SOURCE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "SITE_ELEVATION",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "CHANNEL",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        }
+      ]
+    },
+    "ILS_GS": {
+      "csv_file": "ILS_GS.csv",
+      "schema_description_file": "ILS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ILS_LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "SYSTEM_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_LONG_SOURCE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "SITE_ELEVATION",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "G_S_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "G_S_ANGLE",
+          "faa_type": "NUMBER",
+          "max_length": "(4,2)",
+          "nullable": false
+        },
+        {
+          "name": "G_S_FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(6,2)",
+          "nullable": false
+        }
+      ]
+    },
+    "ILS_MKR": {
+      "csv_file": "ILS_MKR.csv",
+      "schema_description_file": "ILS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ILS_LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "SYSTEM_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ILS_COMP_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "COMPONENT_STATUS_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_LONG_SOURCE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "SITE_ELEVATION",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "MKR_FAC_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "MARKER_ID_BEACON",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COMPASS_LOCATOR_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": true
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "LOW_POWERED_NDB_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        }
+      ]
+    },
+    "ILS_RMK": {
+      "csv_file": "ILS_RMK.csv",
+      "schema_description_file": "ILS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ILS_LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "SYSTEM_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "TAB_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "ILS_COMP_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "REF_COL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": false
+        }
+      ]
+    },
+    "LID": {
+      "csv_file": "LID.csv",
+      "schema_description_file": "LID_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "STATE",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "LID_GROUP",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "FAC_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "FAC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "75",
+          "nullable": true
+        },
+        {
+          "name": "RESP_ARTCC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "ARTCC_COMPUTER_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        }
+      ]
+    },
+    "MAA_BASE": {
+      "csv_file": "MAA_BASE.csv",
+      "schema_description_file": "MAA_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "MAA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "MAA_TYPE_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "NAV_RADIAL",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "NAV_DISTANCE",
+          "faa_type": "NUMBER",
+          "max_length": "(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "LATITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "14",
+          "nullable": true
+        },
+        {
+          "name": "LONGITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "15",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_IDS",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "NEAREST_ARPT",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "NEAREST_ARPT_DIST",
+          "faa_type": "NUMBER",
+          "max_length": "(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "NEAREST_ARPT_DIR",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "MAA_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "120",
+          "nullable": true
+        },
+        {
+          "name": "MAX_ALT",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "MIN_ALT",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "MAA_RADIUS",
+          "faa_type": "NUMBER",
+          "max_length": "(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "DESCRIPTION",
+          "faa_type": "VARCHAR",
+          "max_length": "450",
+          "nullable": true
+        },
+        {
+          "name": "MAA_USE",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "CHECK_NOTAMS",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "TIME_OF_USE",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": true
+        },
+        {
+          "name": "USER_GROUP_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": true
+        }
+      ]
+    },
+    "MAA_CON": {
+      "csv_file": "MAA_CON.csv",
+      "schema_description_file": "MAA_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "MAA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "FREQ_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "FAC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "FAC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "COMMERCIAL_FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(7,3)",
+          "nullable": false
+        },
+        {
+          "name": "COMMERCIAL_CHART_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MIL_FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(7,3)",
+          "nullable": true
+        },
+        {
+          "name": "MIL_CHART_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        }
+      ]
+    },
+    "MAA_RMK": {
+      "csv_file": "MAA_RMK.csv",
+      "schema_description_file": "MAA_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "MAA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "TAB_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": false
+        }
+      ]
+    },
+    "MAA_SHP": {
+      "csv_file": "MAA_SHP.csv",
+      "schema_description_file": "MAA_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "MAA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "POINT_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LATITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "14",
+          "nullable": false
+        },
+        {
+          "name": "LONGITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "15",
+          "nullable": false
+        }
+      ]
+    },
+    "MIL_OPS": {
+      "csv_file": "MIL_OPS.csv",
+      "schema_description_file": "MIL_OPS_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": false
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "MIL_OPS_OPER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MIL_OPS_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "26",
+          "nullable": true
+        },
+        {
+          "name": "MIL_OPS_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        },
+        {
+          "name": "AMCP_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        },
+        {
+          "name": "PMSV_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "MTR_AGY": {
+      "csv_file": "MTR_AGY.csv",
+      "schema_description_file": "MTR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": true
+        },
+        {
+          "name": "AGENCY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "AGENCY_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "STATION",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "ADDRESS",
+          "faa_type": "VARCHAR",
+          "max_length": "35",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ZIP_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "COMMERCIAL_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "DSN_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "HOURS",
+          "faa_type": "VARCHAR",
+          "max_length": "175",
+          "nullable": true
+        }
+      ]
+    },
+    "MTR_BASE": {
+      "csv_file": "MTR_BASE.csv",
+      "schema_description_file": "MTR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": true
+        },
+        {
+          "name": "FSS",
+          "faa_type": "VARCHAR",
+          "max_length": "160",
+          "nullable": true
+        },
+        {
+          "name": "TIME_OF_USE",
+          "faa_type": "VARCHAR",
+          "max_length": "175",
+          "nullable": true
+        }
+      ]
+    },
+    "MTR_PT": {
+      "csv_file": "MTR_PT.csv",
+      "schema_description_file": "MTR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": true
+        },
+        {
+          "name": "ROUTE_PT_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_PT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "NEXT_ROUTE_PT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "SEGMENT_TEXT",
+          "faa_type": "VARCHAR",
+          "max_length": "228",
+          "nullable": true
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "NAVAID_BEARING",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "NAVAID_DIST",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        }
+      ]
+    },
+    "MTR_SOP": {
+      "csv_file": "MTR_SOP.csv",
+      "schema_description_file": "MTR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": true
+        },
+        {
+          "name": "SOP_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "SOP_TEXT",
+          "faa_type": "VARCHAR",
+          "max_length": "100",
+          "nullable": false
+        }
+      ]
+    },
+    "MTR_TERR": {
+      "csv_file": "MTR_TERR.csv",
+      "schema_description_file": "MTR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": true
+        },
+        {
+          "name": "TERRAIN_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "TERRAIN_TEXT",
+          "faa_type": "VARCHAR",
+          "max_length": "100",
+          "nullable": false
+        }
+      ]
+    },
+    "MTR_WDTH": {
+      "csv_file": "MTR_WDTH.csv",
+      "schema_description_file": "MTR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "80",
+          "nullable": true
+        },
+        {
+          "name": "WIDTH_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "WIDTH_TEXT",
+          "faa_type": "VARCHAR",
+          "max_length": "100",
+          "nullable": false
+        }
+      ]
+    },
+    "NAV_BASE": {
+      "csv_file": "NAV_BASE.csv",
+      "schema_description_file": "NAV_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "NAV_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "STATE_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "FAN_MARKER",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "OWNER",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "OPERATOR",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "NAS_USE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "PUBLIC_USE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "NDB_CLASS_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "11",
+          "nullable": true
+        },
+        {
+          "name": "OPER_HOURS",
+          "faa_type": "VARCHAR",
+          "max_length": "11",
+          "nullable": true
+        },
+        {
+          "name": "HIGH_ALT_ARTCC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "HIGH_ARTCC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "LOW_ALT_ARTCC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "LOW_ARTCC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "SURVEY_ACCURACY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_STATUS",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "TACAN_DME_LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": true
+        },
+        {
+          "name": "ELEV",
+          "faa_type": "NUMBER",
+          "max_length": "(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "MAG_VARN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": true
+        },
+        {
+          "name": "MAG_VARN_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MAG_VARN_YEAR",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        },
+        {
+          "name": "SIMUL_VOICE_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "PWR_OUTPUT",
+          "faa_type": "NUMBER",
+          "max_length": "(4,0)",
+          "nullable": true
+        },
+        {
+          "name": "AUTO_VOICE_ID_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MNT_CAT_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "VOICE_CALL",
+          "faa_type": "VARCHAR",
+          "max_length": "60",
+          "nullable": true
+        },
+        {
+          "name": "CHAN",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "MKR_IDENT",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "MKR_SHAPE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "MKR_BRG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": true
+        },
+        {
+          "name": "ALT_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "DME_SSV",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "LOW_NAV_ON_HIGH_CHART_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "Z_MKR_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "FSS_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "FSS_HOURS",
+          "faa_type": "VARCHAR",
+          "max_length": "65",
+          "nullable": true
+        },
+        {
+          "name": "NOTAM_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "QUAD_IDENT",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": true
+        },
+        {
+          "name": "PITCH_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "CATCH_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "SUA_ATCAA_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "RESTRICTION_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "HIWAS_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        }
+      ]
+    },
+    "NAV_CKPT": {
+      "csv_file": "NAV_CKPT.csv",
+      "schema_description_file": "NAV_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "ALTITUDE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "BRG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "AIR_GND_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "CHK_DESC",
+          "faa_type": "VARCHAR",
+          "max_length": "75",
+          "nullable": false
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "STATE_CHK_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        }
+      ]
+    },
+    "NAV_RMK": {
+      "csv_file": "NAV_RMK.csv",
+      "schema_description_file": "NAV_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "TAB_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "REF_COL_SEQ_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "600",
+          "nullable": false
+        }
+      ]
+    },
+    "PFR_BASE": {
+      "csv_file": "PFR_BASE.csv",
+      "schema_description_file": "PFR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ORIGIN_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ORIGIN_CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "ORIGIN_STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ORIGIN_COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "DSTN_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "DSTN_CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "DSTN_STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "DSTN_COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "PFR_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "SPECIAL_AREA_DESCRIP",
+          "faa_type": "VARCHAR",
+          "max_length": "75",
+          "nullable": true
+        },
+        {
+          "name": "ALT_DESCRIP",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "AIRCRAFT",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "HOURS",
+          "faa_type": "VARCHAR",
+          "max_length": "15",
+          "nullable": true
+        },
+        {
+          "name": "ROUTE_DIR_DESCRIP",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": true
+        },
+        {
+          "name": "DESIGNATOR",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "NAR_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": true
+        },
+        {
+          "name": "INLAND_FAC_FIX",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "COASTAL_FIX",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": true
+        },
+        {
+          "name": "DESTINATION",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "ROUTE_STRING",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": true
+        }
+      ]
+    },
+    "PFR_RMT_FMT": {
+      "csv_file": "PFR_RMT_FMT.csv",
+      "schema_description_file": "PFR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "Orig",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "Route String",
+          "faa_type": "VARCHAR",
+          "max_length": "300",
+          "nullable": true
+        },
+        {
+          "name": "Dest",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "Hours1",
+          "faa_type": "VARCHAR",
+          "max_length": "15",
+          "nullable": true
+        },
+        {
+          "name": "Type",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "Area",
+          "faa_type": "VARCHAR",
+          "max_length": "75",
+          "nullable": true
+        },
+        {
+          "name": "Altitude",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": true
+        },
+        {
+          "name": "Aircraft",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "Direction",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": true
+        },
+        {
+          "name": "Seq",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "DCNTR",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "ACNTR",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        }
+      ]
+    },
+    "PFR_SEG": {
+      "csv_file": "PFR_SEG.csv",
+      "schema_description_file": "PFR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ORIGIN_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "DSTN_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "PFR_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "SEGMENT_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "SEG_VALUE",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "SEG_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "NEXT_SEG",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        }
+      ]
+    },
+    "PJA_BASE": {
+      "csv_file": "PJA_BASE.csv",
+      "schema_description_file": "PJA_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "PJA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "NAV_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "NAV_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": true
+        },
+        {
+          "name": "RADIAL",
+          "faa_type": "NUMBER",
+          "max_length": "(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "DISTANCE",
+          "faa_type": "NUMBER",
+          "max_length": "(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "NAVAID_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "LATITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "14",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONGITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "15",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "SITE_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "9",
+          "nullable": true
+        },
+        {
+          "name": "SITE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "DROP_ZONE_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": true
+        },
+        {
+          "name": "MAX_ALTITUDE",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": true
+        },
+        {
+          "name": "MAX_ALTITUDE_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        },
+        {
+          "name": "PJA_RADIUS",
+          "faa_type": "NUMBER",
+          "max_length": "(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "CHART_REQUEST_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "PUBLISH_CRITERIA",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "DESCRIPTION",
+          "faa_type": "VARCHAR",
+          "max_length": "100",
+          "nullable": true
+        },
+        {
+          "name": "TIME_OF_USE",
+          "faa_type": "VARCHAR",
+          "max_length": "150",
+          "nullable": true
+        },
+        {
+          "name": "FSS_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "FSS_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "PJA_USE",
+          "faa_type": "VARCHAR",
+          "max_length": "8",
+          "nullable": true
+        },
+        {
+          "name": "VOLUME",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "PJA_USER",
+          "faa_type": "VARCHAR",
+          "max_length": "150",
+          "nullable": true
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "600",
+          "nullable": true
+        }
+      ]
+    },
+    "PJA_CON": {
+      "csv_file": "PJA_CON.csv",
+      "schema_description_file": "PJA_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "PJA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "6",
+          "nullable": false
+        },
+        {
+          "name": "FAC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": true
+        },
+        {
+          "name": "FAC_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "50",
+          "nullable": false
+        },
+        {
+          "name": "LOC_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "COMMERCIAL_FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(7,3)",
+          "nullable": false
+        },
+        {
+          "name": "COMMERCIAL_CHART_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "MIL_FREQ",
+          "faa_type": "NUMBER",
+          "max_length": "(7,3)",
+          "nullable": true
+        },
+        {
+          "name": "MIL_CHART_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": true
+        },
+        {
+          "name": "SECTOR",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": true
+        },
+        {
+          "name": "CONTACT_FREQ_ALTITUDE",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": true
+        }
+      ]
+    },
+    "RDR": {
+      "csv_file": "RDR.csv",
+      "schema_description_file": "RDR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "FACILITY_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "FACILITY_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "7",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "RADAR_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "RADAR_NO",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "RADAR_HRS",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": false
+        },
+        {
+          "name": "REMARK",
+          "faa_type": "VARCHAR",
+          "max_length": "1500",
+          "nullable": true
+        }
+      ]
+    },
+    "STAR_APT": {
+      "csv_file": "STAR_APT.csv",
+      "schema_description_file": "STAR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "STAR_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": true
+        },
+        {
+          "name": "BODY_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "110",
+          "nullable": false
+        },
+        {
+          "name": "BODY_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(1,0)",
+          "nullable": false
+        },
+        {
+          "name": "ARPT_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "RWY_END_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "3",
+          "nullable": true
+        }
+      ]
+    },
+    "STAR_BASE": {
+      "csv_file": "STAR_BASE.csv",
+      "schema_description_file": "STAR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ARRIVAL_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "30",
+          "nullable": false
+        },
+        {
+          "name": "AMENDMENT_NO",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": true
+        },
+        {
+          "name": "STAR_AMEND_EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "RNAV_FLAG",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "STAR_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "SERVED_ARPT",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": false
+        }
+      ]
+    },
+    "STAR_RTE": {
+      "csv_file": "STAR_RTE.csv",
+      "schema_description_file": "STAR_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "STAR_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": false
+        },
+        {
+          "name": "ARTCC",
+          "faa_type": "VARCHAR",
+          "max_length": "12",
+          "nullable": true
+        },
+        {
+          "name": "ROUTE_PORTION_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ROUTE_NAME",
+          "faa_type": "VARCHAR",
+          "max_length": "110",
+          "nullable": false
+        },
+        {
+          "name": "BODY_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(1,0)",
+          "nullable": false
+        },
+        {
+          "name": "TRANSITION_COMPUTER_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "20",
+          "nullable": true
+        },
+        {
+          "name": "POINT_SEQ",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "POINT",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "ICAO_REGION_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "POINT_TYPE",
+          "faa_type": "VARCHAR",
+          "max_length": "25",
+          "nullable": false
+        },
+        {
+          "name": "NEXT_POINT",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": true
+        },
+        {
+          "name": "ARPT_RWY_ASSOC",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        }
+      ]
+    },
+    "WXL_BASE": {
+      "csv_file": "WXL_BASE.csv",
+      "schema_description_file": "WXL_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "WEA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LAT_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LAT_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(10,8)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DEG",
+          "faa_type": "NUMBER",
+          "max_length": "(3,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_MIN",
+          "faa_type": "NUMBER",
+          "max_length": "(2,0)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_SEC",
+          "faa_type": "NUMBER",
+          "max_length": "(6,4)",
+          "nullable": false
+        },
+        {
+          "name": "LONG_HEMIS",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        },
+        {
+          "name": "LONG_DECIMAL",
+          "faa_type": "NUMBER",
+          "max_length": "(11,8)",
+          "nullable": false
+        },
+        {
+          "name": "ELEV",
+          "faa_type": "NUMBER",
+          "max_length": "(5,0)",
+          "nullable": false
+        },
+        {
+          "name": "SURVEY_METHOD_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "1",
+          "nullable": false
+        }
+      ]
+    },
+    "WXL_SVC": {
+      "csv_file": "WXL_SVC.csv",
+      "schema_description_file": "WXL_CSV_DATA_STRUCTURE.csv",
+      "columns": [
+        {
+          "name": "EFF_DATE",
+          "faa_type": "VARCHAR",
+          "max_length": "10",
+          "nullable": false
+        },
+        {
+          "name": "WEA_ID",
+          "faa_type": "VARCHAR",
+          "max_length": "4",
+          "nullable": false
+        },
+        {
+          "name": "CITY",
+          "faa_type": "VARCHAR",
+          "max_length": "40",
+          "nullable": false
+        },
+        {
+          "name": "STATE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": true
+        },
+        {
+          "name": "COUNTRY_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "2",
+          "nullable": false
+        },
+        {
+          "name": "WEA_SVC_TYPE_CODE",
+          "faa_type": "VARCHAR",
+          "max_length": "5",
+          "nullable": false
+        },
+        {
+          "name": "WEA_AFFECT_AREA",
+          "faa_type": "VARCHAR",
+          "max_length": "200",
+          "nullable": true
+        }
+      ]
+    }
+  }
+}

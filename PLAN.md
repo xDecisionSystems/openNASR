@@ -342,15 +342,15 @@ loaded and represented. `FILESTYPES.md` is authoritative for approved Python
 module, class, repository, and convenience-method names; this plan is
 authoritative for implementation order and acceptance criteria.
 
-The repository's locally available 2024-06-13 cycle supplied the initial
-inventory of 89 CSV files:
+The supported 2026 FAA packages contain 87 CSV files:
 
-- 65 operational data tables;
+- 63 operational data tables;
 - 24 `*_CSV_DATA_STRUCTURE` files describing table columns.
 
-That inventory is historical input, not the compatibility contract. Before the
-registry is implemented, regenerate and compare it against two official schema
-manifests:
+The earlier 65-table/89-file planning inventory included `AWY_ALT` and
+`AWY_SEG`, which are absent from both official supported packages. Their data
+is represented by `AWY_SEG_ALT`; they are not part of the compatibility
+contract. The registry must use the two checked-in official schema manifests:
 
 1. `pre_2026_09`, derived from the FAA cycle effective August 6, 2026;
 2. `nasr_2026_09`, derived from the FAA test/subscription files effective
@@ -564,10 +564,8 @@ raw data.
 
 ### Complete operational-table class matrix
 
-The following matrix assigns the 65 operational CSV tables in the initial 2024
-inventory. `FILESTYPES.md` contains the approved names. Milestone 0B must update
-both files if either supported 2026 manifest contains a different operational
-table set.
+The following matrix assigns the 63 operational CSV tables present in both
+supported 2026 inventories. `FILESTYPES.md` contains the approved names.
 
 | Module | CSV table | Record class | Aggregate or relationship |
 | --- | --- | --- | --- |
@@ -596,9 +594,7 @@ table set.
 | `weather.py` | `WXL_BASE` | `WeatherLocationRecord` | `WeatherLocation` base record |
 | `weather.py` | `WXL_SVC` | `WeatherServiceRecord` | `WeatherLocation.services` |
 | `airway.py` | `AWY_BASE` | `AirwayRecord` | `Airway` base record |
-| `airway.py` | `AWY_ALT` | `AirwayAltitudeRecord` | `Airway.altitudes` |
-| `airway.py` | `AWY_SEG` | `AirwaySegmentRecord` | ordered `Airway.segments` |
-| `airway.py` | `AWY_SEG_ALT` | `AirwaySegmentAltitudeRecord` | `AirwaySegment.altitudes` |
+| `airway.py` | `AWY_SEG_ALT` | `AirwaySegmentRecord` | ordered `Airway.segments`, including altitude constraints |
 | `routes.py` | `CDR` | `CodedDepartureRouteRecord` | standalone `CodedDepartureRoute` |
 | `routes.py` | `DP_BASE` | `DepartureProcedureRecord` | `DepartureProcedure` base record |
 | `routes.py` | `DP_APT` | `DepartureAirportRecord` | `DepartureProcedure.airports` |
@@ -758,18 +754,18 @@ fixtures, tests, public exports, and documentation before starting the next.
 Use the two checked-in versioned manifests from Milestone 0B. Tests must verify:
 
 - [ ] **Agent: Terra.** every filename in each supported manifest is discovered;
-- [ ] **Agent: Sol.** every schema-description file in both generations is parsed;
-- [ ] **Agent: Sol.** every operational table in either manifest has exactly one
+- [x] **Agent: Sol.** every schema-description file in both generations is parsed;
+- [x] **Agent: Sol.** every operational table in either manifest has exactly one
       schema-version-aware `TableSpec`;
 - [ ] **Agent: Terra.** every `TableSpec.record_type` subclasses `FaaRecord`;
-- [ ] **Agent: Sol.** every registered required column exists in the schema description;
-- [ ] **Agent: Sol.** every composite key column exists in its table;
-- [ ] **Agent: Sol.** every declared relationship references columns on both sides;
+- [x] **Agent: Sol.** every registered required column exists in the schema description;
+- [x] **Agent: Sol.** every composite key column exists in its table;
+- [x] **Agent: Sol.** every declared relationship references columns on both sides;
 - [ ] **Agent: Terra.** every table loads independently from the minimal fixture cycle;
 - [ ] **Agent: Terra.** at least one record can be constructed for every operational table;
 - [ ] **Agent: Terra.** every aggregate loads its child tables only when the relationship is
       requested;
-- [ ] **Agent: Sol.** an unknown extra CSV raises `SchemaMismatchError` during normal loading,
+- [x] **Agent: Sol.** an unknown extra CSV raises `SchemaMismatchError` during normal loading,
       is reported as unmodeled, and remains available through raw access only
       in explicit diagnostic inspection mode;
 - [ ] **Agent: Terra.** a missing optional table affects only its related optional property;
@@ -835,39 +831,39 @@ Tasks:
       not here). Drop the `dependency_links` entry pointing at
       `pypi.adc-ucf.com` — it is marked "probably should be removed" in the
       current `setup.py` and is not a general-purpose index.
-- [ ] **Agent: Luna.** **0.5** Add an optional `plot` dependency group in
+- [x] **Agent: Luna.** **0.5** Add an optional `plot` dependency group in
       `[project.optional-dependencies]` containing `matplotlib`.
-- [ ] **Agent: Luna.** **0.6** Add an optional `dev` dependency group in
+- [x] **Agent: Luna.** **0.6** Add an optional `dev` dependency group in
       `[project.optional-dependencies]` containing `pytest`, `ruff`, and
       `mypy`.
-- [ ] **Agent: Terra.** **0.7** Reduce `setup.py` to the minimum shim needed for editable
+- [x] **Agent: Terra.** **0.7** Reduce `setup.py` to the minimum shim needed for editable
       installs on the target setuptools version, or remove it entirely if
       `pyproject.toml` alone supports `pip install -e .` in CI. Verify
       whichever choice is made against the Python/setuptools version pinned
       in Task 0.1.
-- [ ] **Agent: Luna.** **0.8** Add a `[tool.pytest.ini_options]` table (or `pytest.ini`) with
+- [x] **Agent: Luna.** **0.8** Add a `[tool.pytest.ini_options]` table (or `pytest.ini`) with
       `testpaths = ["tests"]`.
-- [ ] **Agent: Terra.** **0.9** Add a `[tool.ruff]` configuration table covering formatting and
+- [x] **Agent: Terra.** **0.9** Add a `[tool.ruff]` configuration table covering formatting and
       linting. Do not enable strict/pedantic rule sets that will mostly fire
       on soon-to-be-rewritten Milestone-1-6 code; start with a conservative
       default rule set (e.g. Ruff's default `E`, `F`) and widen it in
       Milestone 7.
-- [ ] **Agent: Terra.** **0.10** Add a `[tool.mypy]` configuration with a conservative starting
+- [x] **Agent: Terra.** **0.10** Add a `[tool.mypy]` configuration with a conservative starting
       point (e.g. `ignore_missing_imports = true`, gradual typing rather than
       `strict = true`). Strict mode is a Milestone 7 decision, not this one.
-- [ ] **Agent: Luna.** **0.11** Add `.gitignore` entries for: pytest cache (`.pytest_cache/`),
+- [x] **Agent: Luna.** **0.11** Add `.gitignore` entries for: pytest cache (`.pytest_cache/`),
       mypy cache (`.mypy_cache/`), build artifacts (`build/`, `dist/`,
       `*.egg-info/`), and local NASR data artifacts
       (`openNASR/data/zip/*.zip`, `openNASR/data/uncompressed/`) if not
       already covered by the existing `.gitignore`. Check the existing
       `.gitignore` first — several of these entries may already be present —
       and only add what is missing.
-- [ ] **Agent: Terra.** **0.12** Run `python -m build` in a clean checkout and confirm it
+- [x] **Agent: Terra.** **0.12** Run `python -m build` in a clean checkout and confirm it
       produces a wheel and sdist without error.
-- [ ] **Agent: Terra.** **0.13** Inspect the built wheel's file listing (e.g. `unzip -l` or
+- [x] **Agent: Terra.** **0.13** Inspect the built wheel's file listing (e.g. `unzip -l` or
       `python -m zipfile -l`) and confirm no path under `openNASR/data/`
       is included.
-- [ ] **Agent: Terra.** **0.14** Create a fresh virtual environment, install the wheel from
+- [x] **Agent: Terra.** **0.14** Create a fresh virtual environment, install the wheel from
       Task 0.12 into it (not editable install), and run
       `python -c "import openNASR"` to confirm the package imports with only
       the core dependencies (no `plot` or `dev` extras) installed.
@@ -893,36 +889,36 @@ FAA archives and operational records remain outside Git.
 
 Tasks:
 
-- [ ] **Agent: Sol.** **0B.1** Obtain the official FAA CSV/schema packages for the cycle
+- [x] **Agent: Sol.** **0B.1** Obtain the official FAA CSV/schema packages for the cycle
       effective August 6, 2026 and the test/subscription format effective
       September 3, 2026. Store downloads outside the repository and record
       source URLs, effective dates, archive filenames, byte sizes, and SHA-256
       digests in fixture provenance metadata.
-- [ ] **Agent: Sol.** **0B.2** Add versioned, machine-readable schema manifests under
+- [x] **Agent: Sol.** **0B.2** Add versioned, machine-readable schema manifests under
       `tests/fixtures/manifests/pre_2026_09.json` and
       `tests/fixtures/manifests/nasr_2026_09.json`. Each manifest lists every
       CSV table and each column's name, FAA-declared type, length, and
       nullability. Do not include operational row data.
-- [ ] **Agent: Sol.** **0B.3** Generate a reviewed schema-difference report between the two
+- [x] **Agent: Sol.** **0B.3** Generate a reviewed schema-difference report between the two
       manifests and commit it as
       `tests/fixtures/manifests/2026_09_changes.json`. Every added, removed,
       renamed, or type-changed table/column must be represented in later
       registry and compatibility tests.
-- [ ] **Agent: Sol.** **0B.4** Reconcile the 65-table/89-file 2024 inventory and the class matrix
+- [x] **Agent: Sol.** **0B.4** Reconcile the 65-table/89-file 2024 inventory and the class matrix
       against both supported manifests. Update counts and `FILESTYPES.md` if the
       supported schemas differ; do not preserve historical counts artificially.
-- [ ] **Agent: Terra.** **0B.5** Create a synthetic core fixture cycle containing the minimum
+- [x] **Agent: Terra.** **0B.5** Create a synthetic core fixture cycle containing the minimum
       tables and relationships required by Milestone 1: two airports with FAA
       and ICAO IDs, reciprocal runway ends, ILS components, one fix, one unique
       and one duplicated navaid identifier, and one ARTCC with valid high/low
       boundary polygons.
-- [ ] **Agent: Terra.** **0B.6** Create schema-only fixture cycles for both supported generations.
+- [x] **Agent: Terra.** **0B.6** Create schema-only fixture cycles for both supported generations.
       They contain all expected CSV filenames and headers but no copied FAA
       operational rows. These fixtures drive discovery and schema tests.
-- [ ] **Agent: Terra.** **0B.7** Add `tests/conftest.py` helpers that construct `NASR` against a
+- [x] **Agent: Terra.** **0B.7** Add `tests/conftest.py` helpers that construct `NASR` against a
       supplied fixture path or temporary cache without touching package data,
       the user's cache, or the network.
-- [ ] **Agent: Terra.** **0B.8** Add a manifest-consistency test proving that every table in
+- [x] **Agent: Terra.** **0B.8** Add a manifest-consistency test proving that every table in
       `FILESTYPES.md` exists in at least one supported manifest and every
       operational table in either supported manifest has an approved naming
       entry or an explicit schema-version compatibility entry.
@@ -953,7 +949,7 @@ testable.
 
 **`openNASR/exceptions.py` (prerequisite for the tasks below)**
 
-- [ ] **Agent: Terra.** **1.1** Create `openNASR/exceptions.py` implementing the full
+- [x] **Agent: Terra.** **1.1** Create `openNASR/exceptions.py` implementing the full
       exception hierarchy from "Architectural decisions" > "Exception
       hierarchy" (`OpenNASRError`, `ConfigurationError`,
       `CycleNotFoundError`, `DownloadError`, `ArchiveError`,
@@ -965,7 +961,7 @@ testable.
       `SchemaMismatchError` no later than Milestone 1B and
       `FieldConversionError` no later than Milestone 5; the remaining exceptions
       are added when Milestones 3-6 first need them.
-- [ ] **Agent: Terra.** **1.2** Give `RecordNotFoundError` and `AmbiguousRecordError`
+- [x] **Agent: Terra.** **1.2** Give `RecordNotFoundError` and `AmbiguousRecordError`
       constructors that accept and store structured context (e.g.
       `entity_type`, `identifier`, `filters`, and for the ambiguous case a
       `candidates` sequence) so callers can build a useful message without
@@ -973,12 +969,12 @@ testable.
 
 **`openNASR/basictypes.py`**
 
-- [ ] **Agent: Terra.** **1.3** In `RawDict.__init__` (`basictypes.py:104`), replace the call
+- [x] **Agent: Terra.** **1.3** In `RawDict.__init__` (`basictypes.py:104`), replace the call
       to the undefined `getRecords(airport, nasrDF, airportIDCol)` with the
       existing `getAirportRecords(airport, nasrDF, airportIDCol)`
       (`basictypes.py:13`), which already returns the list of
       `SimpleNamespace` rows this loop expects.
-- [ ] **Agent: Terra.** **1.4** In `RawDict.getRawByID` (`basictypes.py:113`), either
+- [x] **Agent: Terra.** **1.4** In `RawDict.getRawByID` (`basictypes.py:113`), either
       initialize `self._map` and `self._raw` in `__init__` (a dict of
       `id -> record` alongside the existing `id -> classType(cRec)` storage
       already built by the loop) so the lookup works, or delete
@@ -986,7 +982,7 @@ testable.
       the codebase for `getRawByID` and `RawDict(...).getRaw(` before
       deciding; do not leave a method that always fails with
       `AttributeError` on first use.
-- [ ] **Agent: Terra.** **1.5** In `Raw.__getattr__` (`basictypes.py:95`), replace the
+- [x] **Agent: Terra.** **1.5** In `Raw.__getattr__` (`basictypes.py:95`), replace the
       reference to the undefined `self._attributes` with a safe delegation
       to `self._raw`: return `getattr(self._raw, name)` inside a
       `try`/`except AttributeError` that re-raises a plain
@@ -998,23 +994,23 @@ testable.
 
 **`openNASR/nav.py`**
 
-- [ ] **Agent: Terra.** **1.6** In `NAVAID.__init__` (`nav.py:5`), replace the bare `raise
+- [x] **Agent: Terra.** **1.6** In `NAVAID.__init__` (`nav.py:5`), replace the bare `raise
       'Navaid does not exist...'` string raise (`nav.py:12`) with `raise
       RecordNotFoundError(entity_type="Navaid", identifier=navaid)`. Remove
       the `print("Unable to find %s" % navaid)` on the preceding line —
       the exception message carries this information now.
-- [ ] **Agent: Terra.** **1.7** In `NAVAID._addBASE` (`nav.py:14`), change every criterion
+- [x] **Agent: Terra.** **1.7** In `NAVAID._addBASE` (`nav.py:14`), change every criterion
       from OR to AND: build `navBool` starting as `navBool = navBool &
       navCenterBool` (etc.) only for the criteria the caller actually
       supplied, instead of the current `navBool = navBool | navCenterBool`
       pattern at `nav.py:21-27`. The identifier match (`navBool` from
       `nav.py:15`) must always be a required term, not optional.
-- [ ] **Agent: Terra.** **1.8** In the same method, replace the ambiguous-match branch
+- [x] **Agent: Terra.** **1.8** In the same method, replace the ambiguous-match branch
       (`nav.py:29-34`) so it raises `AmbiguousRecordError` with the
       candidate rows attached as structured context (per Task 1.2) instead
       of `print`-ing each candidate field and then `raise 'More than
       one...'`.
-- [ ] **Agent: Terra.** **1.9** In the same method, fix the single-match branch
+- [x] **Agent: Terra.** **1.9** In the same method, fix the single-match branch
       (`nav.py:35-36`) to construct the record from `navRecs` (the already
       filtered result), not from a second unfiltered query
       `NAV_BASE[NAV_BASE['NAV_ID']==navaid]` — the current code discards
@@ -1022,19 +1018,19 @@ testable.
       zero-match branch (`nav.py:37-38`) with `raise
       RecordNotFoundError(entity_type="Navaid", identifier=navaid,
       filters={...})`.
-- [ ] **Agent: Terra.** **1.10** Add a `navType` -> `nav_type` parameter alias per the
+- [x] **Agent: Terra.** **1.10** Add a `navType` -> `nav_type` parameter alias per the
       "Navaid requirements" compatibility note in Milestone 5, or defer this
       specific rename to Milestone 5 if it is not needed to pass Milestone 1
       regression tests — do not block this milestone on it.
 
 **`openNASR/airport.py`**
 
-- [ ] **Agent: Terra.** **1.11** In `Airport.__init__` (`airport.py:27`), replace `raise
+- [x] **Agent: Terra.** **1.11** In `Airport.__init__` (`airport.py:27`), replace `raise
       'Airport does not exist...'` (`airport.py:43`) with `raise
       RecordNotFoundError(entity_type="Airport", identifier=airport)`.
       Remove the preceding `print("Unable to find %s" % airport)`
       (`airport.py:42`).
-- [ ] **Agent: Terra.** **1.12** Confirm `nasr.isAirport(airport, forceFAA=True)`
+- [x] **Agent: Terra.** **1.12** Confirm `nasr.isAirport(airport, forceFAA=True)`
       (`airport.py:28`) resolves an ICAO identifier to the matching row's
       `ARPT_ID` before that identifier is used against `APT_RWY`,
       `ILS_BASE`, `ILS_DME`, `ILS_GS`, `ILS_MKR`, and `APT_RWY_END`
@@ -1046,7 +1042,7 @@ testable.
       whose FAA and ICAO IDs differ (e.g. `BWI` vs `KBWI`) that every
       related-table lookup uses the FAA `ARPT_ID` value, not the ICAO
       string, as the filter value.
-- [ ] **Agent: Terra.** **1.13** Give `NASR.isAirport()` (`nasr.py:108`) a default value for
+- [x] **Agent: Terra.** **1.13** Give `NASR.isAirport()` (`nasr.py:108`) a default value for
       `forceFAA` (e.g. `forceFAA: bool = True`) so existing callers that
       invoke it positionally with one argument keep working, and document
       the three-tuple return value (`isAirportBool, airportIDCol,
@@ -1055,7 +1051,7 @@ testable.
 
 **`openNASR/arb.py`**
 
-- [ ] **Agent: Terra.** **1.14** In `NASR.loadARTCC` (`nasr.py:137`), confirm the call
+- [x] **Agent: Terra.** **1.14** In `NASR.loadARTCC` (`nasr.py:137`), confirm the call
       `ARB(self['ARB_BASE'], self['ARB_SEG'], arbType='ARTCC')` matches
       `ARB`'s actual current constructor signature in `arb.py`; update
       whichever side (the call or the constructor) is stale so
@@ -1064,7 +1060,7 @@ testable.
 
 **`openNASR/nasr.py`**
 
-- [ ] **Agent: Terra.** **1.15** In `NASR.__init__` (`nasr.py:33`), remove the `preloadAll`
+- [x] **Agent: Terra.** **1.15** In `NASR.__init__` (`nasr.py:33`), remove the `preloadAll`
       code path that calls the commented-out `self.loadAirports()`
       (`nasr.py:41`, method definition commented out at `nasr.py:140-141`).
       Either: (a) delete the `preloadAll` parameter entirely if nothing
@@ -1074,26 +1070,26 @@ testable.
       proceeding into code that references a nonexistent method. Do not
       leave the current behavior, which crashes with `AttributeError` deep
       inside construction.
-- [ ] **Agent: Terra.** **1.16** In `NASR.setupFiles` (`nasr.py:45`), fix the exact-date
+- [x] **Agent: Terra.** **1.16** In `NASR.setupFiles` (`nasr.py:45`), fix the exact-date
       cycle comparison at `nasr.py:59`: change `cDate < useDate` to `cDate
       <= useDate` so that requesting a cycle's own effective date selects
       that cycle rather than the previous one. Add a regression test that
       constructs `NASR(useDate=<cycle date>)` for a cycle that exists
       locally and asserts the *same* cycle (not the prior one) is selected.
-- [ ] **Agent: Terra.** **1.17** In the same method, handle the case where `availibleDates`
+- [x] **Agent: Terra.** **1.17** In the same method, handle the case where `availibleDates`
       (or, for an exact-date request, `earlierDates` at `nasr.py:59-60`) is
       empty. Currently an empty list causes an unhelpful `IndexError` at
       `nasr.py:56-57` or `nasr.py:60`. Raise `CycleNotFoundError` with a
       message that names the requested date (if any) and the searched
       `data/zip` directory, and that tells the caller how to add a cycle
       (place a `28DaySubscription_Effective_YYYY-MM-DD.zip` file there).
-- [ ] **Agent: Terra.** **1.18** In `NASR.loadCSVData` (`nasr.py:93`), replace the `print`
+- [x] **Agent: Terra.** **1.18** In `NASR.loadCSVData` (`nasr.py:93`), replace the `print`
       calls at `nasr.py:100-105` used to report and retry CSV parsing
       errors with the `warnings` module (`warn(...)`) or `logging`, so
       ordinary construction does not print to stdout on the happy path.
       Keep the retry-with-`backslashreplace` behavior; only change how the
       retry is reported.
-- [ ] **Agent: Luna.** **1.19** Remove any remaining bare debug prints in `nasr.py` and
+- [x] **Agent: Luna.** **1.19** Remove any remaining bare debug prints in `nasr.py` and
       other Milestone-1 files (e.g. search for `print(` calls that are not
       part of documented CLI/reporting behavior) once Tasks 1.6, 1.11, and
       1.18 have removed the ones already identified above. Grep the whole
@@ -1101,7 +1097,7 @@ testable.
 
 **`openNASR/flightplan.py`**
 
-- [ ] **Agent: Terra.** **1.20** Inspect `openNASR/flightplan.py` for imports/names left over
+- [x] **Agent: Terra.** **1.20** Inspect `openNASR/flightplan.py` for imports/names left over
       from the old `nasr` package (e.g. relative imports that no longer
       resolve under `openNASR/`). Either repair the imports so the module
       loads cleanly, or — if the module's functionality is not part of the
@@ -1112,16 +1108,16 @@ testable.
 
 **Cross-cutting cleanup**
 
-- [ ] **Agent: Luna.** **1.21** Grep the `openNASR/` tree for `raise '` and `raise "` (bare
+- [x] **Agent: Luna.** **1.21** Grep the `openNASR/` tree for `raise '` and `raise "` (bare
       string raises, invalid in Python 3 and already a `TypeError` at
       runtime) outside the files above and convert each to the appropriate
       typed exception from `exceptions.py`.
-- [ ] **Agent: Luna.** **1.22** Normalize source files touched by this milestone to UTF-8
+- [x] **Agent: Luna.** **1.22** Normalize source files touched by this milestone to UTF-8
       encoding, LF line endings, and no trailing whitespace. Do not
       reformat files this milestone does not otherwise touch — save
       whole-tree formatting for when Ruff formatting is enforced in
       Milestone 7.
-- [ ] **Agent: Luna.** **1.23** Correct spelling in public diagnostics and internal names
+- [x] **Agent: Luna.** **1.23** Correct spelling in public diagnostics and internal names
       touched by the tasks above (e.g. `availibleZips`/`availibleDates` in
       `nasr.py:51-53` → `availableZips`/`availableDates`) where the rename
       is purely internal and does not change any public signature. Do not
@@ -1179,15 +1175,15 @@ slices 2-6).
 
 Tasks:
 
-- [ ] **Agent: Sol.** **1B.1** Create `openNASR/schemas.py` with the `ColumnSchema` and
+- [x] **Agent: Sol.** **1B.1** Create `openNASR/schemas.py` with the `ColumnSchema` and
       `TableSchema` frozen dataclasses defined in "Core metadata classes"
       above.
-- [ ] **Agent: Sol.** **1B.2** Implement a parser in `schemas.py` for one
+- [x] **Agent: Sol.** **1B.2** Implement a parser in `schemas.py` for one
       `*_CSV_DATA_STRUCTURE.csv` file that returns a list of `ColumnSchema`
       rows for a single table. Use both supported manifests and their
       schema-only fixtures to confirm the actual FAA column names for field
       name, type, max length, and nullability before writing the parser.
-- [ ] **Agent: Sol.** **1B.3** Implement `SchemaCatalog` in `schemas.py` with a
+- [x] **Agent: Sol.** **1B.3** Implement `SchemaCatalog` in `schemas.py` with a
       `table(name, schema_id)`
       method. Since a single schema-description file can describe multiple
       operational tables (per "Schema-description table coverage" above),
@@ -1197,7 +1193,7 @@ Tasks:
       table names, columns, and FAA-declared types and returns `pre_2026_09` or
       `nasr_2026_09`. Do not choose a schema solely from a filename or date; an
       unrecognized fingerprint raises detailed `SchemaMismatchError`.
-- [ ] **Agent: Sol.** **1B.4** Implement `SchemaCatalog.validate(name, frame)` returning a
+- [x] **Agent: Sol.** **1B.4** Implement `SchemaCatalog.validate(name, frame)` returning a
       `ValidationReport` listing missing required columns and unexpected
       columns by comparing a loaded DataFrame's columns against the selected
       versioned `TableSchema`. Separately compare the FAA-declared schema type
@@ -1211,11 +1207,11 @@ Tasks:
       the relevant domain module, fixtures, the coverage manifest, and this
       plan. Only an explicitly requested diagnostic inspection mode may return
       unfamiliar raw data without raising.
-- [ ] **Agent: Sol.** **1B.5** Write unit tests parsing every schema-description file in both
+- [x] **Agent: Sol.** **1B.5** Write unit tests parsing every schema-description file in both
       schema-only fixtures and asserting `SchemaCatalog.table(name)` returns a
       non-empty `TableSchema` for every operational table in the corresponding
       versioned manifest.
-- [ ] **Agent: Sol.** **1B.6** Create `openNASR/registry.py` with the `TableSpec` frozen
+- [x] **Agent: Sol.** **1B.6** Create `openNASR/registry.py` with the `TableSpec` frozen
       dataclass and `TableRegistry` class defined in "Core metadata
       classes" above. For Milestone 1B, populate `TableRegistry` with a
       `TableSpec` entry for every supported operational table and a
@@ -1226,11 +1222,11 @@ Tasks:
       `record_type` at a shared minimal `FaaRecord` base; Milestones 5 and 8-12
       assign approved record classes. Leave `relationships` empty until the
       owning rich-object milestone verifies the joins.
-- [ ] **Agent: Sol.** **1B.7** Implement `TableRegistry.supported_tables()` and
+- [x] **Agent: Sol.** **1B.7** Implement `TableRegistry.supported_tables()` and
       `TableRegistry.unmodeled_tables(available)` as specified in "Core
       metadata classes" and the "Generic loading contract for every CSV"
       bullet list above.
-- [ ] **Agent: Sol.** **1B.8** Write coverage tests against both schema-only fixtures asserting
+- [x] **Agent: Sol.** **1B.8** Write coverage tests against both schema-only fixtures asserting
       every discovered CSV is either in `TableRegistry.supported_tables()` or
       reported by `unmodeled_tables()` and rejected during normal loading.
       Keep real-cycle integration behind `OPENNASR_REAL_CYCLE_DIR`.
@@ -1842,9 +1838,9 @@ and `FRQ`, and connect them to the existing fix/navaid objects where supported.
 Tasks:
 
 - [ ] **Agent: Sol.** **9.1** Verify and register identity, ordering, and relationship keys for
-      `AWY_BASE`, `AWY_ALT`, `AWY_SEG`, and `AWY_SEG_ALT` across both schemas.
-- [ ] **Agent: Terra.** **9.2** Implement `AirwayRecord`, `AirwayAltitudeRecord`,
-      `AirwaySegmentRecord`, and `AirwaySegmentAltitudeRecord`; expose the rich
+      `AWY_BASE` and `AWY_SEG_ALT` across both schemas.
+- [ ] **Agent: Terra.** **9.2** Implement `AirwayRecord` and
+      `AirwaySegmentRecord`; expose the rich
       `Airway` through `nasr.airways`, `nasr.airway()`, ordered segments, and
       segment altitude constraints.
 - [ ] **Agent: Terra.** **9.3** Verify and register keys for `HPF_BASE`, `HPF_CHRT`, `HPF_RMK`, and
@@ -1861,7 +1857,7 @@ Tasks:
 
 Acceptance criteria:
 
-- All ten navigation-network tables have rich objects or rich child
+- All eight navigation-network tables have rich objects or rich child
   collections matching `FILESTYPES.md`.
 - Airway segments and limits preserve FAA sequence order.
 - Communication/frequency links never rely on display names alone.
@@ -2130,12 +2126,13 @@ report has no operational table without a rich API.
 | 2026-08-15 | Keep legacy constructors and uppercase class aliases temporarily. | Existing users need a migration path while the API becomes consistent. |
 | 2026-08-15 | Use small local fixtures for default tests. | Tests must be deterministic, fast, and independent of network and multi-gigabyte datasets. |
 | 2026-08-15 | Defer Ruff/mypy enforcement (Milestone 0) to a required CI gate only in Milestone 7 (Task 7.10). | Milestones 1-6 rewrite most of the source tree; gating on strict lint/type checks before that churn wastes agent effort on code about to be replaced. |
-| 2026-08-15 | Split full 65-table/89-file CSV coverage out of the `1.0.0` scope; only raw coverage of all tables plus record/domain coverage of the already-public families (airport, fix, navaid, ARTCC) is required for `1.0.0`. | The complete coverage matrix is a multi-month follow-on effort; conflating it with `1.0.0` blocked a clear release definition and left Milestone 7's acceptance criteria silent on how much of the matrix was actually required. |
+| 2026-08-15 | Split full 63-table/87-file CSV coverage out of the `1.0.0` scope; only raw coverage of all tables plus record/domain coverage of the already-public families (airport, fix, navaid, ARTCC) is required for `1.0.0`. | The complete coverage matrix is a multi-month follow-on effort; conflating it with `1.0.0` blocked a clear release definition and left Milestone 7's acceptance criteria silent on how much of the matrix was actually required. |
 | 2026-08-15 | Add Milestone 0B before correctness work and retain Milestone 1B for the inventory/schema implementation. | Regression and schema tests require deterministic supported-schema manifests and fixtures before implementation begins. |
 | 2026-08-15 | Delete `tests/main_test_NASR.py` outright rather than converting it (Milestone 2, Task 2.10). | It imports the already-removed top-level `nasr` package and depends on a third-party `trino`/OpenSky connection with a hardcoded username; it cannot run and is out of `openNASR`'s scope. |
-| 2026-08-15 | Provide rich domain objects for all 65 operational tables, using standalone rich objects where no reliable parent relationship exists. | The user wants a consistently object-oriented API while avoiding invented cross-table joins. |
+| 2026-08-15 | Provide rich domain objects for all 63 operational tables, using standalone rich objects where no reliable parent relationship exists. | The user wants a consistently object-oriented API while avoiding invented cross-table joins. |
 | 2026-08-15 | Treat schema drift as an error during normal loading and expose unfamiliar raw data only through explicit diagnostic inspection mode. | FAA format changes require code, registry, fixture, and documentation review rather than silent best-effort parsing. |
 | 2026-08-15 | Preserve exact FAA CSV text in the raw layer and perform validated conversions only in rich-object properties. | Users need both source fidelity and convenient Python values without pandas inference corrupting identifiers or empty fields. |
 | 2026-08-15 | Assign all post-`1.0.0` rich-object families to Milestones 8-12 (`1.1.0` through `1.5.0`). | Complete rich coverage must have an executable owner and cannot depend on another user request. |
 | 2026-08-15 | Treat `FILESTYPES.md` as authoritative for approved module and API names. | A single naming source prevents the plan and implementation from drifting. |
 | 2026-08-16 | Support Python 3.10 and newer. | Python 3.10 is the plan's default baseline, and the current source uses no feature requiring a newer minimum. |
+| 2026-08-16 | Define the supported inventory as 63 operational tables plus 24 schema-description files in both 2026 manifests; remove plan-only `AWY_ALT` and `AWY_SEG` entries and model `AWY_SEG_ALT` as `AirwaySegmentRecord`. | Both official packages contain the same 87 CSV files, and neither contains `AWY_ALT` or `AWY_SEG`; `AWY_SEG_ALT` contains the ordered segment and altitude fields. |

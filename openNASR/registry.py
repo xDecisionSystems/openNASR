@@ -1,0 +1,155 @@
+"""Schema-version-aware registry for supported FAA NASR tables."""
+
+from __future__ import annotations
+
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+
+from .exceptions import SchemaMismatchError, TableNotFoundError
+from .records import FaaRecord
+from .schemas import SchemaCatalog
+
+
+@dataclass(frozen=True)
+class IndexSpec:
+    """Columns used by a named lookup index."""
+
+    name: str
+    columns: tuple[str, ...]
+    unique: bool = False
+
+
+@dataclass(frozen=True)
+class RelationshipSpec:
+    """Verified columns connecting one table to another."""
+
+    name: str
+    target_table: str
+    local_columns: tuple[str, ...]
+    target_columns: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TableVariantSpec:
+    """Metadata for one table in one supported schema generation."""
+
+    schema_id: str
+    identity_key: tuple[str, ...] | None = None
+    indexes: tuple[IndexSpec, ...] = ()
+    order_by: tuple[str, ...] = ()
+    relationships: tuple[RelationshipSpec, ...] = ()
+    required_columns: frozenset[str] = frozenset()
+    optional: bool = False
+
+
+@dataclass(frozen=True)
+class TableSpec:
+    """Record type and schema variants for one operational FAA table."""
+
+    name: str
+    record_type: type[FaaRecord]
+    variants: tuple[TableVariantSpec, ...]
+
+
+class TableRegistry:
+    """Registry of every supported operational FAA table."""
+
+    def __init__(
+        self,
+        specs: Iterable[TableSpec] | None = None,
+        *,
+        catalog: SchemaCatalog | None = None,
+    ) -> None:
+        self.catalog = catalog or SchemaCatalog()
+        if specs is None:
+            specs = self._build_specs()
+        self._specs = {spec.name: spec for spec in specs}
+
+    def _build_specs(self) -> tuple[TableSpec, ...]:
+        manifests = {
+            schema_id: self.catalog.manifest(schema_id)
+            for schema_id in self.catalog.SUPPORTED_SCHEMA_IDS
+        }
+        table_names = sorted(
+            set().union(*(manifest["tables"] for manifest in manifests.values()))
+        )
+        specs = []
+        for table_name in table_names:
+            variants = []
+            for schema_id, manifest in manifests.items():
+                if table_name not in manifest["tables"]:
+                    continue
+                schema = self.catalog.table(table_name, schema_id)
+                variants.append(
+                    TableVariantSpec(
+                        schema_id=schema_id,
+                        required_columns=frozenset(
+                            column.name for column in schema.columns
+                        ),
+                    )
+                )
+            specs.append(
+                TableSpec(
+                    name=table_name,
+                    record_type=FaaRecord,
+                    variants=tuple(variants),
+                )
+            )
+        return tuple(specs)
+
+    def table(self, name: str) -> TableSpec:
+        try:
+            return self._specs[name.upper()]
+        except KeyError as error:
+            raise TableNotFoundError(f"Table {name!r} is not registered") from error
+
+    def spec(self, name: str, schema_id: str) -> TableVariantSpec:
+        table = self.table(name)
+        for variant in table.variants:
+            if variant.schema_id == schema_id:
+                return variant
+        raise TableNotFoundError(
+            f"Table {name!r} has no variant for schema {schema_id!r}"
+        )
+
+    def supported_tables(self) -> frozenset[str]:
+        return frozenset(self._specs)
+
+    def unmodeled_tables(self, available: Iterable[str | Path]) -> frozenset[str]:
+        names = {Path(item).stem.upper() for item in available}
+        return frozenset(names - self.supported_tables())
+
+    def require_modeled(
+        self,
+        available: Iterable[str | Path],
+        *,
+        cycle: str | Path | None = None,
+        diagnostic: bool = False,
+    ) -> frozenset[str]:
+        """Reject unknown operational tables unless diagnostic mode is explicit."""
+
+        unmodeled = self.unmodeled_tables(available)
+        if unmodeled and not diagnostic:
+            instructions = (
+                "Update openNASR/schemas.py, openNASR/registry.py, the relevant "
+                "domain module and record class, fixtures, the coverage manifest, "
+                "and PLAN.md."
+            )
+            raise SchemaMismatchError(
+                f"Unmodeled NASR tables in {cycle or 'unknown cycle'}: "
+                f"{sorted(unmodeled)}. {instructions}",
+                cycle=str(cycle) if cycle is not None else None,
+                unmodeled_tables=tuple(sorted(unmodeled)),
+                instructions=instructions,
+            )
+        return unmodeled
+
+
+__all__ = [
+    "IndexSpec",
+    "RelationshipSpec",
+    "TableRegistry",
+    "TableSpec",
+    "TableVariantSpec",
+]

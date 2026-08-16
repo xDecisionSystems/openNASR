@@ -1,0 +1,47 @@
+{
+  "retrieved_on": "2026-08-16",
+  "artifacts": [
+    {
+      "schema_id": "pre_2026_09",
+      "effective_date": "2026-08-06",
+      "archive_filename": "06_Aug_2026_CSV.zip",
+      "source_url": "https://nfdc.faa.gov/webContent/28DaySub/extra/06_Aug_2026_CSV.zip",
+      "source_page": "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/2026-08-06/",
+      "role": "supported subscription schema before NASR 10.1",
+      "byte_size": 21761656,
+      "sha256": "8638adc7626da84788b457cc4ad104b0869624e10f1faefeb43fe2fd4d30f0bb"
+    },
+    {
+      "schema_id": "nasr_2026_09",
+      "effective_date": "2026-09-03",
+      "archive_filename": "03_Sep_2026_CSV.zip",
+      "source_url": "https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_CSV.zip",
+      "source_page": "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/2026-09-03/",
+      "role": "supported NASR 10.1 subscription schema",
+      "byte_size": 23097812,
+      "sha256": "1ebfc60110a5ac0b3462d7b0957498187ca72e4e74f017a127e3dafc5109131b"
+    },
+    {
+      "format_effective_date": "2026-09-03",
+      "archive_filename": "NASR_10_1_TEST_CSV.zip",
+      "source_url": "https://nfdc.faa.gov/webContent/28DaySub/Test_Subscriber_Files/NASR_10_1_TEST_CSV.zip",
+      "source_page": "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/",
+      "role": "FAA NASR 10.1 CSV test subscriber package",
+      "byte_size": 17342281,
+      "sha256": "83cedae7a041bf1998e7c4bf4de51f139101a636b8bcf66362acc96ad1258085"
+    },
+    {
+      "format_effective_date": "2026-09-03",
+      "archive_filename": "NASR_26-01_DPN_10.1_Subscriber_Enhancement.pdf",
+      "source_url": "https://www.faa.gov/air_traffic/flight_info/aeronav/safety_alerts/media/NASR_26-01_DPN_10.1_Subscriber_Enhancement.pdf",
+      "source_page": "https://www.faa.gov/air_traffic/flight_info/aeronav/safety_alerts/",
+      "role": "FAA NASR 26-01 data product notice",
+      "byte_size": 272814,
+      "sha256": "64d8363f4f313bacb8eaedceaf8d705b63e99e76dda9402cd2070d8a904f3699"
+    }
+  ],
+  "validation": {
+    "nasr_10_1_test_headers_match_2026_09_manifest": true,
+    "operational_rows_in_repository": false
+  }
+}

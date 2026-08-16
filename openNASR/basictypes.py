@@ -1,12 +1,12 @@
 from types import SimpleNamespace
-from .cfcn import ll2xy   
+from .cfcn import ll2xy
 
-# class Point(object):    
-#     @property    
+# class Point(object):
+#     @property
 #     def lat(self):
 #         return self.base.LAT_DECIMAL
 
-#     @property    
+#     @property
 #     def lon(self):
 #         return self.base.LONG_DECIMAL
 
@@ -15,14 +15,14 @@ def getAirportRecords(airport,nasrDF,airportIDCol):
 
 def getAirportRecord(airport,nasrDF,airportIDCol):
     return SimpleNamespace(  **nasrDF[nasrDF[airportIDCol]==airport].to_dict(orient='records')[0]  )
-    
+
 
 class Point():
     def __init__(self,sm):
         self._raw = sm
-        
+
     def getRaw(self):
-        return self._raw        
+        return self._raw
 
     @property
     def lat(self):
@@ -40,10 +40,10 @@ class Raw():
     def __init__(self,sm):
         self._raw = sm
         # self._raw = SimpleNamespace(  **nasrDF[nasrDF[airportIDCol]==airport].to_dict(orient='records')[0]  )
-        
+
     def getRaw(self):
         return self._raw
-    
+
     @property
     def lat(self):
         return self._raw.LAT_DECIMAL
@@ -74,14 +74,14 @@ class Raw():
         else:
             return None
 
-    @property            
+    @property
     def len(self):
         if hasattr(self._raw,'RWY_LEN'):
             return self._raw.RWY_LEN
         else:
             return None
 
-    @property            
+    @property
     def width(self):
         if hasattr(self._raw,'RWY_WIDTH'):
             return self._raw.RWY_WIDTH
@@ -93,33 +93,34 @@ class Raw():
         return x,y
 
     def __getattr__(self, name):
-        # Return the value of the attribute if it exists, otherwise raise an AttributeError
-        if name in self._attributes:
-            return self._attributes[name]
-        raise AttributeError(f"'CatchAll' object has no attribute '{name}'")
-    
+        try:
+            return getattr(self._raw, name)
+        except AttributeError as error:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            ) from error
+
 
 class RawDict(dict):
     def __init__(self,classType,airport,nasrDF,airportIDCol, useRWYID=False):
-        for cRec in getRecords(airport,nasrDF,airportIDCol):            
+        self._map = {}
+        self._raw = {}
+        for cRec in getAirportRecords(airport,nasrDF,airportIDCol):
             if useRWYID:
-                self[cRec.RWY_ID]=classType(cRec)
+                record_id = str(cRec.RWY_ID)
             else:
-                self[cRec.RWY_END_ID]=classType(cRec)
-                
-        #     rwys = [cRec.RWY_END_ID for cRec in self._raw]            
-        # self._map = dict(zip(rwys, range(len(rwys)) ))
-        
+                record_id = str(cRec.RWY_END_ID)
+            record = classType(cRec)
+            self[record_id] = record
+            self._map[record_id] = record
+            self._raw[record_id] = cRec
+
     def getRawByID(self,id):
-        if id in self._map.keys():
-            return self._raw[ self._map[id] ]
-        else:
-            print('Unable to find', id)
-            return None
-    
+        return self._raw.get(id)
+
     def getRaw(self):
         return self._raw
-    
+
     @property
     def ids(self):
         return list(self.keys())
