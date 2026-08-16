@@ -233,9 +233,7 @@ class NASR(dict):
         """Return the communication outlet selected by its FAA identifier."""
         return self.communication_outlets.get(identifier)
 
-    def frequency(
-        self, identifier: tuple[str, str, str | None, str | None, str | None]
-    ):
+    def frequency(self, identifier: tuple[object, ...]):
         """Return the frequency selected by its complete FAA composite key."""
         return self.frequencies.get(identifier)
 

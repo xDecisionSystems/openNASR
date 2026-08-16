@@ -9,6 +9,8 @@ def test_holding_pattern_uses_full_key_and_orders_remarks():
         "HP_NO": "1",
         "STATE_CODE": "FL",
         "COUNTRY_CODE": "US",
+        "FIX_ID": "ALPHA",
+        "ICAO_REGION_CODE": "K1",
     }
     repository = HoldingPatternRepository(
         {
@@ -43,6 +45,22 @@ def test_holding_pattern_uses_full_key_and_orders_remarks():
             "HPF_SPD_ALT": pd.DataFrame(
                 [{**base, "SPEED_RANGE": "210", "ALTITUDE": "6000"}]
             ),
+            "FIX_BASE": pd.DataFrame(
+                [
+                    {
+                        "FIX_ID": "ALPHA",
+                        "ICAO_REGION_CODE": "K1",
+                        "STATE_CODE": "FL",
+                        "COUNTRY_CODE": "US",
+                    },
+                    {
+                        "FIX_ID": "ALPHA",
+                        "ICAO_REGION_CODE": "K1",
+                        "STATE_CODE": "GA",
+                        "COUNTRY_CODE": "US",
+                    },
+                ]
+            ),
         }
     )
 
@@ -52,3 +70,5 @@ def test_holding_pattern_uses_full_key_and_orders_remarks():
     assert pattern.charts[0].charting_type == "Enroute"
     assert [remark["REMARK"] for remark in pattern.remarks] == ["first", "second"]
     assert pattern.speed_altitude_limits[0].altitude == "6000"
+    assert pattern.fix is not None
+    assert pattern.fix.state == "FL"

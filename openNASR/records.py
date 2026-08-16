@@ -267,6 +267,29 @@ class AirwayRecord(FaaRecord):
 class AirwaySegmentRecord(AirwayRecord):
     """Typed conveniences for an ordered ``AWY_SEG_ALT`` row."""
 
+    def __init__(
+        self,
+        raw: Mapping[str, object],
+        *,
+        fix: FixRecord | None = None,
+        navaid: NavaidRecord | None = None,
+    ) -> None:
+        super().__init__(raw)
+        self._fix = fix
+        self._navaid = navaid
+
+    @property
+    def fix(self) -> FixRecord | None:
+        """Fix at this airway point, resolved through its complete FAA key."""
+
+        return self._fix
+
+    @property
+    def navaid(self) -> NavaidRecord | None:
+        """Navaid at this airway point, resolved through its complete FAA key."""
+
+        return self._navaid
+
     @property
     def point_sequence(self) -> int | None:
         value = self._text("POINT_SEQ")
@@ -361,17 +384,48 @@ class FrequencyRecord(FaaRecord):
     @property
     def frequency_key(
         self,
-    ) -> tuple[str, str, str | None, str | None, str | None] | None:
+    ) -> (
+        tuple[
+            str,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            str,
+            str | None,
+            str,
+        ]
+        | None
+    ):
         facility = self._text("FACILITY")
         frequency = self._text("FREQ")
-        if facility is None or frequency is None:
+        frequency_use = self._text("FREQ_USE")
+        if facility is None or frequency is None or frequency_use is None:
             return None
         return (
             facility,
+            self._text("SERVICED_FACILITY"),
+            self._text("SERVICED_SITE_TYPE"),
+            self._text("SERVICED_STATE"),
+            self._text("SERVICED_COUNTRY"),
             frequency,
-            self._text("FREQ_SUFFIX"),
-            self._text("USE_CODE"),
-            self._text("FREQ_USE"),
+            self._text("SECTORIZATION"),
+            frequency_use,
+        )
+
+    @property
+    def serviced_facility_key(
+        self,
+    ) -> tuple[str, str, str | None, str | None] | None:
+        facility = self._text("SERVICED_FACILITY")
+        site_type = self._text("SERVICED_SITE_TYPE")
+        if facility is None or site_type is None:
+            return None
+        return (
+            facility,
+            site_type,
+            self._text("SERVICED_STATE"),
+            self._text("SERVICED_COUNTRY"),
         )
 
     @property
@@ -439,6 +493,10 @@ class NavaidRecord(FaaRecord):
             if value is not None and value == value:
                 return nullable_text(str(value))
         return None
+
+    @property
+    def identifier(self) -> str | None:
+        return self._text("NAV_ID")
 
     @property
     def nav_type(self) -> str | None:

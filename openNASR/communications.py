@@ -5,15 +5,19 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import CommunicationOutletRecord, FrequencyRecord
-from .registry import FREQUENCY_KEY
+from .records import CommunicationOutletRecord, FrequencyRecord, NavaidRecord
+from .registry import FREQUENCY_KEY, SERVICED_FACILITY_KEY
+from .relationships import related_record
 
 
 class CommunicationOutlet:
     """One communication-outlet record."""
 
-    def __init__(self, record: CommunicationOutletRecord) -> None:
+    def __init__(
+        self, record: CommunicationOutletRecord, *, navaid: NavaidRecord | None
+    ) -> None:
         self.record = record
+        self.navaid = navaid
 
 
 class CommunicationOutletRepository:
@@ -35,7 +39,23 @@ class CommunicationOutletRepository:
                 .eq(self._normalized(identifier))
             ]
         return tuple(
-            CommunicationOutlet(CommunicationOutletRecord(row))
+            CommunicationOutlet(
+                CommunicationOutletRecord(row),
+                navaid=related_record(
+                    self._nasr,
+                    source=row,
+                    target_table="NAV_BASE",
+                    columns=(
+                        ("NAV_ID", "NAV_ID"),
+                        ("NAV_TYPE", "NAV_TYPE"),
+                        ("CITY", "CITY"),
+                        ("STATE_CODE", "STATE_CODE"),
+                        ("COUNTRY_CODE", "COUNTRY_CODE"),
+                    ),
+                    record_type=NavaidRecord,
+                    relationship="communication-outlet navaid",
+                ),
+            )
             for row in rows.to_dict(orient="records")
         )
 
@@ -73,7 +93,7 @@ class FrequencyRepository:
             return ""
         return str(value).strip().upper()
 
-    def _key(self, identifier: object) -> tuple[object, object, object, object, object]:
+    def _key(self, identifier: object) -> tuple[object, ...]:
         if not isinstance(identifier, tuple) or len(identifier) != len(FREQUENCY_KEY):
             raise ValueError(
                 f"Frequency identifiers require ({', '.join(FREQUENCY_KEY)})"
@@ -81,17 +101,37 @@ class FrequencyRepository:
         return identifier
 
     def _matching(
-        self, frame: DataFrame, key: tuple[object, object, object, object, object]
+        self,
+        frame: DataFrame,
+        key: tuple[object, ...],
+        *,
+        columns: tuple[str, ...] = FREQUENCY_KEY,
     ) -> DataFrame:
         rows = frame
-        for column, value in zip(FREQUENCY_KEY, key):
+        for column, value in zip(columns, key):
             rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
         return rows
 
-    def find(self, identifier: object | None = None) -> tuple[Frequency, ...]:
+    def find(
+        self,
+        identifier: object | None = None,
+        *,
+        serviced_facility: tuple[object, object, object, object] | None = None,
+    ) -> tuple[Frequency, ...]:
         rows = self._nasr["FRQ"]
         if identifier is not None:
             rows = self._matching(rows, self._key(identifier))
+        if serviced_facility is not None:
+            if not isinstance(serviced_facility, tuple) or len(
+                serviced_facility
+            ) != len(SERVICED_FACILITY_KEY):
+                raise ValueError(
+                    "Serviced-facility filters require "
+                    f"({', '.join(SERVICED_FACILITY_KEY)})"
+                )
+            rows = self._matching(
+                rows, serviced_facility, columns=SERVICED_FACILITY_KEY
+            )
         return tuple(
             Frequency(FrequencyRecord(row)) for row in rows.to_dict(orient="records")
         )

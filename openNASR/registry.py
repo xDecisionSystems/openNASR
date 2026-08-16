@@ -8,15 +8,19 @@ from pathlib import Path
 
 from .exceptions import SchemaMismatchError, TableNotFoundError
 from .records import (
+    AirwayRecord,
+    AirwaySegmentRecord,
     ClassAirspaceRecord,
     CommunicationOutletRecord,
     FaaRecord,
+    FixRecord,
+    FrequencyRecord,
     HoldingPatternChartRecord,
     HoldingPatternRecord,
     HoldingPatternRemarkRecord,
     HoldingPatternSpeedAltitudeRecord,
     MilitaryOperationRecord,
-    FrequencyRecord,
+    NavaidRecord,
 )
 from .schemas import SchemaCatalog
 
@@ -28,8 +32,39 @@ AIRWAY_SEGMENT_KEY = (*AIRWAY_KEY, "POINT_SEQ")
 AIRWAY_TABLES = frozenset({"AWY_BASE", "AWY_SEG_ALT"})
 HOLDING_PATTERN_KEY = ("HP_NAME", "HP_NO", "STATE_CODE", "COUNTRY_CODE")
 HOLDING_PATTERN_TABLES = frozenset({"HPF_BASE", "HPF_CHRT", "HPF_RMK", "HPF_SPD_ALT"})
-FREQUENCY_KEY = ("FACILITY", "FREQ", "FREQ_SUFFIX", "USE_CODE", "FREQ_USE")
+FIX_KEY = ("FIX_ID", "ICAO_REGION_CODE", "STATE_CODE", "COUNTRY_CODE")
+NAVAID_KEY = ("NAV_ID", "NAV_TYPE", "CITY", "STATE_CODE", "COUNTRY_CODE")
+AIRWAY_FIX_KEY = ("FROM_POINT", "ICAO_REGION_CODE", "STATE_CODE", "COUNTRY_CODE")
+AIRWAY_NAVAID_KEY = (
+    "FROM_POINT",
+    "FROM_PT_TYPE",
+    "NAV_CITY",
+    "STATE_CODE",
+    "COUNTRY_CODE",
+)
+COMMUNICATION_NAVAID_KEY = (
+    "NAV_ID",
+    "NAV_TYPE",
+    "CITY",
+    "STATE_CODE",
+    "COUNTRY_CODE",
+)
+SERVICED_FACILITY_KEY = (
+    "SERVICED_FACILITY",
+    "SERVICED_SITE_TYPE",
+    "SERVICED_STATE",
+    "SERVICED_COUNTRY",
+)
+FREQUENCY_KEY = (
+    "FACILITY",
+    *SERVICED_FACILITY_KEY,
+    "FREQ",
+    "SECTORIZATION",
+    "FREQ_USE",
+)
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
+    "AWY_BASE": AirwayRecord,
+    "AWY_SEG_ALT": AirwaySegmentRecord,
     "CLS_ARSP": ClassAirspaceRecord,
     "MIL_OPS": MilitaryOperationRecord,
     "HPF_BASE": HoldingPatternRecord,
@@ -38,6 +73,8 @@ RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "HPF_SPD_ALT": HoldingPatternSpeedAltitudeRecord,
     "COM": CommunicationOutletRecord,
     "FRQ": FrequencyRecord,
+    "FIX_BASE": FixRecord,
+    "NAV_BASE": NavaidRecord,
 }
 
 
@@ -154,6 +191,50 @@ class TableRegistry:
                             AIRWAY_KEY,
                             AIRWAY_KEY,
                         ),
+                        RelationshipSpec("fix", "FIX_BASE", AIRWAY_FIX_KEY, FIX_KEY),
+                        RelationshipSpec(
+                            "navaid", "NAV_BASE", AIRWAY_NAVAID_KEY, NAVAID_KEY
+                        ),
+                    )
+                elif table_name == "FIX_BASE":
+                    identity_key = FIX_KEY
+                    indexes = (
+                        IndexSpec("fix", FIX_KEY, unique=True),
+                        IndexSpec("identifier", ("FIX_ID",), unique=False),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "airway_segments",
+                            "AWY_SEG_ALT",
+                            FIX_KEY,
+                            AIRWAY_FIX_KEY,
+                        ),
+                        RelationshipSpec(
+                            "holding_patterns",
+                            "HPF_BASE",
+                            FIX_KEY,
+                            FIX_KEY,
+                        ),
+                    )
+                elif table_name == "NAV_BASE":
+                    identity_key = NAVAID_KEY
+                    indexes = (
+                        IndexSpec("navaid", NAVAID_KEY, unique=True),
+                        IndexSpec("identifier", ("NAV_ID",), unique=False),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "airway_segments",
+                            "AWY_SEG_ALT",
+                            NAVAID_KEY,
+                            AIRWAY_NAVAID_KEY,
+                        ),
+                        RelationshipSpec(
+                            "communication_outlets",
+                            "COM",
+                            NAVAID_KEY,
+                            COMMUNICATION_NAVAID_KEY,
+                        ),
                     )
                 elif table_name == "HPF_BASE":
                     identity_key = HOLDING_PATTERN_KEY
@@ -179,6 +260,7 @@ class TableRegistry:
                             HOLDING_PATTERN_KEY,
                             HOLDING_PATTERN_KEY,
                         ),
+                        RelationshipSpec("fix", "FIX_BASE", FIX_KEY, FIX_KEY),
                     )
                 elif table_name == "HPF_CHRT":
                     identity_key = (*HOLDING_PATTERN_KEY, "CHARTING_TYPE_DESC")
@@ -220,15 +302,27 @@ class TableRegistry:
                         ),
                     )
                 elif table_name == "COM":
-                    identity_key = ("COMM_LOC_ID",)
                     indexes = (
-                        IndexSpec("communication_outlet", identity_key, unique=True),
+                        IndexSpec(
+                            "communication_outlet", ("COMM_LOC_ID",), unique=False
+                        ),
+                        IndexSpec("navaid", COMMUNICATION_NAVAID_KEY, unique=False),
+                    )
+                    relationships = (
+                        RelationshipSpec(
+                            "navaid",
+                            "NAV_BASE",
+                            COMMUNICATION_NAVAID_KEY,
+                            NAVAID_KEY,
+                        ),
                     )
                 elif table_name == "FRQ":
                     identity_key = FREQUENCY_KEY
                     indexes = (
                         IndexSpec("frequency", FREQUENCY_KEY, unique=True),
-                        IndexSpec("facility", ("FACILITY",), unique=False),
+                        IndexSpec(
+                            "serviced_facility", SERVICED_FACILITY_KEY, unique=False
+                        ),
                     )
                 variants.append(
                     TableVariantSpec(
@@ -305,9 +399,15 @@ __all__ = [
     "AIRWAY_KEY",
     "AIRWAY_SEGMENT_KEY",
     "AIRWAY_TABLES",
+    "AIRWAY_FIX_KEY",
+    "AIRWAY_NAVAID_KEY",
+    "COMMUNICATION_NAVAID_KEY",
+    "FIX_KEY",
     "HOLDING_PATTERN_KEY",
     "HOLDING_PATTERN_TABLES",
     "FREQUENCY_KEY",
+    "NAVAID_KEY",
+    "SERVICED_FACILITY_KEY",
     "IndexSpec",
     "RICH_RECORD_TYPES",
     "RelationshipSpec",

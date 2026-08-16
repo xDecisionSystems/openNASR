@@ -6,12 +6,14 @@ from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
 from .records import (
+    FixRecord,
     HoldingPatternChartRecord,
     HoldingPatternRecord,
     HoldingPatternRemarkRecord,
     HoldingPatternSpeedAltitudeRecord,
 )
 from .registry import HOLDING_PATTERN_KEY
+from .relationships import related_record
 
 
 class HoldingPattern:
@@ -24,11 +26,13 @@ class HoldingPattern:
         charts: tuple[HoldingPatternChartRecord, ...],
         remarks: tuple[HoldingPatternRemarkRecord, ...],
         speed_altitude_limits: tuple[HoldingPatternSpeedAltitudeRecord, ...],
+        fix: FixRecord | None,
     ) -> None:
         self.record = record
         self.charts = charts
         self.remarks = remarks
         self.speed_altitude_limits = speed_altitude_limits
+        self.fix = fix
 
 
 class HoldingPatternRepository:
@@ -89,6 +93,19 @@ class HoldingPatternRepository:
             speed_altitude_limits=tuple(
                 HoldingPatternSpeedAltitudeRecord(item)
                 for item in restrictions.to_dict(orient="records")
+            ),
+            fix=related_record(
+                self._nasr,
+                source=row,
+                target_table="FIX_BASE",
+                columns=(
+                    ("FIX_ID", "FIX_ID"),
+                    ("ICAO_REGION_CODE", "ICAO_REGION_CODE"),
+                    ("STATE_CODE", "STATE_CODE"),
+                    ("COUNTRY_CODE", "COUNTRY_CODE"),
+                ),
+                record_type=FixRecord,
+                relationship="holding-pattern fix",
             ),
         )
 

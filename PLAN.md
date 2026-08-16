@@ -1849,7 +1849,7 @@ Tasks:
 - [x] **Agent: Terra.** **9.4** Implement `CommunicationOutletRecord`/`CommunicationOutlet` and
       `FrequencyRecord`/`Frequency` with `nasr.communication_outlets` and
       `nasr.frequencies` repositories.
-- [ ] **Agent: Sol.** **9.5** Add relationships from fixes, navaids, airways, holding patterns,
+- [x] **Agent: Sol.** **9.5** Add relationships from fixes, navaids, airways, holding patterns,
       and serviced facilities only where full FAA composite keys are verified.
 - [ ] **Agent: Terra.** **9.6** Add synthetic relationship fixtures for both schemas, ordering and
       ambiguity tests, raw/typed converter tests, public exports, documentation,

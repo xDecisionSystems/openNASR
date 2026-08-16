@@ -3,8 +3,9 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import AirwayRecord, AirwaySegmentRecord
+from .records import AirwayRecord, AirwaySegmentRecord, FixRecord, NavaidRecord
 from .registry import AIRWAY_KEY
+from .relationships import related_record
 
 
 class Airway:
@@ -46,9 +47,37 @@ class AirwayRepository:
             segments.to_dict(orient="records"),
             key=lambda item: int(str(item["POINT_SEQ"])),
         )
-        return Airway(
-            AirwayRecord(row), tuple(AirwaySegmentRecord(item) for item in ordered)
+        return Airway(AirwayRecord(row), tuple(self._segment(item) for item in ordered))
+
+    def _segment(self, row: dict[str, object]) -> AirwaySegmentRecord:
+        fix = related_record(
+            self._nasr,
+            source=row,
+            target_table="FIX_BASE",
+            columns=(
+                ("FROM_POINT", "FIX_ID"),
+                ("ICAO_REGION_CODE", "ICAO_REGION_CODE"),
+                ("STATE_CODE", "STATE_CODE"),
+                ("COUNTRY_CODE", "COUNTRY_CODE"),
+            ),
+            record_type=FixRecord,
+            relationship="airway segment fix",
         )
+        navaid = related_record(
+            self._nasr,
+            source=row,
+            target_table="NAV_BASE",
+            columns=(
+                ("FROM_POINT", "NAV_ID"),
+                ("FROM_PT_TYPE", "NAV_TYPE"),
+                ("NAV_CITY", "CITY"),
+                ("STATE_CODE", "STATE_CODE"),
+                ("COUNTRY_CODE", "COUNTRY_CODE"),
+            ),
+            record_type=NavaidRecord,
+            relationship="airway segment navaid",
+        )
+        return AirwaySegmentRecord(row, fix=fix, navaid=navaid)
 
     def find(self, identifier: object | None = None) -> tuple[Airway, ...]:
         rows = self._nasr["AWY_BASE"]
