@@ -22,3 +22,9 @@ jobs:
       - run: ruff format --check openNASR tests
       - run: ruff check openNASR tests
       - run: mypy openNASR
+      - run: python -m pip wheel . --no-deps --wheel-dir dist
+      - run: >-
+          python -c "from pathlib import Path; from zipfile import ZipFile;
+          wheel = next(Path('dist').glob('*.whl')); forbidden = [name for name
+          in ZipFile(wheel).namelist() if name.startswith('openNASR/data/')];
+          assert not forbidden, forbidden"

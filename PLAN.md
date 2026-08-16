@@ -1766,7 +1766,7 @@ Tasks:
       or equivalent soft-fail flag added there. Fix whatever findings this
       surfaces in the by-now-largely-rewritten codebase before merging this
       task; do not merge the gate red.
-- [ ] **Agent: Terra.** **7.11** Add a CI step that builds the wheel and asserts (e.g. via a
+- [x] **Agent: Terra.** **7.11** Add a CI step that builds the wheel and asserts (e.g. via a
       small script inspecting the archive listing) that it contains no path
       under `openNASR/data/`, extending the manual check from Task 0.13 into
       an automated, permanent CI check.
