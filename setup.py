@@ -18,7 +18,7 @@ setup(
     keywords = "FAA NASR",
     url = "https://github.com/ADCLab/openNASR",
     packages=['openNASR'],
-    install_requires=['pymysql'], #external packages as dependencies
+    install_requires=['matplotlib','shapely','numpy','pandas'], #external packages as dependencies
     dependency_links=['https://pypi.adc-ucf.com/simple/'], # Added just in case.  Probably should be removed
     long_description=read('README.md'),
 )

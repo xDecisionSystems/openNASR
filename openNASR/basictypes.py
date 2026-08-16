@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from cfcn import ll2xy   
+from .cfcn import ll2xy   
 
 # class Point(object):    
 #     @property    
@@ -10,12 +10,31 @@ from cfcn import ll2xy
 #     def lon(self):
 #         return self.base.LONG_DECIMAL
 
-def getRecords(airport,nasrDF,airportIDCol):
+def getAirportRecords(airport,nasrDF,airportIDCol):
     return [SimpleNamespace( **cRecord ) for cRecord in nasrDF[nasrDF[airportIDCol]==airport].to_dict(orient='records')]
 
-def getRecord(airport,nasrDF,airportIDCol):
+def getAirportRecord(airport,nasrDF,airportIDCol):
     return SimpleNamespace(  **nasrDF[nasrDF[airportIDCol]==airport].to_dict(orient='records')[0]  )
     
+
+class Point():
+    def __init__(self,sm):
+        self._raw = sm
+        
+    def getRaw(self):
+        return self._raw        
+
+    @property
+    def lat(self):
+        return self._raw.LAT_DECIMAL
+
+    @property
+    def lon(self):
+        return self._raw.LONG_DECIMAL
+
+    @property
+    def lonlat(self):
+        return [self._raw.LONG_DECIMAL,self._raw.LAT_DECIMAL]
 
 class Raw():
     def __init__(self,sm):
@@ -43,6 +62,17 @@ class Raw():
             return self._raw.SITE_ELEVATION
         elif hasattr(self._raw, 'RWY_END_ELEV'):
             return self._raw.RWY_END_ELEV
+        else:
+            return None
+
+    @property
+    def elevation(self):
+        if hasattr(self._raw, 'SITE_ELEVATION'):
+            return self._raw.SITE_ELEVATION
+        elif hasattr(self._raw, 'RWY_END_ELEV'):
+            return self._raw.RWY_END_ELEV
+        else:
+            return None
 
     @property            
     def len(self):

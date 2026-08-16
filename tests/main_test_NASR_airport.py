@@ -1,9 +1,9 @@
-from nasr.nasr import NASR
+from openNASR import NASR, Airport
 myNASR=NASR()
 
 
 
-from nasr.airport import Airport
+# from nasr.airport import Airport
 BWI = Airport('BWI',myNASR)
 DCA = Airport('DCA',myNASR)
 # myAirport.ils.getRawByID('01')

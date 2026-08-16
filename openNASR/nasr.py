@@ -3,7 +3,7 @@ from datetime import datetime
 from warnings import warn
 from zipfile import ZipFile 
 from pandas import read_csv
-from arb import ARB
+from .arb import ARB
 import calendar
 # from .airport import AIRPORT
 
@@ -30,12 +30,17 @@ def timestampToYearDecimal(useDate):
 
 
 class NASR(dict):
-    def __init__(self,useDate=None,update=False):
+    def __init__(self,useDate=None,update=False,preloadAll=False):
         if update:
             # Code here will download new NASR data from FAA.
             pass
         self.setupFiles(useDate)
-        self.loadARTCC()
+        if preloadAll==True:
+            # THIS WILL BREAK.  NOT SETUP YET
+            self.loadARTCC()
+            self.loadAirports()
+            
+
                 
     def setupFiles(self,useDate):
         self.__module_fd=Path(__file__).parent
@@ -100,15 +105,19 @@ class NASR(dict):
                 print('-----------------------------')
 
     
-    def isAirport(self,airport : str):
+    def isAirport(self,airport : str, forceFAA: bool):
         isAirportBool = False
         airportIDCol = None
+        ARPT_ID = None
         for useCol in ['ARPT_ID', 'ICAO_ID']:
             if any(self['APT_BASE'][useCol]==airport):
                 isAirportBool=True
                 airportIDCol = useCol
+                ARPT_ID = self['APT_BASE'][self['APT_BASE'][useCol]==airport]['ARPT_ID'].tolist()[0]
                 break
-        return isAirportBool,airportIDCol
+        if forceFAA:
+            airportIDCol='ARPT_ID'
+        return isAirportBool,airportIDCol, ARPT_ID
 
     def isAirway(self,airway  : str):
         return airway in self['AWY_BASE']['AWY_ID'].to_list()
@@ -119,7 +128,7 @@ class NASR(dict):
     def isFix(self,fix : str):
         return fix in self['FIX_BASE']['FIX_ID'].to_list()
     
-    def isNav(self,nav : str):
+    def isNavaid(self,nav : str):
         return nav in self['NAV_BASE']['NAV_ID'].to_list()      
     
     def isStar(self, star : str):

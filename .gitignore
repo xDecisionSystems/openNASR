@@ -1,6 +1,6 @@
 # NASR files
 *.zip
-nasr/data/uncompressed/
+openNASR/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
