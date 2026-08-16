@@ -1584,7 +1584,7 @@ An immutable dataclass or read-only mapping wrapper is preferred. It must:
 - distinguish a missing column from a present null value;
 - expose `raw` or `as_dict()` without leaking undocumented mutable state.
 
-- [ ] **Agent: Terra.** Implement shared converters for nullable text, ISO dates, integers,
+- [x] **Agent: Terra.** Implement shared converters for nullable text, ISO dates, integers,
       decimals/floats, boolean/code values, coordinates, and enums without
       mutating raw strings.
 - [ ] **Agent: Terra.** Raise `FieldConversionError` for invalid non-empty values with cycle,
