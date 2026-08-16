@@ -1812,7 +1812,7 @@ Tasks:
 
 - [x] **Agent: Sol.** **8.1** Verify identity, index, and airport/site relationship keys for both
       tables against both supported schema generations and representative rows.
-- [ ] **Agent: Terra.** **8.2** Implement `ClassAirspaceRecord` and a rich `ClassAirspace` object
+- [x] **Agent: Terra.** **8.2** Implement `ClassAirspaceRecord` and a rich `ClassAirspace` object
       in `airspace.py`, exposed through `nasr.class_airspaces` and
       `Airport.class_airspace` where the join is unambiguous.
 - [ ] **Agent: Terra.** **8.3** Implement `MilitaryOperationRecord` and a rich

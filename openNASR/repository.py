@@ -15,6 +15,7 @@ from .exceptions import (
 )
 from .records import (
     AirportRecord,
+    ClassAirspaceRecord,
     DmeRecord,
     FaaRecord,
     FixRecord,
@@ -25,6 +26,8 @@ from .records import (
     RunwayEndRecord,
     RunwayRecord,
 )
+from .airspace import ClassAirspace
+from .registry import AIRPORT_SITE_KEY
 
 
 def discover_tables(cycle_path: str | Path) -> tuple[str, ...]:
@@ -167,7 +170,38 @@ class AirportRepository:
             dmes=self._related_records("ILS_DME", identifier, DmeRecord),
             glide_slopes=self._related_records("ILS_GS", identifier, GlideSlopeRecord),
             markers=self._related_records("ILS_MKR", identifier, MarkerRecord),
+            class_airspace=self._class_airspace(row),
         )
+
+    def _class_airspace(self, airport: dict[str, object]) -> ClassAirspace | None:
+        """Return the sole class-airspace row joined through the site key."""
+
+        frame = self._nasr.get("CLS_ARSP")
+        if frame is None or any(
+            column not in frame.columns for column in AIRPORT_SITE_KEY
+        ):
+            return None
+        if any(column not in airport for column in AIRPORT_SITE_KEY):
+            return None
+        site_values = tuple(airport[column] for column in AIRPORT_SITE_KEY)
+        if any(value is None or str(value).strip() == "" for value in site_values):
+            return None
+        rows = frame
+        for column, value in zip(AIRPORT_SITE_KEY, site_values):
+            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
+        records = tuple(
+            ClassAirspace(ClassAirspaceRecord(row))
+            for row in rows.to_dict(orient="records")
+        )
+        if not records:
+            return None
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type="ClassAirspace",
+                identifier=site_values,
+                candidates=records,
+            )
+        return records[0]
 
     def _related_records(self, table: str, identifier: str, record_type):
         frame = self._nasr.get(table)

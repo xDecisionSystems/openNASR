@@ -6,9 +6,12 @@ from collections.abc import Iterator, Mapping
 from datetime import date
 from decimal import Decimal
 from enum import Enum
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from .exceptions import FieldConversionError
+
+if TYPE_CHECKING:
+    from .airspace import ClassAirspace
 
 
 EnumValue = TypeVar("EnumValue", bound=Enum)
@@ -166,6 +169,43 @@ class MarkerRecord(FaaRecord):
     """Lossless typed marker for an airport ILS marker row."""
 
 
+class ClassAirspaceRecord(FaaRecord):
+    """Typed conveniences for one airport-linked class-airspace row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None else nullable_text(str(value))
+
+    @property
+    def site_no(self) -> str | None:
+        return self._text("SITE_NO")
+
+    @property
+    def site_type_code(self) -> str | None:
+        return self._text("SITE_TYPE_CODE")
+
+    @property
+    def airport_id(self) -> str | None:
+        return self._text("ARPT_ID")
+
+    @property
+    def airport_site_key(self) -> tuple[str, str] | None:
+        """Verified key shared with the corresponding ``APT_BASE`` row."""
+
+        if self.site_no is None or self.site_type_code is None:
+            return None
+        return self.site_no, self.site_type_code
+
+    @property
+    def classes(self) -> Mapping[str, str | None]:
+        """Raw FAA class-airspace codes keyed by class letter."""
+
+        return {
+            letter: self._text(f"CLASS_{letter}_AIRSPACE")
+            for letter in ("B", "C", "D", "E")
+        }
+
+
 class FixRecord(FaaRecord):
     """Fix record with nullable typed conveniences over lossless FAA fields."""
 
@@ -275,6 +315,7 @@ class AirportRecord(FaaRecord):
         dmes: tuple[DmeRecord, ...] = (),
         glide_slopes: tuple[GlideSlopeRecord, ...] = (),
         markers: tuple[MarkerRecord, ...] = (),
+        class_airspace: ClassAirspace | None = None,
     ) -> None:
         super().__init__(raw)
         self._runways = runways
@@ -283,6 +324,7 @@ class AirportRecord(FaaRecord):
         self._dmes = dmes
         self._glide_slopes = glide_slopes
         self._markers = markers
+        self._class_airspace = class_airspace
 
     @property
     def runways(self) -> tuple[RunwayRecord, ...]:
@@ -313,6 +355,12 @@ class AirportRecord(FaaRecord):
     def markers(self) -> tuple[MarkerRecord, ...]:
         """Immutable marker records; empty when the optional table is absent."""
         return self._markers
+
+    @property
+    def class_airspace(self) -> ClassAirspace | None:
+        """Airport-linked class-airspace data, when exactly one row matches."""
+
+        return self._class_airspace
 
     def _field_context(self, column: str) -> FieldContext:
         return FieldContext(
@@ -368,6 +416,7 @@ class AirportRecord(FaaRecord):
 __all__ = [
     "FaaRecord",
     "AirportRecord",
+    "ClassAirspaceRecord",
     "DmeRecord",
     "GlideSlopeRecord",
     "FixRecord",
