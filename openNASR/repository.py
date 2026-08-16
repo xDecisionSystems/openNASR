@@ -7,7 +7,12 @@ from pathlib import Path
 
 from pandas import DataFrame, read_csv
 
-from .exceptions import AmbiguousRecordError, RecordNotFoundError, TableNotFoundError
+from .exceptions import (
+    AmbiguousRecordError,
+    RecordNotFoundError,
+    SchemaMismatchError,
+    TableNotFoundError,
+)
 from .records import (
     AirportRecord,
     DmeRecord,
@@ -149,12 +154,13 @@ class AirportRepository:
 
     def _airport_record(self, row: dict[str, object]) -> AirportRecord:
         identifier = self._normalized(row["ARPT_ID"])
+        runways = self._related_records("APT_RWY", identifier, RunwayRecord)
+        runway_ends = self._related_records("APT_RWY_END", identifier, RunwayEndRecord)
+        self._validate_reciprocal_runway_ends(identifier, runways, runway_ends)
         return AirportRecord(
             row,
-            runways=self._related_records("APT_RWY", identifier, RunwayRecord),
-            runway_ends=self._related_records(
-                "APT_RWY_END", identifier, RunwayEndRecord
-            ),
+            runways=runways,
+            runway_ends=runway_ends,
             ils=self._related_records("ILS_BASE", identifier, IlsRecord),
             dmes=self._related_records("ILS_DME", identifier, DmeRecord),
             glide_slopes=self._related_records("ILS_GS", identifier, GlideSlopeRecord),
@@ -167,6 +173,31 @@ class AirportRepository:
             return ()
         rows = frame[frame["ARPT_ID"].map(self._normalized).eq(identifier)]
         return tuple(record_type(row) for row in rows.to_dict(orient="records"))
+
+    @classmethod
+    def _validate_reciprocal_runway_ends(
+        cls,
+        airport_identifier: str,
+        runways: tuple[RunwayRecord, ...],
+        runway_ends: tuple[RunwayEndRecord, ...],
+    ) -> None:
+        available = {
+            cls._normalized(record["RWY_END_ID"])
+            for record in runway_ends
+            if "RWY_END_ID" in record
+        }
+        for runway in runways:
+            ends = str(runway["RWY_ID"]).split("/")
+            invalid = len(ends) != 2 or any(
+                cls._normalized(end) not in available for end in ends
+            )
+            if invalid:
+                raise SchemaMismatchError(
+                    "Runway is missing a reciprocal runway-end record",
+                    table="APT_RWY_END",
+                    airport=airport_identifier,
+                    runway_id=runway["RWY_ID"],
+                )
 
 
 class RecordRepository:

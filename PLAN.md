@@ -1639,7 +1639,7 @@ Later `1.x` milestones add repositories using the same contract.
 - [x] **Agent: Terra.** Expose runways and runway ends as typed immutable collections.
 - [x] **Agent: Terra.** Associate ILS, DME, glide-slope, and marker records without assuming every
       optional table or field exists.
-- [ ] **Agent: Terra.** Validate reciprocal runway identifiers before building polygons.
+- [x] **Agent: Terra.** Validate reciprocal runway identifiers before building polygons.
 - [ ] **Agent: Terra.** Keep raw records available for fields without typed properties.
 
 ### Fix requirements

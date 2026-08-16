@@ -1,5 +1,7 @@
 import pandas as pd
+import pytest
 
+from openNASR.exceptions import SchemaMismatchError
 from openNASR.records import AirportRecord, FaaRecord
 from openNASR.repository import AirportRepository, RecordRepository
 
@@ -56,6 +58,15 @@ def test_airport_record_exposes_immutable_typed_runway_collections(fixture_nasr)
     assert isinstance(airport.runway_ends, tuple)
     assert airport.runways[0]["RWY_ID"] == "10/28"
     assert airport.runway_ends[0]["RWY_END_ID"] == 10
+
+
+def test_airport_repository_rejects_missing_reciprocal_runway_end(fixture_nasr):
+    nasr, _ = fixture_nasr
+    incomplete = dict(nasr)
+    incomplete["APT_RWY_END"] = nasr["APT_RWY_END"].iloc[:1]
+
+    with pytest.raises(SchemaMismatchError, match="reciprocal runway-end"):
+        AirportRepository(incomplete).get("BWI")
 
 
 def test_airport_record_associates_optional_ils_component_collections(fixture_nasr):
