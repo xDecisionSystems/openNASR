@@ -161,6 +161,24 @@ _COMPATIBILITY_RECORD_MODULES = {
     "LocationIdentifierRecord": "locations",
     "ClassAirspaceRecord": "airspace",
     "MilitaryOperationRecord": "military",
+    "AirwayRecord": "airway",
+    "AirwaySegmentRecord": "airway",
+    "HoldingPatternRecord": "holding",
+    "HoldingPatternChartRecord": "holding",
+    "HoldingPatternRemarkRecord": "holding",
+    "HoldingPatternSpeedAltitudeRecord": "holding",
+    "CommunicationOutletRecord": "communications",
+    "FrequencyRecord": "communications",
+    "CodedDepartureRouteRecord": "departure",
+    "DepartureProcedureRecord": "departure",
+    "DepartureAirportRecord": "departure",
+    "DepartureRouteRecord": "departure",
+    "PreferredRouteRecord": "departure",
+    "PreferredRouteFormatRecord": "departure",
+    "PreferredRouteSegmentRecord": "departure",
+    "StarProcedureRecord": "arrivals",
+    "StarAirportRecord": "arrivals",
+    "StarRouteRecord": "arrivals",
 }
 
 
@@ -205,252 +223,6 @@ class MarkerRecord(FaaRecord):
     @property
     def operating_hours(self) -> str | None:
         return self._text("MIL_OPS_HRS")
-
-
-class AirwayRecord(FaaRecord):
-    """Typed conveniences for an ``AWY_BASE`` airway row."""
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None else nullable_text(str(value))
-
-    @property
-    def airway_key(self) -> tuple[str, str, str] | None:
-        values = tuple(
-            self._text(column) for column in ("REGULATORY", "AWY_LOCATION", "AWY_ID")
-        )
-        if any(value is None for value in values):
-            return None
-        return values[0], values[1], values[2]  # type: ignore[return-value]
-
-
-class AirwaySegmentRecord(AirwayRecord):
-    """Typed conveniences for an ordered ``AWY_SEG_ALT`` row."""
-
-    def __init__(
-        self,
-        raw: Mapping[str, object],
-        *,
-        fix: FixRecord | None = None,
-        navaid: NavaidRecord | None = None,
-    ) -> None:
-        super().__init__(raw)
-        self._fix = fix
-        self._navaid = navaid
-
-    @property
-    def fix(self) -> FixRecord | None:
-        """Fix at this airway point, resolved through its complete FAA key."""
-
-        return self._fix
-
-    @property
-    def navaid(self) -> NavaidRecord | None:
-        """Navaid at this airway point, resolved through its complete FAA key."""
-
-        return self._navaid
-
-    @property
-    def point_sequence(self) -> int | None:
-        value = self._text("POINT_SEQ")
-        return None if value is None else integer(value)
-
-    @property
-    def minimum_enroute_altitude(self) -> int | None:
-        value = self._text("MIN_ENROUTE_ALT")
-        return None if value is None else integer(value)
-
-    @property
-    def maximum_authorized_altitude(self) -> int | None:
-        value = self._text("MAX_AUTH_ALT")
-        return None if value is None else integer(value)
-
-
-class HoldingPatternRecord(FaaRecord):
-    """Typed conveniences for an ``HPF_BASE`` holding-pattern row."""
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None or value != value else nullable_text(str(value))
-
-    @property
-    def holding_pattern_key(self) -> tuple[str, str, str | None, str] | None:
-        """Verified key shared by every holding-pattern source table."""
-
-        name = self._text("HP_NAME")
-        number = self._text("HP_NO")
-        country = self._text("COUNTRY_CODE")
-        if name is None or number is None or country is None:
-            return None
-        return name, number, self._text("STATE_CODE"), country
-
-
-class HoldingPatternChartRecord(HoldingPatternRecord):
-    """Typed conveniences for an ``HPF_CHRT`` charting row."""
-
-    @property
-    def charting_type(self) -> str | None:
-        return self._text("CHARTING_TYPE_DESC")
-
-
-class HoldingPatternRemarkRecord(HoldingPatternRecord):
-    """Typed conveniences for an ordered ``HPF_RMK`` remark row."""
-
-    @property
-    def sequence(self) -> int | None:
-        value = self._text("REF_COL_SEQ_NO")
-        return None if value is None else integer(value)
-
-
-class HoldingPatternSpeedAltitudeRecord(HoldingPatternRecord):
-    """Typed conveniences for an ``HPF_SPD_ALT`` restriction row."""
-
-    @property
-    def speed_range(self) -> str | None:
-        return self._text("SPEED_RANGE")
-
-    @property
-    def altitude(self) -> str | None:
-        return self._text("ALTITUDE")
-
-
-class CommunicationOutletRecord(FaaRecord):
-    """Typed conveniences for a standalone ``COM`` communication outlet."""
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None or value != value else nullable_text(str(value))
-
-    @property
-    def identifier(self) -> str | None:
-        return self._text("COMM_LOC_ID")
-
-    @property
-    def name(self) -> str | None:
-        return self._text("COMM_OUTLET_NAME")
-
-    @property
-    def communication_type(self) -> str | None:
-        return self._text("COMM_TYPE")
-
-
-class FrequencyRecord(FaaRecord):
-    """Typed conveniences for a standalone ``FRQ`` frequency assignment."""
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None or value != value else nullable_text(str(value))
-
-    @property
-    def frequency_key(
-        self,
-    ) -> (
-        tuple[
-            str,
-            str | None,
-            str | None,
-            str | None,
-            str | None,
-            str,
-            str | None,
-            str,
-        ]
-        | None
-    ):
-        facility = self._text("FACILITY")
-        frequency = self._text("FREQ")
-        frequency_use = self._text("FREQ_USE")
-        if facility is None or frequency is None or frequency_use is None:
-            return None
-        return (
-            facility,
-            self._text("SERVICED_FACILITY"),
-            self._text("SERVICED_SITE_TYPE"),
-            self._text("SERVICED_STATE"),
-            self._text("SERVICED_COUNTRY"),
-            frequency,
-            self._text("SECTORIZATION"),
-            frequency_use,
-        )
-
-    @property
-    def serviced_facility_key(
-        self,
-    ) -> tuple[str, str, str | None, str | None] | None:
-        facility = self._text("SERVICED_FACILITY")
-        site_type = self._text("SERVICED_SITE_TYPE")
-        if facility is None or site_type is None:
-            return None
-        return (
-            facility,
-            site_type,
-            self._text("SERVICED_STATE"),
-            self._text("SERVICED_COUNTRY"),
-        )
-
-    @property
-    def facility(self) -> str | None:
-        return self._text("FACILITY")
-
-    @property
-    def frequency(self) -> str | None:
-        return self._text("FREQ")
-
-
-class CodedDepartureRouteRecord(FaaRecord):
-    """Typed conveniences for a standalone ``CDR`` coded departure route."""
-
-    def _text(self, column: str) -> str | None:
-        value = self._raw.get(column)
-        return None if value is None or value != value else nullable_text(str(value))
-
-    @property
-    def route_code(self) -> str | None:
-        return self._text("RCode")
-
-    @property
-    def origin(self) -> str | None:
-        return self._text("Orig")
-
-    @property
-    def destination(self) -> str | None:
-        return self._text("Dest")
-
-
-class DepartureProcedureRecord(FaaRecord):
-    """Typed marker for a ``DP_BASE`` departure procedure row."""
-
-
-class DepartureAirportRecord(FaaRecord):
-    """Typed marker for a ``DP_APT`` departure airport row."""
-
-
-class DepartureRouteRecord(FaaRecord):
-    """Typed marker for an ordered ``DP_RTE`` departure route row."""
-
-
-class PreferredRouteRecord(FaaRecord):
-    pass
-
-
-class PreferredRouteFormatRecord(FaaRecord):
-    pass
-
-
-class PreferredRouteSegmentRecord(FaaRecord):
-    pass
-
-
-class StarProcedureRecord(FaaRecord):
-    pass
-
-
-class StarAirportRecord(FaaRecord):
-    pass
-
-
-class StarRouteRecord(FaaRecord):
-    pass
 
 
 class FixRecord(FaaRecord):
@@ -675,27 +447,9 @@ class AirportRecord(FaaRecord):
 __all__ = [
     "FaaRecord",
     "AirportRecord",
-    "AirwayRecord",
-    "AirwaySegmentRecord",
-    "CodedDepartureRouteRecord",
-    "DepartureAirportRecord",
-    "DepartureProcedureRecord",
-    "DepartureRouteRecord",
-    "PreferredRouteRecord",
-    "PreferredRouteFormatRecord",
-    "PreferredRouteSegmentRecord",
-    "StarProcedureRecord",
-    "StarAirportRecord",
-    "StarRouteRecord",
-    "CommunicationOutletRecord",
     "DmeRecord",
     "GlideSlopeRecord",
-    "HoldingPatternChartRecord",
-    "HoldingPatternRecord",
-    "HoldingPatternRemarkRecord",
-    "HoldingPatternSpeedAltitudeRecord",
     "FixRecord",
-    "FrequencyRecord",
     "IlsRecord",
     "MarkerRecord",
     "NavaidRecord",
