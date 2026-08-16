@@ -1736,7 +1736,7 @@ Tasks:
       and automatic download (`CycleManager.download` /
       `download_latest`) as two clearly separate workflows in the README,
       matching Milestone 3's API.
-- [ ] **Agent: Luna.** **7.4** Document duplicate-record behavior (`AmbiguousRecordError`)
+- [x] **Agent: Luna.** **7.4** Document duplicate-record behavior (`AmbiguousRecordError`)
       and the full exception hierarchy from `exceptions.py`, with one
       example of catching a typed exception.
 - [ ] **Agent: Terra.** **7.5** Add an API reference for public classes and methods. This can

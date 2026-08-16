@@ -204,6 +204,23 @@ criteria include:
 - `inCountry`: FAA country name
 - `navType`: navigation-aid type
 
+## Errors
+
+All package-specific errors inherit from `OpenNASRError`. The public hierarchy
+includes configuration, cycle, download, archive, table, schema, field
+conversion, record-not-found, and ambiguous-record errors. Lookup ambiguity is
+reported as `AmbiguousRecordError` with candidate records attached:
+
+```python
+from openNASR.exceptions import AmbiguousRecordError
+
+try:
+    nasr.navaid("DUP")
+except AmbiguousRecordError as error:
+    for candidate in error.candidates:
+        print(candidate)
+```
+
 ## ARTCC boundaries
 
 Load ARTCC boundary records with `ARB`:
