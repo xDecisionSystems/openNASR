@@ -1646,7 +1646,7 @@ Later `1.x` milestones add repositories using the same contract.
 
 - [x] **Agent: Terra.** Expose identifier, name when available, latitude, longitude, state,
       country, and ARTCC metadata.
-- [ ] **Agent: Terra.** Treat duplicated fix identifiers explicitly if current FAA cycles contain
+- [x] **Agent: Terra.** Treat duplicated fix identifiers explicitly if current FAA cycles contain
       them.
 
 ### Navaid requirements

@@ -1,9 +1,9 @@
 import pandas as pd
 import pytest
 
-from openNASR.exceptions import SchemaMismatchError
+from openNASR.exceptions import AmbiguousRecordError, SchemaMismatchError
 from openNASR.records import AirportRecord, FaaRecord
-from openNASR.repository import AirportRepository, RecordRepository
+from openNASR.repository import AirportRepository, FixRepository, RecordRepository
 
 
 def test_airport_repository_get_and_singular_facade_are_equivalent(fixture_nasr):
@@ -117,3 +117,12 @@ def test_fix_repository_exposes_typed_source_fields(fixture_nasr):
     assert fix.country is None
     assert fix.high_artcc is None
     assert fix.low_artcc is None
+
+
+def test_fix_repository_raises_for_duplicate_identifiers():
+    repository = FixRepository(
+        {"FIX_BASE": pd.DataFrame([{"FIX_ID": "DUP"}, {"FIX_ID": "DUP"}])}
+    )
+
+    with pytest.raises(AmbiguousRecordError):
+        repository.get("dup")
