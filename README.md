@@ -295,6 +295,18 @@ polygon = high_boundary.getShape
 `getShape` returns a Shapely `Polygon`, which can be used for containment,
 intersection, and other geometry operations.
 
+Plot a geographic boundary with airports and intersecting airway segments:
+
+```python
+from openNASR import plot_airspace
+
+figure, axes = plot_airspace(nasr, high_boundary)
+```
+
+The helper accepts a Shapely longitude/latitude polygon or a NASR boundary
+object such as `high_boundary`. Install the optional plotting dependency with
+`pip install -e '.[plot]'`.
+
 ## Direct table access
 
 `NASR` subclasses `dict`, so the original FAA tables can be queried directly

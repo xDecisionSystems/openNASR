@@ -31,6 +31,7 @@ from .weather import WeatherLocationRepository as WeatherLocationRepository
 from .holding import HoldingPattern as HoldingPattern
 from .holding import HoldingPatternRepository as HoldingPatternRepository
 from .nav import NAVAID as NAVAID
+from .plotting import plot_airspace as plot_airspace
 from .records import ClassAirspaceRecord as ClassAirspaceRecord
 from .records import AirwayRecord as AirwayRecord
 from .records import AirwaySegmentRecord as AirwaySegmentRecord
@@ -102,6 +103,7 @@ __all__ = [
     "LocationIdentifierRepository",
     "NASR",
     "NAVAID",
+    "plot_airspace",
     "Radar",
     "RadarRecord",
     "RadarRepository",
