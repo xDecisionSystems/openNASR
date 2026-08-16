@@ -52,7 +52,8 @@ class Boundary:
 
     @property
     def bbox(self):
-        return min(self.lon), min(self.lat), max(self.lon), max(self.lat)
+        """Return bounds as ``(min_lon, min_lat, max_lon, max_lat)``."""
+        return self.__boundary.bounds
 
 
 class ARTCC:

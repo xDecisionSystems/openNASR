@@ -25,6 +25,7 @@ def test_boundary_preserves_disjoint_closed_rings_as_a_multipolygon():
 
     assert isinstance(boundary.getShape, MultiPolygon)
     assert len(boundary.getShape.geoms) == 2
+    assert boundary.bbox == (0.0, 0.0, 4.0, 1.0)
 
 
 def test_boundary_uses_a_polygon_for_a_single_ring():
