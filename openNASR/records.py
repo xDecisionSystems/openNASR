@@ -162,6 +162,10 @@ class AtcServiceRecord(FaaRecord):
     """Lossless typed marker for an ATC facility service row."""
 
 
+class RadarRecord(FaaRecord):
+    """Lossless typed marker for a radar facility row."""
+
+
 class RunwayRecord(FaaRecord):
     """Lossless typed marker for an airport runway row."""
 

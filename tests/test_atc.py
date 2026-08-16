@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from openNASR.atc import AtcFacilityRepository
+from openNASR.atc import AtcFacilityRepository, RadarRepository
 from openNASR.exceptions import RecordNotFoundError
 
 
@@ -53,3 +53,33 @@ def test_atc_facility_requires_full_key_and_reports_missing_records():
         repository.get(("ABC",))
     with pytest.raises(RecordNotFoundError):
         repository.get((*KEY[:-1], "CA"))
+
+
+def test_radar_uses_its_standalone_composite_key():
+    key = ("ABC", "TOWER", "FL", "US", "ASR", "1")
+    repository = RadarRepository(
+        {
+            "RDR": pd.DataFrame(
+                [
+                    dict(
+                        zip(
+                            (
+                                "FACILITY_ID",
+                                "FACILITY_TYPE",
+                                "STATE_CODE",
+                                "COUNTRY_CODE",
+                                "RADAR_TYPE",
+                                "RADAR_NO",
+                            ),
+                            key,
+                        ),
+                        RADAR_NAME="Example",
+                    )
+                ]
+            )
+        }
+    )
+
+    assert repository.get(key).record["RADAR_NAME"] == "Example"
+    with pytest.raises(ValueError, match="Radar identifiers"):
+        repository.get(("ABC",))

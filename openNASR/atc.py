@@ -5,8 +5,24 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import AtcFacilityRecord, AtcRemarkRecord, AtcServiceRecord, AtisRecord
+from .records import (
+    AtcFacilityRecord,
+    AtcRemarkRecord,
+    AtcServiceRecord,
+    AtisRecord,
+    RadarRecord,
+)
 from .registry import ATC_KEY
+
+
+RADAR_KEY = (
+    "FACILITY_ID",
+    "FACILITY_TYPE",
+    "STATE_CODE",
+    "COUNTRY_CODE",
+    "RADAR_TYPE",
+    "RADAR_NO",
+)
 
 
 class AtcFacility:
@@ -95,4 +111,51 @@ class AtcFacilityRepository:
         return records[0]
 
 
-__all__ = ["AtcFacility", "AtcFacilityRepository"]
+class Radar:
+    """One standalone FAA radar record."""
+
+    def __init__(self, record: RadarRecord) -> None:
+        self.record = record
+
+
+class RadarRepository:
+    """Look up radar records by their complete verified FAA key."""
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        self._nasr = nasr
+
+    @staticmethod
+    def _normalized(value: object) -> str:
+        if value is None or value != value:
+            return ""
+        return str(value).strip().upper()
+
+    def _key(self, identifier: object) -> tuple[object, ...]:
+        if not isinstance(identifier, tuple) or len(identifier) != len(RADAR_KEY):
+            raise ValueError(f"Radar identifiers require ({', '.join(RADAR_KEY)})")
+        return identifier
+
+    def _matching(self, frame: DataFrame, key: tuple[object, ...]) -> DataFrame:
+        rows = frame
+        for column, value in zip(RADAR_KEY, key):
+            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
+        return rows
+
+    def find(self, identifier: object | None = None) -> tuple[Radar, ...]:
+        rows = self._nasr["RDR"]
+        if identifier is not None:
+            rows = self._matching(rows, self._key(identifier))
+        return tuple(Radar(RadarRecord(row)) for row in rows.to_dict(orient="records"))
+
+    def get(self, identifier: object) -> Radar:
+        records = self.find(identifier)
+        if not records:
+            raise RecordNotFoundError(entity_type="Radar", identifier=identifier)
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type="Radar", identifier=identifier, candidates=records
+            )
+        return records[0]
+
+
+__all__ = ["AtcFacility", "AtcFacilityRepository", "Radar", "RadarRepository"]

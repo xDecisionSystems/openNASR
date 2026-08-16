@@ -142,7 +142,7 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | `ATC_ATIS` | `atc.py` | `AtisRecord` | `AtcFacility.atis_services` | Existing |
 | `ATC_RMK` | `atc.py` | `AtcRemarkRecord` | `AtcFacility.remarks` | Existing |
 | `ATC_SVC` | `atc.py` | `AtcServiceRecord` | `AtcFacility.services` | Existing |
-| `RDR` | `atc.py` | `RadarRecord` | `Radar`; `nasr.radars`; `nasr.radar()` | Proposed |
+| `RDR` | `atc.py` | `RadarRecord` | `Radar`; `nasr.radars`; `nasr.radar()` | Existing |
 
 ## Weather files
 

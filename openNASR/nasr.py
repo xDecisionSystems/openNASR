@@ -5,7 +5,7 @@ from zipfile import ZipFile
 from pandas import read_csv
 from .arb import ARB
 from .airspace import ClassAirspaceRepository
-from .atc import AtcFacilityRepository
+from .atc import AtcFacilityRepository, RadarRepository
 from .airway import AirwayRepository
 from .holding import HoldingPatternRepository
 from .communications import CommunicationOutletRepository, FrequencyRepository
@@ -54,6 +54,7 @@ class NASR(dict):
         self.setupFiles(useDate)
         self.class_airspaces = ClassAirspaceRepository(self)
         self.atc_facilities = AtcFacilityRepository(self)
+        self.radars = RadarRepository(self)
         self.airways = AirwayRepository(self)
         self.holding_patterns = HoldingPatternRepository(self)
         self.communication_outlets = CommunicationOutletRepository(self)
@@ -265,6 +266,9 @@ class NASR(dict):
 
     def atc_facility(self, identifier: tuple[object, ...]):
         return self.atc_facilities.get(identifier)
+
+    def radar(self, identifier: tuple[object, ...]):
+        return self.radars.get(identifier)
 
     def isAirway(self, airway: str):
         return airway in self["AWY_BASE"]["AWY_ID"].to_list()
