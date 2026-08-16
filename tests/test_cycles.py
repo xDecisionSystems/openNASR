@@ -205,3 +205,18 @@ def test_csv_source_locator_accepts_nested_directories_and_archives(tmp_path):
 
     assert locate_csv_source(directory_cycle) == csv_dir
     assert locate_csv_source(archive_cycle) == nested_archive
+
+
+def test_get_reuses_cached_cycle_without_rewriting_archive(tmp_path):
+    manager = CycleManager(tmp_path)
+    manager.archives_dir.mkdir(parents=True)
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    with ZipFile(archive, "w") as output:
+        output.writestr("APT_BASE.csv", "ARPT_ID\nBWI\n")
+    before = archive.stat().st_mtime_ns
+
+    cycle = manager.get(date(2026, 8, 6))
+
+    assert cycle.archive_path == archive
+    assert archive.stat().st_mtime_ns == before
+    assert manager.get(date(2026, 8, 6), force=True) is None

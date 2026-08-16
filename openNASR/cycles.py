@@ -159,6 +159,27 @@ class CycleManager:
             )
         )
 
+    def get(self, effective_date: date, *, force: bool = False) -> Cycle | None:
+        """Return a valid cached cycle, reusing it unless ``force`` is set."""
+
+        if force:
+            return None
+        archive = self.archives_dir / (
+            f"28DaySubscription_Effective_{effective_date.isoformat()}.zip"
+        )
+        if archive.is_file() and parse_archive_date(archive) == effective_date:
+            validate_archive(archive)
+            data_path = self.cycles_dir / effective_date.isoformat()
+            return Cycle(
+                effective_date=effective_date,
+                archive_path=archive,
+                data_path=data_path if data_path.is_dir() else None,
+            )
+        data_path = self.cycles_dir / effective_date.isoformat()
+        if data_path.is_dir():
+            return Cycle(effective_date=effective_date, data_path=data_path)
+        return None
+
     def extracted_paths(self) -> tuple[Path, ...]:
         """Return extracted cycle candidates without requiring an archive."""
 

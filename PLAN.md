@@ -1450,7 +1450,7 @@ Tasks:
 - [x] **Agent: Terra.** Locate the nested FAA CSV archive or CSV directory without assuming one
       exact intermediate folder name.
 - [x] **Agent: Sol.** Make interrupted download and extraction cleanup safe and idempotent.
-- [ ] **Agent: Luna.** Make `force=False` reuse a valid cached cycle.
+- [x] **Agent: Luna.** Make `force=False` reuse a valid cached cycle.
 - [ ] **Agent: Sol.** Never delete caller-owned archives during import.
 - [ ] **Agent: Terra.** Implement an injectable FAA cycle provider that discovers only metadata
       and archive URLs. Give live requests a hard two-second timeout and mock
