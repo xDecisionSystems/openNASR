@@ -1536,7 +1536,7 @@ Tasks:
 
 - [x] **Agent: Luna.** Discover table names without loading CSV contents.
 - [x] **Agent: Luna.** Normalize requested table names to uppercase.
-- [ ] **Agent: Terra.** Cache each loaded DataFrame per `NASR` instance.
+- [x] **Agent: Terra.** Cache each loaded DataFrame per `NASR` instance.
 - [ ] **Agent: Terra.** Preserve `nasr["APT_BASE"]` compatibility by delegating to the repository.
 - [ ] **Agent: Terra.** Implement `collections.abc.Mapping` instead of subclassing `dict` if
       behavior can remain compatible.
