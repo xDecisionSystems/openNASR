@@ -78,6 +78,17 @@ openNASR/data/uncompressed/
 NASR archives and extracted data can be large and should not be committed to
 the repository.
 
+`CycleManager` stores downloaded archives and extracted cycles beneath its
+cache directory. Cache location precedence is:
+
+1. an explicit `cache_dir` argument;
+2. the `OPENNASR_CACHE_DIR` environment variable; or
+3. the platform-specific user cache directory selected by `platformdirs`.
+
+For example, `CycleManager(cache_dir="/data/nasr")` uses `/data/nasr`
+regardless of environment settings. Within that directory, archives are kept
+under `archives/` and extracted cycles under `cycles/`.
+
 ## Quick start
 
 The examples below are maintained against the public API and are covered by

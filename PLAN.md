@@ -1728,7 +1728,7 @@ Tasks:
       in a test) where practical. Prioritize the "Quick start", "Airports",
       "Fixes", and "Navigation aids" examples, since those are the ones most
       likely to silently drift from the real API.
-- [ ] **Agent: Luna.** **7.2** Document the cache location and override precedence (explicit
+- [x] **Agent: Luna.** **7.2** Document the cache location and override precedence (explicit
       `cache_dir` argument > `OPENNASR_CACHE_DIR` env var > platform default)
       from Milestone 3's "Data location" design, in the README's data-setup
       section.
