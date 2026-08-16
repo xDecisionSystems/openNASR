@@ -149,8 +149,8 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
 | `AWOS` | `weather.py` | `AutomatedWeatherStationRecord` | `AutomatedWeatherStation`; `nasr.weather_stations`; `nasr.weather_station()` | Existing |
-| `WXL_BASE` | `weather.py` | `WeatherLocationRecord` | `WeatherLocation`; `nasr.weather_locations` | Proposed |
-| `WXL_SVC` | `weather.py` | `WeatherServiceRecord` | `WeatherLocation.services` | Proposed |
+| `WXL_BASE` | `weather.py` | `WeatherLocationRecord` | `WeatherLocation`; `nasr.weather_locations`; `nasr.weather_location()` | Existing |
+| `WXL_SVC` | `weather.py` | `WeatherServiceRecord` | `WeatherLocation.services` | Existing |
 
 ## Airway files
 

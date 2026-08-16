@@ -1907,7 +1907,7 @@ Tasks:
       adding facility relationships only when the full key is reliable.
 - [x] **Agent: Terra.** **11.4** Implement `AutomatedWeatherStationRecord` and rich
       `AutomatedWeatherStation` objects through `nasr.weather_stations`.
-- [ ] **Agent: Terra.** **11.5** Implement `WeatherLocationRecord`, `WeatherServiceRecord`, and
+- [x] **Agent: Terra.** **11.5** Implement `WeatherLocationRecord`, `WeatherServiceRecord`, and
       rich `WeatherLocation` objects through `nasr.weather_locations` and their
       service collections.
 - [ ] **Agent: Terra.** **11.6** Implement `FlightServiceStationRecord`,

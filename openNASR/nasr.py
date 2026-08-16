@@ -6,7 +6,7 @@ from pandas import read_csv
 from .arb import ARB
 from .airspace import ClassAirspaceRepository
 from .atc import AtcFacilityRepository, RadarRepository
-from .weather import AutomatedWeatherStationRepository
+from .weather import AutomatedWeatherStationRepository, WeatherLocationRepository
 from .airway import AirwayRepository
 from .holding import HoldingPatternRepository
 from .communications import CommunicationOutletRepository, FrequencyRepository
@@ -57,6 +57,7 @@ class NASR(dict):
         self.atc_facilities = AtcFacilityRepository(self)
         self.radars = RadarRepository(self)
         self.weather_stations = AutomatedWeatherStationRepository(self)
+        self.weather_locations = WeatherLocationRepository(self)
         self.airways = AirwayRepository(self)
         self.holding_patterns = HoldingPatternRepository(self)
         self.communication_outlets = CommunicationOutletRepository(self)
@@ -274,6 +275,9 @@ class NASR(dict):
 
     def weather_station(self, identifier: tuple[object, ...]):
         return self.weather_stations.get(identifier)
+
+    def weather_location(self, identifier: tuple[object, ...]):
+        return self.weather_locations.get(identifier)
 
     def isAirway(self, airway: str):
         return airway in self["AWY_BASE"]["AWY_ID"].to_list()

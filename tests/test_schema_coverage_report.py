@@ -13,7 +13,7 @@ def test_coverage_report_counts_all_supported_fixture_files():
         assert schema_report["operational_csv_files"] == 63
         assert schema_report["schema_description_files"] == 24
         assert schema_report["matched_table_spec_count"] == 63
-        assert schema_report["rich_record_table_count"] == 28
+        assert schema_report["rich_record_table_count"] == 30
         assert schema_report["rich_record_tables"] == [
             "ATC_ATIS",
             "ATC_BASE",
@@ -43,6 +43,8 @@ def test_coverage_report_counts_all_supported_fixture_files():
             "STAR_APT",
             "STAR_BASE",
             "STAR_RTE",
+            "WXL_BASE",
+            "WXL_SVC",
         ]
         assert schema_report["unmodeled_operational_files"] == []
         assert len(schema_report["unmatched_files"]) == 24
@@ -90,4 +92,6 @@ def test_coverage_report_cli_writes_only_to_requested_scratch_path(
         "STAR_APT",
         "STAR_BASE",
         "STAR_RTE",
+        "WXL_BASE",
+        "WXL_SVC",
     ]
