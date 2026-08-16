@@ -1434,7 +1434,7 @@ manager.remove(cycle, *, archive=True, extracted=True) -> None
 
 Tasks:
 
-- [ ] **Agent: Terra.** Resolve the cache path according to the documented precedence.
+- [x] **Agent: Terra.** Resolve the cache path according to the documented precedence.
 - [ ] **Agent: Terra.** Discover valid extracted cycles and archives independently.
 - [ ] **Agent: Terra.** Validate archive names without relying solely on lexical sorting.
 - [ ] **Agent: Terra.** Read the cycle date from trusted metadata or a validated filename.
