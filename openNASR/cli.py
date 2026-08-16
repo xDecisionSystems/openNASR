@@ -4,8 +4,17 @@ from __future__ import annotations
 
 import argparse
 from datetime import date, datetime, timezone
+from enum import IntEnum
 
 from .cycles import CycleManager
+
+
+class ExitCode(IntEnum):
+    SUCCESS = 0
+    USAGE_ERROR = 2
+    UNAVAILABLE = 3
+    VALIDATION_ERROR = 4
+    INTERNAL_ERROR = 5
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -51,7 +60,7 @@ def main(argv: list[str] | None = None, *, manager=None, confirm=input) -> int:
             confirm(f"Remove cached cycle {effective_date}? [y/N] ").lower() == "y"
         )
         if not confirmed:
-            return 0
+            return ExitCode.SUCCESS
         active_manager.remove(effective_date)
         print(f"removed: {effective_date}")
-    return 0
+    return ExitCode.SUCCESS

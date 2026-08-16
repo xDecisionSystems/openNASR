@@ -1486,7 +1486,7 @@ Tasks:
 - [x] **Agent: Terra.** Implement `opennasr remove YYYY-MM-DD`; require interactive confirmation
       unless `--yes` is supplied, resolve the exact cycle before deletion, and
       report which cached archive and extracted data were removed.
-- [ ] **Agent: Terra.** Give CLI commands documented stable exit codes for success, usage error,
+- [x] **Agent: Terra.** Give CLI commands documented stable exit codes for success, usage error,
       unavailable network/data, validation failure, and internal failure.
 - [ ] **Agent: Terra.** Test every CLI command using temporary caches and mocked transports. No
       CLI test may access the live FAA service or the user's real cache.

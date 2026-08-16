@@ -1,6 +1,7 @@
 from datetime import date, datetime, timezone
 
 from openNASR.cli import build_parser
+from openNASR.cli import ExitCode
 from openNASR.cli import main
 from openNASR.cycles import UpdateStatus
 
@@ -10,6 +11,14 @@ def test_cli_exposes_check_command_and_force_option():
 
     assert args.command == "check"
     assert args.force
+
+
+def test_cli_exit_codes_are_stable():
+    assert ExitCode.SUCCESS == 0
+    assert ExitCode.USAGE_ERROR == 2
+    assert ExitCode.UNAVAILABLE == 3
+    assert ExitCode.VALIDATION_ERROR == 4
+    assert ExitCode.INTERNAL_ERROR == 5
 
 
 def test_check_reports_cycle_status(capsys):
