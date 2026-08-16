@@ -300,7 +300,16 @@ class NavaidRepository(RecordRepository):
         country: str | None = None,
         artcc: str | None = None,
         nav_type: str | None = None,
+        navType: str | None = None,
     ) -> tuple[FaaRecord, ...]:
+        if navType is not None:
+            if nav_type is not None and self._normalized(navType) != self._normalized(
+                nav_type
+            ):
+                raise ValueError(
+                    "navType and nav_type must agree when both are supplied"
+                )
+            nav_type = navType
         rows = self._frame
         if identifier is not None:
             rows = rows[

@@ -161,3 +161,26 @@ def test_navaid_filters_are_optional_and_conjunctive():
 
     assert len(repository.find("dup")) == 2
     assert repository.get("dup", state=" oh ", artcc="zob")["STATE_CODE"] == "OH"
+
+
+def test_navaid_repository_supports_navtype_compatibility_alias():
+    repository = NavaidRepository(
+        {
+            "NAV_BASE": pd.DataFrame(
+                [
+                    {
+                        "NAV_ID": "ABC",
+                        "NAV_TYPE": "VOR",
+                        "STATE_CODE": "OH",
+                        "COUNTRY_CODE": "US",
+                        "HIGH_ALT_ARTCC_ID": "ZOB",
+                        "LOW_ALT_ARTCC_ID": "ZOB",
+                    }
+                ]
+            )
+        }
+    )
+
+    assert repository.get("ABC", navType="vor")["NAV_ID"] == "ABC"
+    with pytest.raises(ValueError, match="must agree"):
+        repository.find("ABC", nav_type="VOR", navType="NDB")
