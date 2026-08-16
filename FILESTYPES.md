@@ -219,7 +219,7 @@ airway-segment fields and their altitude constraints, so it maps directly to
 
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
-| `LID` | `locations.py` | `LocationIdentifierRecord` | `LocationIdentifier`; `nasr.location_identifiers` | Proposed |
+| `LID` | `locations.py` | `LocationIdentifierRecord` | `LocationIdentifier`; `nasr.location_identifiers`; `nasr.location_identifier()` | Existing |
 
 ## Military files
 

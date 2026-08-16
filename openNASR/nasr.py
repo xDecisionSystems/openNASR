@@ -8,6 +8,7 @@ from .airspace import ClassAirspaceRepository
 from .atc import AtcFacilityRepository, RadarRepository
 from .weather import AutomatedWeatherStationRepository, WeatherLocationRepository
 from .fss import FlightServiceStationRepository
+from .locations import LocationIdentifierRepository
 from .airway import AirwayRepository
 from .holding import HoldingPatternRepository
 from .communications import CommunicationOutletRepository, FrequencyRepository
@@ -60,6 +61,7 @@ class NASR(dict):
         self.weather_stations = AutomatedWeatherStationRepository(self)
         self.weather_locations = WeatherLocationRepository(self)
         self.flight_service_stations = FlightServiceStationRepository(self)
+        self.location_identifiers = LocationIdentifierRepository(self)
         self.airways = AirwayRepository(self)
         self.holding_patterns = HoldingPatternRepository(self)
         self.communication_outlets = CommunicationOutletRepository(self)
@@ -283,6 +285,9 @@ class NASR(dict):
 
     def flight_service_station(self, identifier: tuple[object, ...]):
         return self.flight_service_stations.get(identifier)
+
+    def location_identifier(self, identifier: tuple[object, ...]):
+        return self.location_identifiers.get(identifier)
 
     def isAirway(self, airway: str):
         return airway in self["AWY_BASE"]["AWY_ID"].to_list()

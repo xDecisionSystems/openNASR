@@ -39,6 +39,7 @@ from .records import (
     HoldingPatternRecord,
     HoldingPatternRemarkRecord,
     HoldingPatternSpeedAltitudeRecord,
+    LocationIdentifierRecord,
     MilitaryOperationRecord,
     NavaidRecord,
 )
@@ -183,6 +184,7 @@ RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "WXL_SVC": WeatherServiceRecord,
     "FSS_BASE": FlightServiceStationRecord,
     "FSS_RMK": FlightServiceStationRemarkRecord,
+    "LID": LocationIdentifierRecord,
     "CDR": CodedDepartureRouteRecord,
     "DP_BASE": DepartureProcedureRecord,
     "DP_APT": DepartureAirportRecord,

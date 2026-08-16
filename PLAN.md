@@ -1913,7 +1913,7 @@ Tasks:
 - [x] **Agent: Terra.** **11.6** Implement `FlightServiceStationRecord`,
       `FlightServiceStationRemarkRecord`, and rich `FlightServiceStation`
       objects through `nasr.flight_service_stations`.
-- [ ] **Agent: Terra.** **11.7** Implement `LocationIdentifierRecord` and rich standalone
+- [x] **Agent: Terra.** **11.7** Implement `LocationIdentifierRecord` and rich standalone
       `LocationIdentifier` objects through `nasr.location_identifiers`.
 - [ ] **Agent: Terra.** **11.8** Add both-schema fixtures, repository and relationship tests,
       converter tests, exports, documentation, coverage reporting, and the

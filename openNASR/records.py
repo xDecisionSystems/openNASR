@@ -186,6 +186,10 @@ class FlightServiceStationRemarkRecord(FaaRecord):
     """Lossless typed marker for a flight-service-station remark row."""
 
 
+class LocationIdentifierRecord(FaaRecord):
+    """Lossless typed marker for a location-identifier row."""
+
+
 class RunwayRecord(FaaRecord):
     """Lossless typed marker for an airport runway row."""
 
