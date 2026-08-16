@@ -1815,7 +1815,7 @@ Tasks:
 - [x] **Agent: Terra.** **8.2** Implement `ClassAirspaceRecord` and a rich `ClassAirspace` object
       in `airspace.py`, exposed through `nasr.class_airspaces` and
       `Airport.class_airspace` where the join is unambiguous.
-- [ ] **Agent: Terra.** **8.3** Implement `MilitaryOperationRecord` and a rich
+- [x] **Agent: Terra.** **8.3** Implement `MilitaryOperationRecord` and a rich
       `MilitaryOperation` object in `military.py`, exposed through
       `nasr.military_operations` and `Airport.military_operations`.
 - [ ] **Agent: Terra.** **8.4** Add raw/typed converter tests, repository `.get()`/`.find()` tests,

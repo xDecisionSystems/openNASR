@@ -22,11 +22,13 @@ from .records import (
     GlideSlopeRecord,
     IlsRecord,
     MarkerRecord,
+    MilitaryOperationRecord,
     NavaidRecord,
     RunwayEndRecord,
     RunwayRecord,
 )
 from .airspace import ClassAirspace
+from .military import MilitaryOperation
 from .registry import AIRPORT_SITE_KEY
 
 
@@ -171,6 +173,7 @@ class AirportRepository:
             glide_slopes=self._related_records("ILS_GS", identifier, GlideSlopeRecord),
             markers=self._related_records("ILS_MKR", identifier, MarkerRecord),
             class_airspace=self._class_airspace(row),
+            military_operations=self._military_operations(row),
         )
 
     def _class_airspace(self, airport: dict[str, object]) -> ClassAirspace | None:
@@ -202,6 +205,29 @@ class AirportRepository:
                 candidates=records,
             )
         return records[0]
+
+    def _military_operations(
+        self, airport: dict[str, object]
+    ) -> tuple[MilitaryOperation, ...]:
+        """Return military-operation rows joined through the complete site key."""
+
+        frame = self._nasr.get("MIL_OPS")
+        if frame is None or any(
+            column not in frame.columns for column in AIRPORT_SITE_KEY
+        ):
+            return ()
+        if any(column not in airport for column in AIRPORT_SITE_KEY):
+            return ()
+        site_values = tuple(airport[column] for column in AIRPORT_SITE_KEY)
+        if any(value is None or str(value).strip() == "" for value in site_values):
+            return ()
+        rows = frame
+        for column, value in zip(AIRPORT_SITE_KEY, site_values):
+            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
+        return tuple(
+            MilitaryOperation(MilitaryOperationRecord(row))
+            for row in rows.to_dict(orient="records")
+        )
 
     def _related_records(self, table: str, identifier: str, record_type):
         frame = self._nasr.get(table)

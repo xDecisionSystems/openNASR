@@ -5,6 +5,7 @@ from zipfile import ZipFile
 from pandas import read_csv
 from .arb import ARB
 from .airspace import ClassAirspaceRepository
+from .military import MilitaryOperationRepository
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
 from .repository import AirportRepository, FixRepository, NavaidRepository
@@ -42,6 +43,7 @@ class NASR(dict):
         self.__diagnostic = diagnostic
         self.setupFiles(useDate)
         self.class_airspaces = ClassAirspaceRepository(self)
+        self.military_operations = MilitaryOperationRepository(self)
         self.airports = AirportRepository(self)
         self.fixes = FixRepository(self)
         self.navaids = NavaidRepository(self)

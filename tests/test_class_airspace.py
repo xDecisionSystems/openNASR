@@ -4,6 +4,7 @@ import pandas as pd
 
 from openNASR.airspace import ClassAirspaceRepository
 from openNASR.records import ClassAirspaceRecord
+from openNASR.military import MilitaryOperationRepository
 from openNASR.repository import AirportRepository
 
 
@@ -32,6 +33,18 @@ def _nasr_tables():
                 }
             ]
         ),
+        "MIL_OPS": pd.DataFrame(
+            [
+                {
+                    "SITE_NO": "00000001A",
+                    "SITE_TYPE_CODE": "A",
+                    "ARPT_ID": "DUP",
+                    "MIL_OPS_OPER_CODE": "M",
+                    "MIL_OPS_CALL": "TEST OPS",
+                    "MIL_OPS_HRS": "H24",
+                }
+            ]
+        ),
     }
 
 
@@ -52,3 +65,15 @@ def test_class_airspace_repository_and_airport_use_the_site_key():
     assert class_airspace.airport_site_key == ("00000001A", "A")
     assert airport.class_airspace is not None
     assert airport.class_airspace.airport_site_key == class_airspace.airport_site_key
+
+
+def test_military_operations_attach_to_airport_by_site_key():
+    tables = _nasr_tables()
+
+    operation = MilitaryOperationRepository(tables).get(("00000001a", "a"))
+    airport = AirportRepository(tables).get("kdup")
+
+    assert operation.call_sign == "TEST OPS"
+    assert tuple(item.call_sign for item in airport.military_operations) == (
+        operation.call_sign,
+    )
