@@ -136,6 +136,32 @@ PROCEDURE_ROUTE_TABLES = frozenset(
         "STAR_RTE",
     }
 )
+ATC_KEY = (
+    "SITE_NO",
+    "SITE_TYPE_CODE",
+    "FACILITY_TYPE",
+    "STATE_CODE",
+    "FACILITY_ID",
+    "CITY",
+    "COUNTRY_CODE",
+)
+WEATHER_LOCATION_KEY = ("WEA_ID", "CITY", "STATE_CODE", "COUNTRY_CODE")
+FSS_KEY = ("FSS_ID", "NAME", "CITY", "STATE_CODE", "COUNTRY_CODE")
+FACILITY_TABLES = frozenset(
+    {
+        "ATC_BASE",
+        "ATC_ATIS",
+        "ATC_RMK",
+        "ATC_SVC",
+        "RDR",
+        "AWOS",
+        "WXL_BASE",
+        "WXL_SVC",
+        "FSS_BASE",
+        "FSS_RMK",
+        "LID",
+    }
+)
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "CDR": CodedDepartureRouteRecord,
     "DP_BASE": DepartureProcedureRecord,
@@ -519,6 +545,97 @@ class TableRegistry:
                     relationships = (
                         RelationshipSpec("star", "STAR_BASE", STAR_KEY, STAR_KEY),
                     )
+                elif table_name == "ATC_BASE":
+                    identity_key = ATC_KEY
+                    indexes = (IndexSpec("facility", ATC_KEY, unique=True),)
+                    relationships = tuple(
+                        RelationshipSpec(name, target, ATC_KEY, ATC_KEY)
+                        for name, target in (
+                            ("atis_services", "ATC_ATIS"),
+                            ("remarks", "ATC_RMK"),
+                            ("services", "ATC_SVC"),
+                        )
+                    )
+                elif table_name in {"ATC_ATIS", "ATC_RMK", "ATC_SVC"}:
+                    suffix = {
+                        "ATC_ATIS": ("ATIS_NO",),
+                        "ATC_RMK": (
+                            "LEGACY_ELEMENT_NUMBER",
+                            "TAB_NAME",
+                            "REF_COL_NAME",
+                            "REMARK_NO",
+                        ),
+                        "ATC_SVC": ("CTL_SVC",),
+                    }[table_name]
+                    identity_key = (*ATC_KEY, *suffix)
+                    indexes = (IndexSpec("facility", ATC_KEY),)
+                    relationships = (
+                        RelationshipSpec("facility", "ATC_BASE", ATC_KEY, ATC_KEY),
+                    )
+                    if table_name == "ATC_RMK":
+                        order_by = ("REMARK_NO",)
+                elif table_name == "RDR":
+                    identity_key = (
+                        "FACILITY_ID",
+                        "FACILITY_TYPE",
+                        "STATE_CODE",
+                        "COUNTRY_CODE",
+                        "RADAR_TYPE",
+                        "RADAR_NO",
+                    )
+                elif table_name == "AWOS":
+                    identity_key = (
+                        "ASOS_AWOS_ID",
+                        "ASOS_AWOS_TYPE",
+                        "STATE_CODE",
+                        "CITY",
+                        "COUNTRY_CODE",
+                    )
+                elif table_name == "WXL_BASE":
+                    identity_key = WEATHER_LOCATION_KEY
+                    relationships = (
+                        RelationshipSpec(
+                            "services",
+                            "WXL_SVC",
+                            WEATHER_LOCATION_KEY,
+                            WEATHER_LOCATION_KEY,
+                        ),
+                    )
+                elif table_name == "WXL_SVC":
+                    identity_key = (*WEATHER_LOCATION_KEY, "WEA_SVC_TYPE_CODE")
+                    indexes = (IndexSpec("weather_location", WEATHER_LOCATION_KEY),)
+                    relationships = (
+                        RelationshipSpec(
+                            "weather_location",
+                            "WXL_BASE",
+                            WEATHER_LOCATION_KEY,
+                            WEATHER_LOCATION_KEY,
+                        ),
+                    )
+                elif table_name == "FSS_BASE":
+                    identity_key = FSS_KEY
+                    relationships = (
+                        RelationshipSpec("remarks", "FSS_RMK", FSS_KEY, FSS_KEY),
+                    )
+                elif table_name == "FSS_RMK":
+                    identity_key = (*FSS_KEY, "REF_COL_NAME", "REF_COL_SEQ_NO")
+                    indexes = (IndexSpec("flight_service_station", FSS_KEY),)
+                    order_by = ("REF_COL_NAME", "REF_COL_SEQ_NO")
+                    relationships = (
+                        RelationshipSpec(
+                            "flight_service_station", "FSS_BASE", FSS_KEY, FSS_KEY
+                        ),
+                    )
+                elif table_name == "LID":
+                    identity_key = (
+                        "COUNTRY_CODE",
+                        "LOC_ID",
+                        "REGION_CODE",
+                        "STATE",
+                        "CITY",
+                        "LID_GROUP",
+                        "FAC_TYPE",
+                    )
                 variants.append(
                     TableVariantSpec(
                         schema_id=schema_id,
@@ -596,9 +713,12 @@ __all__ = [
     "AIRWAY_TABLES",
     "AIRWAY_FIX_KEY",
     "AIRWAY_NAVAID_KEY",
+    "ATC_KEY",
     "CDR_KEY",
     "COMMUNICATION_NAVAID_KEY",
     "FIX_KEY",
+    "FACILITY_TABLES",
+    "FSS_KEY",
     "DEPARTURE_AIRPORT_KEY",
     "DEPARTURE_KEY",
     "DEPARTURE_ROUTE_KEY",
@@ -616,6 +736,7 @@ __all__ = [
     "STAR_KEY",
     "STAR_ROUTE_KEY",
     "STAR_ROUTE_ORDER",
+    "WEATHER_LOCATION_KEY",
     "IndexSpec",
     "RICH_RECORD_TYPES",
     "RelationshipSpec",

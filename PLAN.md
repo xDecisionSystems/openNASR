@@ -1898,7 +1898,7 @@ and `LID`.
 
 Tasks:
 
-- [ ] **Agent: Sol.** **11.1** Verify facility, site, service, remark, and location join keys for
+- [x] **Agent: Sol.** **11.1** Verify facility, site, service, remark, and location join keys for
       all eleven tables against both supported schemas.
 - [ ] **Agent: Terra.** **11.2** Implement `AtcFacilityRecord`, `AtisRecord`, `AtcRemarkRecord`,
       and `AtcServiceRecord`; expose rich `AtcFacility` objects through
