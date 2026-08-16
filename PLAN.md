@@ -1348,7 +1348,7 @@ Tasks:
       it against the missing-optional-table fixture succeeds but the
       dependent property/collection is empty or raises a specific typed
       error only when that specific feature is used.
-- [ ] **Agent: Terra.** **2.15** Extend the Milestone 0B fixtures in `tests/conftest.py` with a temporary
+- [x] **Agent: Terra.** **2.15** Extend the Milestone 0B fixtures in `tests/conftest.py` with a temporary
       cache directory (`tmp_path`-based), the Task 2.1 extracted fixture
       cycle, a fixture producing the *archive* form (a real `.zip` built
       from the Task 2.1 tree, for Milestone 3's import/extraction tests),

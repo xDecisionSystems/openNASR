@@ -1,5 +1,27 @@
 from __future__ import annotations
 
+from pathlib import Path
+from zipfile import ZipFile
+
+
+def test_extracted_cycle_fixture_has_legacy_layout(extracted_cycle: Path):
+    assert (extracted_cycle / "CSV_Data").is_dir()
+
+
+def test_fixture_cycle_archive_is_a_real_zip(fixture_cycle_archive: Path):
+    with ZipFile(fixture_cycle_archive) as archive:
+        assert (
+            "CSV_Data/28DaySubscription_Effective_2099-01-01/APT_BASE.csv"
+            in archive.namelist()
+        )
+
+
+def test_fixture_nasr_loads_task_2_1_cycle(fixture_nasr):
+    nasr, cache_root = fixture_nasr
+
+    assert cache_root.is_dir()
+    assert set(nasr["APT_BASE"]["ARPT_ID"]) == {"BWI", "DCA"}
+
 
 def test_core_fixture_loads_without_package_data(make_nasr_from_fixture):
     nasr, cache_root = make_nasr_from_fixture("core/pre_2026_09")

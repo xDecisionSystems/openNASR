@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from shutil import copyfile
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
@@ -19,12 +20,45 @@ FIXTURE_DATES = {
     "malformed": "2099-01-02",
     "missing_table_cycle": "2099-01-03",
 }
+CORE_CYCLE_DATE = "2099-01-01"
+CORE_CYCLE_STEM = f"28DaySubscription_Effective_{CORE_CYCLE_DATE}"
 
 
 def _create_fixture_archive(source: Path, archive: Path) -> None:
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as output:
         for path in sorted(source.rglob("*.csv")):
             output.write(path, path.relative_to(source))
+
+
+@pytest.fixture
+def extracted_cycle() -> Path:
+    """Return the checked-in Task 2.1 extracted fixture cycle."""
+
+    return FIXTURE_ROOT / "cycle"
+
+
+@pytest.fixture
+def fixture_cycle_archive(extracted_cycle: Path, tmp_path: Path) -> Path:
+    """Build a real NASR archive from the Task 2.1 extracted cycle."""
+
+    archive = tmp_path / f"{CORE_CYCLE_STEM}.zip"
+    _create_fixture_archive(extracted_cycle, archive)
+    return archive
+
+
+@pytest.fixture
+def fixture_nasr(
+    fixture_cycle_archive: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> tuple[NASR, Path]:
+    """Construct ``NASR`` from the Task 2.1 archive in a temporary cache."""
+
+    cache_root = tmp_path / "cycle_cache"
+    zip_dir = cache_root / "data" / "zip"
+    zip_dir.mkdir(parents=True)
+    copyfile(fixture_cycle_archive, zip_dir / fixture_cycle_archive.name)
+
+    monkeypatch.setattr(nasr_module, "__file__", str(cache_root / "nasr.py"))
+    return NASR(), cache_root
 
 
 @pytest.fixture
