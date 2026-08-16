@@ -1326,7 +1326,7 @@ Tasks:
       README-adjacent example, not into the automated test suite, and do
       not carry over the hardcoded `trino` connection or credentials-shaped
       username.
-- [ ] **Agent: Terra.** **2.11** Convert `tests/main_test_NASR_airport.py` into
+- [x] **Agent: Terra.** **2.11** Convert `tests/main_test_NASR_airport.py` into
       `tests/test_airport.py`: split into discrete `test_*` functions (e.g.
       construct-by-FAA-id, construct-by-ICAO-id, access `rwy`/`rwyend`/`ils`
       collections), replace the direct `NASR()` call with the Task 2.15
