@@ -1,5 +1,14 @@
-from numpy import radians, cos, sin, median, radians, sqrt, percentile, float64, array, matmul, generic, ndarray, arctan2, arcsin,degrees, where
+from numpy import radians, cos, sin, median, radians, sqrt, percentile, float64, array, matmul, generic, ndarray, arctan2, arcsin,degrees, where, asarray, any as np_any, isfinite
 import time
+
+
+def _validate_latlon(latitudes, longitudes):
+    latitudes = asarray(latitudes)
+    longitudes = asarray(longitudes)
+    if np_any(~isfinite(latitudes)) or np_any((latitudes < -90) | (latitudes > 90)):
+        raise ValueError("latitude must be finite and between -90 and 90 degrees")
+    if np_any(~isfinite(longitudes)) or np_any((longitudes < -180) | (longitudes > 180)):
+        raise ValueError("longitude must be finite and between -180 and 180 degrees")
 
 
 def ll2xy(lats,lons, latc=None, lonc=None, llc=None):
@@ -9,12 +18,15 @@ def ll2xy(lats,lons, latc=None, lonc=None, llc=None):
     Returned planar values are ``(x/east, y/north)`` in nautical miles.
     """
     # See https://en.wikipedia.org/wiki/Earth_radius#Equatorial_radius
+    _validate_latlon(lats, lons)
     lats=radians(lats)
     lons=radians(lons)      
     if llc is not None:
+        _validate_latlon(llc[0], llc[1])
         latc=radians(llc[0])
         lonc=radians(llc[1])
     elif latc is not None and lonc is not None and llc is None:
+        _validate_latlon(latc, lonc)
         latc=radians(latc)
         lonc=radians(lonc)
     else:
@@ -47,9 +59,11 @@ def xy2ll(x,y, latc=None, lonc=None, llc=None):
         latitudes, longitudes (arrays): Arrays of latitudes and longitudes in degrees.
     """
     if llc is not None:
+        _validate_latlon(llc[0], llc[1])
         latc=radians(llc[0])
         lonc=radians(llc[1])
     elif latc is not None and lonc is not None and llc is None:
+        _validate_latlon(latc, lonc)
         latc=radians(latc)
         lonc=radians(lonc)
     

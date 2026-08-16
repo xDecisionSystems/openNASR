@@ -33,3 +33,17 @@ def test_inverse_projection_handles_projection_center_without_warnings():
 
     assert latitude == pytest.approx(40.0)
     assert longitude == pytest.approx(-75.0)
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [(91.0, 0.0), (-91.0, 0.0), (0.0, 181.0), (0.0, -181.0)],
+)
+def test_projection_rejects_invalid_geographic_coordinates(latitude, longitude):
+    with pytest.raises(ValueError):
+        ll2xy(latitude, longitude, llc=(0.0, 0.0))
+
+
+def test_inverse_projection_rejects_an_invalid_center():
+    with pytest.raises(ValueError, match="latitude"):
+        xy2ll(0.0, 0.0, llc=(100.0, 0.0))
