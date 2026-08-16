@@ -1701,7 +1701,7 @@ Tasks:
 - [x] **Agent: Terra.** Return Matplotlib `Figure` and `Axes` objects from plotting methods.
 - [x] **Agent: Luna.** Never call `plt.close("all")` by default.
 - [x] **Agent: Luna.** Do not rely on `plt.gca()` when an axes object is already available.
-- [ ] **Agent: Luna.** Keep Matplotlib imports behind the optional plotting boundary so core
+- [x] **Agent: Luna.** Keep Matplotlib imports behind the optional plotting boundary so core
       table access works without the `plot` extra.
 - [ ] **Agent: Terra.** Use noninteractive plotting tests that inspect artists and geometry.
 
