@@ -3,6 +3,11 @@ import time
 
 
 def ll2xy(lats,lons, latc=None, lonc=None, llc=None):
+    """Project latitude/longitude inputs around a ``(latitude, longitude)`` center.
+
+    Geographic pairs and ``llc`` always use latitude first, longitude second.
+    Returned planar values are ``(x/east, y/north)`` in nautical miles.
+    """
     # See https://en.wikipedia.org/wiki/Earth_radius#Equatorial_radius
     lats=radians(lats)
     lons=radians(lons)      
@@ -27,7 +32,10 @@ def ll2xy(lats,lons, latc=None, lonc=None, llc=None):
 
 def xy2ll(x,y, latc=None, lonc=None, llc=None):
     """
-    Inverse of the gnomic projection. Converts projected (x, y) coordinates back to latitudes and longitudes.
+    Inverse projection returning ``(latitude, longitude)``.
+
+    ``llc`` and separate center arguments use latitude first, longitude second;
+    planar input is ``(x/east, y/north)`` in nautical miles.
     
     Parameters:
         center_lat (float): Central latitude in degrees.

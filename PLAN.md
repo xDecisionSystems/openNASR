@@ -1688,7 +1688,7 @@ Tasks:
 
 - [x] **Agent: Terra.** Rename `cfcn.py` to `coordinates.py` with a compatibility forwarding
       module.
-- [ ] **Agent: Sol.** Define whether every coordinate argument is `(latitude, longitude)` or
+- [x] **Agent: Sol.** Define whether every coordinate argument is `(latitude, longitude)` or
       `(longitude, latitude)` and enforce that convention.
 - [x] **Agent: Terra.** Document that projection distances are nautical miles.
 - [ ] **Agent: Sol.** Make `ll2xy` and `xy2ll` round-trip within an agreed tolerance.
