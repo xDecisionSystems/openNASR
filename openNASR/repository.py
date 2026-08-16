@@ -30,6 +30,7 @@ class TableRepository(Mapping[str, DataFrame]):
         self.cycle_path = Path(cycle_path)
         self._cache: dict[str, DataFrame] = {}
         self._indexes: dict[tuple[str, str], dict[str, tuple[int, ...]]] = {}
+        self._normalized_indexes: dict[tuple[str, str], dict[str, tuple[int, ...]]] = {}
 
     @property
     def available_tables(self) -> tuple[str, ...]:
@@ -75,6 +76,20 @@ class TableRepository(Mapping[str, DataFrame]):
                 index.setdefault(str(value), []).append(position)
             self._indexes[key] = {value: tuple(rows) for value, rows in index.items()}
         return self._indexes[key]
+
+    def normalized_index(self, name: str, column: str) -> dict[str, tuple[int, ...]]:
+        """Build and cache case-insensitive identifier positions."""
+
+        normalized = normalize_table_name(name)
+        key = (normalized, column)
+        if key not in self._normalized_indexes:
+            index: dict[str, list[int]] = {}
+            for position, value in enumerate(self.load(normalized)[column]):
+                index.setdefault(str(value).strip().upper(), []).append(position)
+            self._normalized_indexes[key] = {
+                value: tuple(rows) for value, rows in index.items()
+            }
+        return self._normalized_indexes[key]
 
     def __getitem__(self, name: str) -> DataFrame:
         """Provide mapping-style compatibility for legacy table access."""

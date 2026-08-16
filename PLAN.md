@@ -1548,7 +1548,7 @@ Tasks:
       indiscriminately.
 - [x] **Agent: Terra.** Preserve meaningful pandas parser errors as exception causes.
 - [x] **Agent: Terra.** Create indexes lazily for frequently queried identifier columns.
-- [ ] **Agent: Terra.** Cache normalized identifier mappings rather than scanning entire columns
+- [x] **Agent: Terra.** Cache normalized identifier mappings rather than scanning entire columns
       for every lookup.
 - [ ] **Agent: Terra.** Avoid global caches that can leak data between cycles.
 

@@ -54,6 +54,17 @@ def test_identifier_indexes_are_built_lazily_and_cached(tmp_path):
     assert first is second
 
 
+def test_normalized_identifier_indexes_are_cached(tmp_path):
+    (tmp_path / "APT_BASE.csv").write_text("ARPT_ID\n bwi \nBWI\n", encoding="utf-8")
+    repository = TableRepository(tmp_path)
+
+    first = repository.normalized_index("APT_BASE", "ARPT_ID")
+    second = repository.normalized_index("APT_BASE", "ARPT_ID")
+
+    assert first == {"BWI": (0, 1)}
+    assert first is second
+
+
 def test_loaded_dataframes_are_cached_per_repository_instance(tmp_path):
     (tmp_path / "APT_BASE.csv").write_text("ARPT_ID\nBWI\n", encoding="utf-8")
     repository = TableRepository(tmp_path)
