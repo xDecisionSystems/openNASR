@@ -2,13 +2,33 @@ import pandas as pd
 import pytest
 
 from openNASR.exceptions import AmbiguousRecordError, SchemaMismatchError
-from openNASR.records import AirportRecord, FaaRecord
+from openNASR.ils import DmeRecord, GlideSlopeRecord, IlsRecord, MarkerRecord
+from openNASR.records import (
+    AirportRecord,
+    DmeRecord as LegacyDmeRecord,
+    FaaRecord,
+    GlideSlopeRecord as LegacyGlideSlopeRecord,
+    IlsRecord as LegacyIlsRecord,
+    MarkerRecord as LegacyMarkerRecord,
+    RunwayEndRecord as LegacyRunwayEndRecord,
+    RunwayRecord as LegacyRunwayRecord,
+)
 from openNASR.repository import (
     AirportRepository,
     FixRepository,
     NavaidRepository,
     RecordRepository,
 )
+from openNASR.rwy import RunwayEndRecord, RunwayRecord
+
+
+def test_runway_and_ils_record_types_use_domain_owned_compatibility_exports():
+    assert LegacyRunwayRecord is RunwayRecord
+    assert LegacyRunwayEndRecord is RunwayEndRecord
+    assert LegacyIlsRecord is IlsRecord
+    assert LegacyDmeRecord is DmeRecord
+    assert LegacyGlideSlopeRecord is GlideSlopeRecord
+    assert LegacyMarkerRecord is MarkerRecord
 
 
 def test_airport_repository_get_and_singular_facade_are_equivalent(fixture_nasr):

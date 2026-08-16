@@ -1,6 +1,34 @@
 from .basictypes import Raw, RawDict
 from math import pi, cos, sin, radians
 
+from .records import FaaRecord
+
+
+class IlsRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS row."""
+
+
+class DmeRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS DME row."""
+
+
+class GlideSlopeRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS glide-slope row."""
+
+
+class MarkerRecord(FaaRecord):
+    """Lossless typed marker for an airport ILS marker row."""
+
+    @property
+    def call_sign(self) -> str | None:
+        value = self._raw.get("MIL_OPS_CALL")
+        return None if value is None or str(value) == "" else str(value)
+
+    @property
+    def operating_hours(self) -> str | None:
+        value = self._raw.get("MIL_OPS_HRS")
+        return None if value is None or str(value) == "" else str(value)
+
 
 class ILSitem(Raw):
     def category(self):

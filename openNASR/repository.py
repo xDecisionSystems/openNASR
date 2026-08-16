@@ -16,17 +16,11 @@ from .exceptions import (
 from .airspace import ClassAirspaceRecord
 from .airport import AirportRecord
 from .fix import FixRecord
+from .ils import DmeRecord, GlideSlopeRecord, IlsRecord, MarkerRecord
 from .military import MilitaryOperationRecord
 from .nav import NavaidRecord
-from .records import (
-    DmeRecord,
-    FaaRecord,
-    GlideSlopeRecord,
-    IlsRecord,
-    MarkerRecord,
-    RunwayEndRecord,
-    RunwayRecord,
-)
+from .records import FaaRecord
+from .rwy import RunwayEndRecord, RunwayRecord
 from .airspace import ClassAirspace
 from .military import MilitaryOperation
 from .registry import AIRPORT_SITE_KEY

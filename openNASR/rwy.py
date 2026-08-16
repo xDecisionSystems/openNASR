@@ -1,4 +1,13 @@
 from .basictypes import Raw, RawDict
+from .records import FaaRecord
+
+
+class RunwayRecord(FaaRecord):
+    """Lossless typed marker for an airport runway row."""
+
+
+class RunwayEndRecord(FaaRecord):
+    """Lossless typed marker for an airport runway-end row."""
 
 
 # ---------------------------------------

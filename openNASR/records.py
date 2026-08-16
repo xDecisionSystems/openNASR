@@ -177,6 +177,12 @@ _COMPATIBILITY_RECORD_MODULES = {
     "StarProcedureRecord": "arrivals",
     "StarAirportRecord": "arrivals",
     "StarRouteRecord": "arrivals",
+    "RunwayRecord": "rwy",
+    "RunwayEndRecord": "rwy",
+    "IlsRecord": "ils",
+    "DmeRecord": "ils",
+    "GlideSlopeRecord": "ils",
+    "MarkerRecord": "ils",
 }
 
 
@@ -191,46 +197,8 @@ def __getattr__(name: str) -> Any:
     return record_type
 
 
-class RunwayRecord(FaaRecord):
-    """Lossless typed marker for an airport runway row."""
-
-
-class RunwayEndRecord(FaaRecord):
-    """Lossless typed marker for an airport runway-end row."""
-
-
-class IlsRecord(FaaRecord):
-    """Lossless typed marker for an airport ILS row."""
-
-
-class DmeRecord(FaaRecord):
-    """Lossless typed marker for an airport ILS DME row."""
-
-
-class GlideSlopeRecord(FaaRecord):
-    """Lossless typed marker for an airport ILS glide-slope row."""
-
-
-class MarkerRecord(FaaRecord):
-    """Lossless typed marker for an airport ILS marker row."""
-
-    @property
-    def call_sign(self) -> str | None:
-        return self._text("MIL_OPS_CALL")
-
-    @property
-    def operating_hours(self) -> str | None:
-        return self._text("MIL_OPS_HRS")
-
-
 __all__ = [
     "FaaRecord",
-    "DmeRecord",
-    "GlideSlopeRecord",
-    "IlsRecord",
-    "MarkerRecord",
-    "RunwayEndRecord",
-    "RunwayRecord",
     "FieldContext",
     "boolean",
     "coordinate",
