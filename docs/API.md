@@ -38,6 +38,9 @@
   /
   `nasr.frequency(...)` return a `Frequency`; `find(serviced_facility=(...))`
   requires the complete serviced-facility context.
+- `nasr.coded_departure_routes.get(route_code)`, `nasr.departures.get(key)`,
+  `nasr.preferred_routes.get(key)`, and `nasr.stars.get(key)` expose rich FAA
+  procedure and route objects; route collections retain FAA sequence order.
 
 Use repository `find(...)` methods for searches. Identifiers are normalized by
 stripping surrounding whitespace and uppercasing. Exact duplicate matches raise

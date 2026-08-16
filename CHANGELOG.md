@@ -7,6 +7,13 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [1.3.0] - Unreleased
+
+### Added
+
+- Rich coded-departure, departure-procedure, preferred-route, and STAR
+  repositories with composite-key lookup and FAA sequence ordering.
+
 ## [1.2.0] - Unreleased
 
 ### Added

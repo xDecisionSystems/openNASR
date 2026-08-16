@@ -1881,7 +1881,7 @@ Tasks:
 - [x] **Agent: Terra.** **10.5** Implement `StarProcedureRecord`, `StarAirportRecord`, and
       `StarRouteRecord`; expose rich `StarProcedure` objects through
       `nasr.stars`, `nasr.star()`, airports, and ordered routes.
-- [ ] **Agent: Terra.** **10.6** Add both-schema fixtures, exact/ambiguous lookup tests, sequence
+- [x] **Agent: Terra.** **10.6** Add both-schema fixtures, exact/ambiguous lookup tests, sequence
       tests, airport relationship tests, converter tests, exports,
       documentation, coverage reporting, and the `1.3.0` changelog entry.
 
