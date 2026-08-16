@@ -62,3 +62,17 @@ def test_list_reports_cached_archive_and_extracted_cycle(tmp_path, capsys):
     output = capsys.readouterr().out
     assert "archive 28DaySubscription_Effective_2026-08-06.zip 4" in output
     assert "extracted 2026-08-06" in output
+
+
+def test_remove_requires_confirmation_unless_yes(tmp_path, capsys):
+    from openNASR.cycles import CycleManager
+
+    manager = CycleManager(tmp_path)
+    manager.archives_dir.mkdir()
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    archive.write_bytes(b"data")
+    main(["remove", "2026-08-06"], manager=manager, confirm=lambda _: "n")
+    assert archive.exists()
+    main(["remove", "2026-08-06", "--yes"], manager=manager)
+    assert not archive.exists()
+    assert "removed: 2026-08-06" in capsys.readouterr().out

@@ -1483,7 +1483,7 @@ Tasks:
       duplicating network or extraction logic.
 - [x] **Agent: Terra.** Implement `opennasr list`, showing cached and archived cycles with their
       paths, sizes, validation state, and effective dates.
-- [ ] **Agent: Terra.** Implement `opennasr remove YYYY-MM-DD`; require interactive confirmation
+- [x] **Agent: Terra.** Implement `opennasr remove YYYY-MM-DD`; require interactive confirmation
       unless `--yes` is supplied, resolve the exact cycle before deletion, and
       report which cached archive and extracted data were removed.
 - [ ] **Agent: Terra.** Give CLI commands documented stable exit codes for success, usage error,

@@ -235,6 +235,17 @@ class CycleManager:
             return Cycle(effective_date=effective_date, data_path=data_path)
         return None
 
+    def remove(self, effective_date: date) -> None:
+        """Remove the exact cached archive and extracted cycle when present."""
+
+        archive = self.archives_dir / (
+            f"28DaySubscription_Effective_{effective_date}.zip"
+        )
+        archive.unlink(missing_ok=True)
+        data_path = self.cycles_dir / effective_date.isoformat()
+        if data_path.is_dir():
+            rmtree(data_path)
+
     def check_for_updates(self, *, force: bool = False) -> UpdateStatus:
         """Return remote-cycle status, reusing successful metadata for 24 hours."""
 

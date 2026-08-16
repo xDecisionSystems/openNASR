@@ -16,10 +16,13 @@ def build_parser() -> argparse.ArgumentParser:
     download = subcommands.add_parser("download", help="download a NASR cycle")
     download.add_argument("cycle", help="latest or an ISO cycle date")
     subcommands.add_parser("list", help="list cached NASR cycles")
+    remove = subcommands.add_parser("remove", help="remove a cached NASR cycle")
+    remove.add_argument("cycle", help="ISO cycle date")
+    remove.add_argument("--yes", action="store_true", help="skip confirmation")
     return parser
 
 
-def main(argv: list[str] | None = None, *, manager=None) -> int:
+def main(argv: list[str] | None = None, *, manager=None, confirm=input) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "check":
         status = (manager or CycleManager()).check_for_updates(force=args.force)
@@ -41,4 +44,14 @@ def main(argv: list[str] | None = None, *, manager=None) -> int:
             print(f"archive {archive.name} {archive.stat().st_size} {archive}")
         for cycle_path in active_manager.extracted_paths():
             print(f"extracted {cycle_path.name} {cycle_path}")
+    elif args.command == "remove":
+        active_manager = manager or CycleManager()
+        effective_date = date.fromisoformat(args.cycle)
+        confirmed = args.yes or (
+            confirm(f"Remove cached cycle {effective_date}? [y/N] ").lower() == "y"
+        )
+        if not confirmed:
+            return 0
+        active_manager.remove(effective_date)
+        print(f"removed: {effective_date}")
     return 0
