@@ -1449,7 +1449,7 @@ Tasks:
 - [x] **Agent: Sol.** Protect extraction against absolute paths and `..` path traversal.
 - [x] **Agent: Terra.** Locate the nested FAA CSV archive or CSV directory without assuming one
       exact intermediate folder name.
-- [ ] **Agent: Sol.** Make interrupted download and extraction cleanup safe and idempotent.
+- [x] **Agent: Sol.** Make interrupted download and extraction cleanup safe and idempotent.
 - [ ] **Agent: Luna.** Make `force=False` reuse a valid cached cycle.
 - [ ] **Agent: Sol.** Never delete caller-owned archives during import.
 - [ ] **Agent: Terra.** Implement an injectable FAA cycle provider that discovers only metadata

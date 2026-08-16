@@ -201,9 +201,13 @@ class CycleManager:
         """Stream byte chunks to the temporary download path."""
 
         part_path = self.download_part_path(effective_date)
-        with part_path.open("wb") as output:
-            for chunk in chunks:
-                output.write(chunk)
+        try:
+            with part_path.open("wb") as output:
+                for chunk in chunks:
+                    output.write(chunk)
+        except Exception:
+            part_path.unlink(missing_ok=True)
+            raise
         return part_path
 
     def publish_download(self, effective_date: date) -> Cycle:

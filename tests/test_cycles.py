@@ -119,6 +119,19 @@ def test_download_data_is_written_in_chunks_to_the_part_file(tmp_path):
     assert part_path.read_bytes() == b"firstsecond"
 
 
+def test_interrupted_download_removes_partial_file(tmp_path):
+    manager = CycleManager(tmp_path)
+
+    def interrupted_chunks():
+        yield b"partial"
+        raise OSError("connection interrupted")
+
+    with pytest.raises(OSError, match="interrupted"):
+        manager.write_download_part(date(2026, 8, 6), interrupted_chunks())
+
+    assert not manager.download_part_path(date(2026, 8, 6)).exists()
+
+
 def test_completed_download_is_atomically_published_to_archives(tmp_path):
     manager = CycleManager(tmp_path)
     manager.write_download_part(date(2026, 8, 6), [b"archive"])
@@ -159,6 +172,10 @@ def test_archive_is_extracted_and_published_atomically(tmp_path):
 
     assert cycle.data_path.name == "2026-08-06"
     assert (cycle.data_path / "nested/CSV_Data/APT_BASE.csv").is_file()
+    assert not list(cycle.data_path.parent.glob(".extract-*"))
+
+    repeated = CycleManager(tmp_path / "cache").extract_archive(archive)
+    assert repeated.data_path == cycle.data_path
     assert not list(cycle.data_path.parent.glob(".extract-*"))
 
 
