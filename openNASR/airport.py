@@ -3,7 +3,7 @@ from .ils import ILSBase,ILSitem,ILSDME,DMEitem,ILSGS,GSitem,ILSMKR,MKRitem
 from .rwy import RWY,RWYitem,RWYEnd,RWYEnditem
 from .exceptions import RecordNotFoundError
 # import wmm2020
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString
 
 
 class AirportBase(Raw):
@@ -62,7 +62,7 @@ class Airport():
     def faa_id(self):
         return self.base.faa_id
 
-    def plot(self,closeFigs=True,pltILSBnd=False):
+    def plot(self, closeFigs=False, pltILSBnd=False):
         from matplotlib import pyplot as plt
 
         if closeFigs:
@@ -72,7 +72,7 @@ class Airport():
         self.ils.plot(self.ax,self.lat,self.lon,pltILSBnd=pltILSBnd)
         self.gs.plot(self.ax,self.lat,self.lon)
         self.ax.set_title(self.icao_id)
-        plt.gca().set_aspect('equal')
+        self.ax.set_aspect("equal")
         return self.fig, self.ax
 
     def makeRWYbnds(self):

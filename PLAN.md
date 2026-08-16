@@ -1699,8 +1699,8 @@ Tasks:
 - [x] **Agent: Sol.** Verify ILS magnetic variation sign handling against documented FAA field
       semantics.
 - [x] **Agent: Terra.** Return Matplotlib `Figure` and `Axes` objects from plotting methods.
-- [ ] **Agent: Luna.** Never call `plt.close("all")` by default.
-- [ ] **Agent: Luna.** Do not rely on `plt.gca()` when an axes object is already available.
+- [x] **Agent: Luna.** Never call `plt.close("all")` by default.
+- [x] **Agent: Luna.** Do not rely on `plt.gca()` when an axes object is already available.
 - [ ] **Agent: Luna.** Keep Matplotlib imports behind the optional plotting boundary so core
       table access works without the `plot` extra.
 - [ ] **Agent: Terra.** Use noninteractive plotting tests that inspect artists and geometry.
