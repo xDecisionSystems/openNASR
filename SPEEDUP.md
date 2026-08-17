@@ -10,22 +10,46 @@ build a vectorized index once per immutable table set, reuse it across calls,
 and never regress raw-value fidelity, public return types, or source
 ordering to get there.
 
-This plan is scoped to two confirmed-slow modules — `openNASR/flightplan.py`
-(the procedure-lookup tables `_WaypointResolver`/`_AirwayIndex` did not
-cover) and `openNASR/plotting.py` (not covered by any prior performance
-work) — plus a first task that audits the rest of the package so "all the
-other table lookups" is answered with evidence, not assumption. Most of the
-package's other `.to_dict(orient="records")` call sites already follow the
-correct pattern (filter with a vectorized boolean mask first, materialize
-only the small matched slice); this plan does not touch code that is already
-fine, and Phase 0 exists specifically to establish which is which before any
-fix work starts.
+This plan now covers three confirmed problem areas, in severity order:
+
+1. **`openNASR/repository.py`'s cached index itself is broken for
+   high-cardinality columns** (Phase 2). This is the most severe finding in
+   this plan: `AirportRepository`/`FixRepository`/`NavaidRepository` already
+   build a cached index — but the index-building technique
+   (`dict(tuple(frame.groupby(normalized)))`) is catastrophically slow when
+   the grouping column is close to fully unique, which every identifier
+   column these repositories index (`FIX_ID`, `ARPT_ID`, `NAV_ID`) is by
+   definition. Confirmed 2026-08-17: the very first `nasr.fixes.get(...)`
+   call costs **~14.9 seconds**; the first `nasr.airport(...)` call costs
+   **~41 seconds**. This affects what looked like the already-fast, modern
+   facade, not legacy code.
+2. **Every legacy `Raw`/`SimpleNamespace`-based constructor and every
+   domain-module repository outside `repository.py`** (Phase 3) —
+   `openNASR/basictypes.py`, `fix.py`, `nav.py`, `nasr.py`'s
+   `isFix`/`isAirport`/`isNavaid`, and every repository in `atc.py`,
+   `communications.py`, `holding.py`, `fss.py`, `locations.py`,
+   `military.py`, `weather.py`, `arrivals.py`, `departure.py`, `airway.py`,
+   and `airspace.py` — repeat an uncached, full-table `.map()`/`==` scan on
+   every call, the same anti-pattern `ROUTE_PATH_PLAN.md` already found and
+   fixed in `flightplan.py`'s pre-`_WaypointResolver` code.
+3. **`openNASR/flightplan.py`'s procedure-lookup tables and all of
+   `openNASR/plotting.py`** (Phase 4, this plan's original scope) — the
+   `_WaypointResolver`/`_AirwayIndex` vectorization from
+   `ROUTE_PATH_PLAN.md`'s Phase 4 did not cover `_procedure_path`, and
+   `plotting.py` was never touched by any prior performance work.
+
+Phase 0/1 audit and measure every call site before any fix, so scope and
+priority are set by evidence, not assumption — this already reversed one
+earlier conclusion in this plan (see the corrected Decision log entry dated
+2026-08-17 "Correction:").
 
 ## Non-negotiable product rules
 
-- Preserve every public function signature, return type, and exception type
-  in `openNASR.flightplan` and `openNASR.plotting`. Speed is an
-  implementation change, not an API or behavior change.
+- Preserve every public function/method signature, return type, and
+  exception type in every module this plan touches
+  (`openNASR.repository`, `openNASR.flightplan`, `openNASR.plotting`, and
+  every domain module listed in the Goal above). Speed is an implementation
+  change, not an API or behavior change.
 - Preserve raw FAA value fidelity and source row/segment ordering exactly.
   An index is a faster way to find the same rows, never a way to
   reorder, deduplicate beyond what the current code already does, or lose a
@@ -59,17 +83,21 @@ Reuses the Sol/Terra/Luna convention from `DUCKDB_PLAN.md`/
 
 ## Coordination rules
 
-- **Two files, sequential ownership per file.** `openNASR/flightplan.py` and
-  `openNASR/plotting.py` are edited by different tasks below; treat each
-  file the way `ROUTE_PATH_PLAN.md` treats `flightplan.py` alone — merge
-  task *N* on a file before starting task *N+1* on the same file, even
-  across phases. A task touching only one of the two files may run in
-  parallel with an open task on the other file.
+- **Sequential ownership per file.** Many modules are edited by different
+  tasks below (`openNASR/repository.py` in Phase 2, roughly a dozen domain
+  modules in Phase 3, `openNASR/flightplan.py` in Phase 4,
+  `openNASR/plotting.py` in Phase 5); treat each file the way
+  `ROUTE_PATH_PLAN.md` treats `flightplan.py` alone — merge task *N* on a
+  file before starting task *N+1* on the same file, even across phases. A
+  task touching only one file may run in parallel with an open task on a
+  different file. Phase 3's tasks each touch several distinct modules
+  (T3.2/T3.3 split by table size, not by file) — confirm no other open
+  Phase 3 task is mid-edit on the same module before starting.
 - **Every task cites the exact function and line(s) it changes.** Line
-  numbers drift fast in these two files (`flightplan.py` grew from 504 to
-  931 lines during `ROUTE_PATH_PLAN.md`'s Phase 1-4 work) — re-check before
-  citing a new line number in a task, and re-check before starting a task
-  that cites one written earlier.
+  numbers drift fast, especially in `openNASR/flightplan.py`
+  (grew from 504 to 931 lines during `ROUTE_PATH_PLAN.md`'s Phase 1-4 work)
+  — re-check before citing a new line number in a task, and re-check before
+  starting a task that cites one written earlier.
 - **Every task ends with a benchmark or regression test that fails (is slow,
   or asserts wrong output) before the fix and passes/speeds up after.**
 - **This plan builds on, and must stay consistent with, `ROUTE_PATH_PLAN.md`.**
@@ -83,31 +111,92 @@ Reuses the Sol/Terra/Luna convention from `DUCKDB_PLAN.md`/
 
 ## Phase 0 — Audit: which lookups are actually slow
 
-- [ ] **S0.1 — Agent model: Sol.** Enumerate every `.to_dict(orient="records")`
-  call site across the package (currently 17 modules — confirmed 2026-08-17
-  via `grep -rl`) and classify each as one of:
-  (a) **already vectorized-then-materialized** — a boolean-mask filter
-  narrows the frame first, and `.to_dict()` only converts the small matched
-  result (the pattern already used correctly in `openNASR/repository.py`'s
-  `_class_airspace`/`_military_operations`/`_related_records`, which already
-  has a cached `_related_index`);
-  (b) **full-table scan per call, no cache** — the pattern this plan exists
-  to fix, confirmed so far in `openNASR/flightplan.py`'s `_procedure_path`/
-  `_is_published_dotted_procedure` (`DP_BASE`, `DP_RTE`, `STAR_BASE`,
-  `STAR_RTE`) and `openNASR/plotting.py`'s `_coordinates`,
-  `_airway_segments`, `_airport_projection_center`, `_procedure_segments`,
-  `_runway_segments`;
-  (c) **full-table scan, but called at most once per process/instance
-  lifetime with no realistic repeated-call scenario** — lower priority, note
-  but do not schedule a fix without a concrete repeated-call use case.
-  Acceptance: a table in this document (replacing this bullet once done)
-  listing every call site, its table(s), approximate real-cycle row count,
-  and its (a)/(b)/(c) classification. Only (b) sites get phases below.
-- [ ] **S0.2 — Agent model: Sol.** For each confirmed (b) site, measure its
-  real-cycle cost directly (not estimated) using the canonical `2026-05-14`
-  cycle already established as this repository's benchmark baseline in
-  `ROUTE_PATH_PLAN.md`. Verified 2026-08-17 as a starting point (single
-  representative call, CSV backend, already-loaded tables):
+- [x] **S0.1 — Agent model: Sol. Done (2026-08-17), superseding an earlier
+  conclusion.** Enumerated every `.to_dict(orient="records")`/`.map()`/
+  `groupby` call site across all 40 `openNASR/*.py` modules (not just the 17
+  using `.to_dict(orient="records")` — the audit widened after the Phase 2
+  finding below, since the worst bug does not use that method at all) and
+  classified each as:
+  (a) **genuinely vectorized and cached, no fix needed** — confirmed for
+  `openNASR/repository.py`'s `_class_airspace`/`_military_operations`
+  (small tables, `CLS_ARSP`/`MIL_OPS`, boolean-mask filtered, no caching
+  needed at that size) and `ROUTE_PATH_PLAN.md`'s already-fixed
+  `_WaypointResolver`/`_AirwayIndex`;
+  (b) **cached, but the caching technique itself is broken for
+  high-cardinality columns** — `openNASR/repository.py`'s
+  `RecordRepository._normalized_index` and `AirportRepository._related_index`
+  (Phase 2 below). **Correction to this document's earlier claim:** an
+  earlier pass of this audit (see the 2026-08-17 Decision log entry
+  "Scope this plan to...") concluded these two methods were "already
+  vectorize-then-materialize and already cache" and therefore fine. That
+  conclusion checked that a cache existed, not that building it was fast.
+  Direct measurement found the opposite: it is the single slowest code path
+  in the package;
+  (c) **full-table scan per call, no cache at all** — every legacy
+  `Raw`/`SimpleNamespace` constructor (`openNASR/basictypes.py`,
+  `fix.py`, `nav.py`, `nasr.py`'s `isFix`/`isAirport`/`isNavaid`) and every
+  repository outside `repository.py`: `atc.py` (`AtcFacilityRepository`,
+  `RadarRepository`), `communications.py`
+  (`CommunicationOutletRepository`, `FrequencyRepository`), `holding.py`
+  (`HoldingPatternRepository`), `fss.py`
+  (`FlightServiceStationRepository`), `locations.py`
+  (`LocationIdentifierRepository`), `military.py`
+  (`MilitaryOperationRepository`, `MilitaryTrainingRouteRepository`),
+  `weather.py` (`AutomatedWeatherStationRepository`,
+  `WeatherLocationRepository`), `arrivals.py` (`StarProcedureRepository`),
+  `departure.py` (`CodedDepartureRouteRepository`,
+  `DepartureProcedureRepository`, `PreferredRouteRepository`), `airway.py`
+  (`AirwayRepository`), and `airspace.py`'s `ClassAirspaceRepository`/
+  `ArtccRepository`/`MaaRepository`/`ParachuteJumpAreaRepository` (Phase 3
+  below), plus `openNASR/flightplan.py`'s `_procedure_path`/
+  `_is_published_dotted_procedure` and all of `openNASR/plotting.py`
+  (Phase 4 below, this plan's original scope);
+  (d) **full-table scan, but called at most once per process/instance
+  lifetime with no realistic repeated-call scenario** — none confirmed;
+  every full-table scan found is inside a `find()`/`get()`/constructor
+  called once per lookup, and lookups are the whole point of these classes.
+  Acceptance: this bullet's classification is the audit result; superseded
+  only by direct measurement, not by re-reading the code a second time (see
+  the (b)/(c) correction above for why).
+- [x] **S0.2 — Agent model: Sol. Done (2026-08-17).** Measured real-cycle
+  cost directly (not estimated) for every (b)/(c) site above, using the
+  canonical `2026-05-14` cycle already established as this repository's
+  benchmark baseline in `ROUTE_PATH_PLAN.md`.
+  **(b) — the caching-technique bug, most severe:**
+  - `nasr.fixes.get(...)` (`RecordRepository._normalized_index`, backing
+    `FixRepository`): first call in a process costs **~14.9s**. Root cause,
+    isolated directly: `dict(tuple(frame.groupby(normalized)))` over
+    `FIX_BASE` (70,003 rows, 70,003 distinct `FIX_ID` values — i.e. no
+    actual grouping occurs, every row is its own group) costs ~15.3s on its
+    own; the equivalent `frame.groupby(normalized).indices` (index arrays,
+    not materialized per-group DataFrames) costs **~0.09s** for the same
+    input — about 170× faster for identical correctness, materializing an
+    individual group's rows afterward via `.iloc[indices[key]]` costs
+    <1ms.
+  - `nasr.airport(...)` (`AirportRepository._related_index`, joining
+    `APT_RWY`/`APT_RWY_END`/`ILS_BASE`/`ILS_DME`/`ILS_GS`/`ILS_MKR` by
+    `ARPT_ID`): first call in a process costs **~41.3s** (building six
+    separate broken indexes, the worst being `APT_BASE`'s own 19,410-row,
+    19,410-distinct-value `ARPT_ID` index at ~12.5s). Once every index is
+    cached, a second, different airport's lookup costs ~17ms — reasonably
+    fast, but the one-time cold cost makes the *first* call to what is
+    documented as the primary modern API look completely hung.
+  **(c) — uncached full-table scans, high severity but not catastrophic:**
+  - Legacy `FIX("AABEE", nasr)`: ~32.3ms per construction (two independent
+    uncached `.map()` scans of `FIX_BASE`: one in `NASR.isFix`, one in
+    `FIX._addBASE`).
+  - Legacy `nasr.isAirport("BWI")`: ~5.6ms per call (two uncached `.map()`
+    scans of `APT_BASE`, one per identifier column).
+  - Legacy `NAVAID("ABR", nasr)`: ~4.4ms per construction (same two-scan
+    pattern against `NAV_BASE`).
+  - Legacy `Airport("ATL", nasr)` (excluding an unrelated, pre-existing
+    `makeRWYbnds`/`ll2xy` geometry bug hit for several real airports on this
+    cycle, out of this plan's scope): ~27-28ms per construction (seven
+    uncached `==`-mask scans, one per joined table).
+  - `nasr.coded_departure_routes.find(...)` (`departure.py`, largest
+    table not yet covered): ~10.4ms per call against `CDR` (41,212 rows),
+    every call, warm or cold — matches the `_procedure_path` pattern
+    `ROUTE_PATH_PLAN.md` already fixed in `flightplan.py`.
   - `_procedure_path`/`_is_published_dotted_procedure`
     (`openNASR/flightplan.py`): a warm `RouteResolver.path(...)` call for a
     route containing no procedure averages ~422µs; a route containing a DP
@@ -126,13 +215,25 @@ Reuses the Sol/Terra/Luna convention from `DUCKDB_PLAN.md`/
     (17,527 rows). Ten repeated calls (simulating batch-plotting ten
     airports) took ~14.8s with no reuse — the cost repeats in full every
     call since nothing is cached.
-  Acceptance: the measurements above are reproduced independently (or
-  superseded with corrected numbers) and recorded with the exact commands
-  used, so Phase 2/3's before/after comparisons have a trustworthy baseline.
+  Real-cycle row counts for every operational table not already listed
+  above (used to prioritize Phase 3's remaining, not-yet-individually-
+  measured repositories): `PFR_SEG` 74,182; `CDR` 41,212; `FRQ` 40,767;
+  `LID` 31,046; `MTR_SOP` 20,787; `AWY_SEG_ALT` 19,318; `HPF_SPD_ALT`
+  17,914; `STAR_RTE` 17,527; `HPF_CHRT` 16,208; `HPF_BASE` 15,565;
+  `PFR_BASE`/`PFR_RMT_FMT` 13,309; `DP_RTE` 12,221; `WXL_SVC` 10,725;
+  `DP_APT` 6,413; `MTR_PT` 5,884; `ATC_BASE` 3,617; `WXL_BASE` 3,363;
+  `STAR_APT` 3,356; `ATC_RMK` 3,176; `ARB_SEG` 2,687; `AWOS` 2,647; `COM`
+  1,822; the remainder are under 1,700 rows and lower priority.
+  Acceptance: the measurements above are the recorded baseline; Phase 2/3/4's
+  before/after comparisons must reproduce or supersede them with recorded
+  numbers, not assume they still hold.
 
-**Gate 0:** Sol confirms the (b) classification and baseline measurements
-are reproducible, and that the phases below cover every confirmed (b) site
-(or explicitly defers a site with a stated reason).
+**Gate 0:** Sol confirms the (b)/(c) classification and baseline measurements
+are reproducible, and that Phases 2-4 below cover every confirmed (b)/(c)
+site (or explicitly defers a site with a stated reason). Gate 0 specifically
+confirms the corrected (b) finding (Phase 2) is understood as higher
+priority than Phase 3/4's already-planned work, since it affects a
+documented "already fast" public API.
 
 ## Phase 1 — Benchmark harness (routes and `plotExamples/`)
 
@@ -196,23 +297,204 @@ task below that references `tools/route_benchmark.py` or a new
   regression in either backend is visible).
   Acceptance: running the tool against the canonical cycle reproduces this
   session's measured order of magnitude for `_airway_segments`/
-  `_procedure_segments` before any Phase 3 fix lands.
-- [ ] **L1.3 — Agent model: Luna.** Add a non-CI benchmark report template
+  `_procedure_segments` before any Phase 5 fix lands.
+- [ ] **L1.3 — Agent model: Luna.** Add `benchmarks/repository_benchmark.py`
+  to cover Phase 0's (b)/(c) findings that `run_benchmarks.py` (routes) and
+  the new `plotting_benchmark.py` (plotting) do not: the legacy
+  `Airport`/`FIX`/`NAVAID` constructors, `nasr.isAirport`/`isFix`/`isNavaid`,
+  and the modern `nasr.airport`/`nasr.fixes.get`/`nasr.navaids.get`
+  repository facade, plus a representative sample of the other
+  domain-module repositories found slow in Phase 0(c) (at minimum
+  `nasr.coded_departure_routes`, the largest table not covered by an
+  existing benchmark). For each, report **first-call (cold index/scan) and
+  warm repeated-call timing separately** — Phase 0's worst finding
+  (`nasr.airport`'s 41s first call) is specifically a first-call problem
+  invisible in a warm-only benchmark, the same lesson `run_benchmarks.py`
+  already applies to procedure-vs-direct routes. Sample identifiers the
+  same diverse way `run_benchmarks.py` samples routes: pull a random,
+  seeded set of real `FIX_ID`/`ARPT_ID`/`NAV_ID`/`RCode` values from the
+  already-loaded tables (no second external dataset needed — the NASR
+  tables themselves are the diverse input here), not one hardcoded
+  identifier per table. Print the same style of human-readable
+  mean/median/p95 summary as `run_benchmarks.py`, not raw JSON.
+  Acceptance: running the tool against the canonical cycle reproduces
+  Phase 0's order-of-magnitude findings (the `nasr.airport`/`nasr.fixes.get`
+  first-call cost in particular) before any Phase 2/3 fix lands.
+  Dependencies: none.
+- [ ] **L1.4 — Agent model: Luna.** Add a non-CI benchmark report template
   for this plan's numbers, following `docs/DUCKDB_BENCHMARK_REPORT_TEMPLATE.md`'s
   existing convention (environment, versions, canonical cycle, cold/warm
   policy, before/after table). Do not duplicate
   `docs/route_path_baseline_2026-05-14.md`; link to it for the route-only
-  numbers and add the new plotting section here.
-  Dependencies: L1.1, L1.2.
+  numbers and add sections here for the repository and plotting findings.
+  Dependencies: L1.1, L1.2, L1.3.
 
-**Gate 1:** Sol confirms both benchmark tools run against the canonical
-cycle, report numbers consistent with Phase 0's baseline, and are wired to
-`--cycle`/`--cache-dir` so they work against any locally cached cycle, not
-only `2026-05-14`.
+**Gate 1:** Sol confirms all three benchmark tools (`run_benchmarks.py`,
+`plotting_benchmark.py`, `repository_benchmark.py`) run against the
+canonical cycle, report numbers consistent with Phase 0's baseline, and are
+wired to `--cycle`/`--cache-dir` so they work against any locally cached
+cycle, not only `2026-05-14`.
 
-## Phase 2 — Index the procedure tables (`openNASR/flightplan.py`)
+## Phase 2 — Fix `openNASR/repository.py`'s broken cached index (highest priority)
 
-- [ ] **T2.1 — Agent model: Terra.** Add a `_ProcedureIndex` class,
+This phase fixes Phase 0's most severe finding and should land before
+Phase 3/4/5's other work, even though those were written first
+chronologically: it is a correctness-of-performance bug in code that is
+*already* the documented, recommended modern facade
+(`nasr.airport(...)`/`nasr.fixes.get(...)`/`nasr.navaids.get(...)`), not a
+missing optimization in a known-slow legacy path. A user hitting the
+~41-second first `nasr.airport(...)` call has no reason to suspect the
+"fast" API is the problem.
+
+- [ ] **T2.1 — Agent model: Terra.** Replace
+  `RecordRepository._normalized_index`'s and
+  `AirportRepository._related_index`'s `dict(tuple(frame.groupby(normalized)))`
+  (`openNASR/repository.py:252-265`, `151-169`) with
+  `frame.groupby(normalized).indices` (a `dict[str, numpy.ndarray]` of
+  integer row positions per group, built in one vectorized pass — confirmed
+  2026-08-17 at ~0.09s for `FIX_BASE`'s 70,003-row/70,003-group case, ~170×
+  faster than the current `dict(tuple(...))` construction for the same
+  input and same correctness). Update every call site that currently
+  expects the index's values to be `DataFrame` objects
+  (`_rows_for_identifier_column`, `_related_records`, and any other
+  `self._normalized_indexes[...]`/`self._related_indexes[...]` reader) to
+  materialize a group's rows on demand via `frame.iloc[positions]` instead
+  of using the stored value directly — confirmed this materialization step
+  itself costs under 1ms per group, so deferring it to lookup time (rather
+  than eagerly building one `DataFrame` per group up front) is both correct
+  and still fast.
+  Acceptance: a unit test builds an index over a synthetic table with a
+  fully-unique identifier column (reproducing the `FIX_BASE` shape that
+  triggered the bug) and confirms both correctness (same rows returned for
+  a known identifier) and that construction completes in well under 1s for
+  at least 10,000 synthetic rows — a hardware-independent regression
+  threshold chosen because the *shape* of the bug (quadratic-ish blowup
+  from per-group DataFrame construction) makes even a modest row count a
+  reliable trigger, unlike a relative-improvement-only threshold which
+  could mask a partial fix.
+  Dependencies: none.
+- [ ] **T2.2 — Agent model: Terra.** Audit every other `groupby` call in the
+  package for the same anti-pattern (materializing one `DataFrame` per
+  group instead of using `.indices`/`.groups` or an aggregation) before
+  closing this phase — confirmed 2026-08-17 that `openNASR/airspace.py:296`
+  (`ArtccRepository`'s `ARB_SEG`-by-`(ALTITUDE, TYPE)` grouping) also uses
+  `frame.groupby(...)`, though over a much smaller, low-cardinality table
+  (`ARB_SEG`, 2,687 rows, grouped by a 2-valued altitude tier plus boundary
+  type — order-of-magnitude fewer, much larger groups, so likely not
+  triggering the same blowup; measure directly rather than assuming either
+  way, and note `ArtccRepository`'s grouping relies on preserved row order
+  for `Boundary`'s ring-closure detection — do not change to `.indices`
+  without confirming order is still preserved).
+  Acceptance: every `groupby` call site in the package is either confirmed
+  fast at real-cycle scale (measured, not assumed) or fixed the same way as
+  T2.1.
+  Dependencies: T2.1 (reuse whatever pattern T2.1 settles on).
+- [ ] **L2.3 — Agent model: Luna.** Add a regression test reproducing the
+  ~41s `nasr.airport(...)` first-call cost and the ~14.9s
+  `nasr.fixes.get(...)` first-call cost found in Phase 0, asserting the
+  post-fix cost is materially smaller (an absolute wall-clock ceiling well
+  under the original measurement, e.g. under 2s, is appropriate here — this
+  bug's severity is itself hardware-independent, since it scales with row
+  count, not CPU speed, so a generous absolute ceiling is a meaningful
+  regression guard, unlike Phase 4/5's relative-improvement convention).
+  Re-run L1.3's benchmark against the canonical cycle and record the new
+  first-call and warm numbers.
+  Dependencies: T2.1, L1.3.
+- [ ] **S2.4 — Agent model: Sol.** Confirm no other repository or test in
+  the package silently depended on `_normalized_index`/`_related_index`
+  values being full `DataFrame` objects rather than row-position arrays
+  (e.g. via `isinstance` checks, `.columns` access on a cached value, or
+  similar) — review, not new code.
+  Dependencies: T2.1, T2.2.
+
+**Gate 2:** Sol confirms T2.1's fix drops `nasr.airport(...)`'s and
+`nasr.fixes.get(...)`'s first-call cost from ~41s/~14.9s to a small,
+hardware-independent absolute number (target: comfortably under 1s each),
+that T2.2's audit found and fixed every other instance of the same
+anti-pattern, and that the full test suite passes with no behavior change.
+
+## Phase 3 — Index the domain-module repositories (`atc.py`, `communications.py`, `holding.py`, `fss.py`, `locations.py`, `military.py`, `weather.py`, `arrivals.py`, `departure.py`, `airway.py`, `airspace.py`, and legacy `airport.py`/`fix.py`/`nav.py`)
+
+This phase fixes Phase 0(c)'s uncached-full-table-scan finding, the same
+class of bug `ROUTE_PATH_PLAN.md` already fixed in `flightplan.py` and this
+plan's Phase 4/5 fix in `flightplan.py`'s procedure tables and
+`plotting.py`. Unlike Phase 2, none of these are individually catastrophic
+(milliseconds, not tens of seconds) — but there are roughly a dozen
+independent repositories with the identical bug, and several back tables
+in the tens of thousands of rows (`CDR` 41,212, `LID` 31,046, `FRQ` 40,767,
+`PFR_SEG`/`PFR_BASE` 74,182/13,309, `HPF_*` 14,000-18,000). Prioritize by
+Phase 0's row-count table, largest first, rather than fixing every module
+in file-alphabetical order.
+
+- [ ] **T3.1 — Agent model: Terra.** Design one shared indexing helper (a
+  small function or mixin, not a full class hierarchy) that every
+  domain-module repository can use to replace its per-call
+  `rows[column].map(self._normalized).eq(self._normalized(value))` pattern
+  with a cached index, reusing T2.1's fixed `.indices`-based technique. Most
+  of these repositories already share the identical `_normalized`
+  staticmethod and `find`/`get` shape (confirmed 2026-08-17 via `grep` —
+  the exact same three-line pattern appears in at least 15 places across 11
+  modules), so a shared helper avoids re-deriving and re-testing the same
+  fix eleven times. Decide whether this belongs in `openNASR/repository.py`
+  (as a function every module imports) or a new small module — do not
+  duplicate `RecordRepository`'s existing class if a plain function/mixin
+  covers the simpler single-column cases these modules mostly need.
+  Acceptance: a unit test proves the shared helper produces identical
+  matches to the existing `.map().eq()` pattern for a synthetic table, and
+  is at least an order of magnitude faster to build than the old
+  scan-per-call cost at 10,000+ synthetic rows.
+  Dependencies: T2.1 (reuse the same underlying technique).
+- [ ] **T3.2 — Agent model: Terra.** Apply T3.1's helper to the largest,
+  highest-value tables first: `departure.py`'s `CodedDepartureRouteRepository`
+  (`CDR`, 41,212 rows, ~10.4ms/call measured), `locations.py`'s
+  `LocationIdentifierRepository` (`LID`, 31,046 rows), `communications.py`'s
+  `FrequencyRepository` (`FRQ`, 40,767 rows), and `departure.py`'s
+  `PreferredRouteRepository`/`PreferredRouteSegmentRecord`-backing tables
+  (`PFR_SEG`/`PFR_BASE`, 74,182/13,309 rows — the largest table in the
+  package).
+  Acceptance: each repository's `find`/`get` full test suite passes
+  unchanged; a benchmark run confirms at least an order-of-magnitude
+  reduction in repeated-call cost for each.
+  Dependencies: T3.1.
+- [ ] **T3.3 — Agent model: Terra.** Apply T3.1's helper to the remaining
+  domain-module repositories: `atc.py`, `holding.py`, `fss.py`,
+  `military.py`, `weather.py`, `arrivals.py`, `airway.py`, and
+  `airspace.py`'s `ClassAirspaceRepository`/`ArtccRepository`/
+  `MaaRepository`/`ParachuteJumpAreaRepository`.
+  Acceptance: same as T3.2, applied to each remaining repository.
+  Dependencies: T3.1, T3.2 (land the highest-value tables first so the
+  shared helper is proven at scale before the long tail).
+- [ ] **T3.4 — Agent model: Terra.** Fix the legacy uncached scans: `NASR.isFix`/
+  `isAirport`/`isNavaid` (`openNASR/nasr.py`) and `basictypes.py`'s
+  `getAirportRecord`/`getAirportRecords` (backing `Airport`, `RWY`,
+  `RWYEnd`, `ILSBase`, `ILSDME`, `ILSGS`, `ILSMKR`), plus `fix.py`'s
+  `FIX._addBASE` and `nav.py`'s `NAVAID._addBASE`. These are legacy
+  compatibility constructors (per `MIGRATION.md`), so prefer building a
+  lazily-cached index attached to the `NASR` instance itself (built once,
+  the first time any legacy constructor needs it, reused by every
+  subsequent legacy call in that instance's lifetime) over changing any
+  constructor's signature or the `Raw`/`SimpleNamespace` result shape.
+  Acceptance: `FIX(...)`/`Airport(...)`/`NAVAID(...)` and
+  `isFix`/`isAirport`/`isNavaid` produce identical results before and after;
+  a benchmark run confirms at least an order-of-magnitude reduction in
+  repeated-construction cost.
+  Dependencies: T2.1 (reuse the same technique).
+- [ ] **L3.5 — Agent model: Luna.** Add regression tests reproducing at
+  least the `CDR`/`LID`/`FRQ` and legacy-constructor costs found in Phase 0,
+  asserting a materially smaller post-fix cost using the same
+  relative-improvement convention as Phase 4/5. Re-run L1.3's benchmark
+  against the canonical cycle and record the new numbers for every
+  repository/constructor T3.2-T3.4 touched.
+  Dependencies: T3.2, T3.3, T3.4, L1.3.
+
+**Gate 3:** Sol re-runs L1.3's benchmark and confirms an order-of-magnitude
+improvement for every repository/constructor covered, with no test
+regression across the full suite (not just `tests/test_flightplan.py` —
+this phase touches roughly a dozen modules with their own test files).
+
+## Phase 4 — Index the procedure tables (`openNASR/flightplan.py`)
+
+- [ ] **T4.1 — Agent model: Terra.** Add a `_ProcedureIndex` class,
   structurally parallel to the existing `_AirwayIndex`
   (`openNASR/flightplan.py:272-293`): snapshot `DP_BASE`, `DP_RTE`,
   `STAR_BASE`, `STAR_RTE` once at construction and build vectorized
@@ -222,13 +504,16 @@ only `2026-05-14`.
   currently repeats as full-column `.map(_text).eq(token)` scans on every
   call (`flightplan.py:499-528`). Use the same "vectorized mask once, cache
   the result, no per-call `.to_dict()` over the full table" technique
-  `_WaypointResolver`/`_AirwayIndex` already use — do not introduce a third
-  distinct indexing style.
+  `_WaypointResolver`/`_AirwayIndex` already use — and reuse Phase 2's
+  `.indices`-based fix if any of these columns turn out to be as
+  high-cardinality as `FIX_ID`/`ARPT_ID` (measure before assuming
+  `dict(tuple(frame.groupby(...)))` is safe here; do not reintroduce Phase
+  2's bug in a new index).
   Acceptance: a unit test constructs a `_ProcedureIndex` against a small
   synthetic table set and confirms each of the three lookups returns the
   same rows a direct `.map(_text).eq(...)` filter would.
-  Dependencies: none (new class, no existing call site changes yet).
-- [ ] **T2.2 — Agent model: Terra.** Thread `_ProcedureIndex` through
+  Dependencies: Phase 2 (T2.1's fixed indexing technique).
+- [ ] **T4.2 — Agent model: Terra.** Thread `_ProcedureIndex` through
   `_procedure_path` (`flightplan.py:476-658`) and
   `_is_published_dotted_procedure` (`flightplan.py:661-688`), replacing
   their full-column `.map(_text)` filters with index lookups, the same way
@@ -241,8 +526,8 @@ only `2026-05-14`.
   Acceptance: the full `tests/test_flightplan.py` suite (41 tests as of
   this plan's writing) passes unchanged; no test's expected output,
   exception type, or exception message changes.
-  Dependencies: T2.1.
-- [ ] **T2.3 — Agent model: Terra.** Build one `_ProcedureIndex` inside
+  Dependencies: T4.1.
+- [ ] **T4.3 — Agent model: Terra.** Build one `_ProcedureIndex` inside
   `RouteResolver.__init__` (`flightplan.py:883-887`) alongside the existing
   `_WaypointResolver`/`_AirwayIndex` construction, and pass it through
   `_flight_plan_path`/`_tokenize_flight_plan`'s existing `resolver`/
@@ -256,27 +541,27 @@ only `2026-05-14`.
   (mirroring the existing test at `tests/test_flightplan.py`) is extended to
   confirm `_ProcedureIndex` is also built exactly once per `RouteResolver`
   instance, not once per `.path()` call.
-  Dependencies: T2.2.
-- [ ] **L2.4 — Agent model: Luna.** Add a regression test reproducing the
+  Dependencies: T4.2.
+- [ ] **L4.4 — Agent model: Luna.** Add a regression test reproducing the
   ~430× procedure-vs-direct disparity found in Phase 0, asserting the
   post-fix ratio is materially smaller (do not hardcode an exact ratio —
   hardware-dependent; assert an order-of-magnitude bound, matching
   `ROUTE_PATH_PLAN.md` T4.1's "relative improvement, not absolute
   threshold" convention). Re-run the L1.1 benchmark against the canonical
   cycle and record the new mean/median for both route categories.
-  Dependencies: T2.3, L1.1.
+  Dependencies: T4.3, L1.1.
 
-**Gate 2:** Sol re-runs L1.1's benchmark against the canonical cycle and
+**Gate 4:** Sol re-runs L1.1's benchmark against the canonical cycle and
 records the before/after mean/median for procedure-containing and
 direct/airway-only routes; approves only if the procedure-route mean drops
 by at least one order of magnitude and no `tests/test_flightplan.py`
 regression exists.
 
-## Phase 3 — Index the plotting lookups (`openNASR/plotting.py`)
+## Phase 5 — Index the plotting lookups (`openNASR/plotting.py`)
 
-- [ ] **T3.1 — Agent model: Terra.** Add a `_PlottingIndex` (or reuse/extend
+- [ ] **T5.1 — Agent model: Terra.** Add a `_PlottingIndex` (or reuse/extend
   `_WaypointResolver`/`_AirwayIndex`/`_ProcedureIndex` directly if their
-  shape already fits — decide based on what T2.1 actually produces, don't
+  shape already fits — decide based on what T4.1 actually produces, don't
   assume a fourth parallel class is needed) covering the tables
   `openNASR/plotting.py` currently full-scans per call:
   `FIX_BASE`/`NAV_BASE` (via `_coordinates`/`_navigation_endpoints`,
@@ -301,8 +586,8 @@ regression exists.
   `RouteResolver`'s pattern, rather than only fixing the single-call case.
   Acceptance: a unit test confirms the index's lookups match the equivalent
   vectorized boolean-mask filter for each covered table.
-  Dependencies: T2.1 (reuse its indexing technique/style; do not diverge).
-- [ ] **T3.2 — Agent model: Terra.** Thread the index from T3.1 through
+  Dependencies: T4.1 (reuse its indexing technique/style; do not diverge).
+- [ ] **T5.2 — Agent model: Terra.** Thread the index from T5.1 through
   `_coordinates`, `_navigation_endpoints`, `_airway_segments`,
   `_airport_projection_center`, `_procedure_segments`, and
   `_runway_segments`, replacing their `.to_dict(orient="records")` full-table
@@ -316,60 +601,63 @@ regression exists.
   data) before and after this task, verified by comparing the plotted
   `Line2D`/`PathCollection` data arrays, not just that the function runs
   without error.
-  Dependencies: T3.1.
-- [ ] **L3.3 — Agent model: Luna.** Add regression tests reproducing the
+  Dependencies: T5.1.
+- [ ] **L5.3 — Agent model: Luna.** Add regression tests reproducing the
   ~2.0s `_airway_segments` and ~1.5s-per-call, ~14.8s-for-ten-calls
   `_procedure_segments` costs found in Phase 0, asserting a materially
   smaller post-fix cost using the same relative-improvement convention as
-  L2.4. Re-run the L1.2 benchmark against the canonical cycle and record the
+  L4.4. Re-run the L1.2 benchmark against the canonical cycle and record the
   new numbers for all four `plotExamples/`-equivalent cases.
-  Dependencies: T3.2, L1.2.
-- [ ] **L3.4 — Agent model: Luna.** Run each of the four `plotExamples/*.py`
+  Dependencies: T5.2, L1.2.
+- [ ] **L5.4 — Agent model: Luna.** Run each of the four `plotExamples/*.py`
   scripts end to end (`--output` to a throwaway path, not `--show`, matching
   how they are already meant to be run headlessly) against the canonical
-  cycle before and after Phase 3, and confirm each still produces a PNG with
+  cycle before and after Phase 5, and confirm each still produces a PNG with
   the same reported line-segment count printed by the script itself (each
   script already prints `len(axes.lines)` — reuse that as the correctness
   check, don't add a new one).
-  Dependencies: T3.2.
+  Dependencies: T5.2.
 
-**Gate 3:** Sol re-runs L1.2's benchmark and confirms the before/after
+**Gate 5:** Sol re-runs L1.2's benchmark and confirms the before/after
 numbers for `_airway_segments`/`_procedure_segments`/repeated-call plotting,
 and that all four `plotExamples/*.py` scripts still run correctly and
 produce the same line-segment counts.
 
-## Phase 4 — Documentation and release
+## Phase 6 — Documentation and release
 
-- [ ] **L4.1 — Agent model: Luna.** Update `docs/API.md` and/or
-  `openNASR/plotting.py`'s module/function docstrings to document the new
-  indexing objects' snapshot semantics (mirroring
+- [ ] **L6.1 — Agent model: Luna.** Update `docs/API.md` and/or
+  `openNASR/repository.py`'s/`plotting.py`'s module/function docstrings to
+  document the new indexing objects' snapshot semantics (mirroring
   `RouteResolver`'s existing documented "construct a new instance after
-  mutating a table" contract) and, if T3.1 added a reusable index parameter
+  mutating a table" contract) and, if T5.1 added a reusable index parameter
   to `plot_airport_procedures`, document the batch-plotting use case it
   enables.
-  Dependencies: T2.3, T3.2.
-- [ ] **L4.2 — Agent model: Luna.** Record the full before/after benchmark
-  report (Phase 2 and Phase 3 numbers, environment, canonical cycle,
-  cold/warm policy) using L1.3's template, linked from both this document
-  and `ROUTE_PATH_PLAN.md` (the two plans now share one performance
-  narrative for `flightplan.py`; cross-link rather than duplicate numbers).
-  Dependencies: L2.4, L3.3.
-- [ ] **S4.3 — Agent model: Sol.** Run the full release gate (`pytest`,
+  Dependencies: T4.3, T5.2.
+- [ ] **L6.2 — Agent model: Luna.** Record the full before/after benchmark
+  report (Phase 2-5 numbers, environment, canonical cycle, cold/warm
+  policy) using L1.4's template, linked from both this document and
+  `ROUTE_PATH_PLAN.md` (the two plans now share one performance narrative
+  for `flightplan.py`; cross-link rather than duplicate numbers). Lead with
+  Phase 2's fix (the ~41s-to-under-1s `nasr.airport(...)` first-call
+  improvement) since it is the highest-severity result in this plan.
+  Dependencies: L2.3, L3.5, L4.4, L5.3.
+- [ ] **S6.3 — Agent model: Sol.** Run the full release gate (`pytest`,
   `ruff format --check`, `ruff check`, `mypy openNASR`, `python -m build`,
   `twine check dist/*`) from a clean checkout and confirm all six commands
   pass, matching the convention every other plan in this repository closes
   with.
-  Dependencies: L4.1, L4.2.
+  Dependencies: L6.1, L6.2.
 
-**Gate 4:** Sol approves release: both benchmark tools, the audit table from
-Phase 0, and the recorded before/after numbers are complete and consistent;
-the full release gate passes.
+**Gate 6:** Sol approves release: all three benchmark tools, the audit
+table from Phase 0, and the recorded before/after numbers for every phase
+are complete and consistent; the full release gate passes.
 
 ## Decision log
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
-| 2026-08-17 | Scope this plan to `openNASR/flightplan.py`'s procedure tables and `openNASR/plotting.py`, with a Phase 0 audit rather than assuming every `.to_dict(orient="records")` call site in the package is slow. | Direct inspection found `openNASR/repository.py`'s equivalent lookups (`_class_airspace`, `_military_operations`, `_related_records`) already vectorize-then-materialize and already cache via `_related_index`; only `flightplan.py`'s procedure lookups (never covered by `ROUTE_PATH_PLAN.md`'s Phase 4, which only vectorized `_WaypointResolver` and the `AWY_BASE` airway lookup) and all of `plotting.py` (never covered by any prior performance work) were confirmed slow by direct measurement. Auditing first avoids speculative rewrites of code that is already fine. |
+| 2026-08-17 | Scope this plan to `openNASR/flightplan.py`'s procedure tables and `openNASR/plotting.py`, with a Phase 0 audit rather than assuming every `.to_dict(orient="records")` call site in the package is slow. | Direct inspection found `openNASR/repository.py`'s equivalent lookups (`_class_airspace`, `_military_operations`, `_related_records`) already vectorize-then-materialize and already cache via `_related_index`; only `flightplan.py`'s procedure lookups (never covered by `ROUTE_PATH_PLAN.md`'s Phase 4, which only vectorized `_WaypointResolver` and the `AWY_BASE` airway lookup) and all of `plotting.py` (never covered by any prior performance work) were confirmed slow by direct measurement. Auditing first avoids speculative rewrites of code that is already fine. **Superseded 2026-08-17, see the "Correction:" entry below — the "already cache via `_related_index`" half of this conclusion was wrong.** |
 | 2026-08-17 | Benchmark `plotExamples/`-equivalent calls as cold single-call and repeated-call cases, not only a single representative call. | Direct measurement found `_airway_segments` costs ~2.0s and `_procedure_segments` ~1.5s per call with no caching at all, so a batch-plotting scenario (ten airports) pays the full cost every time — ~14.8s for just the departure layer across ten calls. A single-call benchmark would hide this repeated-call multiplier the same way `ROUTE_PATH_PLAN.md`'s single-route Gate 4 benchmark (8.86µs) hid the ~430× procedure-route cost gap this plan's Phase 0 found. |
-| 2026-08-17 | Reuse `_WaypointResolver`/`_AirwayIndex`'s exact indexing technique for the new `_ProcedureIndex` and plotting index, rather than inventing a new caching approach. | Two indexing patterns already exist in this codebase (`ROUTE_PATH_PLAN.md`'s T4.1/T4.2, and `openNASR/repository.py`'s pre-existing `_related_index`) and both are proven correct and tested; a third, different style would add maintenance cost without a demonstrated need. |
+| 2026-08-17 | Reuse `_WaypointResolver`/`_AirwayIndex`'s exact indexing technique for the new `_ProcedureIndex` and plotting index, rather than inventing a new caching approach. | Two indexing patterns already exist in this codebase (`ROUTE_PATH_PLAN.md`'s T4.1/T4.2, and `openNASR/repository.py`'s pre-existing `_related_index`) and both are proven correct and tested; a third, different style would add maintenance cost without a demonstrated need. **Correction 2026-08-17: `_related_index` was not, in fact, proven correct at scale — see below.** |
 | 2026-08-17 | Move all benchmarking code and data (`duckdb_benchmark.py`, `flightplan_benchmark.py`, `route_benchmark.py`, and `tests/exampleRoutes.csv`) from `tools/`/`tests/` into a new `benchmarks/` directory, and add `benchmarks/run_benchmarks.py` as a new, primary, human-readable entry point rather than extending `route_benchmark.py` in place. | Requested directly: one folder for all benchmarking code and data, with clear average-based output from diverse real input (random flight plans) rather than raw JSON or a fixed 6-route synthetic matrix. `route_benchmark.py`'s existing JSON/fixed-matrix report remains useful for machine comparison and was kept as is, alongside the new script, rather than conflating two different report shapes in one file. `tests/exampleRoutes.csv` was untracked (2.3MB, not committed); moved and committed to `benchmarks/data/example_routes.csv` after confirming it contains only public route-field strings with no personal or licensed content, so the benchmark is self-contained for anyone who clones the repository. |
+| 2026-08-17 | **Correction:** `openNASR/repository.py`'s `_normalized_index`/`_related_index` are not fine — their caching technique is the single most severe performance bug found across the whole review. Reviewed every domain-type module (`airport.py`, `fix.py`, `nav.py`, `arb.py`/`airspace.py`, `airway.py`, `atc.py`, `communications.py`, `holding.py`, `fss.py`, `locations.py`, `military.py`, `weather.py`, `arrivals.py`, `departure.py`) at the user's request, widening scope beyond `flightplan.py`/`plotting.py`. | Direct measurement found `dict(tuple(frame.groupby(normalized)))` — the exact technique this plan's own earlier decision (above) called "proven correct" — costs ~15.3s to index `FIX_BASE` (70,003 rows, 70,003 distinct values) and ~12.5s for `APT_BASE`'s `ARPT_ID` index alone; the first `nasr.airport(...)` call (which builds six such indexes) costs ~41.3s, and the first `nasr.fixes.get(...)` call ~14.9s. The equivalent `frame.groupby(normalized).indices` (row-position arrays, not materialized per-group DataFrames) costs ~0.09s for the identical `FIX_BASE` input — ~170× faster for the same correctness. This means the codebase's *documented, recommended, modern* public API (`nasr.airport`/`nasr.fixes.get`/`nasr.navaids.get`) is currently far slower on first use than the *legacy* constructors it was meant to replace (`Airport(...)` ~27ms, `NAVAID(...)` ~4.4ms) — the opposite of what both this plan and `ROUTE_PATH_PLAN.md` assumed throughout. Filed as the new Phase 2, ahead of this plan's original Phase 2/3 (now Phase 4/5) despite being written second, because it is a bug in already-shipped, already-recommended code, not a missing optimization in known-legacy code. Also found the identical uncached-`.map()`-per-call pattern (a real but much less severe issue, matching `ROUTE_PATH_PLAN.md`'s already-fixed `flightplan.py` pattern) repeated across roughly a dozen domain-module repositories outside `repository.py`, filed as the new Phase 3. |
