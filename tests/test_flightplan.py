@@ -1,8 +1,10 @@
 import pandas as pd
 import pytest
 
+from openNASR import RouteResolver as PublicRouteResolver
 from openNASR.exceptions import AmbiguousRecordError, RecordNotFoundError
 from openNASR.flightplan import (
+    RouteResolver,
     _RouteToken,
     _WaypointResolver,
     _tokenize_flight_plan,
@@ -76,6 +78,57 @@ def test_flight_plan_path_expands_airways_and_resolves_airports(tables):
         (36.0, -79.0),
         (35.0, -80.0),
     )
+
+
+def test_route_resolver_reuses_one_waypoint_index(tables, monkeypatch):
+    calls = 0
+    original_init = _WaypointResolver.__init__
+
+    def tracked_init(self, route_tables):
+        nonlocal calls
+        calls += 1
+        original_init(self, route_tables)
+
+    monkeypatch.setattr(_WaypointResolver, "__init__", tracked_init)
+
+    assert PublicRouteResolver is RouteResolver
+    resolver = PublicRouteResolver(tables)
+    expected = ((38.0, -77.0), (37.0, -78.0), (35.0, -80.0))
+
+    assert resolver.path("KAAA ALPHA KBBB") == expected
+    assert resolver.path("KAAA ALPHA KBBB") == expected
+    assert calls == 1
+    assert flight_plan_path(tables, "KAAA ALPHA KBBB") == expected
+    assert calls == 2
+
+
+def test_route_resolver_uses_waypoint_snapshot(tables):
+    resolver = RouteResolver(tables)
+    original = resolver.path("KAAA ALPHA KBBB")
+    tables["FIX_BASE"].loc[0, "LAT_DECIMAL"] = "10"
+
+    assert resolver.path("KAAA ALPHA KBBB") == original
+    assert RouteResolver(tables).path("KAAA ALPHA KBBB") == (
+        (38.0, -77.0),
+        (10.0, -78.0),
+        (35.0, -80.0),
+    )
+    assert flight_plan_path(tables, "KAAA ALPHA KBBB") == (
+        (38.0, -77.0),
+        (10.0, -78.0),
+        (35.0, -80.0),
+    )
+
+
+def test_route_resolver_matches_wrapper_lookup_error(tables):
+    resolver = RouteResolver(tables)
+
+    with pytest.raises(RecordNotFoundError) as session_error:
+        resolver.path("KAAA UNKNOWN")
+    with pytest.raises(RecordNotFoundError) as wrapper_error:
+        flight_plan_path(tables, "KAAA UNKNOWN")
+
+    assert str(session_error.value) == str(wrapper_error.value)
 
 
 def test_flight_plan_path_expands_an_airway_in_reverse(tables):

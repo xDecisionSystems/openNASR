@@ -207,8 +207,37 @@ def _waypoint(
     return unique[0]
 
 
+class _AirwayIndex:
+    """Snapshot the normalized AWY_BASE identifiers used by one route session."""
+
+    def __init__(self, tables: Mapping[str, DataFrame]) -> None:
+        self._base = tables.get("AWY_BASE")
+        self._identifiers = (
+            self._base["AWY_ID"].map(_text) if self._base is not None else None
+        )
+
+    def matching(self, airway: str) -> DataFrame | None:
+        match = _AIRWAY.fullmatch(airway)
+        if match is None or self._base is None or self._identifiers is None:
+            return None
+        identifiers = {
+            match["identifier"],
+            f"{match['designation']}{match['identifier']}",
+        }
+        return self._base[self._identifiers.isin(identifiers)]
+
+    def is_published(self, airway: str) -> bool:
+        matches = self.matching(airway)
+        return matches is not None and not matches.empty
+
+
 def _airway_vertices(
-    tables: Mapping[str, DataFrame], airway: str, start: str, end: str
+    tables: Mapping[str, DataFrame],
+    airway: str,
+    start: str,
+    end: str,
+    *,
+    airway_index: _AirwayIndex | None = None,
 ) -> tuple[str, ...]:
     """Return the published segment path between two filed fixes.
 
@@ -226,8 +255,15 @@ def _airway_vertices(
     if base is None or segments is None:
         raise RecordNotFoundError(entity_type="Airway", identifier=airway)
 
-    identifiers = {match["identifier"], f"{match['designation']}{match['identifier']}"}
-    matching_base = base[base["AWY_ID"].map(_text).isin(identifiers)]
+    if airway_index is None:
+        identifiers = {
+            match["identifier"],
+            f"{match['designation']}{match['identifier']}",
+        }
+        matching_base = base[base["AWY_ID"].map(_text).isin(identifiers)]
+    else:
+        matching_base = airway_index.matching(airway)
+        assert matching_base is not None
     matches: list[tuple[str, ...]] = []
     for key in matching_base[
         ["REGULATORY", "AWY_LOCATION", "AWY_ID"]
@@ -271,13 +307,20 @@ def _airway_vertices(
     return unique[0]
 
 
-def _is_published_airway(tables: Mapping[str, DataFrame], airway: str) -> bool:
+def _is_published_airway(
+    tables: Mapping[str, DataFrame],
+    airway: str,
+    *,
+    airway_index: _AirwayIndex | None = None,
+) -> bool:
     """Whether ``airway`` has a matching published airway base record."""
 
     match = _AIRWAY.fullmatch(airway)
     base = tables.get("AWY_BASE")
     if match is None or base is None:
         return False
+    if airway_index is not None:
+        return airway_index.is_published(airway)
     identifiers = {match["identifier"], f"{match['designation']}{match['identifier']}"}
     return base["AWY_ID"].map(_text).isin(identifiers).any()
 
@@ -641,8 +684,12 @@ def _tokenize_flight_plan(
     return tuple(normalized)
 
 
-def flight_plan_path(
-    nasr: Mapping[str, DataFrame], flight_plan: str
+def _flight_plan_path(
+    nasr: Mapping[str, DataFrame],
+    flight_plan: str,
+    *,
+    resolver: _WaypointResolver,
+    airway_index: _AirwayIndex | None = None,
 ) -> tuple[tuple[float, float], ...]:
     """Return the ``(latitude, longitude)`` path for FAA route-field text.
 
@@ -660,7 +707,6 @@ def flight_plan_path(
 
     if not isinstance(flight_plan, str) or not flight_plan.strip():
         raise ValueError("flight_plan must be non-empty FAA route-field text")
-    resolver = _WaypointResolver(nasr)
     tokens = _tokenize_flight_plan(nasr, flight_plan, resolver=resolver)
     if not tokens or any(not token.value for token in tokens):
         raise ValueError("flight_plan must contain route tokens")
@@ -710,7 +756,9 @@ def flight_plan_path(
                     output.append(coordinate)
             index += 1
             continue
-        if airway is not None and _is_published_airway(nasr, token):
+        if airway is not None and _is_published_airway(
+            nasr, token, airway_index=airway_index
+        ):
             if (
                 not output
                 or index + 1 >= len(tokens)
@@ -733,7 +781,13 @@ def flight_plan_path(
                 if following_procedure is not None
                 else tokens[index + 1].value
             )
-            vertices = _airway_vertices(nasr, token, previous, following)
+            vertices = _airway_vertices(
+                nasr,
+                token,
+                previous,
+                following,
+                airway_index=airway_index,
+            )
             for identifier in vertices[1:]:
                 point = _waypoint(
                     nasr,
@@ -762,4 +816,41 @@ def flight_plan_path(
     return tuple(output)
 
 
-__all__ = ["flight_plan_path"]
+class RouteResolver:
+    """Resolve multiple routes against one indexed NASR table snapshot.
+
+    The supplied mapping is copied at construction and waypoint indexes are
+    built once. Callers that replace a table or mutate a contained DataFrame
+    must construct a new resolver; automatic invalidation is intentionally
+    not attempted for mutable pandas inputs.
+    """
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        self._nasr = dict(nasr)
+        self._waypoints = _WaypointResolver(self._nasr)
+        self._airways = _AirwayIndex(self._nasr)
+
+    def path(self, flight_plan: str) -> tuple[tuple[float, float], ...]:
+        """Return the source-coordinate path for one FAA route field."""
+
+        return _flight_plan_path(
+            self._nasr,
+            flight_plan,
+            resolver=self._waypoints,
+            airway_index=self._airways,
+        )
+
+
+def flight_plan_path(
+    nasr: Mapping[str, DataFrame], flight_plan: str
+) -> tuple[tuple[float, float], ...]:
+    """Return the ``(latitude, longitude)`` path for FAA route-field text.
+
+    For repeated calls against the same tables, prefer :class:`RouteResolver`
+    so the waypoint index is built once.
+    """
+
+    return RouteResolver(nasr).path(flight_plan)
+
+
+__all__ = ["RouteResolver", "flight_plan_path"]
