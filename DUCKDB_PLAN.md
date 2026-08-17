@@ -355,7 +355,7 @@ backend code begins until this gate is recorded in the decision log.
 
 ### Phase 13.1 — Storage format and safe ingestion
 
-- [ ] **13.1.1 — Agent: Terra.** Define `DuckDbCycleMetadata` and a
+- [x] **13.1.1 — Agent: Terra.** Define `DuckDbCycleMetadata` and a
   storage-format version. Add strict metadata validation with typed errors for
   date mismatch, unsupported storage version, missing table, schema
   fingerprint mismatch, and incomplete build.
@@ -370,7 +370,7 @@ backend code begins until this gate is recorded in the decision log.
   Acceptance: fixtures are tiny, committed text only, and shared by CSV/DuckDB
   parity tests. No FAA archive is added.
 
-- [ ] **13.1.3 — Agent: Terra.** Implement a per-cycle DuckDB builder that
+- [x] **13.1.3 — Agent: Terra.** Implement a per-cycle DuckDB builder that
   imports every discovered operational CSV table with explicit source-text
   preservation, records row counts/fingerprints, and validates all tables
   before publish.
@@ -380,7 +380,7 @@ backend code begins until this gate is recorded in the decision log.
   Acceptance: a database built from each supported schema fixture has the same
   table names, columns, row counts, and source cell values as CSV loading.
 
-- [ ] **13.1.4 — Agent: Terra.** Make builder publication concurrency-safe:
+- [x] **13.1.4 — Agent: Terra.** Make builder publication concurrency-safe:
   per-cycle lock, temporary database/sidecar, cleanup on error, atomic publish,
   and read-only completed database opening.
 
@@ -696,3 +696,4 @@ branches open.
 | 2026-08-17 | Require `duckdb>=1.2.2` only through the explicit `duckdb` optional-dependency extra. | DuckDB 1.2.2 declares Python >=3.7 and has CPython 3.10/3.12 wheels; a clean Python 3.12 install passed both the base-without-DuckDB import and the `.[duckdb]` install/import checks, including an exact-1.2.2 smoke import. |
 | 2026-08-17 | Define the table-store contract as cached DataFrame loading, mapping adapters, available/loaded state, and exact/normalized row-position indexes; keep schema validation in `NASR` above the backend boundary. | All domain repositories consume the `NASR` mapping rather than `TableRepository` directly. Preserving that seam avoids storage branches throughout domain code while retaining lazy validation, exceptions, row order, and shared-versus-copy mutation behavior. |
 | 2026-08-17 | Gate DuckDB performance on an exact real cycle using process-cold and warm measurements; use committed fixtures for parity rather than latency, require a 2x geometric-mean first-access speedup, and retain physical indexes only after an A/B win. | Tiny fixture timings are dominated by overhead, operating-system cache eviction is not portable, and unmeasured indexes can increase build time and disk use without helping representative repository workloads. |
+| 2026-08-17 | Store only text-preserving pandas CSV frames in a versioned DuckDB artifact, with a metadata sidecar carrying source schema and database digests. | A typed import could change zero-padded or blank FAA values; a digest-bound sidecar lets readers reject an incomplete or mismatched database/metadata transition rather than treating it as a completed artifact. |
