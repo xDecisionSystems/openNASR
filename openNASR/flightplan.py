@@ -504,10 +504,17 @@ def _procedure_path(
     return None
 
 
-def _is_published_procedure_transition(
-    tables: Mapping[str, DataFrame], token: str
+def _is_published_dotted_procedure(
+    tables: Mapping[str, DataFrame], token: str, *, exact_dp_allowed: bool
 ) -> bool:
-    """Whether a dotted token is a published DP or STAR transition code."""
+    """Whether a dotted token is a published procedure token.
+
+    A dotted DP computer code is retained as a unit only when it is followed
+    by a direct connector (or ends the field) and its first component is not
+    also a complete DP code. This keeps a filed bare DP plus a following fix
+    (for example ``MCRAY2.MCRAY.Q178``) from being swallowed by a
+    coincidentally matching composite code.
+    """
 
     for table in ("DP_RTE", "STAR_RTE"):
         routes = tables.get(table)
@@ -515,7 +522,16 @@ def _is_published_procedure_transition(
             continue
         if routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token).any():
             return True
-    return False
+    departure = tables.get("DP_BASE")
+    if departure is None or "DP_COMPUTER_CODE" not in departure:
+        return False
+    first_component = token.split(".", 1)[0]
+    computer_codes = departure["DP_COMPUTER_CODE"].map(_text)
+    return (
+        exact_dp_allowed
+        and computer_codes.eq(token).any()
+        and not computer_codes.eq(first_component).any()
+    )
 
 
 def _tokenize_flight_plan(
@@ -529,9 +545,9 @@ def _tokenize_flight_plan(
     FAA route strings use a single dot as a component separator and ``..``
     for direct routing. A procedure/transition itself also contains one dot,
     so adjacent components are retained as one token only when they identify
-    a published procedure transition in the selected NASR cycle. A trailing
-    ``/`` field (for example ``KMSP/0354``) is speed/altitude information,
-    not geometry.
+    a published procedure transition or exact DP computer code in the
+    selected NASR cycle. A trailing ``/`` field (for example ``KMSP/0354``)
+    is speed/altitude information, not geometry.
     """
 
     normalized: list[_RouteToken] = []
@@ -556,9 +572,14 @@ def _tokenize_flight_plan(
                 if index + 1 < len(components) and components[index + 1]
                 else None
             )
+            exact_dp_allowed = (
+                index + 2 >= len(components) or not components[index + 2]
+            )
             if (
                 combined is not None
-                and _is_published_procedure_transition(tables, combined)
+                and _is_published_dotted_procedure(
+                    tables, combined, exact_dp_allowed=exact_dp_allowed
+                )
                 and _procedure_path(tables, combined, resolver=resolver) is not None
             ):
                 normalized.append(_RouteToken(combined, position))

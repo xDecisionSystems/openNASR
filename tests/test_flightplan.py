@@ -547,6 +547,44 @@ def test_dotted_pair_does_not_hide_filed_fix_before_airway(tables):
     )
 
 
+def test_tokenizer_retains_exact_dotted_departure_computer_code(tables):
+    tables["DP_BASE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "EXACT",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "EXACT3.PART",
+            }
+        ]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "EXACT",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "EXACT3.PART",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "KAAA",
+            },
+            {
+                "DP_NAME": "EXACT",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "EXACT3.PART",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "ALPHA",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA.EXACT3.PART..KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (35.0, -80.0),
+    )
+
+
 def test_star_body_uses_preceding_route_token_and_preserves_ambiguity(tables):
     tables["STAR_BASE"] = pd.DataFrame(
         [{"STAR_COMPUTER_CODE": "CHOICE3", "ARTCC": "ZJX"}]
