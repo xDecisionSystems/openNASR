@@ -1,5 +1,8 @@
+import inspect
+
 import pandas as pd
 import pytest
+from numpy import ndarray
 
 from openNASR.exceptions import AmbiguousRecordError, SchemaMismatchError
 from openNASR.ils import DmeRecord, GlideSlopeRecord, IlsRecord, MarkerRecord
@@ -224,6 +227,31 @@ def test_record_repository_reuses_its_identifier_column_index_across_lookups():
     assert repository._normalized_indexes.keys() == index_after_first_lookup.keys()
     for column, index in index_after_first_lookup.items():
         assert repository._normalized_indexes[column] is index
+
+
+def test_record_repository_uses_positions_for_high_cardinality_identifier_index():
+    """Fully unique identifiers must not materialize one DataFrame per group."""
+    frame = pd.DataFrame(
+        {"FIX_ID": [f"FIX{number:05d}" for number in range(1_000)]}
+    )
+    repository = RecordRepository(
+        frame,
+        entity_type="Fix",
+        identifier_columns=("FIX_ID",),
+    )
+
+    assert repository.get(" fix00750 ")["FIX_ID"] == "FIX00750"
+    index = repository._normalized_indexes["FIX_ID"]
+    assert isinstance(index["FIX00750"], ndarray)
+    assert index["FIX00750"].tolist() == [750]
+
+    for builder in (
+        RecordRepository._normalized_index,
+        AirportRepository._related_index,
+    ):
+        source = "".join(inspect.getsource(builder).split())
+        assert ".groupby(normalized).indices" in source
+        assert "dict(tuple(" not in source
 
 
 def test_fix_repository_exposes_typed_source_fields(fixture_nasr):

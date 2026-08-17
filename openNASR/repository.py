@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from numpy import ndarray
 from pandas import DataFrame
 
 from .exceptions import (
@@ -35,7 +36,7 @@ class AirportRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
-        self._related_indexes: dict[tuple[str, int], dict[str, DataFrame]] = {}
+        self._related_indexes: dict[tuple[str, int], dict[str, ndarray]] = {}
 
     @property
     def _table(self) -> DataFrame:
@@ -52,12 +53,12 @@ class AirportRepository:
         by_icao_id = self._related_index("APT_BASE:ICAO_ID", self._table, "ICAO_ID")
         matches = {
             row_id: row
-            for frame in (
+            for positions in (
                 by_faa_id.get(normalized_identifier),
                 by_icao_id.get(normalized_identifier),
             )
-            if frame is not None
-            for row_id, row in frame.iterrows()
+            if positions is not None
+            for row_id, row in self._table.iloc[positions].iterrows()
         }
         records = tuple(self._airport_record(row.to_dict()) for row in matches.values())
         if not records:
@@ -145,27 +146,27 @@ class AirportRepository:
         if frame is None or "ARPT_ID" not in frame.columns:
             return ()
         index = self._related_index(table, frame, "ARPT_ID")
-        rows = index.get(identifier, frame.iloc[0:0])
+        positions = index.get(identifier)
+        rows = frame.iloc[positions] if positions is not None else frame.iloc[0:0]
         return tuple(record_type(row) for row in rows.to_dict(orient="records"))
 
     def _related_index(
         self, cache_key: str, frame: DataFrame, column: str
-    ) -> dict[str, DataFrame]:
-        """Build and cache a ``column`` -> matching-rows index once per table.
+    ) -> dict[str, ndarray]:
+        """Build and cache a ``column`` -> source-row-position index once.
 
         Every airport lookup through this repository joins the same handful
         of related tables (runways, runway ends, ILS components) and matches
         against the same columns (``ARPT_ID``/``ICAO_ID`` on ``APT_BASE``
         itself); indexing each column once avoids re-scanning and
-        re-normalizing it on every airport. ``groupby`` builds the whole
-        index in one pass; masking per unique value would instead rescan the
-        full column once per distinct identifier and does not scale to
-        real-sized tables (tens of thousands of distinct airports).
+        re-normalizing it on every airport. ``groupby.indices`` retains only
+        row positions, so a high-cardinality column does not eagerly
+        materialize one DataFrame per airport.
         """
         key = (cache_key, id(frame))
         if key not in self._related_indexes:
             normalized = frame[column].map(self._normalized)
-            self._related_indexes[key] = dict(tuple(frame.groupby(normalized)))
+            self._related_indexes[key] = frame.groupby(normalized).indices
         return self._related_indexes[key]
 
     @classmethod
@@ -226,7 +227,7 @@ class RecordRepository:
         self._table_name: str | None = None
         self.entity_type = entity_type
         self.identifier_columns = identifier_columns
-        self._normalized_indexes: dict[str, dict[str, DataFrame]] = {}
+        self._normalized_indexes: dict[str, dict[str, ndarray]] = {}
 
     @property
     def _frame(self) -> DataFrame:
@@ -249,19 +250,18 @@ class RecordRepository:
             raise ValueError(f"{self.entity_type} identifiers require ({columns})")
         return identifier
 
-    def _normalized_index(self, column: str) -> dict[str, DataFrame]:
-        """Build and cache a normalized-value -> matching-rows index once.
+    def _normalized_index(self, column: str) -> dict[str, ndarray]:
+        """Build and cache a normalized-value -> source-row-position index.
 
         Repeated identifier lookups on the same column then cost one dict
         lookup instead of re-scanning and re-normalizing the full column.
-        ``groupby`` builds every group in one pass; masking per unique value
-        would instead rescan the whole column once per distinct identifier.
+        ``groupby.indices`` builds every group in one pass without eagerly
+        materializing one DataFrame per distinct identifier; masking per
+        unique value would instead rescan the whole column once per group.
         """
         if column not in self._normalized_indexes:
             normalized = self._frame[column].map(self._normalized)
-            self._normalized_indexes[column] = dict(
-                tuple(self._frame.groupby(normalized))
-            )
+            self._normalized_indexes[column] = self._frame.groupby(normalized).indices
         return self._normalized_indexes[column]
 
     def _rows_for_identifier_column(self, column: str, value: object) -> DataFrame:
@@ -269,7 +269,7 @@ class RecordRepository:
         normalized_value = self._normalized(value)
         if normalized_value not in index:
             return self._frame.iloc[0:0]
-        return index[normalized_value]
+        return self._frame.iloc[index[normalized_value]]
 
     def find(
         self, identifier: object | None = None, **filters: object
