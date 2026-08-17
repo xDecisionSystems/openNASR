@@ -341,6 +341,91 @@ def test_flight_plan_path_resolves_bare_star_before_airway_lookup(tables):
     )
 
 
+def test_flight_plan_path_resolves_bare_departure_after_origin(tables):
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "RUGGD", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "RUGGD3"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "RUGGD",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "RUGGD3",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "KAAA",
+            },
+            {
+                "DP_NAME": "RUGGD",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "RUGGD3",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "ALPHA",
+            },
+            {
+                "DP_NAME": "RUGGD",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "RUGGD3",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "30",
+                "POINT": "BRAVO",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA RUGGD3 BRAVO KBBB") == (
+        (38.0, -77.0),  # Origin and departure procedure connection.
+        (37.0, -78.0),
+        (36.0, -79.0),  # Departure exit and following route token.
+        (35.0, -80.0),
+    )
+
+
+def test_flight_plan_path_resolves_bare_arrival_before_destination(tables):
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "SCAMR4", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": "SCAMR4",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "KBBB",
+            },
+            {
+                "STAR_COMPUTER_CODE": "SCAMR4",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "BRAVO",
+            },
+            {
+                "STAR_COMPUTER_CODE": "SCAMR4",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "30",
+                "POINT": "ALPHA",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA ALPHA SCAMR4 KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),  # Arrival procedure connection.
+        (36.0, -79.0),
+        (35.0, -80.0),  # Arrival exit and following destination token.
+    )
+
+
 def test_flight_plan_path_accepts_double_dot_direct_routing(tables):
     assert flight_plan_path(tables, "KAAA..ALPHA..BBB/0354") == (
         (38.0, -77.0),
