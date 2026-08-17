@@ -25,6 +25,8 @@ cycle; add `--cycle YYYY-MM-DD` for an exact one) and never downloads data.
 | `run_benchmarks.py` | Primary entry point. Samples diverse real routes from `data/example_routes.csv` and prints human-readable averages. |
 | `data/example_routes.csv` | 46,580 real FAA route-field strings, one per line, used as the diverse input pool for `run_benchmarks.py` and `route_path_validation.py` (in `tools/`). Public aeronautical reference data only — no personal information. |
 | `route_benchmark.py` | Machine-readable (JSON) CSV/DuckDB route-resolution benchmark against a fixed six-route synthetic matrix (direct, fix/navaid, airway-only, DP-to-airway, airway-to-STAR, DP-and-STAR). Use for exact before/after comparison of one representative case per route shape. |
+| `plotting_benchmark.py` | Headless Agg-backend plotting workflow benchmark for ZOB airspace, ATL/repeated airport procedures, and direct/procedure flight-plan plots. Supports CSV or DuckDB and reports cold/repeated timings without writing figures. |
+| `repository_benchmark.py` | Seeded cold/warm timing comparison for legacy constructors, NASR predicates, modern repositories, and coded departure-route lookups. |
 | `flightplan_benchmark.py` | Synthetic-data microbenchmark comparing the current vectorized `_WaypointResolver`/`_is_published_airway` against the pre-vectorization row-by-row reference implementation. No NASR cycle required. |
 | `duckdb_benchmark.py` | CSV-vs-DuckDB storage benchmark (build, cold table access, warm table access) against either a real cached cycle or the committed tiny parity fixtures. Reports raw JSON with machine/package/git provenance for archival comparison. |
 
