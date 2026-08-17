@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from openNASR.flightplan import RouteResolver, _procedure_path, _tokenize_flight_plan
+from tests.test_flightplan import _procedure_matrix_tables
 
 FIXTURE = (
     Path(__file__).parent
@@ -29,3 +31,36 @@ def test_procedure_evaluation_fixture_has_complete_ordered_expectations():
         assert case["route"]
         assert case["procedures"]
         assert case["connections"]
+
+
+def test_procedure_evaluation_routes_have_ordered_connections_and_coordinates():
+    fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    tables = _procedure_matrix_tables()
+    resolver = RouteResolver(tables)
+
+    for case in fixture["routes"]:
+        path = resolver.path(case["route"])
+        assert path, case["id"]
+        tokens = _tokenize_flight_plan(
+            tables, case["route"], resolver=resolver._waypoints
+        )
+        procedures = [
+            token.value
+            for token in tokens
+            if token.value in case["procedures"]
+        ]
+        assert procedures == case["procedures"], case["id"]
+        for identifier in case["connections"]:
+            assert any(
+                point.identifier == identifier
+                for token in tokens
+                if token.value in case["procedures"]
+                for point in (
+                    _procedure_path(
+                        tables,
+                        token.value,
+                        resolver=resolver._waypoints,
+                    )
+                    or ()
+                )
+            ), (case["id"], identifier)
