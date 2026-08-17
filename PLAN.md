@@ -2690,9 +2690,34 @@ Tasks:
       12.2 already had a dedicated test with deliberately out-of-order
       fixture rows before this task began (contacts, remarks, shape points,
       agencies, route points, procedures, terrain, widths).
-- [ ] **Agent: Terra.** **12.7** Add both-schema fixtures, geometry validity tests, ordering and
+- [x] **Agent: Terra.** **12.7** Add both-schema fixtures, geometry validity tests, ordering and
       relationship tests, converter tests, exports, documentation, coverage
       reporting, and the `1.5.0` changelog entry.
+      **Done (2026-08-16):** most of this checklist was already satisfied
+      incrementally by tasks 12.3-12.6 (fixture headers verified against
+      both `pre_2026_09`/`nasr_2026_09` in task 12.2; ordering, relationship,
+      converter, and geometry-validity tests added alongside each record
+      family as it was implemented; exports wired in `__init__.py` each
+      time). What this task added on top:
+      - `docs/API.md`: documented `nasr.artccs`/`nasr.artcc()` (a
+        pre-existing Milestone 5B gap noticed while documenting the new
+        families), `nasr.maas`/`nasr.maa()`, `nasr.parachute_jump_areas`/
+        `nasr.parachute_jump_area()`, and
+        `nasr.military_training_routes`/`nasr.military_training_route()`,
+        plus the four new record classes in "Records and tables".
+      - `README.md`: added a "Special-use, sport, and military airspace"
+        section with a runnable example against the `core/pre_2026_09`
+        fixture identifiers used in `tests/test_airspace.py`/
+        `tests/test_military.py`, a cross-reference from "ARTCC boundaries"
+        to the modern facade, and a "Features" bullet.
+      - `tools/schema_coverage_report.py` output verified directly (not
+        just via the test assertions already updated per-task): both
+        schema generations report `rich_record_table_count: 53` and
+        `unmodeled_operational_files: []`.
+      - `CHANGELOG.md`: moved the Milestone 12 entries out of
+        `[Unreleased]` into a new `## [1.5.0] - Unreleased` section,
+        matching the pattern already used for completed Milestones
+        1.1.0-1.4.0.
 
 Acceptance criteria:
 

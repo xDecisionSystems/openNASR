@@ -10,14 +10,20 @@ passes (2026-08-16).** The package version remains `0.0.1` pending an
 explicit decision to cut the `1.0.0` release (a packaging/versioning action,
 not an engineering one — see "Remaining before publishing" below).
 
+As of 2026-08-16, every task in PLAN.md (Milestones 0 through 12) is
+complete, including the full `1.x` rich-object coverage plan originally
+scoped as follow-on work beyond `1.0.0`. See "Remaining before publishing"
+for what a version-number decision still needs to resolve.
+
 ## Release gate: last full run (2026-08-16)
 
 All six commands passed end-to-end in one pass, in order, against a clean
-checkout:
+checkout, re-verified after completing Milestone 12 (the last remaining
+PLAN.md milestone):
 
 ```bash
-python -m pytest              # 238 passed, 1 skipped
-python -m ruff format --check .  # 89 files already formatted
+python -m pytest              # 265 passed, 1 skipped
+python -m ruff format --check .  # 90 files already formatted
 python -m ruff check .        # All checks passed
 python -m mypy openNASR       # Success: no issues found in 35 source files
 python -m build                # wheel + sdist built successfully
@@ -57,12 +63,17 @@ not a defect:
 
 - Decide and set the actual `1.0.0` version number in `pyproject.toml` and
   `CHANGELOG.md` (currently `0.0.1`), and cut the release.
-- PLAN.md's Milestones 8-12 (rich-object coverage for `atc`/`weather`/
-  `airway`/`routes`/`communications`/`fss`/`holding`/`locations`/`military`/
-  `CLS_ARSP`/`MAA_*`/`PJA_*`/`MTR_*`) are explicitly scheduled as `1.x`
-  follow-on releases (`1.1.0` through `1.5.0`), not `1.0.0` requirements —
-  see "Complete FAA CSV coverage plan > Relationship to the initial 1.0.0
-  release" in PLAN.md.
+
+As of 2026-08-16, **every task in PLAN.md is checked off** — Milestones
+8-12 (the complete `1.x` rich-object coverage plan: `atc`/`weather`/
+`airway`/`routes`/`communications`/`fss`/`holding`/`locations`/`military`/
+`CLS_ARSP`/`MAA_*`/`PJA_*`/`MTR_*`) are now done, not merely scheduled.
+These were explicitly out of scope for `1.0.0` itself (see "Complete FAA
+CSV coverage plan > Relationship to the initial 1.0.0 release" in
+PLAN.md), so their completion does not change what's required to cut
+`1.0.0`, but it does mean a `1.5.0` release (or a combined release
+covering everything through `1.5.0`) could also be cut with no further
+engineering work, once a versioning decision is made for that too.
 
 ## Historical: engineering blockers resolved before this file was last written
 

@@ -25,6 +25,22 @@
 - `nasr.military_operations.get((site_no, site_type_code))` returns a
   `MilitaryOperation`; `find(airport_id=...)` supports non-unique short
   airport-ID searches.
+- `nasr.artccs.get(location_id)` / `nasr.artcc(...)` return an `Artcc` with
+  `high`/`low` `ArtccBoundary` geometry backed by the same `Boundary` class
+  the legacy `ARB` path uses.
+- `nasr.maas.get(maa_id)` / `nasr.maa(...)` return a `Maa` (the FAA's
+  "Miscellaneous Activity Area" family: aerobatic practice, glider, hang
+  glider, space launch, ultralight, and unmanned-aircraft areas) with
+  `contacts`, `remarks`, and a `geometry` Shapely polygon built from ordered
+  `MAA_SHP` points, or `None` for radius-only areas with no published shape.
+- `nasr.parachute_jump_areas.get(pja_id)` / `nasr.parachute_jump_area(...)`
+  return a `ParachuteJumpArea` with `contacts` and an optional `airport` link
+  (present on roughly two thirds of real areas).
+- `nasr.military_training_routes.get((route_type_code, route_id))` /
+  `nasr.military_training_route(...)` return a `MilitaryTrainingRoute` with
+  FAA-sequence-ordered `agencies`, `points`, `procedures`, `terrain`, and
+  `widths`. Route points carry a distinct `identifier` (`ROUTE_PT_ID`) from
+  their display `sequence` (`ROUTE_PT_SEQ`), per the FAA's own documentation.
 - `nasr.airways.get((regulatory, airway_location, airway_id))` /
   `nasr.airway(...)` return an `Airway` with FAA-sequence-ordered `segments`.
 - `nasr.holding_patterns.get((name, number, state, country))` /
@@ -52,8 +68,10 @@ stripping surrounding whitespace and uppercasing. Exact duplicate matches raise
   access source fields.
 - `AirportRecord`, `FixRecord`, `NavaidRecord`, `ClassAirspaceRecord`,
   `MilitaryOperationRecord`, `AirwayRecord`, `AirwaySegmentRecord`,
-  `HoldingPatternRecord`, `CommunicationOutletRecord`, and `FrequencyRecord`
-  expose typed convenience properties while preserving raw FAA values.
+  `HoldingPatternRecord`, `CommunicationOutletRecord`, `FrequencyRecord`,
+  `ArtccRecord`, `MaaRecord`, `ParachuteJumpAreaRecord`, and
+  `MilitaryTrainingRouteRecord` expose typed convenience properties while
+  preserving raw FAA values.
 - `AirportRecord.class_airspace` returns one `ClassAirspace` only when the
   complete `(SITE_NO, SITE_TYPE_CODE)` relationship is unambiguous.
   `AirportRecord.military_operations` returns an immutable tuple of matching

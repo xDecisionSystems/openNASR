@@ -29,6 +29,8 @@ access is more convenient.
   stations, and location identifiers through typed FAA-keyed repositories.
 - Look up fixes and navigation aids.
 - Build ARTCC boundary polygons with Shapely.
+- Inspect miscellaneous activity areas, parachute jump areas, and military
+  training routes through typed repositories.
 - Convert latitude/longitude coordinates to local nautical-mile coordinates.
 - Plot airport runways and ILS information with Matplotlib.
 
@@ -274,6 +276,10 @@ except AmbiguousRecordError as error:
 
 ## ARTCC boundaries
 
+`nasr.artccs.get(location_id)` / `nasr.artcc(location_id)` return a modern
+`Artcc` object with the same `high`/`low` boundary geometry shown below. The
+legacy `ARB` constructor remains available and unchanged:
+
 Load ARTCC boundary records with `ARB`:
 
 ```python
@@ -311,6 +317,26 @@ Set `plot_high_airways`, `plot_low_airways`, `plot_airports`, `plot_fixes`, or
 
 Use `plot_airport_procedures(nasr, "BWI")` to draw an airport's runways,
 departure procedures, and standard terminal arrival routes.
+
+## Special-use, sport, and military airspace
+
+```python
+maa = nasr.maa("AOH001")
+parachute_jump_area = nasr.parachute_jump_area("PMD001")
+route = nasr.military_training_route(("IR", "999"))
+
+print(maa.record.type_name, maa.geometry)
+print(parachute_jump_area.record.drop_zone_name, parachute_jump_area.airport)
+print([point.identifier for point in route.points])
+```
+
+`Maa` covers the FAA's "Miscellaneous Activity Area" family — aerobatic
+practice, glider, hang glider, space launch, ultralight, and unmanned-aircraft
+areas — despite the acronym; it is unrelated to military airspace.
+`ParachuteJumpArea.airport` is `None` for areas with no linked landing
+facility. `MilitaryTrainingRoute` is keyed by `(ROUTE_TYPE_CODE, ROUTE_ID)`;
+its points carry a distinct `identifier` from their display `sequence`,
+matching the FAA's own documentation.
 
 ## Direct table access
 
