@@ -250,7 +250,7 @@ export OPENNASR_BENCHMARK_OUTPUT=/absolute/path/outside/the/repository
 # Build/read benchmark on the exact real current cycle. The runner builds any
 # timed database in an isolated temporary copy; it does not replace the user's
 # canonical artifact.
-python -m tools.duckdb_benchmark run \
+python -m benchmarks.duckdb_benchmark run \
   --cache-dir "$OPENNASR_BENCHMARK_CACHE" \
   --cycle 2026-08-06 \
   --include-build \
@@ -260,7 +260,7 @@ python -m tools.duckdb_benchmark run \
   --output "$OPENNASR_BENCHMARK_OUTPUT/real-2026-08-06.json"
 
 # Reproducible small-data coverage for both supported schema generations.
-python -m tools.duckdb_benchmark run-fixtures \
+python -m benchmarks.duckdb_benchmark run-fixtures \
   --fixtures tests/fixtures/duckdb_parity \
   --cold-repetitions 9 \
   --warm-repetitions 5 \
@@ -268,7 +268,7 @@ python -m tools.duckdb_benchmark run-fixtures \
   --output "$OPENNASR_BENCHMARK_OUTPUT/fixtures.json"
 
 # Compare a no-index baseline with an index candidate built from the same DB.
-python -m tools.duckdb_benchmark compare-index \
+python -m benchmarks.duckdb_benchmark compare-index \
   --baseline "$OPENNASR_BENCHMARK_OUTPUT/real-2026-08-06-no-index.json" \
   --candidate "$OPENNASR_BENCHMARK_OUTPUT/real-2026-08-06-index.json"
 ```
@@ -663,7 +663,8 @@ Tests required when 13.4.3 implements this contract:
   report template. Include cold build, warm construction, lookup latency,
   memory, database size, and CSV/DuckDB comparison by exact cycle.
 
-  Implementation: `tools/duckdb_benchmark.py` provides the documented
+  Implementation: `benchmarks/duckdb_benchmark.py` (moved from `tools/` when
+  `benchmarks/` was created) provides the documented
   `run`, `run-fixtures`, and `compare-index` commands. It refuses to discover
   or download a different cycle, builds in an isolated temporary target, keeps
   raw samples plus median/p95/MAD, and records machine/package/git provenance.

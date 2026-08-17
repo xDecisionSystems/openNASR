@@ -1,7 +1,7 @@
 """Manual, opt-in CSV/DuckDB benchmark runner.
 
 This module deliberately has no pytest hooks and never downloads data.  It is
-intended to be run with ``python -m tools.duckdb_benchmark`` against a caller-
+intended to be run with ``python -m benchmarks.duckdb_benchmark`` against a caller-
 selected cache or the committed tiny fixtures.  Reports are JSON so raw
 samples can be retained alongside a rendered Markdown report.
 """
@@ -214,9 +214,9 @@ def run_cycle(
             destination = isolated.cycles_dir / cycle
             shutil.copytree(cached.data_path, destination)
         result = isolated.build_duckdb(requested)
-        source = isolated._resolve_csv_source(
-            isolated.get(requested).data_path  # type: ignore[union-attr]
-        )
+        extracted = isolated.get(requested)
+        assert extracted is not None and extracted.data_path is not None
+        source = isolated._resolve_csv_source(extracted.data_path)
         measurements = _measure_store(
             source,
             result.database_path,

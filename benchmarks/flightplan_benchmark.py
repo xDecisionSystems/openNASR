@@ -1,6 +1,6 @@
 """Manual relative microbenchmark for flight-plan waypoint indexing.
 
-Run with ``python -m tools.flightplan_benchmark``. This utility generates
+Run with ``python -m benchmarks.flightplan_benchmark``. This utility generates
 synthetic waypoint tables locally and reports a ratio against the previous
 record-materializing walk; it deliberately sets no machine-dependent pass/fail
 timing threshold.

@@ -27,9 +27,12 @@ file has grown substantially since earlier tasks were written and will keep
 changing. `RouteResolver` is a public package API, exported from
 `openNASR/__init__.py` alongside `flight_plan_path` and
 `UnsupportedRouteContentError`; `openNASR/exceptions.py`,
-`docs/API.md`/`README.md`, and `tools/flightplan_benchmark.py`/
-`tools/route_benchmark.py`/`tools/route_path_validation.py` have also
-changed and may continue to change as this plan progresses.
+`docs/API.md`/`README.md`, and `benchmarks/flightplan_benchmark.py`/
+`benchmarks/route_benchmark.py`/`tools/route_path_validation.py` (the first
+two moved from `tools/` to `benchmarks/` when that directory was created;
+`route_path_validation.py` stayed in `tools/` since it is a correctness
+validator, not a benchmark) have also changed and may continue to change as
+this plan progresses.
 
 ## Agent roster and roles
 
@@ -632,7 +635,7 @@ environment, policy, initial-failure history, and rerun evidence are in the
 
 - [ ] **T5.1 — Agent model: Luna.** Add a maintained validation command or test utility
   (e.g. `tools/route_path_validation.py`, matching the existing
-  `tools/duckdb_benchmark.py` convention of a standalone, non-pytest
+  `benchmarks/duckdb_benchmark.py` convention of a standalone, non-pytest
   script) that samples route rows deterministically by seed and records
   success/failure totals without modifying the input CSV.
   Dependencies: T4.3 (use `RouteResolver` so the utility is not itself

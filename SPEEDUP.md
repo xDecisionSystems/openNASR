@@ -136,22 +136,39 @@ are reproducible, and that the phases below cover every confirmed (b) site
 
 ## Phase 1 — Benchmark harness (routes and `plotExamples/`)
 
-- [ ] **L1.1 — Agent model: Luna.** Add a route-conversion benchmark mode to
-  the existing `tools/route_benchmark.py` (do not create a second tool;
-  `ROUTE_PATH_PLAN.md` T4.5/T4.6 already established this file as the
-  canonical CSV/DuckDB route benchmark) that reports **mean and median
-  separately for procedure-containing vs. direct/airway-only routes**, not
-  only a single representative route. Use the same canonical 100-route
-  sample and cycle as `ROUTE_PATH_PLAN.md` T0.1
-  (`random.Random(20260514).sample(range(46580), 100)` against
-  `tests/exampleRoutes.csv`, methodology published in
-  `docs/route_path_baseline_2026-05-14.md`) so results are directly
-  comparable to the existing Gate 4 numbers. Report loading time separately
-  from path resolution, matching the existing policy.
-  Acceptance: running the tool against the canonical `2026-05-14` cycle
-  reproduces this session's measured order of magnitude (procedure routes
-  costing roughly two orders of magnitude more than direct routes) before
-  any Phase 2 fix lands.
+**Directory move (2026-08-17):** all benchmarking code and data now live
+under `benchmarks/`, not `tools/`. `benchmarks/duckdb_benchmark.py`,
+`benchmarks/flightplan_benchmark.py`, and `benchmarks/route_benchmark.py`
+are straight moves of the former `tools/*_benchmark.py` scripts (paths and
+docstrings updated, behavior unchanged). `tools/route_path_validation.py`
+stayed in `tools/` — it is a correctness validator, not a benchmark. Every
+task below that references `tools/route_benchmark.py` or a new
+`tools/plotting_benchmark.py` should read `benchmarks/` instead.
+
+- [x] **L1.1 — Agent model: Luna. Substantially done (2026-08-17), as a new
+  script rather than an extension of `route_benchmark.py`.** Rather than add
+  a mode to `benchmarks/route_benchmark.py` (which reports raw JSON for a
+  fixed synthetic 6-route matrix, a different and still-useful purpose —
+  keep it as is), added `benchmarks/run_benchmarks.py` as the primary,
+  human-readable entry point: it samples the canonical 100-route,
+  `random.Random(20260514)`-seeded selection from
+  `benchmarks/data/example_routes.csv` (moved from the untracked
+  `tests/exampleRoutes.csv`; now committed so the benchmark is
+  self-contained) against a locally cached cycle, and prints separate
+  mean/median/p95/min/max for procedure-containing vs. direct/airway-only
+  routes, plus the cost ratio between them. Verified against the real
+  `2026-05-14` cycle: reproduces the ~100-160x order-of-magnitude gap this
+  plan's Phase 0 measured (exact ratio varies by sample size/iteration
+  count, as expected for a timing measurement).
+  **Still open:** the acceptance criterion's "report loading time separately
+  from path resolution" is satisfied (table load and index build are
+  reported as separate lines), but `run_benchmarks.py` does not yet support
+  `--storage duckdb` end-to-end validation (the flag exists and is passed
+  through to `NASR`, but has not been exercised against a real DuckDB
+  artifact as part of this task) or JSON output for machine comparison
+  against `route_benchmark.py`'s existing report format — leave both as
+  follow-up work under this same task rather than a new one.
+  Dependencies: none.
 - [ ] **L1.2 — Agent model: Luna.** Add a `plotExamples/`-equivalent
   benchmark to a new `tools/plotting_benchmark.py` (a new tool, not an
   extension of the route tool — plotting has a different call shape: one-shot
@@ -355,3 +372,4 @@ the full release gate passes.
 | 2026-08-17 | Scope this plan to `openNASR/flightplan.py`'s procedure tables and `openNASR/plotting.py`, with a Phase 0 audit rather than assuming every `.to_dict(orient="records")` call site in the package is slow. | Direct inspection found `openNASR/repository.py`'s equivalent lookups (`_class_airspace`, `_military_operations`, `_related_records`) already vectorize-then-materialize and already cache via `_related_index`; only `flightplan.py`'s procedure lookups (never covered by `ROUTE_PATH_PLAN.md`'s Phase 4, which only vectorized `_WaypointResolver` and the `AWY_BASE` airway lookup) and all of `plotting.py` (never covered by any prior performance work) were confirmed slow by direct measurement. Auditing first avoids speculative rewrites of code that is already fine. |
 | 2026-08-17 | Benchmark `plotExamples/`-equivalent calls as cold single-call and repeated-call cases, not only a single representative call. | Direct measurement found `_airway_segments` costs ~2.0s and `_procedure_segments` ~1.5s per call with no caching at all, so a batch-plotting scenario (ten airports) pays the full cost every time — ~14.8s for just the departure layer across ten calls. A single-call benchmark would hide this repeated-call multiplier the same way `ROUTE_PATH_PLAN.md`'s single-route Gate 4 benchmark (8.86µs) hid the ~430× procedure-route cost gap this plan's Phase 0 found. |
 | 2026-08-17 | Reuse `_WaypointResolver`/`_AirwayIndex`'s exact indexing technique for the new `_ProcedureIndex` and plotting index, rather than inventing a new caching approach. | Two indexing patterns already exist in this codebase (`ROUTE_PATH_PLAN.md`'s T4.1/T4.2, and `openNASR/repository.py`'s pre-existing `_related_index`) and both are proven correct and tested; a third, different style would add maintenance cost without a demonstrated need. |
+| 2026-08-17 | Move all benchmarking code and data (`duckdb_benchmark.py`, `flightplan_benchmark.py`, `route_benchmark.py`, and `tests/exampleRoutes.csv`) from `tools/`/`tests/` into a new `benchmarks/` directory, and add `benchmarks/run_benchmarks.py` as a new, primary, human-readable entry point rather than extending `route_benchmark.py` in place. | Requested directly: one folder for all benchmarking code and data, with clear average-based output from diverse real input (random flight plans) rather than raw JSON or a fixed 6-route synthetic matrix. `route_benchmark.py`'s existing JSON/fixed-matrix report remains useful for machine comparison and was kept as is, alongside the new script, rather than conflating two different report shapes in one file. `tests/exampleRoutes.csv` was untracked (2.3MB, not committed); moved and committed to `benchmarks/data/example_routes.csv` after confirming it contains only public route-field strings with no personal or licensed content, so the benchmark is self-contained for anyone who clones the repository. |

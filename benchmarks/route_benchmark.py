@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 import statistics
 import time
+from typing import Literal
 
 from openNASR.flightplan import RouteResolver, _procedure_path, _tokenize_flight_plan
 from openNASR.nasr import NASR
@@ -65,7 +66,7 @@ def _procedure_details(tables, route: str) -> dict[str, object]:
 
 def benchmark(
     cycle: str,
-    storage: str,
+    storage: Literal["csv", "duckdb"],
     cache_dir: Path | None,
     repetitions: int,
     warm_iterations: int,
