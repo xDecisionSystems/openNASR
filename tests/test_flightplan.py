@@ -157,6 +157,120 @@ def test_flight_plan_path_expands_prefixed_airway_ids(tables):
     )
 
 
+def test_flight_plan_path_joins_repeated_airway_tokens(tables):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "QSTART", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-81"},
+                    {"FIX_ID": "QMID", "LAT_DECIMAL": "33", "LONG_DECIMAL": "-82"},
+                    {"FIX_ID": "QEND", "LAT_DECIMAL": "32", "LONG_DECIMAL": "-83"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["AWY_BASE"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "Q",
+                "AWY_ID": "Q1",
+                "AWY_DESIGNATION": "RN",
+            }
+        ]
+    )
+    tables["AWY_SEG_ALT"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "Q",
+                "AWY_ID": "Q1",
+                "POINT_SEQ": "1",
+                "FROM_POINT": "QSTART",
+                "TO_POINT": "QMID",
+            },
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "Q",
+                "AWY_ID": "Q1",
+                "POINT_SEQ": "2",
+                "FROM_POINT": "QMID",
+                "TO_POINT": "QEND",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA QSTART Q1 QMID Q1 QEND KBBB") == (
+        (38.0, -77.0),
+        (34.0, -81.0),
+        (33.0, -82.0),
+        (32.0, -83.0),
+        (35.0, -80.0),
+    )
+
+
+def test_flight_plan_path_reports_genuine_airway_ambiguity(tables):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "START", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-81"},
+                    {"FIX_ID": "MID_A", "LAT_DECIMAL": "33", "LONG_DECIMAL": "-82"},
+                    {"FIX_ID": "MID_B", "LAT_DECIMAL": "32", "LONG_DECIMAL": "-83"},
+                    {"FIX_ID": "END", "LAT_DECIMAL": "31", "LONG_DECIMAL": "-84"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["AWY_BASE"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "A",
+                "AWY_ID": "Q1",
+                "AWY_DESIGNATION": "RN",
+            },
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "B",
+                "AWY_ID": "Q1",
+                "AWY_DESIGNATION": "RN",
+            },
+        ]
+    )
+    tables["AWY_SEG_ALT"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": location,
+                "AWY_ID": "Q1",
+                "POINT_SEQ": "1",
+                "FROM_POINT": "START",
+                "TO_POINT": middle,
+            }
+            for location, middle in (("A", "MID_A"), ("B", "MID_B"))
+        ]
+        + [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": location,
+                "AWY_ID": "Q1",
+                "POINT_SEQ": "2",
+                "FROM_POINT": middle,
+                "TO_POINT": "END",
+            }
+            for location, middle in (("A", "MID_A"), ("B", "MID_B"))
+        ]
+    )
+
+    with pytest.raises(AmbiguousRecordError, match="Airway path"):
+        flight_plan_path(tables, "KAAA START Q1 END KBBB")
+
+
 def test_flight_plan_path_rejects_unknown_waypoints(tables):
     with pytest.raises(RecordNotFoundError, match="Flight-plan waypoint"):
         flight_plan_path(tables, "KAAA UNKNOWN")

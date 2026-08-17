@@ -195,6 +195,14 @@ def _waypoint(
 def _airway_vertices(
     tables: Mapping[str, DataFrame], airway: str, start: str, end: str
 ) -> tuple[str, ...]:
+    """Return the published segment path between two filed fixes.
+
+    FAA route tokens print the airway family as an ``AWY_ID`` prefix (for
+    example ``Q1``), while ``AWY_DESIGNATION`` is a separate NASR regulatory
+    classification (often ``RN`` or ``AT`` for Q/T airways).  The prefix is
+    therefore matched through ``AWY_ID``; the regulatory and location fields
+    below provide the remaining cycle-specific disambiguation.
+    """
     match = _AIRWAY.fullmatch(airway)
     if match is None:
         raise ValueError(f"Invalid airway token: {airway!r}")
