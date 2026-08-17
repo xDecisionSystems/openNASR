@@ -17,6 +17,8 @@ from openNASR.cfcn import ll2xy, xy2ll
 # Set to False to render in longitude/latitude instead of east/north NM.
 PLOT_IN_NAUTICAL_MILES = True
 ILS_APPROACH_LENGTH_NM = 20.0
+LOCALIZER_FULL_SCALE_WIDTH_FT = 700.0
+FEET_PER_NAUTICAL_MILE = 6076.12
 
 
 def _airport_center(nasr, airport_id: str) -> tuple[float, float]:
@@ -77,6 +79,12 @@ def main() -> None:
     runway_ends = runway_ends[
         runway_ends["ARPT_ID"].str.strip().str.upper() == airport_id
     ]
+    thresholds = {
+        str(row["RWY_END_ID"]).strip().upper(): ll2xy(
+            float(row["LAT_DECIMAL"]), float(row["LONG_DECIMAL"]), llc=center
+        )[:2]
+        for row in runway_ends.to_dict(orient="records")
+    }
     plotted_runways = False
     for _runway_id, ends in runway_ends.groupby("RWY_ID", sort=True):
         if len(ends) < 2:
@@ -102,39 +110,81 @@ def main() -> None:
         try:
             latitude, longitude = float(row["LAT_DECIMAL"]), float(row["LONG_DECIMAL"])
             x_start, y_start, _, _ = ll2xy(latitude, longitude, llc=center)
+            x_threshold, y_threshold = thresholds[
+                str(row["RWY_END_ID"]).strip().upper()
+            ]
             # The localizer is beyond the runway threshold; extend its reciprocal
             # course outward from the transmitter to show the inbound approach path.
             outbound = radians((_true_bearing(row) + 180) % 360)
         except (KeyError, TypeError, ValueError):
             continue
+        direction_x, direction_y = sin(outbound), cos(outbound)
+        threshold_distance = (x_threshold - x_start) * direction_x + (
+            y_threshold - y_start
+        ) * direction_y
+        if threshold_distance <= 0:
+            continue
         x_end = x_start + ILS_APPROACH_LENGTH_NM * sin(outbound)
         y_end = y_start + ILS_APPROACH_LENGTH_NM * cos(outbound)
+        half_width_at_end = (
+            LOCALIZER_FULL_SCALE_WIDTH_FT
+            / 2
+            / FEET_PER_NAUTICAL_MILE
+            * ILS_APPROACH_LENGTH_NM
+            / threshold_distance
+        )
+        perpendicular_x, perpendicular_y = direction_y, -direction_x
+        wedge_x = (
+            x_start,
+            x_end + perpendicular_x * half_width_at_end,
+            x_end - perpendicular_x * half_width_at_end,
+        )
+        wedge_y = (
+            y_start,
+            y_end + perpendicular_y * half_width_at_end,
+            y_end - perpendicular_y * half_width_at_end,
+        )
         if PLOT_IN_NAUTICAL_MILES:
-            x_values, y_values = (x_start, x_end), (y_start, y_end)
+            x_values, y_values = wedge_x, wedge_y
+            center_x, center_y = (x_start, x_end), (y_start, y_end)
+            localizer_x, localizer_y = x_start, y_start
         else:
+            projected = [
+                xy2ll(x_value, y_value, llc=center)
+                for x_value, y_value in zip(wedge_x, wedge_y)
+            ]
+            x_values = tuple(longitude for _latitude, longitude in projected)
+            y_values = tuple(latitude for latitude, _longitude in projected)
             latitude_end, longitude_end = xy2ll(x_end, y_end, llc=center)
-            x_values, y_values = (longitude, longitude_end), (latitude, latitude_end)
-        axes.plot(
+            center_x, center_y = (longitude, longitude_end), (latitude, latitude_end)
+            localizer_x, localizer_y = longitude, latitude
+        axes.fill(
             x_values,
             y_values,
             color="tab:blue",
-            linewidth=1.5,
-            marker="o",
-            markevery=[0],
-            label=None if plotted_ils else "ILS approach paths",
+            alpha=0.25,
+            label=None if plotted_ils else "ILS localizer wedges (700 ft at threshold)",
         )
-        axes.annotate(str(row["RWY_END_ID"]), (x_start, y_start), fontsize=7)
+        axes.plot(center_x, center_y, color="tab:blue", linewidth=1)
+        axes.plot(
+            localizer_x,
+            localizer_y,
+            color="tab:blue",
+            marker="o",
+            linestyle="None",
+        )
+        axes.annotate(str(row["RWY_END_ID"]), (localizer_x, localizer_y), fontsize=7)
         plotted_ils = True
 
     if axes.get_legend_handles_labels()[0]:
         axes.legend()
     units = "nautical miles" if PLOT_IN_NAUTICAL_MILES else "longitude/latitude"
-    axes.set_title(f"{airport_id}: runways and ILS approach paths ({units})")
+    axes.set_title(f"{airport_id}: runways and ILS localizer wedges ({units})")
     axes.set_xlabel("East (NM)" if PLOT_IN_NAUTICAL_MILES else "Longitude")
     axes.set_ylabel("North (NM)" if PLOT_IN_NAUTICAL_MILES else "Latitude")
     axes.set_aspect("equal", adjustable="datalim")
     figure.savefig(args.output, dpi=200, bbox_inches="tight")
-    print(f"wrote {args.output.resolve()} ({len(ils_rows)} ILS approach paths)")
+    print(f"wrote {args.output.resolve()} ({len(ils_rows)} ILS localizer wedges)")
     if args.show:
         plt.show()
 
