@@ -1,17 +1,20 @@
-"""Lightweight table discovery for a normalized NASR cycle."""
+"""Entity repositories for lookup and relationship assembly over a NASR cycle.
+
+The lazy, indexed CSV table repository (:class:`~openNASR.tables.TableRepository`
+and its helpers) lives in :mod:`openNASR.tables`. It is re-exported here for
+backward compatibility with existing imports from this module.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
-from pathlib import Path
+from collections.abc import Mapping
 
-from pandas import DataFrame, read_csv
+from pandas import DataFrame
 
 from .exceptions import (
     AmbiguousRecordError,
     RecordNotFoundError,
     SchemaMismatchError,
-    TableNotFoundError,
 )
 from .airspace import ClassAirspaceRecord
 from .airport import AirportRecord
@@ -24,99 +27,7 @@ from .rwy import RunwayEndRecord, RunwayRecord
 from .airspace import ClassAirspace
 from .military import MilitaryOperation
 from .registry import AIRPORT_SITE_KEY
-
-
-def discover_tables(cycle_path: str | Path) -> tuple[str, ...]:
-    """Return CSV table names without opening CSV contents."""
-
-    root = Path(cycle_path)
-    return tuple(sorted({path.stem.upper() for path in root.glob("*.csv")}))
-
-
-def normalize_table_name(name: str) -> str:
-    """Normalize a requested table name to its canonical uppercase form."""
-
-    return name.strip().upper()
-
-
-class TableRepository(Mapping[str, DataFrame]):
-    """Repository shell exposing filesystem-backed table discovery."""
-
-    def __init__(self, cycle_path: str | Path) -> None:
-        self.cycle_path = Path(cycle_path)
-        self._cache: dict[str, DataFrame] = {}
-        self._indexes: dict[tuple[str, str], dict[str, tuple[int, ...]]] = {}
-        self._normalized_indexes: dict[tuple[str, str], dict[str, tuple[int, ...]]] = {}
-
-    @property
-    def available_tables(self) -> tuple[str, ...]:
-        return discover_tables(self.cycle_path)
-
-    def table_path(self, name: str) -> Path:
-        return self.cycle_path / f"{normalize_table_name(name)}.csv"
-
-    def load(self, name: str) -> DataFrame:
-        """Load a table once and cache its DataFrame for this repository."""
-
-        normalized = normalize_table_name(name)
-        if normalized not in self._cache:
-            path = self.table_path(normalized)
-            if not path.is_file():
-                raise TableNotFoundError(f"NASR table {normalized!r} was not found")
-            try:
-                self._cache[normalized] = read_csv(path)
-            except UnicodeDecodeError:
-                self._cache[normalized] = read_csv(path, encoding="latin-1")
-        return self._cache[normalized]
-
-    def table(self, name: str, *, copy: bool = False) -> DataFrame:
-        """Return the cached table; mutate it only if that shared state is intended.
-
-        Pass ``copy=True`` when callers need an isolated DataFrame.
-        """
-
-        frame = self.load(name)
-        return frame.copy(deep=True) if copy else frame
-
-    def is_loaded(self, name: str) -> bool:
-        return normalize_table_name(name) in self._cache
-
-    def index(self, name: str, column: str) -> dict[str, tuple[int, ...]]:
-        """Build and cache a row-position index only when requested."""
-
-        normalized = normalize_table_name(name)
-        key = (normalized, column)
-        if key not in self._indexes:
-            index: dict[str, list[int]] = {}
-            for position, value in enumerate(self.load(normalized)[column]):
-                index.setdefault(str(value), []).append(position)
-            self._indexes[key] = {value: tuple(rows) for value, rows in index.items()}
-        return self._indexes[key]
-
-    def normalized_index(self, name: str, column: str) -> dict[str, tuple[int, ...]]:
-        """Build and cache case-insensitive identifier positions."""
-
-        normalized = normalize_table_name(name)
-        key = (normalized, column)
-        if key not in self._normalized_indexes:
-            index: dict[str, list[int]] = {}
-            for position, value in enumerate(self.load(normalized)[column]):
-                index.setdefault(str(value).strip().upper(), []).append(position)
-            self._normalized_indexes[key] = {
-                value: tuple(rows) for value, rows in index.items()
-            }
-        return self._normalized_indexes[key]
-
-    def __getitem__(self, name: str) -> DataFrame:
-        """Provide mapping-style compatibility for legacy table access."""
-
-        return self.load(name)
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.available_tables)
-
-    def __len__(self) -> int:
-        return len(self.available_tables)
+from .tables import TableRepository, discover_tables, normalize_table_name
 
 
 class AirportRepository:
@@ -124,6 +35,7 @@ class AirportRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._related_indexes: dict[tuple[str, int], dict[str, DataFrame]] = {}
 
     @property
     def _table(self) -> DataFrame:
@@ -136,13 +48,18 @@ class AirportRepository:
     def get(self, identifier: str) -> AirportRecord:
         """Return one airport matching FAA or ICAO identifier case-insensitively."""
         normalized_identifier = self._normalized(identifier)
-        rows = self._table[
-            self._table["ARPT_ID"].map(self._normalized).eq(normalized_identifier)
-            | self._table["ICAO_ID"].map(self._normalized).eq(normalized_identifier)
-        ]
-        records = tuple(
-            self._airport_record(row) for row in rows.to_dict(orient="records")
-        )
+        by_faa_id = self._related_index("APT_BASE:ARPT_ID", self._table, "ARPT_ID")
+        by_icao_id = self._related_index("APT_BASE:ICAO_ID", self._table, "ICAO_ID")
+        matches = {
+            row_id: row
+            for frame in (
+                by_faa_id.get(normalized_identifier),
+                by_icao_id.get(normalized_identifier),
+            )
+            if frame is not None
+            for row_id, row in frame.iterrows()
+        }
+        records = tuple(self._airport_record(row.to_dict()) for row in matches.values())
         if not records:
             raise RecordNotFoundError(entity_type="Airport", identifier=identifier)
         if len(records) > 1:
@@ -227,8 +144,29 @@ class AirportRepository:
         frame = self._nasr.get(table)
         if frame is None or "ARPT_ID" not in frame.columns:
             return ()
-        rows = frame[frame["ARPT_ID"].map(self._normalized).eq(identifier)]
+        index = self._related_index(table, frame, "ARPT_ID")
+        rows = index.get(identifier, frame.iloc[0:0])
         return tuple(record_type(row) for row in rows.to_dict(orient="records"))
+
+    def _related_index(
+        self, cache_key: str, frame: DataFrame, column: str
+    ) -> dict[str, DataFrame]:
+        """Build and cache a ``column`` -> matching-rows index once per table.
+
+        Every airport lookup through this repository joins the same handful
+        of related tables (runways, runway ends, ILS components) and matches
+        against the same columns (``ARPT_ID``/``ICAO_ID`` on ``APT_BASE``
+        itself); indexing each column once avoids re-scanning and
+        re-normalizing it on every airport. ``groupby`` builds the whole
+        index in one pass; masking per unique value would instead rescan the
+        full column once per distinct identifier and does not scale to
+        real-sized tables (tens of thousands of distinct airports).
+        """
+        key = (cache_key, id(frame))
+        if key not in self._related_indexes:
+            normalized = frame[column].map(self._normalized)
+            self._related_indexes[key] = dict(tuple(frame.groupby(normalized)))
+        return self._related_indexes[key]
 
     @classmethod
     def _validate_reciprocal_runway_ends(
@@ -237,14 +175,23 @@ class AirportRepository:
         runways: tuple[RunwayRecord, ...],
         runway_ends: tuple[RunwayEndRecord, ...],
     ) -> None:
+        """Validate that every declared runway end actually has a record.
+
+        A runway's ``RWY_ID`` is reciprocal (``"01/19"``) for a standard
+        paved runway, or a single token (``"H1"``) for a helipad or other
+        non-reciprocal landing surface. Only the reciprocal form requires
+        exactly two ends; a single-token ``RWY_ID`` requires only itself.
+        """
         available = {
             cls._normalized(record["RWY_END_ID"])
             for record in runway_ends
             if "RWY_END_ID" in record
         }
         for runway in runways:
-            ends = str(runway["RWY_ID"]).split("/")
-            invalid = len(ends) != 2 or any(
+            rwy_id = str(runway["RWY_ID"])
+            ends = rwy_id.split("/")
+            expected_end_count = 2 if "/" in rwy_id else 1
+            invalid = len(ends) != expected_end_count or any(
                 cls._normalized(end) not in available for end in ends
             )
             if invalid:
@@ -257,18 +204,36 @@ class AirportRepository:
 
 
 class RecordRepository:
-    """Normalized record lookup for tables with documented identifier columns."""
+    """Normalized record lookup for tables with documented identifier columns.
+
+    ``frame`` may be an already-loaded DataFrame, or ``None`` if the
+    subclass instead sets ``self._nasr``/``self._table_name`` so the table is
+    only loaded from ``nasr[table_name]`` the first time a lookup actually
+    needs it (see :class:`FixRepository`/:class:`NavaidRepository`) — this
+    keeps constructing the repository, which ``NASR.__init__`` does eagerly
+    for every family, from forcing a table load a caller may never request.
+    """
 
     def __init__(
         self,
-        frame: DataFrame,
+        frame: DataFrame | None,
         *,
         entity_type: str,
         identifier_columns: tuple[str, ...],
     ) -> None:
-        self._frame = frame
+        self._loaded_frame = frame
+        self._nasr: Mapping[str, DataFrame] | None = None
+        self._table_name: str | None = None
         self.entity_type = entity_type
         self.identifier_columns = identifier_columns
+        self._normalized_indexes: dict[str, dict[str, DataFrame]] = {}
+
+    @property
+    def _frame(self) -> DataFrame:
+        if self._loaded_frame is None:
+            assert self._nasr is not None and self._table_name is not None
+            self._loaded_frame = self._nasr[self._table_name]
+        return self._loaded_frame
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -284,6 +249,28 @@ class RecordRepository:
             raise ValueError(f"{self.entity_type} identifiers require ({columns})")
         return identifier
 
+    def _normalized_index(self, column: str) -> dict[str, DataFrame]:
+        """Build and cache a normalized-value -> matching-rows index once.
+
+        Repeated identifier lookups on the same column then cost one dict
+        lookup instead of re-scanning and re-normalizing the full column.
+        ``groupby`` builds every group in one pass; masking per unique value
+        would instead rescan the whole column once per distinct identifier.
+        """
+        if column not in self._normalized_indexes:
+            normalized = self._frame[column].map(self._normalized)
+            self._normalized_indexes[column] = dict(
+                tuple(self._frame.groupby(normalized))
+            )
+        return self._normalized_indexes[column]
+
+    def _rows_for_identifier_column(self, column: str, value: object) -> DataFrame:
+        index = self._normalized_index(column)
+        normalized_value = self._normalized(value)
+        if normalized_value not in index:
+            return self._frame.iloc[0:0]
+        return index[normalized_value]
+
     def find(
         self, identifier: object | None = None, **filters: object
     ) -> tuple[FaaRecord, ...]:
@@ -293,9 +280,8 @@ class RecordRepository:
             for column, value in zip(
                 self.identifier_columns, self._identifier_values(identifier)
             ):
-                rows = rows[
-                    rows[column].map(self._normalized).eq(self._normalized(value))
-                ]
+                candidates = self._rows_for_identifier_column(column, value)
+                rows = rows.loc[rows.index.intersection(candidates.index)]
         for column, value in filters.items():
             if value is not None:
                 rows = rows[
@@ -324,9 +310,9 @@ class FixRepository(RecordRepository):
     """Lookup typed fix records by normalized FAA identifier."""
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
-        super().__init__(
-            nasr["FIX_BASE"], entity_type="Fix", identifier_columns=("FIX_ID",)
-        )
+        super().__init__(None, entity_type="Fix", identifier_columns=("FIX_ID",))
+        self._nasr = nasr
+        self._table_name = "FIX_BASE"
 
     def find(
         self, identifier: object | None = None, **filters: object
@@ -343,9 +329,9 @@ class NavaidRepository(RecordRepository):
     """Lookup navaids with optional conjunctive location and type filters."""
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
-        super().__init__(
-            nasr["NAV_BASE"], entity_type="Navaid", identifier_columns=("NAV_ID",)
-        )
+        super().__init__(None, entity_type="Navaid", identifier_columns=("NAV_ID",))
+        self._nasr = nasr
+        self._table_name = "NAV_BASE"
 
     def find(
         self, identifier: object | None = None, **filters: object
@@ -380,9 +366,7 @@ class NavaidRepository(RecordRepository):
                 raise ValueError(f"{name} must be a string")
         rows = self._frame
         if identifier is not None:
-            rows = rows[
-                rows["NAV_ID"].map(self._normalized).eq(self._normalized(identifier))
-            ]
+            rows = self._rows_for_identifier_column("NAV_ID", identifier)
         for column, value in (
             ("STATE_CODE", state),
             ("COUNTRY_CODE", country),

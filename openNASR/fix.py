@@ -60,8 +60,10 @@ class FIX(Raw):
             raise RecordNotFoundError(entity_type="Fix", identifier=fix)
 
     def _addBASE(self, fix, FIX_BASE):
+        normalized_fix = str(fix).strip().upper()
+        matches = FIX_BASE["FIX_ID"].map(lambda value: str(value).strip().upper()) == (
+            normalized_fix
+        )
         super().__init__(
-            SimpleNamespace(
-                **FIX_BASE[FIX_BASE["FIX_ID"] == fix].to_dict(orient="records")[0]
-            )
+            SimpleNamespace(**FIX_BASE[matches].to_dict(orient="records")[0])
         )

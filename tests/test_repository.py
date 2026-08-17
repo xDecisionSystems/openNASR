@@ -1,4 +1,4 @@
-from openNASR.repository import TableRepository, discover_tables, normalize_table_name
+from openNASR.tables import TableRepository, discover_tables, normalize_table_name
 from collections.abc import Mapping
 import pytest
 from pandas.errors import ParserError
@@ -38,7 +38,7 @@ def test_parser_errors_are_not_retried_or_hidden(monkeypatch, tmp_path):
     def malformed_csv(*_args, **_kwargs):
         raise ParserError("malformed row")
 
-    monkeypatch.setattr("openNASR.repository.read_csv", malformed_csv)
+    monkeypatch.setattr("openNASR.tables.read_csv", malformed_csv)
     with pytest.raises(ParserError, match="malformed row"):
         TableRepository(tmp_path).load("APT_BASE")
 

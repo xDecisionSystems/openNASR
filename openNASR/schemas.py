@@ -26,12 +26,29 @@ SCHEMA_COLUMNS = (
 
 @dataclass(frozen=True)
 class ColumnSchema:
-    """FAA-declared metadata for one CSV column."""
+    """FAA-declared metadata for one CSV column.
+
+    ``name`` is the column's canonical name, normalized to match the actual
+    CSV data-file header casing used by :meth:`SchemaCatalog.validate`. FAA's
+    own ``*_CSV_DATA_STRUCTURE.csv`` schema-description files sometimes
+    declare a column with different casing than the data file actually uses
+    (for example ``CDR`` declares ``RCODE`` but the data file header is
+    ``RCode``). When that happens, ``faa_declared_name`` preserves the
+    schema-description file's original spelling so schema *identification*
+    (which parses those files at runtime) can still recognize a supported
+    schema; it is ``None`` when the declared and actual names already match.
+    """
 
     name: str
     faa_type: str
     max_length: str | None
     nullable: bool
+    faa_declared_name: str | None = None
+
+    @property
+    def declared_name(self) -> str:
+        """The name as it appears in a real schema-description file."""
+        return self.faa_declared_name or self.name
 
 
 @dataclass(frozen=True)
@@ -193,6 +210,7 @@ class SchemaCatalog:
                         faa_type=column["faa_type"],
                         max_length=column["max_length"],
                         nullable=column["nullable"],
+                        faa_declared_name=column.get("faa_declared_name"),
                     )
                     for column in table["columns"]
                 ),
@@ -220,8 +238,24 @@ class SchemaCatalog:
 
     @staticmethod
     def _fingerprint(tables: Mapping[str, TableSchema]) -> tuple[object, ...]:
+        """Fingerprint using each column's schema-description-file spelling.
+
+        ``parse_schema_description_tables`` (used both here for the checked-in
+        manifests and at runtime for a real cycle) always reads a column's
+        name as declared in the ``*_CSV_DATA_STRUCTURE.csv`` file itself. The
+        manifest's ``ColumnSchema.name`` may differ from that declared
+        spelling (see :class:`ColumnSchema`), so the fingerprint must compare
+        ``declared_name`` on both sides, not ``name``, or a genuine supported
+        cycle whose schema-description file uses FAA's original casing would
+        never match.
+        """
         return tuple(
-            (name, tuple((column.name, column.faa_type) for column in table.columns))
+            (
+                name,
+                tuple(
+                    (column.declared_name, column.faa_type) for column in table.columns
+                ),
+            )
             for name, table in sorted(tables.items())
         )
 

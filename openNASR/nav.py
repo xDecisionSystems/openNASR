@@ -94,7 +94,11 @@ class NAVAID(Raw):
         inCountry=None,
         navType=None,
     ):
-        navBool = NAV_BASE["NAV_ID"] == navaid
+        normalized_navaid = str(navaid).strip().upper()
+        navBool = (
+            NAV_BASE["NAV_ID"].map(lambda value: str(value).strip().upper())
+            == normalized_navaid
+        )
         filters = {}
         if inCenter is not None:
             navCenterBool = (NAV_BASE["HIGH_ALT_ARTCC_ID"] == inCenter) | (
@@ -106,7 +110,7 @@ class NAVAID(Raw):
             navBool = navBool & (NAV_BASE["STATE_CODE"] == inState)
             filters["in_state"] = inState
         if inCountry is not None:
-            navBool = navBool & (NAV_BASE["COUNTRY_NAME"] == inCountry)
+            navBool = navBool & (NAV_BASE["COUNTRY_CODE"] == inCountry)
             filters["in_country"] = inCountry
         if navType is not None:
             navBool = navBool & (NAV_BASE["NAV_TYPE"] == navType)

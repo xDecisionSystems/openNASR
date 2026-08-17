@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .exceptions import SchemaMismatchError, TableNotFoundError
-from .airspace import ClassAirspaceRecord
+from .airport import AirportRecord
+from .airspace import ArtccRecord, ClassAirspaceRecord
 from .airway import AirwayRecord, AirwaySegmentRecord
 from .arrivals import StarAirportRecord, StarProcedureRecord, StarRouteRecord
 from .atc import (
@@ -35,10 +36,12 @@ from .holding import (
     HoldingPatternRemarkRecord,
     HoldingPatternSpeedAltitudeRecord,
 )
+from .ils import DmeRecord, GlideSlopeRecord, IlsRecord, MarkerRecord
 from .locations import LocationIdentifierRecord
 from .military import MilitaryOperationRecord
 from .nav import NavaidRecord
 from .records import FaaRecord
+from .rwy import RunwayEndRecord, RunwayRecord
 from .weather import (
     AutomatedWeatherStationRecord,
     WeatherLocationRecord,
@@ -175,6 +178,13 @@ FACILITY_TABLES = frozenset(
     }
 )
 RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
+    "APT_BASE": AirportRecord,
+    "APT_RWY": RunwayRecord,
+    "APT_RWY_END": RunwayEndRecord,
+    "ILS_BASE": IlsRecord,
+    "ILS_DME": DmeRecord,
+    "ILS_GS": GlideSlopeRecord,
+    "ILS_MKR": MarkerRecord,
     "ATC_BASE": AtcFacilityRecord,
     "ATC_ATIS": AtisRecord,
     "ATC_RMK": AtcRemarkRecord,
@@ -199,6 +209,7 @@ RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "AWY_BASE": AirwayRecord,
     "AWY_SEG_ALT": AirwaySegmentRecord,
     "CLS_ARSP": ClassAirspaceRecord,
+    "ARB_BASE": ArtccRecord,
     "MIL_OPS": MilitaryOperationRecord,
     "HPF_BASE": HoldingPatternRecord,
     "HPF_CHRT": HoldingPatternChartRecord,

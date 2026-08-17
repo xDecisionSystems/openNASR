@@ -20,13 +20,15 @@ class MarkerRecord(FaaRecord):
     """Lossless typed marker for an airport ILS marker row."""
 
     @property
-    def call_sign(self) -> str | None:
-        value = self._raw.get("MIL_OPS_CALL")
+    def marker_id_beacon(self) -> str | None:
+        """The marker's identifier/beacon code (FAA column ``MARKER_ID_BEACON``)."""
+        value = self._raw.get("MARKER_ID_BEACON")
         return None if value is None or str(value) == "" else str(value)
 
     @property
-    def operating_hours(self) -> str | None:
-        value = self._raw.get("MIL_OPS_HRS")
+    def compass_locator_name(self) -> str | None:
+        """The compass locator name, when the marker doubles as one."""
+        value = self._raw.get("COMPASS_LOCATOR_NAME")
         return None if value is None or str(value) == "" else str(value)
 
 
