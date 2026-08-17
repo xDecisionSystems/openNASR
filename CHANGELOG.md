@@ -7,6 +7,76 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Airport lookups no longer fail for helipads and other airports with a
+  single-token (non-reciprocal) `RWY_ID`, such as `"H1"`; the reciprocal-end
+  check now requires two ends only when the ID is actually reciprocal.
+- Schema identification (`SchemaCatalog.identify_schema`) now matches a real
+  FAA schema-description file's own column spelling instead of the
+  data-file's spelling, fixing rejection of otherwise-supported cycles whose
+  `CDR`/`FIX_BASE` schema files use FAA's original declared casing.
+- `APT_BASE`, `APT_RWY`, `APT_RWY_END`, and `ILS_BASE`/`DME`/`GS`/`MKR` are
+  now registered with their real record classes in `TableRegistry` instead
+  of falling back to the generic `FaaRecord`.
+- `MarkerRecord.call_sign`/`.operating_hours` (which read nonexistent
+  `MIL_OPS_CALL`/`MIL_OPS_HRS` columns copied from an unrelated table) were
+  replaced with `marker_id_beacon`/`compass_locator_name`, matching
+  `ILS_MKR`'s actual FAA columns.
+- The legacy `NAVAID(..., inCountry=...)` filter now matches `COUNTRY_CODE`,
+  consistent with the modern `NavaidRepository`'s `country` filter (it
+  previously matched `COUNTRY_NAME`, silently disagreeing with the modern API).
+- Legacy `isAirport`/`isFix`/`isNavaid` and the `Airport`/`FIX`/`NAVAID`
+  constructors now resolve identifiers case-insensitively, matching the
+  modern repository-based facade.
+- `CycleManager.remove()` now returns a `RemovalResult` reporting which
+  representations (archive, extracted data) were actually removed, and the
+  `opennasr remove` command uses it directly instead of duplicating path
+  construction to check existence beforehand.
+
+### Added
+
+- `CycleManager.available_cycles()` and `CycleManager.latest()`.
+- `CycleManager.remove()` accepts `archive=`/`extracted=` keywords.
+- `CycleManager` is exported from the package root
+  (`from openNASR import CycleManager`).
+- `opennasr check`/`opennasr download` default to a working `FaaCycleProvider`
+  that discovers the current FAA cycle from the real subscription page, and
+  the CLI maps failures to typed, documented exit codes.
+- `nasr.artccs`/`nasr.artcc(identifier)`: a modern, repository-based ARTCC
+  facade (`Artcc`, `ArtccBoundary`, `ArtccRecord`, `ArtccRepository`),
+  matching the pattern every other rich-object family already had. Wraps
+  the existing boundary geometry directly; the legacy `ARB`/
+  `nasr.loadARTCC()`/`nasr.artcc` (singular attribute) path is unchanged.
+
+### Performance
+
+- `AirportRepository` and the generic `RecordRepository` base now build and
+  cache a lookup index per table/column instead of rescanning the full
+  column on every lookup.
+
+### Changed
+
+- `TableRepository` moved to `openNASR/tables.py`;
+  `openNASR/repository.py` re-exports it for compatibility.
+- **`NASR` now resolves its cycle through `CycleManager` instead of reading
+  `Path(__file__).parent`.** `NASR()` accepts the documented `cycle=` and
+  `cache_dir=` keyword arguments (`useDate=` is kept as a deprecated alias);
+  it resolves the cache directory using the documented
+  `cache_dir` -> `OPENNASR_CACHE_DIR` -> platform-default precedence and no
+  longer reads or writes inside the installed package.
+- **An explicitly requested cycle that is not present in the cache now
+  raises `CycleNotFoundError`** naming the requested date, instead of
+  silently substituting an earlier cached cycle with only a warning.
+- **`NASR` now loads tables lazily.** Constructing `NASR()` no longer reads
+  every CSV in the cycle; a table is read only the first time it is
+  requested, directly or through a repository. Per-table schema validation
+  is deferred the same way, so drift in one table no longer prevents
+  constructing `NASR` or using a different, unrelated table.
+- Fixed a latent bug (surfaced by the lazy-loading change above):
+  `FixRepository`/`NavaidRepository` eagerly loaded `FIX_BASE`/`NAV_BASE` in
+  their constructors regardless of whether the caller ever used them.
+
 ## [1.4.0] - Unreleased
 
 ### Added

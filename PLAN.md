@@ -777,29 +777,82 @@ fixtures, tests, public exports, and documentation before starting the next.
 
 ### Complete-coverage tests
 
+**Status update (2026-08-16, fourth pass): complete.** Every item below is
+checked, each citing the exact test that satisfies it. Several were already
+satisfied by existing tests and only needed the box checked (verified by
+running each named test individually before marking it); the rest were
+genuinely unwritten and have been added: a synthetic-row load/construct
+sweep across all 63 tables in both schema generations, an
+aggregate-isolation test, a required-table-missing test, a raw-loading
+leading-zero/null test, a boundary point-order test, and a real-registry
+table-removal meta-test.
+
 Use the two checked-in versioned manifests from Milestone 0B. Tests must verify:
 
-- [ ] **Agent: Terra.** every filename in each supported manifest is discovered;
+- [x] **Agent: Terra.** every filename in each supported manifest is discovered;
+      `tests/test_schema_coverage_report.py::test_coverage_report_counts_all_supported_fixture_files`
+      asserts `total_csv_files == 87` (24 schema-description + 63 operational)
+      for both schema IDs against the `schema_only` fixture, which mirrors
+      each manifest's exact file list.
 - [x] **Agent: Sol.** every schema-description file in both generations is parsed;
 - [x] **Agent: Sol.** every operational table in either manifest has exactly one
       schema-version-aware `TableSpec`;
-- [ ] **Agent: Terra.** every `TableSpec.record_type` subclasses `FaaRecord`;
+- [x] **Agent: Terra.** every `TableSpec.record_type` subclasses `FaaRecord`;
+      `tests/test_schema_catalog.py::test_registry_covers_every_operational_table_and_schema_variant`
+      asserts `issubclass(table.record_type, FaaRecord)` for every table
+      returned by `registry.supported_tables()`.
 - [x] **Agent: Sol.** every registered required column exists in the schema description;
 - [x] **Agent: Sol.** every composite key column exists in its table;
 - [x] **Agent: Sol.** every declared relationship references columns on both sides;
-- [ ] **Agent: Terra.** every table loads independently from the minimal fixture cycle;
-- [ ] **Agent: Terra.** at least one record can be constructed for every operational table;
-- [ ] **Agent: Terra.** every aggregate loads its child tables only when the relationship is
+- [x] **Agent: Terra.** every table loads independently from the minimal fixture cycle;
+      `tests/test_schema_catalog.py::test_every_operational_table_loads_and_constructs_at_least_one_record`
+      writes one synthetic row per table (schema-conformant, generated from
+      `ColumnSchema.faa_type`/`nullable`), loads each independently through
+      `TableRepository`, and confirms it round-trips.
+- [x] **Agent: Terra.** at least one record can be constructed for every operational table;
+      Same test: `registry.table(table_name).record_type(loaded_row)`
+      succeeds for all 63 tables in both schema generations.
+- [x] **Agent: Terra.** every aggregate loads its child tables only when the relationship is
       requested;
+      `tests/test_milestone_1_terra.py::test_requesting_one_aggregate_does_not_load_unrelated_aggregates_tables`
+      confirms looking up an airport loads only `APT_*`/`ILS_*` and never
+      touches `FIX_BASE`/`NAV_BASE`/`ARB_BASE`/`ARB_SEG`, which happen to be
+      present in the same fixture cycle.
 - [x] **Agent: Sol.** an unknown extra CSV raises `SchemaMismatchError` during normal loading,
       is reported as unmodeled, and remains available through raw access only
       in explicit diagnostic inspection mode;
-- [ ] **Agent: Terra.** a missing optional table affects only its related optional property;
-- [ ] **Agent: Terra.** a missing required base table raises `TableNotFoundError`;
-- [ ] **Agent: Terra.** identifiers containing leading zeros remain strings;
-- [ ] **Agent: Terra.** nulls do not change identifier types;
-- [ ] **Agent: Terra.** route, point, boundary, and remark ordering is deterministic;
-- [ ] **Agent: Terra.** the coverage test fails when a known table is removed from the registry.
+- [x] **Agent: Terra.** a missing optional table affects only its related optional property;
+      `tests/test_error_paths.py::test_missing_optional_marker_table_leaves_markers_empty`
+      confirms `airport.ils.ids` stays populated (`["10"]`) while
+      `airport.mkr.ids` is empty when only `ILS_MKR` is absent.
+- [x] **Agent: Terra.** a missing required base table raises `TableNotFoundError`;
+      `tests/test_error_paths.py::test_missing_required_base_table_raises_table_not_found`
+      confirms both direct access (`nasr["APT_BASE"]`) and a domain lookup
+      that depends on it (`nasr.airport(...)`) raise `TableNotFoundError`
+      when `APT_BASE.csv` is entirely absent from the cycle.
+- [x] **Agent: Terra.** identifiers containing leading zeros remain strings;
+      `tests/test_schema_catalog.py::test_raw_table_loading_preserves_leading_zero_identifiers_and_empty_nulls`
+      loads a real CSV with `SITE_NO="00128."` through `TableRepository`'s
+      schema-aware `read_options` and confirms it stays the literal string
+      (verified that without this policy, default pandas inference corrupts
+      it to `128.0`, proving the test is meaningful).
+- [x] **Agent: Terra.** nulls do not change identifier types;
+      Same test: an empty `SITE_NO` field stays `""` (a string), not `NaN`
+      (verified that without the policy it becomes `NaN`).
+- [x] **Agent: Terra.** route, point, boundary, and remark ordering is deterministic;
+      Route/point:
+      `tests/test_departures.py::test_departure_repository_uses_full_key_and_orders_routes`
+      (deliberately out-of-order `DP_RTE` input, sorted by `POINT_SEQ`).
+      Remark: `tests/test_fss.py::test_flight_service_station_collects_ordered_remarks`
+      (out-of-order `FSS_RMK` input, sorted by `REF_COL_SEQ_NO`). Boundary:
+      new `tests/test_airspace.py::test_boundary_point_order_matches_the_source_arb_seg_row_order`,
+      confirming `ARB_SEG` rows are consumed in file order end-to-end
+      through `NASR`, not resorted.
+- [x] **Agent: Terra.** the coverage test fails when a known table is removed from the registry.
+      `tests/test_schema_catalog.py::test_coverage_checks_fail_when_a_known_table_is_removed_from_the_registry`
+      builds the real production `TableRegistry()`, removes `APT_BASE`'s
+      spec, and confirms `require_modeled` raises for it — proving the
+      coverage assertions are load-bearing, not vacuously true.
 
 Create narrow fixture rows for all tables rather than copying a complete FAA
 cycle. A fixture-builder utility may generate rows from schema definitions, but
@@ -1154,27 +1207,36 @@ testable.
 Required regression tests use the deterministic core fixture introduced in
 Milestone 0B. They must never depend on a developer's local FAA cycle:
 
-- [ ] **Agent: Terra.** Construct an airport by FAA ID.
-- [ ] **Agent: Terra.** Construct the same airport by ICAO ID, and assert every related
+**Status update (2026-08-16): complete.** All checked below by name against
+`tests/test_milestone_1_terra.py`.
+
+- [x] **Agent: Terra.** Construct an airport by FAA ID.
+      `test_airport_faa_and_icao_lookups_have_identical_related_collections`.
+- [x] **Agent: Terra.** Construct the same airport by ICAO ID, and assert every related
       collection (`rwy`, `rwyend`, `ils`, `dme`, `gs`, `mkr`) is non-empty
-      and identical to the FAA-ID construction (covers Task 1.12).
-- [ ] **Agent: Terra.** Access airport runway, runway-end, and ILS collections.
-- [ ] **Agent: Terra.** Look up a unique fix.
-- [ ] **Agent: Terra.** Look up a unique navaid.
-- [ ] **Agent: Terra.** Resolve a duplicated navaid using state and type filters (covers Task
-      1.7).
-- [ ] **Agent: Terra.** Raise `AmbiguousRecordError` for an unresolved duplicate navaid,
-      confirm the exception exposes the candidate rows (covers Task 1.8).
-- [ ] **Agent: Terra.** Raise `RecordNotFoundError` for each missing entity type (airport,
-      fix, navaid).
-- [ ] **Agent: Terra.** Select an exact local cycle date and confirm the *matching* cycle,
+      and identical to the FAA-ID construction (covers Task 1.12). Same test.
+- [x] **Agent: Terra.** Access airport runway, runway-end, and ILS collections. Same test.
+- [x] **Agent: Terra.** Look up a unique fix.
+      `test_airport_and_fix_construction_against_core_fixture`.
+- [x] **Agent: Terra.** Look up a unique navaid.
+      `test_navaid_lookup_filters_and_typed_errors`.
+- [x] **Agent: Terra.** Resolve a duplicated navaid using state and type filters (covers Task
+      1.7). Same test.
+- [x] **Agent: Terra.** Raise `AmbiguousRecordError` for an unresolved duplicate navaid,
+      confirm the exception exposes the candidate rows (covers Task 1.8). Same test.
+- [x] **Agent: Terra.** Raise `RecordNotFoundError` for each missing entity type (airport,
+      fix, navaid). `test_airport_and_fix_construction_against_core_fixture`
+      and `test_navaid_lookup_filters_and_typed_errors`.
+- [x] **Agent: Terra.** Select an exact local cycle date and confirm the *matching* cycle,
       not the prior one, is used (covers Task 1.16).
-- [ ] **Agent: Terra.** Raise `CycleNotFoundError` when no cycles exist in the searched
-      directory (covers Task 1.17).
-- [ ] **Agent: Terra.** Load an ARTCC and access a boundary (covers Task 1.14).
-- [ ] **Agent: Terra.** Access a valid raw attribute and an invalid raw attribute through
+      `test_exact_cycle_request_never_silently_falls_back_to_an_earlier_cycle`.
+- [x] **Agent: Terra.** Raise `CycleNotFoundError` when no cycles exist in the searched
+      directory (covers Task 1.17). `test_missing_cycle_raises_typed_error`.
+- [x] **Agent: Terra.** Load an ARTCC and access a boundary (covers Task 1.14).
+      `test_nasr_cycle_selection_artcc_and_preload_behavior`.
+- [x] **Agent: Terra.** Access a valid raw attribute and an invalid raw attribute through
       `Raw.__getattr__`, asserting `AttributeError` (not `RecursionError`)
-      for the invalid case (covers Task 1.5).
+      for the invalid case (covers Task 1.5). `test_raw_attribute_delegation_is_safe`.
 
 Acceptance criteria:
 
@@ -1458,6 +1520,22 @@ manager.download_latest(*, force=False) -> Cycle
 manager.remove(cycle, *, archive=True, extracted=True) -> None
 ```
 
+**Status correction (2026-08-16, post-implementation review):** the tasks
+below are checked off because `CycleManager` itself was implemented as
+described. That implementation is real and independently verified working.
+However, `CycleManager.available_cycles()` and `CycleManager.latest()` from
+the API block above were never implemented, `CycleManager` is not exported
+from `openNASR/__init__.py` despite the README documenting
+`from openNASR import CycleManager`, `remove()` does not accept the
+documented `archive=`/`extracted=` keywords, and — most importantly —
+`NASR` itself never constructs or uses a `CycleManager`; it still resolves
+data from inside the installed package via `Path(__file__).parent`. The
+`opennasr check`/`opennasr download` CLI commands default to a provider-less
+`CycleManager()`, so both raise an uncaught `ValueError` on every real
+invocation; only `opennasr list`/`opennasr remove` work without an injected
+manager. See Milestone 4B for the fix. Do not treat this milestone's
+checkboxes as evidence that `NASR()` uses the external cache.
+
 Tasks:
 
 - [x] **Agent: Terra.** Resolve the cache path according to the documented precedence.
@@ -1558,6 +1636,20 @@ tables.clear("APT_BASE")
 tables.clear()
 ```
 
+**Status correction (2026-08-16, post-implementation review):** `TableRepository`
+was implemented as `openNASR.tables.TableRepository` (moved there from
+`openNASR/repository.py`, which now only re-exports it for compatibility) and
+its lazy loading, caching, and indexing genuinely work when used directly.
+`tables.clear("APT_BASE")`/`tables.clear()` from the API block above were
+never implemented. Critically, `NASR` never constructs or uses a
+`TableRepository` at all: `NASR.loadCSVData()` still calls `read_csv` on
+every discovered CSV file inside `__init__`, so "Cache each loaded DataFrame
+per `NASR` instance" and "Preserve `nasr["APT_BASE"]` compatibility by
+delegating to the repository" are checked off for the class itself but do
+not describe `NASR`'s actual behavior. `NASR()` currently loads every
+DataFrame in the cycle, contradicting this milestone's own acceptance
+criteria below. See Milestone 4B for the fix.
+
 Tasks:
 
 - [x] **Agent: Luna.** Discover table names without loading CSV contents.
@@ -1593,6 +1685,302 @@ Acceptance criteria:
 - Repeated access returns the same cached DataFrame unless `copy=True`.
 - Clearing a table causes the next access to reload it.
 - Mapping compatibility tests pass.
+
+## Milestone 4B: Wire NASR to CycleManager and TableRepository
+
+Goal: make `NASR()` actually use the external cache and lazy table loading
+that Milestones 3 and 4 built, so the acceptance criteria of both milestones
+become true of the public `NASR` class and not only of `CycleManager` and
+`TableRepository` in isolation. This milestone directly resolves the release
+blockers listed in `RELEASE.md` as of 2026-08-16 and the "Status correction"
+notes added to Milestones 3 and 4 above.
+
+This is a rewrite of `NASR.__init__`/`NASR.setupFiles`'s data-resolution path,
+not a bug fix in otherwise-finished code. It touches the constructor every
+other repository and every existing regression test depends on. Read
+`openNASR/nasr.py`, `openNASR/cycles.py`, and `openNASR/tables.py` in full
+before starting, and expect this milestone to require more than one review
+pass given its blast radius.
+
+### Current behavior this milestone replaces
+
+**Status update (2026-08-16, second pass):** the sub-sections below were
+completed after this milestone was first written; only "`NASR` construction:
+cache resolution and exact-cycle semantics" and "`NASR` table loading:
+delegate to `TableRepository`" remain open. See the decision log for what
+changed and why.
+
+Verified directly against the source as of this writing, the remaining gap:
+
+- `NASR.setupFiles` (`nasr.py`) resolves `self.__data_zip_fd` and
+  `self.__data_fd` as `Path(__file__).parent.joinpath("data/zip")` and
+  `.../data/uncompressed` — inside the installed package, not the external
+  cache `CycleManager` resolves via `resolve_cache_dir`. `CycleManager` is
+  never imported or constructed anywhere in `nasr.py`.
+- `NASR.__init__` accepts `useDate`, not `cycle` or `cache_dir`. Passing
+  `cache_dir=` to `NASR()` raises `TypeError`, contrary to the "Required
+  workflows" example in "Product requirements" above
+  (`NASR(cache_dir="/data/nasr")`).
+- `NASR.setupFiles` selects the newest cycle *less than or equal to* the
+  requested date and only `warn()`s when the exact date is unavailable
+  (`nasr.py`, the `earlierDates` branch). This directly contradicts the
+  "Behavioral requirements" bullet above: "An explicitly requested cycle
+  means an exact cycle. It must never silently select a different date." A
+  caller requesting a cycle that was later removed from the cache silently
+  receives stale data instead of `CycleNotFoundError`.
+- `NASR.loadCSVData` calls `read_csv` on every discovered CSV file
+  synchronously inside `__init__`. `TableRepository` (which loads lazily and
+  caches per-table) exists and is fully tested in isolation
+  (`tests/test_repository.py`) but is never constructed or referenced by
+  `NASR`.
+
+Already resolved (verified working, not just claimed):
+
+- `CycleManager.available_cycles()` and `CycleManager.latest()` are
+  implemented and tested (`tests/test_cycles.py`).
+- `CycleManager.remove()` accepts `archive=`/`extracted=` keywords and now
+  returns a `RemovalResult(removed_archive, removed_extracted)` so callers
+  never need to duplicate its path construction to report what happened;
+  `opennasr remove` uses this return value directly.
+- `CycleManager` is exported from `openNASR/__init__.py`
+  (`tests/test_public_exports.py`); `from openNASR import CycleManager`
+  succeeds.
+- `opennasr check`/`opennasr download` default to
+  `CycleManager(provider=FaaCycleProvider())` when no manager is injected,
+  and `cli.py`'s `main()` maps `ValueError`/`DownloadError`/`ArchiveError`/
+  `OpenNASRError`/other exceptions to the documented `ExitCode` values
+  instead of crashing with a raw traceback.
+
+### Resolved: the FAA cycle-discovery provider
+
+**Status update (2026-08-16):** this section originally posed an open
+research question — no confirmed machine-readable FAA endpoint was known,
+and `FaaCycleProvider` at the time required a `metadata_url` serving JSON.
+That has since been resolved with a different, verified-working approach:
+`FaaCycleProvider` (`openNASR/cycles.py`) now scrapes the real FAA
+subscription page's two-page HTML flow instead of requiring a JSON API —
+the landing page's *Current* section (identified by heading text, not
+position) links to a dated detail page, which links to the explicit NFDC
+ZIP URL. It validates scheme (`https`) and hostname
+(`FAA_LANDING_HOSTS`/`FAA_ARCHIVE_HOSTS` allowlists) at each hop, rejects
+non-NFDC or filename-mismatched archive links, and excludes preview-cycle
+links. `openNASR/cli.py` and `notify_if_update_available()` both construct
+`FaaCycleProvider()` with its default `landing_url` when no provider is
+injected. Original tasks 4B.1/4B.2 (research + ship/no-ship decision) are
+complete; the finding is recorded in the decision log below.
+
+### `CycleManager` completeness
+
+**Status update (2026-08-16): complete.** All of 4B.3-4B.7 below are done
+and tested; kept here as a record of what was required.
+
+- [x] **4B.3** **Agent: Terra.** Implement `CycleManager.available_cycles() -> tuple[date, ...]`,
+      returning the effective dates of every valid cycle discoverable via
+      `archive_paths()` and `extracted_paths()` (the union, deduplicated and
+      sorted), matching the signature already documented in Milestone 3's
+      "CycleManager API" code block.
+- [x] **4B.4** **Agent: Terra.** Implement `CycleManager.latest() -> Cycle`, returning the `Cycle`
+      for the newest date in `available_cycles()`. Raise `CycleNotFoundError`
+      when no cycles are cached, with a message that names the cache
+      directory searched.
+- [x] **4B.5** **Agent: Terra.** Add `archive: bool = True` and `extracted: bool = True` keyword
+      parameters to `CycleManager.remove()`, matching the signature already
+      documented in Milestone 3's "CycleManager API" code block. When both
+      are `False`, raise `ValueError` rather than silently doing nothing.
+      Update `openNASR/cli.py`'s `remove` command to report which of
+      archive/extracted data it actually removed (per Milestone 3's
+      "report which cached archive and extracted data were removed"
+      requirement), instead of always printing a generic `removed: {date}`
+      regardless of what existed. `remove()` returns a `RemovalResult` so
+      the CLI reports this without duplicating path construction.
+- [x] **4B.6** **Agent: Luna.** Export `CycleManager` from `openNASR/__init__.py` and add it to
+      `__all__`, so `from openNASR import CycleManager` (as documented in
+      `README.md`) succeeds.
+- [x] **4B.7** **Agent: Terra.** Add regression tests for 4B.3-4B.6 covering: an empty cache
+      (raises `CycleNotFoundError` from `latest()`, returns `()` from
+      `available_cycles()`), a cache with only an archive (no extracted
+      cycle) and vice versa, `remove(archive=False)` leaving the extracted
+      directory intact and reporting so, `remove(extracted=False)` leaving
+      the archive intact and reporting so, and `remove(archive=False,
+      extracted=False)` raising `ValueError`.
+
+### `NASR` construction: cache resolution and exact-cycle semantics
+
+**Status update (2026-08-16, third pass): complete.** 4B.8-4B.16 below are
+done, tested, and verified against the full suite (227 passed), `mypy`
+(clean), and `ruff` (clean). Two real design points surfaced during
+implementation that a later agent should know about:
+
+- `TableRegistry.require_modeled` (the "every discovered table name is
+  known" check) stayed **eager, at construction time**, exactly like the
+  legacy behavior — it is a whole-cycle, filenames-only question, cheap to
+  answer, and an existing test
+  (`test_schema_catalog.py::test_normal_loading_rejects_unknown_table_but_diagnostic_mode_loads_it`)
+  already asserted `NASR()` itself raises for an unmodeled table. Only the
+  per-table `SchemaCatalog.validate`/`ValidationReport.require_compatible`
+  checks (the ones 4B.14 names explicitly) became lazy, deferred to first
+  access of that specific table.
+- Making construction lazy surfaced a real, previously-hidden bug:
+  `FixRepository`/`NavaidRepository` (`openNASR/repository.py`) read
+  `nasr["FIX_BASE"]`/`nasr["NAV_BASE"]` directly in their `__init__`, so
+  every `NASR()` call always eagerly loaded those two tables regardless of
+  whether the caller ever used them — masked before this milestone because
+  `NASR()` already loaded every table anyway. Fixed by giving
+  `RecordRepository` an optional deferred-loading mode (an `_frame`
+  property that reads `nasr[table_name]` only on first access) and
+  switching both repositories to it. Caught by a new regression test
+  (`test_nasr_does_not_load_tables_until_they_are_requested`) asserting
+  `nasr.is_loaded("NAV_BASE")` stays `False` after only accessing
+  `APT_BASE`.
+
+- [x] **4B.8** **Agent: Sol.** Design `NASR.__init__`'s new signature. It must accept the
+      documented `cycle: str | None = None` and `cache_dir: str | Path |
+      None = None` parameters from "Product requirements" above while
+      preserving `useDate` as a deprecated positional/keyword alias for
+      `cycle` (do not silently rename existing callers' keyword argument;
+      Milestone 1 and 1B regression tests and every domain-module doctest
+      use `useDate=` throughout the existing test suite — grep for `useDate`
+      before finalizing the signature and update every call site found).
+      `update` and `preloadAll` keep their current documented meaning
+      (`update` remains reserved pending 4B.2's provider decision;
+      `preloadAll=True` continues to raise `NotImplementedError`). Implemented
+      as `NASR(useDate=None, update=False, preloadAll=False, diagnostic=False,
+      *, cycle=None, cache_dir=None)`; supplying both `useDate` and `cycle`
+      with disagreeing values raises `ValueError`.
+- [x] **4B.9** **Agent: Sol.** Replace `NASR.setupFiles`'s hardcoded
+      `Path(__file__).parent.joinpath("data/zip")` resolution with a
+      `CycleManager` constructed from the new `cache_dir` parameter (falling
+      through `CycleManager`'s own `cache_dir` -> `OPENNASR_CACHE_DIR` ->
+      platform-default precedence when `cache_dir` is not supplied).
+      `NASR()` must not write into `site-packages` or the source checkout
+      after this task, restoring the Milestone 3 acceptance criterion that
+      currently does not hold for `NASR` itself. Tested by
+      `test_nasr_reads_from_the_supplied_cache_dir_and_never_touches_package_data`.
+- [x] **4B.10** **Agent: Sol.** Fix exact-cycle semantics: when `cycle`/`useDate` is supplied and
+      no cycle with that exact effective date exists in the cache, raise
+      `CycleNotFoundError` naming the requested date and the searched cache
+      directory. Do not fall back to an earlier cycle with a warning — that
+      silent-fallback behavior is the specific defect "Behavioral
+      requirements" above already prohibits and `RELEASE.md` already lists
+      as a release blocker. When `cycle`/`useDate` is omitted, select
+      `CycleManager.latest()`. The one existing test asserting the old
+      fallback-with-warning behavior was already gone by this pass (removed
+      in an earlier session alongside the `<=` date-comparison fix).
+- [x] **4B.11** **Agent: Terra.** Add a regression test constructing `NASR(cycle=<date not in the
+      cache>)` and asserting `CycleNotFoundError` is raised (not a warning
+      followed by successful construction against a different cycle).
+      `test_exact_cycle_request_never_silently_falls_back_to_an_earlier_cycle`
+      in `tests/test_milestone_1_terra.py`.
+- [x] **4B.12** **Agent: Terra.** Add a regression test constructing `NASR(cache_dir=<tmp_path>)`
+      against a temporary cache populated via `CycleManager.import_archive`,
+      confirming `NASR()` reads from the supplied `cache_dir` and never
+      touches `openNASR/data/`.
+      `test_nasr_reads_from_the_supplied_cache_dir_and_never_touches_package_data`
+      in `tests/test_milestone_1_terra.py`.
+
+### `NASR` table loading: delegate to `TableRepository`
+
+- [x] **4B.13** **Agent: Terra.** Replace `NASR.loadCSVData`'s eager per-file `read_csv` loop with
+      a `TableRepository` constructed against the resolved cycle's CSV
+      directory. `NASR` continues to subclass `dict` (or is changed to wrap
+      a `TableRepository` while preserving `Mapping` compatibility per
+      Milestone 4's "Implement `collections.abc.Mapping` instead of
+      subclassing `dict` if behavior can remain compatible" — pick whichever
+      keeps `nasr["APT_BASE"]`, `"APT_BASE" in nasr`, and `nasr.keys()`
+      working for every existing caller, and document the choice in the
+      decision log if it changes `NASR`'s base class). Kept `NASR(dict)`;
+      the instance's own `dict` body is never populated — every `Mapping`
+      protocol method (`__getitem__`, `__contains__`, `keys`, `__iter__`,
+      `__len__`, `get`) delegates to the wrapped `TableRepository`. Also
+      extended `TableRepository.__init__` with an optional `read_options`
+      kwarg so `NASR` can pass the raw-string-preserving
+      `dtype=str, keep_default_na=False, na_filter=False` policy through
+      (needed only for schema-aware cycles; see the note on `TableRepository`
+      in the decision log).
+- [x] **4B.14** **Agent: Terra.** Preserve the schema-validation behavior currently interleaved
+      into `loadCSVData` (the `SchemaCatalog.identify_schema`/`validate`/
+      `require_compatible` calls and the diagnostic-mode bypass) by running
+      it against each table lazily, the first time that table is loaded
+      through `TableRepository`, rather than eagerly for every table at
+      construction time. A `SchemaMismatchError` for one incompatible table
+      must not prevent constructing `NASR` or using unrelated tables that
+      pass validation — this is a behavior change from the current
+      eager-validation code, so add a regression test asserting that
+      accessing a valid table succeeds even when a different, unrelated
+      table in the same cycle has drifted.
+      `test_schema_drift_on_one_table_does_not_block_an_unrelated_valid_table`
+      in `tests/test_milestone_1_terra.py`. See the whole-cycle-vs-per-table
+      distinction noted above this task list.
+- [x] **4B.15** **Agent: Terra.** Confirm `NASR.table(name, *, copy=False)` (Milestone 4's
+      documented method) is implemented and delegates to the wrapped
+      `TableRepository.table()`. Tested by
+      `test_nasr_table_method_returns_cached_frame_or_a_defensive_copy`.
+- [x] **4B.16** **Agent: Terra.** Add a regression test using a real-sized fixture (or a
+      generated large synthetic table, if the fixture stays small) proving
+      `NASR()` construction time does not scale with the number of rows in
+      unrelated tables — e.g. assert that constructing `NASR()` and calling
+      `nasr.is_loaded("APT_BASE")` returns `False` before `nasr["APT_BASE"]`
+      or `nasr.airport(...)` is ever accessed. This is the concrete,
+      testable form of Milestone 4's "NASR() loads zero DataFrames until a
+      table or entity is requested" acceptance criterion, which does not
+      currently hold.
+      `test_nasr_does_not_load_tables_until_they_are_requested` in
+      `tests/test_milestone_1_terra.py` — this test is what caught the
+      `FixRepository`/`NavaidRepository` eager-loading bug noted above.
+
+### CLI default provider
+
+**Status update (2026-08-16): complete.** `openNASR` ships a default
+`FaaCycleProvider` (see "Resolved: the FAA cycle-discovery provider" above);
+4B.17-4B.19 below are done and tested.
+
+- [x] **4B.17** **Agent: Terra.** Construct the default `FaaCycleProvider()` as the default
+      `provider=` for the `CycleManager()` instances `cli.py` and
+      `notify_if_update_available()` construct when no manager/provider is
+      injected.
+- [x] **4B.18** **Agent: Terra.** Add `try`/`except` handling in `cli.py`'s `main()` mapping
+      `ValueError` (usage/configuration problems), `DownloadError`/
+      `ArchiveError` (network/data unavailable), and `SchemaMismatchError`/
+      other `OpenNASRError` subclasses (validation failure) to the
+      `ExitCode` values already defined but unused
+      (`USAGE_ERROR`, `UNAVAILABLE`, `VALIDATION_ERROR`, `INTERNAL_ERROR`).
+      Tested by `test_default_check_and_download_use_a_provider_and_report_typed_errors`
+      and `test_cli_maps_configuration_and_validation_errors_without_tracebacks`
+      in `tests/test_cli.py`, both asserting a documented exit code and no
+      traceback in stderr.
+- [x] **4B.19** **Agent: Terra.** Add a regression test for `notify_if_update_available()`
+      proving the default provider is actually used, not just that failures
+      are swallowed: `test_update_notification_uses_default_faa_provider`
+      in `tests/test_cycles.py` monkeypatches `FaaCycleProvider` and asserts
+      its `discover()` was called.
+
+Acceptance criteria:
+
+- [x] `NASR()` with no arguments resolves its cache directory using
+      `CycleManager`'s documented precedence, not `Path(__file__).parent`.
+- [x] `NASR()` does not write into `site-packages` or the source checkout.
+- [x] `NASR(cycle=<date>)` for a date not present in the cache raises
+      `CycleNotFoundError`; it never silently substitutes a different cycle.
+- [x] `NASR()` construction does not call `read_csv` on any table until that
+      table is actually requested (directly or through a repository).
+      Verified directly: constructing `NASR()` against a real fixture cache
+      and enumerating `nasr.keys()` shows zero tables with
+      `nasr.is_loaded(name) is True` immediately after construction.
+- [x] `CycleManager.available_cycles()`, `CycleManager.latest()`, and
+      `CycleManager.remove(archive=..., extracted=...)` exist and are tested.
+- [x] `from openNASR import CycleManager` succeeds.
+- [x] `opennasr check` and `opennasr download`, invoked with no injected
+      manager, work end-to-end against a real (allowlisted, scheme-checked)
+      FAA HTML scrape, or fail with a clear, typed, documented-exit-code
+      error — never an unhandled `ValueError` traceback.
+- [x] All Milestone 1, 1B, 2, 3, and 4 regression tests that depend on `NASR`
+      construction still pass (227 passed, 1 skipped as of this pass). Every
+      fixture that previously monkeypatched `openNASR.nasr.__file__` to fake
+      a package-relative data directory (`tests/conftest.py`'s `fixture_nasr`
+      and `make_nasr_from_fixture`) was rewritten to pass `cache_dir=`
+      instead, since `NASR` no longer reads `__file__` at all.
+- [x] `RELEASE.md`'s release-blocker list is updated to remove every blocker
+      this milestone resolves.
 
 ## Milestone 5: Normalize the domain API
 
@@ -1688,6 +2076,20 @@ Later `1.x` milestones add repositories using the same contract.
 
 ### ARTCC and boundary requirements
 
+**Status correction (2026-08-16, post-implementation review):** the geometry
+work below (disjoint-polygon handling, `Polygon`/`MultiPolygon` selection,
+`bbox` in standard Shapely order, documented `latlon`/`lonlat` coordinate
+order) was genuinely implemented and is correct, but it was implemented
+entirely inside the legacy `openNASR/arb.py` module (`Boundary`, `ARTCC`,
+`ARB`), not as a new `Artcc`/`ArtccRepository` facade. There is no
+`nasr.artccs` repository and no `nasr.artcc(identifier)` method anywhere in
+`openNASR/nasr.py`, despite both being part of this milestone's own "NASR
+facade methods" contract above and despite FILESTYPES.md listing them as
+`Existing`. ARTCC access still requires the pre-Milestone-5 pattern —
+`nasr.loadARTCC()` then `nasr.artcc.getARTCC(id)` — and `getARTCC` returns
+`None` on a miss instead of raising `RecordNotFoundError`, unlike every
+other lookup modernized by this milestone. See Milestone 5B for the fix.
+
 - [x] **Agent: Terra.** Replace dynamic attributes as the sole boundary interface with an
       explicit mapping keyed by altitude or boundary type.
 - [x] **Agent: Terra.** Retain `.high` and `.low` compatibility properties where meaningful.
@@ -1704,6 +2106,143 @@ Acceptance criteria:
 - Domain objects are type annotated and have useful representations.
 - Raw field access remains possible.
 - Compatibility tests cover legacy imports, class aliases, and constructors.
+
+## Milestone 5B: Add the modern Artcc facade
+
+Goal: give `ARB_BASE`/`ARB_SEG` the same repository-based facade every other
+required-for-`1.0.0` family already has (`nasr.artccs`, `nasr.artcc()`), so
+the "NASR facade methods" contract in Milestone 5 above is actually true.
+This does not redo the geometry work — `openNASR/arb.py`'s `Boundary` class
+already implements disjoint-polygon handling, `Polygon`/`MultiPolygon`
+selection, standard-order `bbox`, and documented `latlon`/`lonlat` correctly
+(see the "Status correction" note under Milestone 5's "ARTCC and boundary
+requirements" above) — it wraps that existing, verified geometry logic in a
+`Get`/`find`-style repository matching `ClassAirspaceRepository`
+(`openNASR/airspace.py`), the closest existing precedent for a single-table,
+single-identity-column repository with rich child geometry.
+
+**Status update (2026-08-16, fifth pass): complete.** All 10 tasks below are
+done, tested, and verified against the full suite (238 passed), `mypy`
+(clean), and `ruff` (clean). One real behavioral subtlety surfaced during
+implementation, documented in a new test and the decision log: calling
+`nasr.loadARTCC()` assigns the *instance attribute* `nasr.artcc` (an `ARB`
+object), which shadows the `NASR.artcc()` *method* of the same name once
+called on that instance. Both entry points still coexist as the plan
+requires, but `nasr.artcc(...)` only works as a method call before
+`loadARTCC()` has been invoked on that instance — after that, `nasr.artcc`
+resolves to the legacy `ARB` object instead.
+
+Tasks:
+
+- [x] **5B.1** **Agent: Terra.** Add `ArtccRecord(FaaRecord)` to `openNASR/airspace.py` (the module
+      "Architectural decisions > Package layout" above already assigns
+      `ARB_BASE`/`ARB_SEG` to), exposing typed nullable properties for the
+      columns `openNASR/arb.py`'s `ARTCC.__init__` currently reads
+      positionally: `location_id` (`LOCATION_ID`), `name` (`LOCATION_NAME`),
+      `center_type` (`LOCATION_TYPE`), `city` (`CITY`), `state` (`STATE`),
+      `country` (`COUNTRY_CODE`), `latitude`/`longitude`
+      (`LAT_DECIMAL`/`LONG_DECIMAL`). Follow `ClassAirspaceRecord`'s
+      `_text()` helper pattern for nullable string access.
+- [x] **5B.2** **Agent: Terra.** Add an `ArtccBoundary` class to `airspace.py` that wraps the
+      existing `openNASR.arb.Boundary` (import and reuse it directly; do not
+      reimplement the ring-splitting or bounds logic). Expose the same
+      `lat`, `lon`, `latlon`, `lonlat`, `getShape`, and `bbox` properties
+      `Boundary` already provides, so callers migrating from `ARTCC.high`/
+      `ARTCC.low` see an identical interface on the new class.
+- [x] **5B.3** **Agent: Terra.** Add an `Artcc` rich object to `airspace.py` wrapping an
+      `ArtccRecord` plus a `boundaries: Mapping[str, ArtccBoundary]` keyed
+      by lowercased altitude (`"high"`/`"low"`, matching
+      `ARTCC.addboundary`'s existing `key = altitude.lower()` convention).
+      Add `.high`/`.low` properties that return `self.boundaries.get("high")`/
+      `self.boundaries.get("low")` for compatibility with the pattern
+      `openNASR/arb.py`'s `ARTCC` already established, per Milestone 5's
+      "Retain `.high` and `.low` compatibility properties where meaningful."
+- [x] **5B.4** **Agent: Terra.** Add `ArtccRepository` to `airspace.py` following
+      `ClassAirspaceRepository`'s shape: `__init__(self, nasr)`, a `_table`
+      property returning `self._nasr["ARB_BASE"]`, `find(identifier=None,
+      **filters)` and `get(identifier, **filters)`. `identifier` is a single
+      `LOCATION_ID` (unlike `ClassAirspaceRepository`'s composite key).
+      `get()`/`find()` must build each `Artcc`'s `boundaries` by grouping
+      `ARB_SEG` rows on `(LOCATION_ID, ALTITUDE, TYPE)` — the exact grouping
+      `ARB.__init__`'s existing `drop_duplicates()` loop already performs —
+      and constructing one `ArtccBoundary` per `(ALTITUDE, TYPE)` group from
+      that ARTCC's `LONG_DECIMAL`/`LAT_DECIMAL` points, preserving FAA row
+      order (do not sort the points; `Boundary._rings` depends on
+      encountering each ring's points in source order to detect where a
+      ring closes). Implemented with `DataFrame.groupby(["ALTITUDE", "TYPE"],
+      sort=False)`, verified directly that this preserves both first-seen
+      group order and intra-group row order.
+- [x] **5B.5** **Agent: Terra.** Raise `RecordNotFoundError` from `ArtccRepository.get()` for an
+      unmatched `LOCATION_ID`, replacing the legacy `ARB.getARTCC()`
+      behavior of returning `None` on a miss — this repository is new code,
+      not a compatibility shim, so it should follow the typed-exception
+      convention every other Milestone 5 repository uses.
+- [x] **5B.6** **Agent: Terra.** Register `ARB_BASE` and `ARB_SEG` in `registry.py`'s
+      `RICH_RECORD_TYPES` (currently absent — verify with
+      `TableRegistry().table("ARB_BASE").record_type`, which returns generic
+      `FaaRecord` today) pointing at `ArtccRecord`. `ARB_SEG` has no single
+      natural "record" class of its own (its rows are consumed as boundary
+      points, not exposed individually); leave it unmapped or map it to a
+      minimal `ArtccBoundarySegmentRecord` if the coverage-report tests from
+      Milestone 1B/7 require every operational table to have an entry —
+      check `tests/test_schema_coverage_report.py`'s exact assertions before
+      deciding. Confirmed `test_schema_coverage_report.py` has no such
+      requirement; only `ARB_BASE` was mapped, `ARB_SEG` stays unmapped
+      (generic `FaaRecord`). Updated the coverage report's expected
+      `rich_record_table_count` (40 -> 41) and `rich_record_tables` list.
+- [x] **5B.7** **Agent: Terra.** Wire `self.artccs = ArtccRepository(self)` into `NASR.__init__`
+      in `nasr.py`, alongside every other eagerly constructed repository
+      (`self.airports`, `self.fixes`, etc. — repository construction is
+      cheap; it only stores a reference, per the existing pattern for every
+      other family). Add `def artcc(self, identifier): return
+      self.artccs.get(identifier)` alongside `NASR`'s other singular
+      convenience methods (`airport`, `fix`, `navaid`, ...), matching
+      Milestone 5's documented `nasr.artcc(identifier) -> Artcc` contract.
+      Implemented with `**filters` passthrough (matching `navaid`'s shape)
+      even though `ArtccRepository` only supports `state`/`country` filters
+      today.
+- [x] **5B.8** **Agent: Luna.** Export `Artcc`, `ArtccBoundary`, `ArtccRecord`, and
+      `ArtccRepository` from `openNASR/__init__.py` and add them to
+      `__all__`, following the existing export pattern for
+      `ClassAirspace`/`ClassAirspaceRepository`. `ArtccRecord` also
+      registered in `records.py`'s `_COMPATIBILITY_RECORD_MODULES` mapping
+      to `"airspace"`, matching `ClassAirspaceRecord`'s existing treatment.
+- [x] **5B.9** **Agent: Terra.** Add compatibility forwarding: keep `openNASR/arb.py`'s `ARB`,
+      `ARTCC`, and `Boundary` classes importable and working exactly as
+      today (per "Compatibility policy" below, legacy constructors and
+      names are retained through `1.x`). Do not delete or alter
+      `NASR.loadARTCC()`/`nasr.artcc` (the legacy attribute, distinct from
+      the new plural `nasr.artccs`) — both entry points coexist during the
+      compatibility period. `arb.py` was not modified at all; `airspace.py`
+      imports `Boundary` from it directly.
+- [x] **5B.10** **Agent: Terra.** Add regression tests: `nasr.artccs.get("ZOB")` and
+      `nasr.artcc("ZOB")` return equivalent `Artcc` objects (mirroring the
+      existing "repository `.get()` and the singular convenience method
+      return equivalent rich objects" test pattern from Milestone 5's "NASR
+      facade methods" section); `artcc.boundaries["high"]`/`artcc.high`
+      return the same object; `artcc.high.bbox`/`.getShape` match what
+      `ARB(nasr).getARTCC("ZOB").high` already returns for the same
+      fixture, proving the new facade wraps the same, already-verified
+      geometry; `nasr.artccs.get("does-not-exist")` raises
+      `RecordNotFoundError`. All in `tests/test_airspace.py`:
+      `test_artcc_repository_get_and_singular_facade_are_equivalent`,
+      `test_artcc_facade_boundary_matches_the_legacy_arb_geometry` (uses
+      `.equals()` for exact Shapely geometry comparison, not just bbox),
+      `test_artcc_repository_raises_record_not_found_for_an_unmatched_identifier`,
+      and `test_legacy_load_artcc_still_works_alongside_the_modern_facade`
+      (documents the `nasr.artcc` shadowing behavior noted above).
+
+Acceptance criteria:
+
+- [x] `nasr.artccs` and `nasr.artcc(identifier)` exist and are documented,
+      matching the contract in Milestone 5's "NASR facade methods" section.
+- [x] `Artcc.high`/`Artcc.low` and the new `boundaries` mapping return geometry
+      identical to the legacy `ARB(nasr).getARTCC(id).high`/`.low` for the same
+      cycle. Verified with exact Shapely `.equals()` comparison, not just bbox.
+- [x] The legacy `ARB`/`ARTCC`/`Boundary`/`nasr.loadARTCC()`/`nasr.artcc`
+      (singular legacy attribute) path continues to work unchanged.
+- [x] `TableRegistry().table("ARB_BASE").record_type` returns `ArtccRecord`, not
+      generic `FaaRecord`.
 
 ## Milestone 6: Correct geometry and plotting
 
@@ -2037,6 +2576,16 @@ python -m twine check dist/*
 Agents may run focused subsets during development, but the entire set is the
 release gate.
 
+**Status update (2026-08-16): the full six-command gate has been run
+end-to-end in one pass and is currently clean**, plus a clean-virtual-environment
+install/import check and a wheel-contents check for `openNASR/data/`. See
+`RELEASE.md`'s "Release gate: last full run" section for the exact output
+and the two non-cosmetic fixes (a formatting pass across hand-edited files
+from Milestones 4B/5B, and two long f-string lines in
+`tools/generate_schema_manifests.py`) that came out of it. Re-run before any
+future release cut, since this is a point-in-time snapshot, not a standing
+guarantee.
+
 ## Security and reliability requirements
 
 - Treat ZIP archives and downloaded content as untrusted input.
@@ -2163,3 +2712,16 @@ report has no operational table without a rich API.
 | 2026-08-15 | Treat `FILESTYPES.md` as authoritative for approved module and API names. | A single naming source prevents the plan and implementation from drifting. |
 | 2026-08-16 | Support Python 3.10 and newer. | Python 3.10 is the plan's default baseline, and the current source uses no feature requiring a newer minimum. |
 | 2026-08-16 | Define the supported inventory as 63 operational tables plus 24 schema-description files in both 2026 manifests; remove plan-only `AWY_ALT` and `AWY_SEG` entries and model `AWY_SEG_ALT` as `AirwaySegmentRecord`. | Both official packages contain the same 87 CSV files, and neither contains `AWY_ALT` or `AWY_SEG`; `AWY_SEG_ALT` contains the ordered segment and altitude fields. |
+| 2026-08-16 | Correct Milestones 3, 4, and 5's checked-off tasks with "Status correction" notes rather than unchecking them, and add Milestones 4B and 5B to fix the underlying gaps. | A post-implementation review found `NASR` never actually uses `CycleManager`/`TableRepository` despite those classes' own tasks being complete and tested in isolation, and no modern `Artcc` facade exists despite the underlying geometry work being done inside legacy `arb.py`. Unchecking the boxes would misrepresent the real, verified work already done in `CycleManager`/`TableRepository`/`Boundary`; a correction note plus a new milestone keeps both facts visible. |
+| 2026-08-16 | (Superseded, see the next entry.) Do not hardcode a guessed FAA metadata URL into `FaaCycleProvider`'s default. | No confirmed machine-readable FAA endpoint for cycle discovery exists in this repository; `README.md` links only an HTML subscription page. Milestone 4B Task 4B.1 requires this to be researched and the finding recorded before any default provider ships. |
+| 2026-08-16 | Resolve Milestone 4B Tasks 4B.1/4B.2: `FaaCycleProvider` discovers the current cycle by scraping the real FAA subscription landing page's *Current* section (by heading text) for a dated detail-page link, then that detail page for the explicit NFDC ZIP URL, validating scheme and hostname allowlists at each hop and rejecting Preview/mismatched links. `openNASR` ships this as the default provider for the CLI and import-time update notification. | No stable JSON/XML FAA feed exists, so a JSON-based provider (the earlier design) could never work. Scraping the FAA's own two-page HTML flow directly, with host/scheme allowlisting and explicit archive-filename verification, avoids trusting an unverified third-party mirror while still requiring no manual configuration for the common case. |
+| 2026-08-16 | Complete `CycleManager.available_cycles()`/`latest()`/`remove(archive=, extracted=)`, export `CycleManager` from the package root, wire a default `FaaCycleProvider` into the CLI and import-time notifier, and map CLI exceptions to typed exit codes (Milestone 4B tasks 4B.3-4B.7, 4B.17-4B.19). | These were self-contained, low-risk completions of already-designed APIs, independent of the much larger `NASR.__init__`/`setupFiles`/`loadCSVData` rewrite (4B.8-4B.16) still required to make `NASR()` itself use the external cache and lazy table loading. |
+| 2026-08-16 | Have `CycleManager.remove()` return a `RemovalResult(removed_archive, removed_extracted)` instead of `None`. | `cli.py`'s `remove` command needed to report what was actually removed; without a return value it had to duplicate `remove()`'s archive/extracted path construction and check existence before calling `remove()`, both a maintenance hazard and a narrow TOCTOU race against concurrent deletion. |
+| 2026-08-16 | Complete Milestone 4B tasks 4B.8-4B.16: rewrite `NASR.__init__`/`setupFiles`/table loading to use `CycleManager` and `TableRepository`. `NASR` no longer reads `Path(__file__).parent`, never falls back from an exact cycle request, and loads no table until first accessed. | This was the last major gap between the documented `NASR(cycle=, cache_dir=)` API and reality; every other Milestone 3/4 piece (`CycleManager`, `TableRepository`) was already complete and tested in isolation but never wired into the class users actually construct. |
+| 2026-08-16 | Keep `TableRegistry.require_modeled` (the "every discovered table name is known" check) eager at `NASR` construction; only per-table `SchemaCatalog.validate`/`ValidationReport.require_compatible` became lazy, deferred to first access of that specific table. | `require_modeled` is a whole-cycle, filenames-only question (cheap, no CSV parsing) that an existing test already required to fire at `NASR()` construction time; only the expensive, genuinely per-table structural validation needed to become lazy to satisfy "a drifted table must not block an unrelated valid one." |
+| 2026-08-16 | Give `RecordRepository` an optional deferred-loading mode (`_frame` as a property backed by `nasr[table_name]`, resolved on first access) and switch `FixRepository`/`NavaidRepository` to it. | Making `NASR` construction lazy exposed that both repositories read `nasr["FIX_BASE"]`/`nasr["NAV_BASE"]` directly in `__init__`, so every `NASR()` call eagerly loaded those two tables regardless of need — previously masked because `NASR()` already loaded everything anyway. Caught by a new regression test asserting `nasr.is_loaded("NAV_BASE")` stays `False` after only touching `APT_BASE`. |
+| 2026-08-16 | Extend `TableRepository.__init__` with an optional `read_options` kwarg instead of giving `NASR` its own separate CSV-reading path. | `NASR` needs the raw-string-preserving `dtype=str, keep_default_na=False, na_filter=False` policy for schema-aware cycles, but the original `TableRepository.load()` always called `read_csv(path)` with no options and only retried on `UnicodeDecodeError` (narrower and more deliberate than the legacy `nasr.py`'s broad `except Exception`/`backslashreplace` retry, matching Milestone 4's "handle encoding fallback narrowly" requirement) — reusing and extending it, rather than duplicating loading logic in `NASR`, keeps one source of truth for how a cycle's tables are read. |
+| 2026-08-16 | Complete the "Complete-coverage tests" checklist (9 remaining items) with a mix of checking off already-satisfied items (verified by running the specific existing test before marking) and writing new tests for the genuinely unwritten ones. | Several checklist items — "every `TableSpec.record_type` subclasses `FaaRecord`", "every filename in each supported manifest is discovered" — were already proven true by existing tests but never marked; checking them off without writing a duplicate test avoids redundant coverage. The remaining items (a per-table load/construct sweep, aggregate isolation, missing-required-table, leading-zero/null preservation, boundary point order, and a real-registry table-removal meta-test) had no equivalent coverage and were written fresh, each reusing existing schema/fixture infrastructure rather than hand-authoring new fixture directories. |
+| 2026-08-16 | Complete Milestone 5B: add `ArtccRecord`/`ArtccBoundary`/`Artcc`/`ArtccRepository` to `airspace.py`, wrap the existing `arb.py` `Boundary` geometry directly rather than reimplementing it, wire `nasr.artccs`/`nasr.artcc()` into `NASR`, register `ARB_BASE` in `RICH_RECORD_TYPES`, and export all four new names. | This was the one remaining gap between the documented "NASR facade methods" contract (which already listed `nasr.artccs`/`nasr.artcc()`) and reality; the underlying geometry was already correct and tested, so this was a wrapping exercise, not new geometry work — verified with exact Shapely `.equals()` comparisons against the legacy `ARB` path, not just bounding-box equality. |
+| 2026-08-16 | Leave `nasr.artcc()` (the new method) and `nasr.loadARTCC()`'s `self.artcc = ARB(self)` (the legacy attribute assignment) coexisting under the same name, per PLAN.md's explicit instruction not to alter either. | Verified directly that this creates a real, if narrow, behavioral trap: before `loadARTCC()` is called on an instance, `nasr.artcc` resolves to the `NASR.artcc` bound method and `nasr.artcc("ZOB")` works; after `loadARTCC()` is called, the instance attribute shadows the method and `nasr.artcc("ZOB")` would fail (`ARB` objects aren't callable). Both entry points still "coexist" as required, but not simultaneously callable through the same name on one instance. Documented in a dedicated regression test (`test_legacy_load_artcc_still_works_alongside_the_modern_facade`) rather than silently leaving it undiscovered; not fixed because the plan explicitly forbids altering either name during the compatibility period. |
+| 2026-08-16 | Run the full six-command release gate (`pytest`, `ruff format --check`, `ruff check`, `mypy`, `build`, `twine check`) end-to-end in one pass for the first time, rather than continuing to rely on the piecemeal `pytest`/`mypy`/`ruff check` runs used throughout development. | `RELEASE.md` had explicitly listed "the full verification matrix has never been run as a single release-gate pass" as the one remaining blocker once Milestones 4B and 5B closed the engineering gaps. Running it surfaced two real, non-cosmetic fixes (`ruff format` reformatting hand-written code from this session, and two long f-string lines in `tools/generate_schema_manifests.py` that needed manual wrapping) — confirming the gate does real work and isn't a no-op. Also verified beyond the six commands: no `openNASR/data/` path in the built wheel, and a clean-virtualenv install/import succeeds from outside the source tree. |
