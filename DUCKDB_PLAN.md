@@ -401,7 +401,7 @@ observable contents; corrupted/partial artifacts are rejected.
 
 ### Phase 13.2 — Table-store abstraction and parity
 
-- [ ] **13.2.1 — Agent: Terra.** Extract a minimal internal table-store
+- [x] **13.2.1 — Agent: Terra.** Extract a minimal internal table-store
   protocol from `TableRepository` without changing CSV behavior. Keep
   `TableRepository` as the reference implementation.
 
@@ -481,13 +481,123 @@ CSV source data unless explicitly requested.
 
 ### Phase 13.4 — Query acceleration and service readiness
 
-- [ ] **13.4.1 — Agent: Sol.** Select a small, stable public query surface for
+- [x] **13.4.1 — Agent: Sol.** Select a small, stable public query surface for
   server use. Prefer typed, parameterized filters over a public raw-SQL
   endpoint. Define pagination, maximum result size, field selection, and error
   semantics.
 
   Acceptance: proposal names exact endpoints/functions and explicitly defers
   arbitrary SQL execution.
+
+#### 13.4.1 public read-only query contract
+
+The first query surface is one library method and one direct HTTP mapping; it
+is intentionally table-oriented so it does not create a second set of domain
+record models:
+
+```python
+page = nasr.query_table(
+    "APT_BASE",
+    filters=(QueryFilter.eq("ARPT_ID", "ATL"),),
+    fields=("ARPT_ID", "ARPT_NAME", "LAT_DECIMAL", "LONG_DECIMAL"),
+    page_size=100,
+    cursor=None,
+)
+```
+
+The exact public Python entry point is
+`NASR.query_table(table, *, filters=(), fields=None, page_size=100,
+cursor=None) -> QueryPage`. `QueryFilter`, `QueryOperator`, `QueryPage`, and
+the query error types live in `openNASR.query` and are re-exported from
+`openNASR`. The corresponding future service operation is
+`POST /v1/cycles/{cycle}/query`; its JSON body contains `table`, `filters`,
+`fields`, `page_size`, and `cursor`, and its response is the JSON form of
+`QueryPage`. This plan defines that transport mapping but does not add FastAPI
+or an HTTP server.
+
+`QueryFilter` is immutable and has `field`, `operator`, and `value` members.
+The first release supports only `QueryOperator.EQ` with one string value and
+`QueryOperator.IN` with a non-empty tuple of string values. Filters are joined
+with `AND`; `OR`, comparisons, pattern/regular-expression matching, joins,
+aggregation, ordering supplied by callers, expressions, and NULL-specific
+operators are deferred. Values compare against preserved raw source strings,
+so blank string is a valid value and comparisons are case-sensitive. Table
+and field identifiers must resolve against the selected cycle's validated
+catalog before any statement is prepared. Values are always bound parameters;
+identifiers are never accepted as SQL fragments.
+
+`fields` is either `None`, meaning every source field in source order, or a
+non-empty tuple of at most 64 field names. Matching table and field names is
+case-insensitive after surrounding whitespace is stripped; response keys use
+the catalog's canonical names and retain requested field order. Duplicate or
+unknown fields are errors, and internal ingestion/order columns are never
+selectable. At most eight filters and 100 values across all `IN` filters are
+accepted. A query with no matches succeeds with an empty `rows` tuple.
+
+`QueryPage` is immutable and contains `table`, `fields`, `rows`,
+`effective_date`, `schema_fingerprint`, `next_cursor`, and
+`storage` (`"csv"` or `"duckdb"`). `rows` is an ordered tuple of mappings from
+canonical field name to preserved source string. It deliberately omits a
+total-count query. Results use source row order with a private source-row
+ordinal as the final deterministic tie-breaker; this ordinal is not exposed
+as a field. CSV and DuckDB produce byte-for-byte equivalent values and page
+boundaries.
+
+Pagination is cursor-based. `page_size` must be from 1 through 1,000. The
+default is 100 and the server may configure a lower cap, never a higher one.
+The opaque, versioned cursor binds the effective date, schema fingerprint,
+canonical table, normalized filters, selected fields, page size, and next
+source-row position. Reusing it with any different request or cycle raises
+`InvalidQueryCursorError`; expiry is unnecessary because completed cycle
+artifacts are immutable. Implementations must additionally stop before an
+8 MiB UTF-8 JSON-equivalent page payload and return a smaller non-empty page
+with `next_cursor` when possible. If one row alone exceeds 8 MiB,
+`QueryResultTooLargeError` is raised. These are library limits; an HTTP
+deployment may impose stricter request/body limits.
+
+All query failures are typed beneath `QueryError`:
+
+| Error | Meaning | Suggested HTTP mapping |
+| --- | --- | --- |
+| `QueryValidationError` | Invalid page size, empty/oversized selection, too many filters/values, or malformed typed value. | 422 |
+| `QueryTableNotFoundError` | The requested table is not in the selected cycle's validated catalog. | 404 |
+| `QueryFieldNotFoundError` | A selected or filtered field is absent. | 422 |
+| `UnsupportedQueryOperatorError` | The operator is not `EQ` or `IN`. | 422 |
+| `InvalidQueryCursorError` | Cursor is malformed, unsupported, or does not match the exact query/cycle. | 422 |
+| `QueryResultTooLargeError` | One source row cannot fit under the payload cap. | 413 |
+
+Cycle/database absence and incompatibility continue to use the lifecycle
+errors defined by 13.1/13.3; the query layer does not relabel them as an empty
+result. Storage/driver failures also propagate as typed storage errors rather
+than leaking DuckDB exceptions. HTTP error bodies should contain a stable
+machine code and message but no SQL, filesystem path, cursor internals, or
+bound values.
+
+Arbitrary SQL execution is explicitly outside the public contract. There is
+no `NASR.sql`, SQL request field, `/sql` endpoint, or escape hatch accepting a
+predicate/order expression. The implementation in 13.4.3 may generate private
+read-only SQL for the operations above and must retain the DataFrame fallback
+when an operation is unsupported by a backend.
+
+Tests required when 13.4.3 implements this contract:
+
+- parameterize CSV and DuckDB over `EQ`, `IN`, multiple `AND` filters, blank
+  values, duplicates, no matches, and both schema-generation fixtures;
+- prove projection order, canonical response names, `fields=None`, and
+  rejection of empty, duplicate, unknown, internal, and over-64 field lists;
+- prove page sizes 1 and 1,000, reject 0 and 1,001, traverse all pages without
+  gaps/duplicates, and assert identical backend page boundaries;
+- reject malformed/version-mismatched cursors and cursors replayed with a
+  different cycle, schema, table, filter, projection, or page size;
+- exercise the 8 MiB boundary, early page truncation, one-oversized-row error,
+  maximum filter count, maximum aggregate `IN` values, and empty `IN`;
+- assert every public error class and proposed HTTP status, and verify messages
+  do not expose SQL, bound values, cursor payloads, or local paths;
+- use adversarial table/field/value strings to prove identifier allowlisting,
+  bound parameters, read-only operation, and the absence of any public raw-SQL
+  method or `/sql` route;
+- verify result provenance, deterministic source ordering, no total-count
+  query, DataFrame fallback behavior, and no mutation of the per-cycle DB.
 
 - [ ] **13.4.2 — Agent: Terra.** Add only benchmark-justified indexes for
   registry identity keys and high-value relationship keys. Record each index,
@@ -578,6 +688,7 @@ branches open.
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
+| 2026-08-17 | Approve the 13.4.1 read-only query contract: `NASR.query_table(...) -> QueryPage` and the future `POST /v1/cycles/{cycle}/query` mapping support only allowlisted fields, typed `EQ`/`IN` filters, cursor pagination, and bounded projection/results; no public arbitrary-SQL surface is provided. | A narrow parameterized API serves common identity/filter workloads, preserves exact-cycle provenance and CSV/DuckDB parity, and keeps SQL injection, unbounded scans/results, and backend-specific expressions out of the compatibility contract. |
 | 2026-08-17 | Plan DuckDB as an explicit optional, per-cycle local storage backend; retain CSV as the default first-release backend. | It accelerates repeated local/API-style queries while preserving the current public DataFrame and repository contract, avoids a forced dependency, and makes source/provenance boundaries clear. |
 | 2026-08-17 | Store the database beside the exact extracted cycle and treat it as a rebuildable derivative. | This makes historical-date selection deterministic and permits removal/rebuild without losing the FAA archive or CSV source data. |
 | 2026-08-17 | Preserve raw FAA values as strings before adding any typed/analytic views. | NASR fields include identifiers and source text where leading zeroes and blanks are meaningful; automatic database type inference risks silent data changes. |
