@@ -296,3 +296,48 @@ are later defects reached after procedure expansion; they include the known
 ambiguity and missing-data outcomes remain visible rather than being credited
 as Phase 2 successes. Gate 2 approval means Phase 2 no longer blocks Phase 3;
 it does not waive those later-phase failures or the 76/84 release target.
+
+## Gate 3 approval (2026-08-17)
+
+**Decision: approved.** The review used airway fix commit `ecf8bfc`, navaid
+fix commit `6faacb4`, and T3.7 test commit `7d8e259`. The focused command
+`.venv/bin/pytest -q tests/test_flightplan.py
+tests/test_route_regression_fixture.py` passed all 30 tests.
+
+Real `2026-05-14` cycle probes confirmed that airway lookup now uses the
+published `AWY_ID` rather than comparing the token prefix with
+`AWY_DESIGNATION`:
+
+| Token | Published designation | Verified segment |
+| --- | --- | --- |
+| `Q1` | `RN` | `PYE` → `ETCHY` |
+| `T200` | `RN` | `CLL` → `COUTH` |
+| `Y183` | `AT` | `IKBIX` → `PEAKY` |
+
+The real-cycle route `KBBG..EOS..ICT..KHUT/0038` also returned four ordered
+coordinates. `NAV_BASE` contains both an `ICT` `VORTAC` and an `ICT` `VOT`;
+the returned ICT coordinate was the operational `VORTAC` coordinate
+`(37.74525719, -97.58382833)`, while genuine multiple-operational-candidate
+ambiguity remains covered by T3.7.
+
+The unchanged canonical sample and shared-resolver policy produced 81/100
+no-exception results and 77/84 on the fixed domestic denominator, exceeding
+the 76/84 release coverage target. Compared with approved Gate 2, 21 more
+failures now return paths and no Gate 2 success regressed. Compared with T0.2,
+43 former failures now return paths and no baseline success regressed.
+
+| Category | T0.2 baseline | Gate 2 | Gate 3 | Gate 2 → Gate 3 |
+| --- | ---: | ---: | ---: | ---: |
+| success | 38 | 60 | 81 | +21 |
+| procedure-resolution error | 40 | 8 | 8 | 0 |
+| airway-resolution error | 7 | 17 | 0 | -17 |
+| waypoint ambiguity | 4 | 5 | 0 | -5 |
+| parser error | 2 | 0 | 0 | 0 |
+| missing NASR data | 9 | 10 | 11 | +1 |
+| malformed input | 0 | 0 | 0 | 0 |
+
+The missing-data increase is a later-content exposure, not a regression: an
+airway fix now allows one additional route to reach unsupported
+foreign/oceanic/coordinate content. The remaining eight procedure failures
+retain incorrect or unresolved procedure connection context and remain
+failures; Gate 3 approval does not reclassify them as airway defects.

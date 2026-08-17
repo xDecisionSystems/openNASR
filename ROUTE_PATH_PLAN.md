@@ -439,6 +439,17 @@ log. Full counts are in
 reproductions and records the gate. Re-run the T0.1/T0.2 sample; the
 airway-resolution and waypoint-ambiguity failure categories should shrink.
 
+**Gate 3 — APPROVED (2026-08-17, production `ecf8bfc` + `6faacb4`, tests
+`7d8e259`).** The focused T3.7/flight-plan matrix passes (30 tests). Real
+`2026-05-14` probes resolve `Q1`/`T200`/`Y183` from published `AWY_ID` values
+despite their `RN`/`AT` designations, and `KBBG..EOS..ICT..KHUT` selects the
+operational `ICT` VORTAC over the colliding VOT. The canonical sample improves
+from Gate 2's 60/100 to 81/100 and from 58/84 to 77/84 domestic, with 21
+additional fixes and zero regressions; the domestic result exceeds the 76/84
+release target. Airway-resolution errors shrink 17→0 and waypoint ambiguities
+5→0. Full category counts and real-cycle evidence are in
+[`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#gate-3-approval-2026-08-17).
+
 ## Phase 4 — Performance and Reuse
 
 **T4.1 is not strictly gated behind Phase 1-3.** It touches only
@@ -670,3 +681,4 @@ denominator is accurate.
 | 2026-08-17 | Set the Phase 1-5 domestic coverage gate at 76/84 (90%), require no regression among the 36 current no-exception domestic rows, and report 16 out-of-contract rows separately. | A fixed content-based denominator makes phase counts comparable. Thirteen sampled rows require foreign/oceanic/external routing and three require coordinate or radial-distance handling reserved for separate coverage; excluding them prevents Phase 1-5 domestic work from being judged against data NASR does not provide, while continuing to expose their outcomes in the 100-row report. |
 | 2026-08-17 | Gate 2 not approved at production commit `4960111`: 56/100 overall and 54/84 domestic, with procedure errors down 40→8 but parser errors up 2→4. | Phase 2's focused 24-test matrix passes, 18 canonical failures now return paths, and no former no-exception row regresses. However, the written gate requires both procedure and parser categories to shrink; newly reached valid fixes `KM18K` and `KG66K` join the still-failing `E91`/`KO60C` lexical airway collisions, so the parser criterion is not met. |
 | 2026-08-17 | Gate 2 approved at production commit `3fd11e7`: 60/100 overall and 58/84 domestic, with procedure errors down 40→8 and parser errors down 2→0. | Data-backed airway dispatch resolves the failed review's valid alphanumeric waypoint collisions. The focused 25-test matrix passes, 22 baseline failures now return paths, and no former no-exception route regresses. The increased airway category (7→17) is expected later-defect exposure and remains assigned to Phase 3 rather than being counted as success. |
+| 2026-08-17 | Gate 3 approved at production commits `ecf8bfc` and `6faacb4`: 81/100 overall and 77/84 domestic, with airway errors down 17→0 and waypoint ambiguities down 5→0 from Gate 2. | Real-cycle Q/T/Y probes resolve by published `AWY_ID`, the ICT reproduction selects its VORTAC over its VOT, the focused 30-test matrix passes, 21 additional Gate 2 failures now return paths, and no Gate 2 success regresses. The one additional missing-data outcome is later unsupported-content exposure, not a regression. |
