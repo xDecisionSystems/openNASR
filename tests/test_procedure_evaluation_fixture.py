@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from openNASR.flightplan import RouteResolver, _procedure_path, _tokenize_flight_plan
-from tests.test_flightplan import _procedure_matrix_tables
+from test_flightplan import _procedure_matrix_tables
 
 FIXTURE = (
     Path(__file__).parent
