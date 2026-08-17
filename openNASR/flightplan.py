@@ -543,6 +543,7 @@ def _procedure_path(
     token: str,
     *,
     resolver: _WaypointResolver | None = None,
+    procedure_index: _ProcedureIndex | None = None,
     preceding_token: str | None = None,
     following_token: str | None = None,
 ) -> tuple[_Waypoint, ...] | None:
@@ -560,35 +561,38 @@ def _procedure_path(
     departure_routes = tables.get("DP_RTE")
     stars = tables.get("STAR_BASE")
     star_routes = tables.get("STAR_RTE")
-    departure_matches = (
-        departures[departures["DP_COMPUTER_CODE"].map(_text).eq(token)].to_dict(
-            orient="records"
-        )
-        if departures is not None and departure_routes is not None
-        else []
-    )
+    procedure_index = procedure_index or _ProcedureIndex(tables)
+    departure_rows = procedure_index.departure_base(token)
+    if departures is not None and departure_routes is not None:
+        if departure_rows is None:
+            # Retain the old direct-filter KeyError for incomplete synthetic tables.
+            departures["DP_COMPUTER_CODE"]
+        assert departure_rows is not None
+        departure_matches = departure_rows.to_dict(orient="records")
+    else:
+        departure_matches = []
+    departure_transition_rows = procedure_index.departure_transition(token)
     departure_transition_matches = (
-        departure_routes[
-            departure_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token)
-        ].to_dict(orient="records")
-        if departure_routes is not None
-        and "TRANSITION_COMPUTER_CODE" in departure_routes
+        departure_transition_rows.to_dict(orient="records")
+        if departure_transition_rows is not None
         else []
     )
+    transition_rows = procedure_index.star_transition(token)
     transition_matches = (
-        star_routes[
-            star_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token)
-        ].to_dict(orient="records")
-        if star_routes is not None
-        else []
+        transition_rows.to_dict(orient="records") if transition_rows is not None else []
     )
-    base_matches = (
-        stars[stars["STAR_COMPUTER_CODE"].map(_text).eq(token)].to_dict(
-            orient="records"
-        )
-        if stars is not None and star_routes is not None
-        else []
-    )
+    if star_routes is not None and transition_rows is None:
+        # Retain the old direct-filter KeyError for incomplete synthetic tables.
+        star_routes["TRANSITION_COMPUTER_CODE"]
+    star_rows = procedure_index.star_base(token)
+    if stars is not None and star_routes is not None:
+        if star_rows is None:
+            # Retain the old direct-filter KeyError for incomplete synthetic tables.
+            stars["STAR_COMPUTER_CODE"]
+        assert star_rows is not None
+        base_matches = star_rows.to_dict(orient="records")
+    else:
+        base_matches = []
 
     matches = (
         bool(departure_matches)
@@ -867,7 +871,12 @@ def _departure_airway_join(
     )
 
 
-def _is_published_dotted_procedure(tables: Mapping[str, DataFrame], token: str) -> bool:
+def _is_published_dotted_procedure(
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    procedure_index: _ProcedureIndex | None = None,
+) -> bool:
     """Whether a dotted token is a published procedure token.
 
     A dotted DP computer code is retained as a unit only when its first
@@ -883,20 +892,20 @@ def _is_published_dotted_procedure(tables: Mapping[str, DataFrame], token: str) 
     ``MCRAY2.MCRAY.Q178.LEJOY.DEMME5``).
     """
 
-    for table in ("DP_RTE", "STAR_RTE"):
-        routes = tables.get(table)
-        if routes is None or "TRANSITION_COMPUTER_CODE" not in routes:
-            continue
-        if routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token).any():
+    procedure_index = procedure_index or _ProcedureIndex(tables)
+    for matches in (
+        procedure_index.departure_transition(token),
+        procedure_index.star_transition(token),
+    ):
+        if matches is not None and not matches.empty:
             return True
-    departure = tables.get("DP_BASE")
-    if departure is None or "DP_COMPUTER_CODE" not in departure:
+    departure_matches = procedure_index.departure_base(token)
+    if departure_matches is None:
         return False
     first_component = token.split(".", 1)[0]
-    computer_codes = departure["DP_COMPUTER_CODE"].map(_text)
-    return (
-        computer_codes.eq(token).any() and not computer_codes.eq(first_component).any()
-    )
+    first_component_matches = procedure_index.departure_base(first_component)
+    assert first_component_matches is not None
+    return not departure_matches.empty and first_component_matches.empty
 
 
 def _tokenize_flight_plan(

@@ -16,6 +16,8 @@ from openNASR.flightplan import (
     _ProcedureIndex,
     _RouteToken,
     _WaypointResolver,
+    _is_published_dotted_procedure,
+    _procedure_path,
     _text,
     _tokenize_flight_plan,
     flight_plan_path,
@@ -1525,6 +1527,22 @@ def _procedure_matrix_tables():
         ),
     }
     return tables
+
+
+def test_procedure_index_preserves_procedure_and_dotted_lookup_results():
+    tables = _procedure_matrix_tables()
+    resolver = _WaypointResolver(tables)
+    index = _ProcedureIndex(tables)
+
+    for token in ("DEP1", "DEP1.TRANS", "ARR1", "TRANS.ARR1", "MISSING"):
+        assert _procedure_path(
+            tables, token, resolver=resolver, procedure_index=index
+        ) == _procedure_path(tables, token, resolver=resolver)
+
+    for token in ("DEP1.TRANS", "TRANS.ARR1", "DEP1.MISSING"):
+        assert _is_published_dotted_procedure(
+            tables, token, procedure_index=index
+        ) == _is_published_dotted_procedure(tables, token)
 
 
 @pytest.mark.parametrize(
