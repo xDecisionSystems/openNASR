@@ -239,6 +239,82 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
     )
 
 
+def test_flight_plan_path_resolves_bare_star_before_airway_lookup(tables):
+    """A bare STAR name that looks like an airway retains its route connection."""
+
+    tables["APT_BASE"] = pd.concat(
+        [
+            tables["APT_BASE"],
+            pd.DataFrame(
+                [
+                    {
+                        "ARPT_ID": "ATL",
+                        "ICAO_ID": "KATL",
+                        "LAT_DECIMAL": "33.64",
+                        "LONG_DECIMAL": "-84.43",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "GOLLM", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-83"},
+                    {"FIX_ID": "LANCE", "LAT_DECIMAL": "33.8", "LONG_DECIMAL": "-84"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "GNDLF3", "ARTCC": "ZTL"}]
+    )
+    # STAR records are stored from the terminal outward, so GOLLM is the
+    # procedure connection and KATL is its intended exit in the filed order.
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": "GNDLF3",
+                "ARTCC": "ZTL",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "KATL",
+            },
+            {
+                "STAR_COMPUTER_CODE": "GNDLF3",
+                "ARTCC": "ZTL",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "LANCE",
+            },
+            {
+                "STAR_COMPUTER_CODE": "GNDLF3",
+                "ARTCC": "ZTL",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "30",
+                "POINT": "GOLLM",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA GOLLM GNDLF3 KATL/0043") == (
+        (38.0, -77.0),
+        (34.0, -83.0),  # Procedure connection point.
+        (33.8, -84.0),
+        (33.64, -84.43),  # Procedure exit and following destination token.
+    )
+
+
 def test_flight_plan_path_accepts_double_dot_direct_routing(tables):
     assert flight_plan_path(tables, "KAAA..ALPHA..BBB/0354") == (
         (38.0, -77.0),

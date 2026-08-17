@@ -438,8 +438,14 @@ def flight_plan_path(
         if token == _DIRECT:
             index += 1
             continue
+        airway = _AIRWAY.fullmatch(token)
+        # A bare procedure computer code (for example ``GNDLF3``) can also
+        # satisfy the airway lexical pattern.  Resolve procedures first so a
+        # published DP/STAR is not incorrectly sent to AWY_BASE lookup.
         procedure = (
-            _procedure_path(nasr, token, resolver=resolver) if "." in token else None
+            _procedure_path(nasr, token, resolver=resolver)
+            if "." in token or airway is not None
+            else None
         )
         if procedure is not None:
             for point in procedure:
@@ -448,7 +454,6 @@ def flight_plan_path(
                     output.append(coordinate)
             index += 1
             continue
-        airway = _AIRWAY.fullmatch(token)
         if airway is not None and "AWY_BASE" in nasr:
             if not output or index + 1 >= len(tokens) or tokens[index + 1] == _DIRECT:
                 raise ValueError(f"Airway {token!r} must have waypoints on both sides")
