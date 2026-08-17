@@ -186,6 +186,9 @@ def test_plot_flight_plan_draws_the_resolved_route():
     assert figure is axes.figure
     assert list(axes.lines[0].get_xdata()) == [2.0, 4.0]
     assert list(axes.lines[0].get_ydata()) == [1.0, 3.0]
+    assert [item.get_text() for item in axes.get_legend().get_texts()] == [
+        "Flight plan"
+    ]
 
 
 def test_plot_flight_plan_projects_to_nm_about_an_explicit_center():
@@ -289,6 +292,11 @@ def test_plot_airport_procedures_draws_runways_departures_and_arrivals():
     _, axes = plot_airport_procedures(tables, "AAA")
 
     assert len(axes.lines) == 3
+    assert [item.get_text() for item in axes.get_legend().get_texts()] == [
+        "Runways",
+        "Departures",
+        "Arrivals",
+    ]
 
 
 def test_plot_airport_procedures_projects_to_nm_about_the_airport():

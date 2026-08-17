@@ -330,6 +330,9 @@ All plotting helpers accept `project_to_nm=True` and an optional
 airspace centroid, airport procedure plots to the airport, and flight-plan
 plots to the route center.
 
+All plotting helpers include a legend by default. Pass `plot_legend=False` to
+hide it.
+
 ## Special-use, sport, and military airspace
 
 ```python

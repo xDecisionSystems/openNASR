@@ -261,6 +261,7 @@ def _plot_boundary(
     **kwargs: Any,
 ) -> None:
     geometries = geometry.geoms if hasattr(geometry, "geoms") else (geometry,)
+    plotted = False
     for polygon in geometries:
         if not hasattr(polygon, "exterior"):
             continue
@@ -268,7 +269,12 @@ def _plot_boundary(
         x_values, y_values = _project_coordinates(
             x_values, y_values, center=projection_center
         )
-        axes.plot(x_values, y_values, **kwargs)
+        axes.plot(
+            x_values,
+            y_values,
+            **({**kwargs, "label": None if plotted else kwargs.get("label")}),
+        )
+        plotted = True
 
 
 def _line_parts(geometry: BaseGeometry) -> tuple[LineString, ...]:
@@ -415,6 +421,7 @@ def plot_airport_procedures(
     axes: Any | None = None,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    plot_legend: bool = True,
 ) -> tuple[Any, Any]:
     """Plot an airport's runways and its associated arrival/departure legs.
 
@@ -425,6 +432,8 @@ def plot_airport_procedures(
     Set ``project_to_nm=True`` to use the local gnomonic projection in nautical
     miles. It defaults to the airport's FAA coordinate; alternatively pass a
     ``(latitude, longitude)`` ``projection_center``.
+    Set ``plot_legend=False`` to hide the default runway/departure/arrival
+    legend.
     """
 
     from matplotlib import pyplot as plt
@@ -441,36 +450,50 @@ def plot_airport_procedures(
         figure, axes = plt.subplots()
     else:
         figure = axes.figure
-    for segment in _runway_segments(nasr, airport_id):
-        x_values, y_values = segment.xy
-        x_values, y_values = _project_coordinates(
-            x_values, y_values, center=active_projection_center
-        )
-        axes.plot(x_values, y_values, color="black", linewidth=3)
-    for segment in _procedure_segments(
-        nasr,
-        airport_id,
-        "DP_APT",
-        "DP_RTE",
-        ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
-    ):
-        x_values, y_values = segment.xy
-        x_values, y_values = _project_coordinates(
-            x_values, y_values, center=active_projection_center
-        )
-        axes.plot(x_values, y_values, color="tab:blue", linewidth=1)
-    for segment in _procedure_segments(
-        nasr,
-        airport_id,
-        "STAR_APT",
-        "STAR_RTE",
-        ("STAR_COMPUTER_CODE", "ARTCC"),
-    ):
-        x_values, y_values = segment.xy
-        x_values, y_values = _project_coordinates(
-            x_values, y_values, center=active_projection_center
-        )
-        axes.plot(x_values, y_values, color="tab:green", linewidth=1)
+    layers = (
+        (_runway_segments(nasr, airport_id), "black", 3, "Runways"),
+        (
+            _procedure_segments(
+                nasr,
+                airport_id,
+                "DP_APT",
+                "DP_RTE",
+                ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
+            ),
+            "tab:blue",
+            1,
+            "Departures",
+        ),
+        (
+            _procedure_segments(
+                nasr,
+                airport_id,
+                "STAR_APT",
+                "STAR_RTE",
+                ("STAR_COMPUTER_CODE", "ARTCC"),
+            ),
+            "tab:green",
+            1,
+            "Arrivals",
+        ),
+    )
+    for segments, color, linewidth, label in layers:
+        plotted = False
+        for segment in segments:
+            x_values, y_values = segment.xy
+            x_values, y_values = _project_coordinates(
+                x_values, y_values, center=active_projection_center
+            )
+            axes.plot(
+                x_values,
+                y_values,
+                color=color,
+                linewidth=linewidth,
+                label=None if plotted else label,
+            )
+            plotted = True
+    if plot_legend and axes.get_legend_handles_labels()[0]:
+        axes.legend()
     axes.set_title(f"{airport_id} procedures")
     axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
     axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
@@ -485,6 +508,7 @@ def plot_flight_plan(
     axes: Any | None = None,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    plot_legend: bool = True,
 ) -> tuple[Any, Any]:
     """Plot the route-field path from a submitted FAA flight plan.
 
@@ -493,7 +517,8 @@ def plot_flight_plan(
     to use a local gnomonic projection in nautical miles. Without an explicit
     ``projection_center=(latitude, longitude)``, the route's center is used.
     The returned route is source data only; it is not an operationally
-    validated flight plan or clearance.
+    validated flight plan or clearance. Set ``plot_legend=False`` to hide the
+    default flight-plan legend.
     """
 
     from matplotlib import pyplot as plt
@@ -512,7 +537,16 @@ def plot_flight_plan(
     x_values, y_values = _project_coordinates(
         longitudes, latitudes, center=active_projection_center
     )
-    axes.plot(x_values, y_values, color="tab:blue", marker="o", linewidth=1.5)
+    axes.plot(
+        x_values,
+        y_values,
+        color="tab:blue",
+        marker="o",
+        linewidth=1.5,
+        label="Flight plan",
+    )
+    if plot_legend:
+        axes.legend()
     axes.set_title("FAA flight plan")
     axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
     axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
