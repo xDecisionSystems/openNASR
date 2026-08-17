@@ -14,11 +14,13 @@ NASR route content is in scope. International airports, foreign procedures,
 oceanic routes, and coordinate fixes are deliberately recorded as separate
 coverage work rather than silently guessed from domestic data.
 
-All work in this plan is against `openNASR/flightplan.py` (currently 504
-lines: `_Waypoint`, `_WaypointResolver`, `_waypoint`, `_airway_vertices`,
-`_route_rows_points`, `_procedure_path`, `_tokenize_flight_plan`,
-`flight_plan_path`) and its test file `tests/test_flightplan.py`. No other
-production module is expected to change.
+Most production work in this plan is against `openNASR/flightplan.py`
+(currently 504 lines: `_Waypoint`, `_WaypointResolver`, `_waypoint`,
+`_airway_vertices`, `_route_rows_points`, `_procedure_path`,
+`_tokenize_flight_plan`, `flight_plan_path`) and its test file
+`tests/test_flightplan.py`. If Phase 4 exposes `RouteResolver` as a package
+API, `openNASR/__init__.py` must also export it; benchmark tooling and API
+documentation may change their respective files.
 
 ## Agent roster and roles
 
@@ -57,12 +59,19 @@ each in-flight task has exactly one owning agent.
 ## Baseline and Success Measures
 
 - [x] **T0.1 — Sol. Done (2026-08-17).** Record a reproducible baseline.
-  Two independent samples now exist: the recorded `2026-05-14` baseline (100
-  rows, 38 successes / 62 failures) and a `2026-08-17` reproduction (60
-  rows, seed 42, `2024-06-13` cycle, 21 successes / 39 failures, ~35%),
-  consistent with each other. The dominant failure category in the
-  reproduction (roughly two-thirds of failures) is a bare procedure name
-  reaching airway resolution — see T1.1 below.
+  The canonical comparison baseline is 100 rows selected with Python's
+  `random.Random(20260514).sample(...)` from the 46,580 non-empty rows of
+  `tests/exampleRoutes.csv`, using NASR cycle `2026-05-14`, CSV storage, and
+  one shared read-only waypoint resolver. Its source-file SHA-256 is
+  `9c52331afa6c8ac5fe661050370bc2fa7ecd87412e241fc55c4f6daf65e6f03c`,
+  selected-index SHA-256 is
+  `e4a8cbf7b5428f7dc01fc5b89d4264fc2b25e5c85010f3f19ffd2775944773b2`,
+  selected-route SHA-256 is
+  `71e060c887646a17681bd8541c8b8f8f0916bfb5cf370290b2aec321e9961750`,
+  and the result is 38 successes / 62 failures. The dominant observed
+  category is bare procedure names reaching airway resolution — see T1.1.
+  The separate 60-row, `2024-06-13` reproduction remains diagnostic evidence
+  only; do not compare phase-gate counts across different cycle dates.
 - [ ] **T0.2 — Sol.** Categorize each of T0.1's failures as: parser error,
   procedure-resolution error, airway-resolution error, waypoint ambiguity,
   missing NASR data, or malformed input. Retain at least one representative
@@ -126,10 +135,11 @@ each in-flight task has exactly one owning agent.
 ## Phase 1 — Parser and Token Classification
 
 - [x] **T1.0 — Sol. Verified (2026-08-17).** `flight_plan_path`'s airway
-  branch already gates on a real `AWY_BASE` record
-  (`_AIRWAY.fullmatch(token)` behind `"AWY_BASE" in nasr`,
-  `flightplan.py:451-452`), but dispatch order still lets the regex win over
-  procedure resolution for a *bare* (non-dotted) token, because
+  branch gates only on a lexical `_AIRWAY.fullmatch(token)` and the presence
+  of the `AWY_BASE` table (`flightplan.py:451-452`); it does **not** verify
+  that the token has a matching airway record until `_airway_vertices` runs.
+  Dispatch order still lets that lexical branch win over procedure resolution
+  for a *bare* (non-dotted) token, because
   `_procedure_path` is only called `if "." in token`
   (`flightplan.py:441-442`). Confirmed against 60 real
   `tests/exampleRoutes.csv` rows on the `2024-06-13` cycle: this is the
@@ -148,9 +158,10 @@ each in-flight task has exactly one owning agent.
   `...GOLLM.GNDLF3.KATL/0043` on the `2024-06-13` cycle (or an equivalent
   bare-STAR-name fixture built for a synthetic cycle) must resolve `GNDLF3`
   as a STAR, not raise `RecordNotFoundError` naming "Airway path".
-  Acceptance: `flight_plan_path` returns a non-empty path for the
-  reproduction route; a new test in `tests/test_flightplan.py` fails on the
-  current code and passes after the fix.
+  Acceptance: a regression test asserts the expected ordered procedure
+  connection identifiers (or their exact coordinates), verifies that the
+  following route segment begins at the procedure's intended exit point, and
+  fails on the current code rather than only asserting a non-empty path.
   Dependencies: none (this is the first Terra task in the plan).
 - [ ] **T1.2 — Terra.** Parse dotted route fields into a lossless token
   stream in `_tokenize_flight_plan` (`flightplan.py:364-407`). Preserve the
@@ -398,10 +409,12 @@ sequentially.
   Verified directionally: a prototype vectorized mask-plus-`zip` walk over
   the real `FIX_BASE` table (68,122 rows, the largest of the three) ran in
   ~0.14s versus multiple seconds for the existing per-row loop.
-  Acceptance: a standalone microbenchmark of `_WaypointResolver.__init__`
-  on the same real cycle drops from ~2.8s to well under 100ms; all existing
-  `_WaypointResolver`/`_waypoint` tests pass unchanged (same candidates,
-  same ambiguity behavior, same dedup via `dict.fromkeys`).
+  Acceptance: on the documented benchmark machine and canonical cycle, a
+  standalone microbenchmark records at least a 10x improvement over the
+  preserved baseline; report the absolute timing as diagnostic evidence, not
+  as a portable CI threshold. All existing `_WaypointResolver`/`_waypoint`
+  tests pass unchanged (same candidates, same ambiguity behavior, same dedup
+  via `dict.fromkeys`).
   Dependencies: Phase 1 merged (stable tokenizer/dispatch base); may run in
   parallel with Phase 2/3 tasks that do not touch
   `_WaypointResolver`/`_waypoint` (confirm via the coordination rules
@@ -427,7 +440,10 @@ sequentially.
   (e.g. `RouteResolver(nasr)` built once, `.path(flight_plan)` called per
   route) that caches T4.1/T4.2's vectorized structures, while preserving
   the existing one-call `flight_plan_path` function (T0.6) as a thin
-  wrapper that builds a resolver internally for single-call convenience.
+  wrapper that builds a resolver internally for single-call convenience. If
+  `RouteResolver` is a supported package-level API, export it from
+  `openNASR/__init__.py` and document it; otherwise explicitly keep it as
+  `openNASR.flightplan.RouteResolver` internal/advanced API.
   Prefer this explicit object over an implicit module-level or
   `NASR`-attached cache: a plain `functools.lru_cache` is not safe here
   since DataFrames are unhashable and mutable, and an explicit object makes
@@ -438,11 +454,13 @@ sequentially.
   are byte-identical with and without the new object (same route in, same
   path/exception out).
   Dependencies: T4.1, T4.2.
-- [ ] **T4.4 — Luna.** Add mutation/isolation tests for CSV and DuckDB
-  storage: confirm `RouteResolver`'s cached structures do not go stale
-  within one immutable `NASR` instance's lifetime, and that a fresh `NASR`
-  (fresh tables) produces a fresh resolver rather than sharing cached state
-  across unrelated cycles.
+- [ ] **T4.4 — Luna.** Adopt and test the resolver snapshot policy: a
+  `RouteResolver` indexes the supplied mapping at construction and callers
+  must create a new resolver after mutating that mapping or any contained
+  DataFrame. `NASR` is a mutable `dict` subclass, so do not describe it as
+  immutable or promise automatic cache invalidation. Test CSV and DuckDB
+  isolation by showing that a fresh `NASR`/fresh resolver does not share
+  cached state across cycles, and document this lifetime rule in the API.
   Dependencies: T4.3.
 - [ ] **T4.5 — Luna.** Benchmark CSV and DuckDB storage with the same
   already-loaded tables, fixed routes, warm-up policy, sample count,
@@ -463,9 +481,10 @@ sequentially.
   retained in DuckDB-backed reads — review, not new code.
   Dependencies: T4.1-T4.3.
 
-**Gate 4:** Sol confirms T4.1's microbenchmark target (well under 100ms) and
-records before/after numbers for both `_WaypointResolver` construction and a
-representative `flight_plan_path` call.
+**Gate 4:** Sol records the benchmark machine, Python/pandas/DuckDB versions,
+canonical cycle, source backend, cold/warm policy, and before/after numbers
+for `_WaypointResolver` construction and a representative `flight_plan_path`
+call. T4.1 must meet its documented relative-improvement target.
 
 ## Phase 5 — Batch Validation and Diagnostics
 
@@ -575,5 +594,7 @@ denominator is accurate.
 | 2026-08-17 | Prefer a non-`VOT` navaid when a bare `NAV_ID` collides within `NAV_BASE` itself, instead of always raising ambiguity. | Verified against real data (`ICT`: one `VORTAC` row, one `VOT` row, different coordinates) that a VOR-test-facility component can share an identifier with the real operational navaid; a VOT is never a valid filed route fix, so this collision has one correct answer, unlike a genuine cross-table or cross-airport ambiguity. |
 | 2026-08-17 | Do not schedule Phase 4's resolver-caching work strictly after Phases 1-3 finish. | Measured a single `flight_plan_path` call at ~2.7s on a real cycle, almost entirely spent rebuilding `_WaypointResolver` from three full tables (~90k rows) on every call; at that cost a 100-route baseline sample takes minutes and the full 46,580-row example file is impractical (~35h extrapolated), which would bottleneck Phase 5's own "run the sample after each phase" requirement before Phase 4 ever starts. |
 | 2026-08-17 | Specify vectorization (column-oriented pandas operations, not just caching the existing row-by-row builder) as the primary Phase 4 fix for both `_WaypointResolver.__init__` and `_airway_vertices`, with an explicit resolver/session object as the caching layer on top. | A quick vectorized-mask-plus-`zip` prototype over the real `FIX_BASE` table (68,122 rows, the largest of the three) ran in ~0.14s versus multiple seconds for the existing `.to_dict(orient="records")` loop, confirming the row-by-row conversion itself — not merely the lack of a cache — is the dominant cost; caching a slow builder would still leave the first call (and any cache miss) slow, while a plain `functools.lru_cache` cannot key on unhashable, mutable DataFrames safely. |
+| 2026-08-17 | Use one cycle-pinned, hash-identified 100-route sample as the phase-gate baseline; retain other cycle samples as diagnostic evidence only. | A change in FAA cycle can legitimately change procedures, fixes, and airway data, so counts from 2024 and 2026 cannot demonstrate an implementation improvement unless the sampled inputs and selected cycle are held constant. |
+| 2026-08-17 | Give `RouteResolver` snapshot semantics and use a relative benchmark target. | `NASR` and pandas DataFrames are mutable, so implicit cache invalidation would be ambiguous and costly. Absolute timing thresholds also vary by hardware; a recorded environment plus before/after ratio gives a reproducible performance gate. |
 | 2026-08-17 | Restructure the entire plan into numbered tasks (`T0.x`-`T6.x`) with an assigned agent role, explicit dependencies, and a per-task acceptance test, reusing the Sol/Terra/Luna roster and coordination-rules convention from `DUCKDB_PLAN.md`; fact-check the previously-unreviewed Phase 3/5/6 bullets against real code and data during the restructure rather than only reformatting the existing prose. | The plan's four already-verified findings (bare-procedure misclassification, greedy dot-merge, `VOT` disambiguation, resolver vectorization) were implementable by a cold subagent, but most of the original bullets were outcome statements ("resolve a bare departure name") with no task boundary, acceptance criterion, or file-ownership guidance — two subagents assigned different Phase 2 bullets would likely collide on the same functions in `flightplan.py` with no sequencing rule to prevent it. |
 | 2026-08-17 | Fix `_airway_vertices`'s `AWY_DESIGNATION` comparison (T3.1): stop comparing the token's regex-extracted letter prefix against `AWY_DESIGNATION`; rely on `AWY_ID` matching plus the existing `REGULATORY`/`AWY_LOCATION` disambiguation instead. | Verified against the real `2024-06-13` cycle that `AWY_DESIGNATION` values (`A, AT, B, BF, G, J, PA, PR, R, RN, V`) are not the token's leading letters — every real `Q`/`T`-prefixed `AWY_ID` (e.g. `Q822`, a genuine RNAV airway) has `AWY_DESIGNATION` of `AT` or `RN`, never `"Q"` or `"T"` — so the current `or`-joined check silently rejects every `Q`/`T`-prefixed airway regardless of whether its waypoints are correct, reproduced directly against `Q822`'s own segment data. `AWY_ID` alone is not fully unique (53 of 1,483 values in this cycle are duplicated across regions), so the existing downstream `REGULATORY`/`AWY_LOCATION` filter must be confirmed to still disambiguate correctly, not simply dropped alongside the wrong comparison. |
