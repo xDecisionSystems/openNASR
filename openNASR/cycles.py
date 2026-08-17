@@ -25,6 +25,8 @@ from zipfile import ZipFile, is_zipfile
 from platformdirs import user_cache_dir
 
 from .exceptions import ArchiveError, CycleNotFoundError, DownloadError
+from .duckdb_builder import DuckDbBuildResult, build_duckdb, duckdb_metadata_path
+from .duckdb_metadata import read_metadata
 
 
 APPLICATION_NAME = "openNASR"
@@ -98,10 +100,11 @@ class RemovalResult:
 
     removed_archive: bool
     removed_extracted: bool
+    removed_duckdb: bool = False
 
     @property
     def removed_anything(self) -> bool:
-        return self.removed_archive or self.removed_extracted
+        return self.removed_archive or self.removed_extracted or self.removed_duckdb
 
 
 @dataclass(frozen=True)
@@ -365,6 +368,138 @@ class CycleManager:
             return Cycle(effective_date=effective_date, data_path=data_path)
         return None
 
+    @staticmethod
+    def _coerce_exact_date(value: str | date) -> date:
+        """Normalize a cycle while rejecting non-canonical ISO strings."""
+
+        if isinstance(value, datetime):
+            raise ValueError(
+                "NASR cycle must be a date or canonical YYYY-MM-DD string"
+            )
+        if isinstance(value, date):
+            return value
+        if not isinstance(value, str):
+            raise ValueError(
+                "NASR cycle must be a date or canonical YYYY-MM-DD string"
+            )
+        try:
+            result = date.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError(
+                f"Invalid NASR cycle date {value!r}; expected YYYY-MM-DD."
+            ) from error
+        if result.isoformat() != value:
+            raise ValueError(
+                f"Invalid NASR cycle date {value!r}; expected canonical YYYY-MM-DD."
+            )
+        return result
+
+    def duckdb_path(self, cycle: str | date) -> Path:
+        """Return the database path belonging to one exact effective cycle."""
+
+        effective_date = self._coerce_exact_date(cycle)
+        return self.cycles_dir / effective_date.isoformat() / "nasr.duckdb"
+
+    def build_duckdb(self, cycle: str | date) -> DuckDbBuildResult:
+        """Build or reuse the DuckDB derivative for one exact cached cycle.
+
+        An archive-only cycle is extracted as part of this operation.  No
+        neighboring cycle is considered, and an absent exact cycle raises
+        :class:`CycleNotFoundError` rather than downloading or selecting a
+        fallback.
+        """
+
+        effective_date = self._coerce_exact_date(cycle)
+        cached = self.get(effective_date)
+        if cached is None:
+            raise CycleNotFoundError(
+                f"No NASR cycle found for requested date {effective_date} in "
+                f"{self.cache_dir}."
+            )
+        if cached.data_path is None:
+            if cached.archive_path is None:
+                raise CycleNotFoundError(
+                    f"No archive or extracted data found for requested date "
+                    f"{effective_date} in {self.cache_dir}."
+                )
+            cached = self.extract_archive(cached.archive_path)
+        assert cached.data_path is not None
+
+        source = self._resolve_csv_source(cached.data_path)
+        database = self.duckdb_path(effective_date)
+        metadata_path = duckdb_metadata_path(database)
+        if self._is_current_duckdb_artifact(
+            database, metadata_path, effective_date, source
+        ):
+            metadata = read_metadata(metadata_path, effective_date=effective_date)
+            return DuckDbBuildResult(database, metadata_path, metadata)
+
+        archive_sha256 = (
+            sha256_file(cached.archive_path)
+            if cached.archive_path is not None and cached.archive_path.is_file()
+            else None
+        )
+        return build_duckdb(
+            source,
+            database,
+            effective_date,
+            archive_sha256=archive_sha256,
+        )
+
+    @staticmethod
+    def _is_current_duckdb_artifact(
+        database: Path,
+        metadata_path: Path,
+        effective_date: date,
+        source: Path,
+    ) -> bool:
+        """Return whether a completed derivative can safely be reused."""
+
+        if not database.is_file() or not metadata_path.is_file():
+            return False
+        try:
+            metadata = read_metadata(metadata_path, effective_date=effective_date)
+            if sha256_file(database) != metadata.database_sha256:
+                return False
+            # The sidecar format records the source schema, while source file
+            # modification times detect the common case of a changed CSV
+            # without requiring a full source read on every API construction.
+            return not any(
+                path.stat().st_mtime_ns > database.stat().st_mtime_ns
+                for path in source.glob("*.csv")
+            )
+        except (OSError, ValueError):
+            return False
+
+    def _resolve_csv_source(self, data_path: Path) -> Path:
+        """Resolve CSV directories, extracting nested FAA archives atomically."""
+
+        source = locate_csv_source(data_path)
+        if source.is_dir():
+            return source
+        extracted = source.parent / source.stem
+        if extracted.is_dir():
+            return self._resolve_csv_source(extracted)
+        if extracted.exists():
+            raise ArchiveError(f"Cannot extract nested NASR archive over {extracted}")
+        temporary = Path(tempfile.mkdtemp(prefix=".nested-", dir=source.parent))
+        try:
+            with ZipFile(source, "r") as archive:
+                for member in archive.infolist():
+                    path = PurePosixPath(member.filename)
+                    if path.is_absolute() or ".." in path.parts:
+                        raise ArchiveError(
+                            f"Unsafe archive member: {member.filename}"
+                        )
+                archive.extractall(temporary)
+            locate_csv_source(temporary)
+            temporary.replace(extracted)
+        except Exception:
+            if temporary.exists():
+                rmtree(temporary)
+            raise
+        return self._resolve_csv_source(extracted)
+
     def available_cycles(self) -> tuple[date, ...]:
         """Return every valid effective date represented in the local cache."""
 
@@ -407,10 +542,11 @@ class CycleManager:
 
     def remove(
         self,
-        effective_date: date,
+        effective_date: str | date,
         *,
         archive: bool = True,
         extracted: bool = True,
+        duckdb: bool = False,
     ) -> RemovalResult:
         """Remove selected local representations of an exact cached cycle.
 
@@ -419,8 +555,12 @@ class CycleManager:
         to report what happened.
         """
 
-        if not archive and not extracted:
-            raise ValueError("At least one of archive or extracted must be True")
+        if not archive and not extracted and not duckdb:
+            raise ValueError(
+                "At least one of archive, extracted, or duckdb must be True"
+            )
+
+        effective_date = self._coerce_exact_date(effective_date)
 
         archive_path = self.archives_dir / (
             f"28DaySubscription_Effective_{effective_date}.zip"
@@ -429,13 +569,25 @@ class CycleManager:
         if archive and archive_path.is_file():
             archive_path.unlink()
             removed_archive = True
+        removed_duckdb = False
+        if duckdb:
+            database_path = self.duckdb_path(effective_date)
+            metadata_path = duckdb_metadata_path(database_path)
+            if database_path.is_file():
+                database_path.unlink()
+                removed_duckdb = True
+            if metadata_path.is_file():
+                metadata_path.unlink()
+                removed_duckdb = True
         data_path = self.cycles_dir / effective_date.isoformat()
         removed_extracted = False
         if extracted and data_path.is_dir():
             rmtree(data_path)
             removed_extracted = True
         return RemovalResult(
-            removed_archive=removed_archive, removed_extracted=removed_extracted
+            removed_archive=removed_archive,
+            removed_extracted=removed_extracted,
+            removed_duckdb=removed_duckdb,
         )
 
     def check_for_updates(self, *, force: bool = False) -> UpdateStatus:

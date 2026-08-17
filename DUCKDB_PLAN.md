@@ -408,7 +408,7 @@ observable contents; corrupted/partial artifacts are rejected.
   Acceptance: all current tests pass unchanged except intentional new protocol
   tests; no public import path moves.
 
-- [ ] **13.2.2 — Agent: Terra.** Implement `DuckDbTableRepository` against the
+- [x] **13.2.2 — Agent: Terra.** Implement `DuckDbTableRepository` against the
   completed database. `table()`/`__getitem__` return cached pandas DataFrames,
   honor `copy=True`, and expose the same normalized-index semantics as CSV.
 
@@ -441,7 +441,7 @@ currently public lookup/repository workflows.
 
 ### Phase 13.3 — Public lifecycle and exact-date selection
 
-- [ ] **13.3.1 — Agent: Terra.** Add `CycleManager.build_duckdb(cycle)` and
+- [x] **13.3.1 — Agent: Terra.** Add `CycleManager.build_duckdb(cycle)` and
   `CycleManager.duckdb_path(cycle)` using exact ISO date semantics. Add a
   `CycleManager.remove(..., duckdb=True)` option that reports whether the
   database artifact was removed; retain existing default removal behavior.

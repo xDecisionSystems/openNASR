@@ -1,6 +1,7 @@
 """Cycle-cache configuration tests."""
 
 from datetime import date
+import os
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -133,6 +134,77 @@ def test_remove_reports_which_representations_actually_existed(tmp_path):
     neither = manager.remove(date(2026, 8, 6))
     assert (neither.removed_archive, neither.removed_extracted) == (False, False)
     assert neither.removed_anything is False
+
+
+def _duckdb_cycle_archive(path: Path) -> Path:
+    archive = path / "28DaySubscription_Effective_2026-08-06.zip"
+    with ZipFile(archive, "w") as output:
+        output.writestr("CSV_Data/APT_BASE.csv", "ARPT_ID\nATL\n")
+    return archive
+
+
+def test_duckdb_path_requires_an_exact_iso_cycle(tmp_path):
+    manager = CycleManager(tmp_path)
+
+    assert manager.duckdb_path("2026-08-06") == (
+        tmp_path / "cycles" / "2026-08-06" / "nasr.duckdb"
+    )
+    assert manager.duckdb_path(date(2026, 8, 6)).name == "nasr.duckdb"
+    with pytest.raises(ValueError, match="YYYY-MM-DD"):
+        manager.duckdb_path("2026-8-6")
+
+
+def test_build_duckdb_requires_the_requested_cycle_and_is_idempotent(tmp_path):
+    manager = CycleManager(tmp_path / "cache")
+    archive = _duckdb_cycle_archive(tmp_path)
+    manager.import_archive(archive)
+
+    first = manager.build_duckdb("2026-08-06")
+    database = manager.duckdb_path("2026-08-06")
+    original_bytes = database.read_bytes()
+    original_mtime = database.stat().st_mtime_ns
+    second = manager.build_duckdb("2026-08-06")
+
+    assert first.database_path == database
+    assert second.database_path == database
+    assert database.read_bytes() == original_bytes
+    assert database.stat().st_mtime_ns == original_mtime
+    with pytest.raises(CycleNotFoundError, match="2026-08-07"):
+        manager.build_duckdb("2026-08-07")
+
+
+def test_build_duckdb_rebuilds_when_extracted_source_is_stale(tmp_path):
+    manager = CycleManager(tmp_path / "cache")
+    manager.import_archive(_duckdb_cycle_archive(tmp_path))
+    first = manager.build_duckdb("2026-08-06")
+    database = manager.duckdb_path("2026-08-06")
+    source = database.parent / "CSV_Data" / "APT_BASE.csv"
+    source.write_text("ARPT_ID\nBWI\n", encoding="utf-8")
+    newer = database.stat().st_mtime_ns + 1_000_000
+    os.utime(source, ns=(newer, newer))
+
+    second = manager.build_duckdb("2026-08-06")
+
+    assert second.metadata.database_sha256 != first.metadata.database_sha256
+
+
+def test_remove_can_select_the_duckdb_derivative_without_source_removal(tmp_path):
+    manager = CycleManager(tmp_path / "cache")
+    manager.import_archive(_duckdb_cycle_archive(tmp_path))
+    manager.build_duckdb("2026-08-06")
+    database = manager.duckdb_path("2026-08-06")
+    metadata = database.with_name("nasr.duckdb.json")
+    extracted = database.parent
+
+    result = manager.remove(
+        "2026-08-06", archive=False, extracted=False, duckdb=True
+    )
+
+    assert result.removed_duckdb is True
+    assert result.removed_anything is True
+    assert not database.exists()
+    assert not metadata.exists()
+    assert extracted.is_dir()
 
 
 def test_archive_dates_are_validated_and_ordered_by_parsed_dates(tmp_path):
