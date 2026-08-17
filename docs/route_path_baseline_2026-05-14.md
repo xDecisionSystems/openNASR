@@ -394,3 +394,28 @@ so Gate 4 remains closed. T4.7 itself is satisfied: no raw SQL surface was
 introduced, and CSV/DuckDB source ordering and route outcomes are faithful.
 The reusable warm session also behaves as intended, but its gain cannot be
 substituted for T4.1's separate first-construction requirement.
+
+### Gate 4 approval rerun
+
+**Decision: approved, superseding the initial benchmark above.** Commit
+`8264d80` replaces boxed pandas `Series` iteration with non-copying NumPy
+array iteration while retaining the same candidate construction and snapshot
+semantics. The benchmark policy, route, canonical cycle, CSV backend, machine,
+and seven-repetition sample count are unchanged.
+
+| Measurement | Preserved pre-T4 strategy | `8264d80` | Speedup |
+| --- | ---: | ---: | ---: |
+| `_WaypointResolver` construction | 2.599828s | 0.243708s | **10.67×** |
+| One-shot representative path | 2.575876s | 0.234546s | **10.98×** |
+| Warm `RouteResolver.path` | n/a | 0.00000886s median, 0.00001401s p95 | 26,466× vs current one-shot median |
+
+For this fresh run, NASR construction was 0.132s and first loading of the nine
+route tables was 0.470s; both remain reported separately from already-loaded
+resolver/path timings. The focused flight-plan and CSV/DuckDB parity suite
+passed all 44 tests, Ruff passed, and mypy reported no issues for
+`openNASR/flightplan.py`.
+
+The 10.67× resolver result exceeds T4.1's required 10× relative improvement.
+Together with the already-approved T4.7 SQL/order audit, this closes Gate 4.
+The earlier 8.01× result remains above as audit history showing why the gate
+was initially held rather than retroactively replacing that measurement.

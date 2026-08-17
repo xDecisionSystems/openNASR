@@ -570,15 +570,16 @@ canonical cycle, source backend, cold/warm policy, and before/after numbers
 for `_WaypointResolver` construction and a representative `flight_plan_path`
 call. T4.1 must meet its documented relative-improvement target.
 
-**Gate 4 — NOT APPROVED (2026-08-17, production `79864a5` + `2e7229c` +
-`51f530e`).** On the canonical `2026-05-14` CSV cycle, median resolver
-construction improves from 2.474700s to 0.308842s (**8.01×**) and a one-shot
-representative path from 2.511380s to 0.306761s (**8.19×**). A warm reusable
-session resolves the route in 8.18µs median (12.68µs p95), and T4.7's SQL/order
-review passes, but T4.1 explicitly requires at least 10× for resolver
-construction. Gate 4 remains closed until that threshold is met and rerun.
-Full machine, version, backend, policy, and parity evidence is in the
-[linked benchmark note](docs/route_path_baseline_2026-05-14.md#t47-review-and-gate-4-benchmark-2026-08-17).
+**Gate 4 — APPROVED (2026-08-17, production `8264d80`, superseding the
+initial failed review).** With the same canonical `2026-05-14` CSV cycle,
+machine, already-loaded-table policy, and seven repetitions, median resolver
+construction improves from 2.599828s to 0.243708s (**10.67×**) and a one-shot
+representative path from 2.575876s to 0.234546s (**10.98×**). A warm reusable
+session resolves the route in 8.86µs median (14.01µs p95). T4.1 now exceeds
+its required 10× construction improvement, T4.7's SQL/order review passes,
+and the focused CSV/DuckDB/flight-plan suite passes all 44 tests. Full
+environment, policy, initial-failure history, and rerun evidence are in the
+[linked benchmark note](docs/route_path_baseline_2026-05-14.md#gate-4-approval-rerun).
 
 ## Phase 5 — Batch Validation and Diagnostics
 
@@ -700,3 +701,4 @@ denominator is accurate.
 | 2026-08-17 | Gate 2 approved at production commit `3fd11e7`: 60/100 overall and 58/84 domestic, with procedure errors down 40→8 and parser errors down 2→0. | Data-backed airway dispatch resolves the failed review's valid alphanumeric waypoint collisions. The focused 25-test matrix passes, 22 baseline failures now return paths, and no former no-exception route regresses. The increased airway category (7→17) is expected later-defect exposure and remains assigned to Phase 3 rather than being counted as success. |
 | 2026-08-17 | Gate 3 approved at production commits `ecf8bfc` and `6faacb4`: 81/100 overall and 77/84 domestic, with airway errors down 17→0 and waypoint ambiguities down 5→0 from Gate 2. | Real-cycle Q/T/Y probes resolve by published `AWY_ID`, the ICT reproduction selects its VORTAC over its VOT, the focused 30-test matrix passes, 21 additional Gate 2 failures now return paths, and no Gate 2 success regresses. The one additional missing-data outcome is later unsupported-content exposure, not a regression. |
 | 2026-08-17 | T4.7 approved, but Gate 4 not approved at production commits `79864a5`, `2e7229c`, and `51f530e`: real-cycle resolver construction improves 8.01×, below T4.1's required 10×. | Route conversion adds no raw SQL surface, and CSV/DuckDB route-table order and representative results match. One-shot conversion improves 8.19× and a warm session is much faster, but neither substitutes for the explicit first-construction threshold; the gate remains closed pending further resolver optimization and a rerun. |
+| 2026-08-17 | Gate 4 approved at production commit `8264d80`: real-cycle resolver construction improves 10.67× and one-shot conversion 10.98× under the unchanged benchmark policy. | Non-copying NumPy array iteration removes enough boxed pandas overhead to exceed T4.1's explicit 10× threshold while preserving indexed candidates and session semantics. The focused 44-test suite, Ruff, mypy, and T4.7 SQL/order audit pass; this supersedes but retains the initial failed measurement as audit history. |
