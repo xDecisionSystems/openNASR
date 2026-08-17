@@ -157,6 +157,22 @@ def test_flight_plan_path_expands_prefixed_airway_ids(tables):
     )
 
 
+def test_airway_lookup_uses_column_matching_for_base_records(tables, monkeypatch):
+    def fail_record_materialization(*args, **kwargs):
+        raise AssertionError("airway base must not materialize DataFrame records")
+
+    monkeypatch.setattr(
+        tables["AWY_BASE"], "to_dict", fail_record_materialization
+    )
+
+    assert flight_plan_path(tables, "KAAA ALPHA V1 BBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+
+
 def test_flight_plan_path_joins_repeated_airway_tokens(tables):
     tables["FIX_BASE"] = pd.concat(
         [

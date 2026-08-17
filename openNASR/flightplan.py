@@ -226,16 +226,12 @@ def _airway_vertices(
     if base is None or segments is None:
         raise RecordNotFoundError(entity_type="Airway", identifier=airway)
 
+    identifiers = {match["identifier"], f"{match['designation']}{match['identifier']}"}
+    matching_base = base[base["AWY_ID"].map(_text).isin(identifiers)]
     matches: list[tuple[str, ...]] = []
-    for record in base.to_dict(orient="records"):
-        if _text(record.get("AWY_ID", "")) not in {
-            match["identifier"],
-            f"{match['designation']}{match['identifier']}",
-        }:
-            continue
-        key = tuple(
-            record.get(column) for column in ("REGULATORY", "AWY_LOCATION", "AWY_ID")
-        )
+    for key in matching_base[
+        ["REGULATORY", "AWY_LOCATION", "AWY_ID"]
+    ].itertuples(index=False, name=None):
         rows = segments
         for column, value in zip(("REGULATORY", "AWY_LOCATION", "AWY_ID"), key):
             rows = rows[rows[column].map(_text).eq(_text(value))]
@@ -282,11 +278,8 @@ def _is_published_airway(tables: Mapping[str, DataFrame], airway: str) -> bool:
     base = tables.get("AWY_BASE")
     if match is None or base is None:
         return False
-    return any(
-        _text(record.get("AWY_ID", ""))
-        in {match["identifier"], f"{match['designation']}{match['identifier']}"}
-        for record in base.to_dict(orient="records")
-    )
+    identifiers = {match["identifier"], f"{match['designation']}{match['identifier']}"}
+    return base["AWY_ID"].map(_text).isin(identifiers).any()
 
 
 def _route_rows_points(

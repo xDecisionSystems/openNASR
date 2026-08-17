@@ -14,7 +14,12 @@ import time
 
 import pandas as pd
 
-from openNASR.flightplan import _WAYPOINT_TABLES, _Waypoint, _WaypointResolver
+from openNASR.flightplan import (
+    _WAYPOINT_TABLES,
+    _Waypoint,
+    _WaypointResolver,
+    _is_published_airway,
+)
 
 
 def _legacy_build(tables: dict[str, pd.DataFrame]) -> None:
@@ -68,6 +73,13 @@ def _tables(rows: int) -> dict[str, pd.DataFrame]:
     }
 
 
+def _legacy_airway_match(base: pd.DataFrame, airway: str) -> bool:
+    return any(
+        str(record.get("AWY_ID", "")).strip().upper() == airway
+        for record in base.to_dict(orient="records")
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--rows", type=int, default=100_000)
@@ -78,6 +90,22 @@ def main() -> None:
     vectorized = _samples(lambda: _WaypointResolver(tables), arguments.repetitions)
     legacy_median = statistics.median(legacy)
     vectorized_median = statistics.median(vectorized)
+    airway_base = pd.DataFrame(
+        {
+            "AWY_ID": [f"Q{index}" for index in range(arguments.rows)],
+            "AWY_DESIGNATION": ["RN"] * arguments.rows,
+        }
+    )
+    airway = f"Q{arguments.rows - 1}"
+    legacy_airway = _samples(
+        lambda: _legacy_airway_match(airway_base, airway), arguments.repetitions
+    )
+    vectorized_airway = _samples(
+        lambda: _is_published_airway({"AWY_BASE": airway_base}, airway),
+        arguments.repetitions,
+    )
+    legacy_airway_median = statistics.median(legacy_airway)
+    vectorized_airway_median = statistics.median(vectorized_airway)
     print(
         {
             "rows": arguments.rows,
@@ -85,6 +113,9 @@ def main() -> None:
             "legacy_median_seconds": legacy_median,
             "vectorized_median_seconds": vectorized_median,
             "speedup_ratio": legacy_median / vectorized_median,
+            "airway_legacy_median_seconds": legacy_airway_median,
+            "airway_vectorized_median_seconds": vectorized_airway_median,
+            "airway_speedup_ratio": legacy_airway_median / vectorized_airway_median,
         }
     )
 
