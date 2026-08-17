@@ -7,6 +7,13 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-16
+
+### Security
+
+- Nested FAA CSV archives are now validated before extraction and reject
+  absolute or path-traversal member paths.
+
 ### Fixed
 
 - Airport lookups no longer fail for helipads and other airports with a
@@ -76,8 +83,6 @@ and versions follow Semantic Versioning.
 - Fixed a latent bug (surfaced by the lazy-loading change above):
   `FixRepository`/`NavaidRepository` eagerly loaded `FIX_BASE`/`NAV_BASE` in
   their constructors regardless of whether the caller ever used them.
-
-## [1.5.0] - Unreleased
 
 ### Added
 

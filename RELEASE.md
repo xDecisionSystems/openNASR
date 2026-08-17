@@ -1,14 +1,13 @@
 # Release status
 
-The first supported openNASR release is designated **1.0.0**. This is the
-appropriate compatibility boundary because the release establishes the stable
-facade while retaining the documented legacy constructors and uppercase class
-aliases throughout the `1.x` series.
+The first supported openNASR release is designated **1.5.0**. This release
+establishes the stable facade and includes the complete planned `1.x` rich
+object coverage while retaining documented legacy constructors and uppercase
+class aliases.
 
 **All known engineering blockers are resolved and the full release gate
-passes (2026-08-16).** The package version remains `0.0.1` pending an
-explicit decision to cut the `1.0.0` release (a packaging/versioning action,
-not an engineering one — see "Remaining before publishing" below).
+passes (2026-08-16).** Package metadata is now prepared for the completed
+**1.5.0** feature set; publishing and tagging remain explicit release actions.
 
 As of 2026-08-16, every task in PLAN.md (Milestones 0 through 12) is
 complete, including the full `1.x` rich-object coverage plan originally
@@ -58,11 +57,8 @@ the new location (PLAN.md Task 7.14).
 
 ## Remaining before publishing
 
-Nothing engineering-blocking remains. What's left is a release *decision*,
-not a defect:
-
-- Decide and set the actual `1.0.0` version number in `pyproject.toml` and
-  `CHANGELOG.md` (currently `0.0.1`), and cut the release.
+Nothing engineering-blocking remains. Create the `v1.5.0` tag and publish the
+prepared package when release authority is granted.
 
 As of 2026-08-16, **every task in PLAN.md is checked off** — Milestones
 8-12 (the complete `1.x` rich-object coverage plan: `atc`/`weather`/

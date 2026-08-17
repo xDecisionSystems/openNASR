@@ -1,7 +1,9 @@
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from datetime import date as date_cls, datetime
+import tempfile
 from warnings import warn
 from zipfile import ZipFile
+from shutil import rmtree
 from pandas import DataFrame
 from .arb import ARB
 from .airspace import (
@@ -25,7 +27,7 @@ from .routes import (
 )
 from .military import MilitaryOperationRepository, MilitaryTrainingRouteRepository
 from .cycles import CycleManager, locate_csv_source
-from .exceptions import CycleNotFoundError, SchemaMismatchError
+from .exceptions import ArchiveError, CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
 from .repository import AirportRepository, FixRepository, NavaidRepository
 from .schemas import SCHEMA_SUFFIX, SchemaCatalog
@@ -186,8 +188,25 @@ class NASR(dict):
                 "NASR archive is being decompressed: %s" % source,
                 stacklevel=3,
             )
-            with ZipFile(source, "r") as zObject:
-                zObject.extractall(extracted)
+            temporary = Path(tempfile.mkdtemp(prefix=".nested-", dir=source.parent))
+            try:
+                with ZipFile(source, "r") as archive:
+                    for member in archive.infolist():
+                        path = PurePosixPath(member.filename)
+                        if path.is_absolute() or ".." in path.parts:
+                            raise ArchiveError(
+                                f"Unsafe archive member: {member.filename}"
+                            )
+                    archive.extractall(temporary)
+                locate_csv_source(temporary)
+                if extracted.exists():
+                    rmtree(temporary)
+                else:
+                    temporary.replace(extracted)
+            except Exception:
+                if temporary.exists():
+                    rmtree(temporary)
+                raise
         return extracted
 
     @property

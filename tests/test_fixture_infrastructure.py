@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
+import pytest
+
 from openNASR.cycles import CycleManager
+from openNASR.exceptions import ArchiveError
 from openNASR.nasr import NASR
 
 
@@ -93,3 +96,19 @@ def test_nasr_extracts_a_nested_csv_zip_matching_the_real_faa_archive_layout(
     nasr = NASR(cache_dir=cache_root)
 
     assert set(nasr["APT_BASE"]["ARPT_ID"]) == {"BWI"}
+
+
+def test_nasr_rejects_path_traversal_in_nested_csv_archive(tmp_path):
+    outer_archive = tmp_path / "28DaySubscription_Effective_2099-01-05.zip"
+    inner_path = tmp_path / "inner.zip"
+    with ZipFile(inner_path, "w", compression=ZIP_DEFLATED) as inner:
+        inner.writestr("../../outside.csv", "ARPT_ID\nESCAPE\n")
+    with ZipFile(outer_archive, "w", compression=ZIP_DEFLATED) as outer:
+        outer.write(inner_path, "CSV_Data/28DaySubscription_Effective_2099-01-05.zip")
+
+    cache_root = tmp_path / "cache"
+    CycleManager(cache_root).import_archive(outer_archive)
+
+    with pytest.raises(ArchiveError, match="Unsafe archive member"):
+        NASR(cache_dir=cache_root)
+    assert not (tmp_path / "outside.csv").exists()
