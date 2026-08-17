@@ -120,6 +120,27 @@ def test_flight_plan_path_uses_route_position_to_disambiguate_waypoints(tables):
     )
 
 
+def test_flight_plan_path_prefers_faa_and_icao_airports_at_endpoints(tables):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "AAA", "LAT_DECIMAL": "1", "LONG_DECIMAL": "2"},
+                    {"FIX_ID": "KBBB", "LAT_DECIMAL": "3", "LONG_DECIMAL": "4"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+
+    assert flight_plan_path(tables, "AAA ALPHA KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (35.0, -80.0),
+    )
+
+
 def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
     tables["FIX_BASE"] = pd.concat(
         [
