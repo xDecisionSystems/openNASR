@@ -1,0 +1,3 @@
+EFF_DATE,MAA_ID,TAB_NAME,REF_COL_NAME,REF_COL_SEQ_NO,REMARK
+,AOH001,MAA_BASE,GENERAL_REMARK,2,Second synthetic remark for fixture testing.
+,AOH001,MAA_BASE,GENERAL_REMARK,1,First synthetic remark for fixture testing.

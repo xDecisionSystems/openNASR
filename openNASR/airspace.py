@@ -9,7 +9,7 @@ from pandas import DataFrame
 
 from .arb import Boundary
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
-from .records import FaaRecord, nullable_text
+from .records import FaaRecord, dms_coordinate, integer, nullable_text
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
 
@@ -323,6 +323,301 @@ class ArtccRepository:
         return records[0]
 
 
+class MaaRecord(FaaRecord):
+    """Typed conveniences for one ``MAA_BASE`` row.
+
+    ``MAA`` is the FAA's "Miscellaneous Activity Area" family (aerobatic
+    practice, glider, hang glider, space launch, ultralight, and unmanned
+    aircraft areas) — confirmed from the FAA's own ``MAA DATA LAYOUT.pdf``
+    (PLAN.md Milestone 12, task 12.1). It is unrelated to military airspace.
+    """
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def maa_id(self) -> str | None:
+        return self._text("MAA_ID")
+
+    @property
+    def type_name(self) -> str | None:
+        return self._text("MAA_TYPE_NAME")
+
+    @property
+    def name(self) -> str | None:
+        return self._text("MAA_NAME")
+
+    @property
+    def city(self) -> str | None:
+        return self._text("CITY")
+
+    @property
+    def state(self) -> str | None:
+        return self._text("STATE_CODE")
+
+    @property
+    def max_altitude(self) -> str | None:
+        return self._text("MAX_ALT")
+
+    @property
+    def min_altitude(self) -> str | None:
+        return self._text("MIN_ALT")
+
+    @property
+    def radius(self) -> str | None:
+        return self._text("MAA_RADIUS")
+
+    @property
+    def description(self) -> str | None:
+        return self._text("DESCRIPTION")
+
+    @property
+    def use(self) -> str | None:
+        return self._text("MAA_USE")
+
+    @property
+    def time_of_use(self) -> str | None:
+        return self._text("TIME_OF_USE")
+
+    @property
+    def user_group_name(self) -> str | None:
+        return self._text("USER_GROUP_NAME")
+
+    @property
+    def airport_ids(self) -> tuple[str, ...]:
+        """FAA landing-facility identifiers associated with this area."""
+
+        raw = self._text("ARPT_IDS")
+        return tuple(raw.split()) if raw else ()
+
+
+class MaaContactRecord(FaaRecord):
+    """Typed conveniences for an ordered ``MAA_CON`` frequency-contact row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def sequence(self) -> int | None:
+        value = self._text("FREQ_SEQ")
+        return None if value is None else integer(value)
+
+    @property
+    def facility_id(self) -> str | None:
+        return self._text("FAC_ID")
+
+    @property
+    def facility_name(self) -> str | None:
+        return self._text("FAC_NAME")
+
+    @property
+    def commercial_frequency(self) -> str | None:
+        return self._text("COMMERCIAL_FREQ")
+
+    @property
+    def military_frequency(self) -> str | None:
+        return self._text("MIL_FREQ")
+
+
+class MaaRemarkRecord(FaaRecord):
+    """Typed conveniences for an ordered ``MAA_RMK`` remark row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def table_name(self) -> str | None:
+        return self._text("TAB_NAME")
+
+    @property
+    def reference_column(self) -> str | None:
+        return self._text("REF_COL_NAME")
+
+    @property
+    def sequence(self) -> int | None:
+        value = self._text("REF_COL_SEQ_NO")
+        return None if value is None else integer(value)
+
+    @property
+    def remark(self) -> str | None:
+        return self._text("REMARK")
+
+
+class MaaShapePointRecord(FaaRecord):
+    """Typed conveniences for an ordered ``MAA_SHP`` polygon-point row."""
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def sequence(self) -> int | None:
+        value = self._text("POINT_SEQ")
+        return None if value is None else integer(value)
+
+    @property
+    def latitude(self) -> float | None:
+        value = self._text("LATITUDE")
+        return None if value is None else dms_coordinate(value)
+
+    @property
+    def longitude(self) -> float | None:
+        value = self._text("LONGITUDE")
+        return None if value is None else dms_coordinate(value)
+
+
+class Maa:
+    """One Miscellaneous Activity Area with its contacts, remarks, and shape."""
+
+    def __init__(
+        self,
+        record: MaaRecord,
+        *,
+        contacts: tuple[MaaContactRecord, ...],
+        remarks: tuple[MaaRemarkRecord, ...],
+        shape_points: tuple[MaaShapePointRecord, ...],
+    ) -> None:
+        self.record = record
+        self.contacts = contacts
+        self.remarks = remarks
+        self.shape_points = shape_points
+
+    @property
+    def maa_id(self) -> str | None:
+        return self.record.maa_id
+
+    @property
+    def name(self) -> str | None:
+        return self.record.name
+
+    @property
+    def geometry(self):
+        """A Shapely polygon built from the ordered ``MAA_SHP`` points.
+
+        Returns ``None`` when the area has no published shape (some
+        ``MAA_BASE`` rows describe only a center point and radius).
+        ``MAA_SHP`` rings are not explicitly closed in FAA source data
+        (unlike ``ARB_SEG``), so the first point is appended to close the
+        ring before building the polygon.
+        """
+
+        if not self.shape_points:
+            return None
+        points = [
+            (point.longitude, point.latitude)
+            for point in self.shape_points
+            if point.longitude is not None and point.latitude is not None
+        ]
+        if not points:
+            return None
+        if points[0] != points[-1]:
+            points = [*points, points[0]]
+        lons, lats = zip(*points)
+        return Boundary(lons, lats).getShape
+
+
+class MaaRepository:
+    """Lookup Miscellaneous Activity Areas by ``MAA_ID``."""
+
+    entity_type = "Maa"
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        self._nasr = nasr
+
+    @staticmethod
+    def _normalized(value: object) -> str:
+        if value is None or value != value:
+            return ""
+        return str(value).strip().upper()
+
+    @property
+    def _table(self) -> DataFrame:
+        return self._nasr["MAA_BASE"]
+
+    def _matching(self, frame: DataFrame, maa_id: str) -> DataFrame:
+        return frame[frame["MAA_ID"].map(self._normalized).eq(maa_id)]
+
+    @staticmethod
+    def _contact_order(row: dict[str, object]) -> int:
+        sequence = row.get("FREQ_SEQ")
+        return int(str(sequence)) if sequence not in (None, "") else -1
+
+    @staticmethod
+    def _remark_order(row: dict[str, object]) -> tuple[str, str, int]:
+        sequence = row.get("REF_COL_SEQ_NO")
+        return (
+            str(row.get("TAB_NAME", "")),
+            str(row.get("REF_COL_NAME", "")),
+            int(str(sequence)) if sequence not in (None, "") else -1,
+        )
+
+    @staticmethod
+    def _point_order(row: dict[str, object]) -> int:
+        sequence = row.get("POINT_SEQ")
+        return int(str(sequence)) if sequence not in (None, "") else -1
+
+    def _maa(self, row: dict[str, object]) -> Maa:
+        maa_id = self._normalized(row["MAA_ID"])
+        contacts = sorted(
+            self._matching(self._nasr["MAA_CON"], maa_id).to_dict(orient="records"),
+            key=self._contact_order,
+        )
+        remarks = sorted(
+            self._matching(self._nasr["MAA_RMK"], maa_id).to_dict(orient="records"),
+            key=self._remark_order,
+        )
+        shape_points = sorted(
+            self._matching(self._nasr["MAA_SHP"], maa_id).to_dict(orient="records"),
+            key=self._point_order,
+        )
+        return Maa(
+            MaaRecord(row),
+            contacts=tuple(MaaContactRecord(item) for item in contacts),
+            remarks=tuple(MaaRemarkRecord(item) for item in remarks),
+            shape_points=tuple(MaaShapePointRecord(item) for item in shape_points),
+        )
+
+    def find(
+        self, identifier: object | None = None, **filters: object
+    ) -> tuple[Maa, ...]:
+        """Return areas matching ``MAA_ID`` and every supported filter."""
+
+        rows = self._table
+        if identifier is not None:
+            normalized = self._normalized(identifier)
+            rows = rows[rows["MAA_ID"].map(self._normalized).eq(normalized)]
+        for column, value in filters.items():
+            if column not in {"state", "type_name"}:
+                raise ValueError(f"Unsupported Maa filter: {column}")
+            source_column = {"state": "STATE_CODE", "type_name": "MAA_TYPE_NAME"}[
+                column
+            ]
+            rows = rows[
+                rows[source_column].map(self._normalized).eq(self._normalized(value))
+            ]
+        return tuple(self._maa(row) for row in rows.to_dict(orient="records"))
+
+    def get(self, identifier: object, **filters: object) -> Maa:
+        """Return exactly one area for a ``MAA_ID`` (and any filters)."""
+
+        records = self.find(identifier, **filters)
+        if not records:
+            raise RecordNotFoundError(
+                entity_type=self.entity_type, identifier=identifier, filters=filters
+            )
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type=self.entity_type,
+                identifier=identifier,
+                filters=filters,
+                candidates=records,
+            )
+        return records[0]
+
+
 __all__ = [
     "Artcc",
     "ArtccBoundary",
@@ -330,4 +625,10 @@ __all__ = [
     "ArtccRepository",
     "ClassAirspace",
     "ClassAirspaceRepository",
+    "Maa",
+    "MaaContactRecord",
+    "MaaRecord",
+    "MaaRemarkRecord",
+    "MaaRepository",
+    "MaaShapePointRecord",
 ]

@@ -8,7 +8,14 @@ from pathlib import Path
 
 from .exceptions import SchemaMismatchError, TableNotFoundError
 from .airport import AirportRecord
-from .airspace import ArtccRecord, ClassAirspaceRecord
+from .airspace import (
+    ArtccRecord,
+    ClassAirspaceRecord,
+    MaaContactRecord,
+    MaaRecord,
+    MaaRemarkRecord,
+    MaaShapePointRecord,
+)
 from .airway import AirwayRecord, AirwaySegmentRecord
 from .arrivals import StarAirportRecord, StarProcedureRecord, StarRouteRecord
 from .atc import (
@@ -210,6 +217,10 @@ RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "AWY_SEG_ALT": AirwaySegmentRecord,
     "CLS_ARSP": ClassAirspaceRecord,
     "ARB_BASE": ArtccRecord,
+    "MAA_BASE": MaaRecord,
+    "MAA_CON": MaaContactRecord,
+    "MAA_RMK": MaaRemarkRecord,
+    "MAA_SHP": MaaShapePointRecord,
     "MIL_OPS": MilitaryOperationRecord,
     "HPF_BASE": HoldingPatternRecord,
     "HPF_CHRT": HoldingPatternChartRecord,

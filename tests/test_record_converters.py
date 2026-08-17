@@ -13,6 +13,7 @@ from openNASR.records import (
     boolean,
     coordinate,
     decimal,
+    dms_coordinate,
     enum_value,
     float_value,
     integer,
@@ -132,3 +133,28 @@ def test_navigation_record_converters_raise_for_invalid_typed_values():
         AirwaySegmentRecord({"POINT_SEQ": "not-a-number"}).point_sequence
     with pytest.raises(FieldConversionError):
         HoldingPatternRemarkRecord({"REF_COL_SEQ_NO": "not-a-number"}).sequence
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("33-54-12.8500N", 33 + 54 / 60 + 12.85 / 3600),
+        ("087-19-53.7600W", -(87 + 19 / 60 + 53.76 / 3600)),
+        ("40-30-00.0000S", -40.5),
+        ("082-00-00.0000E", 82.0),
+    ],
+)
+def test_dms_coordinate_converts_every_hemisphere(raw, expected):
+    """MAA_SHP publishes only a formatted DD-MM-SS.ssssH coordinate, with no
+    accompanying decimal column (verified against the real FAA archive,
+    PLAN.md Milestone 12 task 12.2)."""
+    assert dms_coordinate(raw) == pytest.approx(expected)
+
+
+def test_dms_coordinate_returns_none_for_an_empty_field():
+    assert dms_coordinate("") is None
+
+
+def test_dms_coordinate_rejects_an_unsupported_hemisphere_letter():
+    with pytest.raises(FieldConversionError):
+        dms_coordinate("33-54-12.8500Q")

@@ -103,6 +103,24 @@ def coordinate(raw: str, *, context: FieldContext | None = None) -> float | None
     return float_value(raw, context=context)
 
 
+def dms_coordinate(raw: str, *, context: FieldContext | None = None) -> float | None:
+    """Convert an FAA formatted ``DD-MM-SS.ssssH`` coordinate to decimal degrees.
+
+    Used by tables such as ``MAA_SHP`` that publish only a formatted
+    latitude/longitude string, with no accompanying ``*_DECIMAL`` column.
+    """
+
+    def convert(value: str) -> float:
+        hemisphere = value[-1]
+        if hemisphere not in "NSEW":
+            raise ValueError(f"Unsupported coordinate hemisphere: {value!r}")
+        degrees_str, minutes_str, seconds_str = value[:-1].split("-")
+        magnitude = int(degrees_str) + int(minutes_str) / 60 + float(seconds_str) / 3600
+        return -magnitude if hemisphere in "SW" else magnitude
+
+    return _convert(raw, float, convert, context)
+
+
 def enum_value(
     raw: str,
     enum_type: type[EnumValue],
@@ -157,6 +175,10 @@ _COMPATIBILITY_RECORD_MODULES = {
     "LocationIdentifierRecord": "locations",
     "ClassAirspaceRecord": "airspace",
     "ArtccRecord": "airspace",
+    "MaaRecord": "airspace",
+    "MaaContactRecord": "airspace",
+    "MaaRemarkRecord": "airspace",
+    "MaaShapePointRecord": "airspace",
     "MilitaryOperationRecord": "military",
     "NavaidRecord": "nav",
     "AirportRecord": "airport",

@@ -2582,9 +2582,31 @@ Tasks:
         shape table at all (radius-only). Task 12.3-12.5's rich objects
         should not assume Polygon/MultiPolygon branching is needed for these
         families the way `Artcc`/`ArtccBoundary` needed it for `ARB_SEG`.
-- [ ] **Agent: Terra.** **12.3** Implement `MaaRecord`, `MaaContactRecord`, `MaaRemarkRecord`, and
+- [x] **Agent: Terra.** **12.3** Implement `MaaRecord`, `MaaContactRecord`, `MaaRemarkRecord`, and
       `MaaShapePointRecord`; expose rich `Maa` objects through `nasr.maas`,
       `nasr.maa()`, contacts, remarks, and validated geometry.
+      **Done (2026-08-16):** implemented in `openNASR/airspace.py`, following
+      the `Artcc`/`ClassAirspace` conventions established in Milestone 5B.
+      `Maa.contacts`/`Maa.remarks`/`Maa.shape_points` are sorted by their
+      verified keys (`FREQ_SEQ`; `TAB_NAME, REF_COL_NAME, REF_COL_SEQ_NO`;
+      `POINT_SEQ`) rather than trusting file order, matching the
+      `HoldingPattern` remark-ordering precedent. `Maa.geometry` reuses
+      `openNASR.arb.Boundary` directly (no geometry reimplementation) but
+      first closes the ring by appending the first point, since real
+      `MAA_SHP` rings are not explicitly closed the way `ARB_SEG` rings are
+      (task 12.2 finding) -- `Boundary._rings`' closure detection requires
+      an explicit repeated first point. Added a new `dms_coordinate`
+      converter to `records.py` because `MAA_SHP` publishes only a
+      formatted `DD-MM-SS.ssssH` string with no decimal column, unlike every
+      other geometry table used so far. Registered in `RICH_RECORD_TYPES`,
+      `_COMPATIBILITY_RECORD_MODULES`, and package `__init__.py` exports.
+      Tests added to `tests/test_airspace.py` (repository/singular-method
+      equivalence, typed fields, contact/remark/point ordering against
+      deliberately out-of-order fixture rows, geometry ring-closing,
+      `geometry is None` for a radius-only area, `RecordNotFoundError`) and
+      `tests/test_record_converters.py` (`dms_coordinate` across all four
+      hemispheres, empty field, invalid hemisphere letter). Extended the
+      `core/pre_2026_09` fixture with one synthetic `MAA_*` area.
 - [ ] **Agent: Terra.** **12.4** Implement `ParachuteJumpAreaRecord` and
       `ParachuteJumpAreaContactRecord`; expose rich `ParachuteJumpArea` objects
       through `nasr.parachute_jump_areas` and contact collections.
@@ -2806,3 +2828,5 @@ report has no operational table without a rich API.
 | 2026-08-16 | Leave `nasr.artcc()` (the new method) and `nasr.loadARTCC()`'s `self.artcc = ARB(self)` (the legacy attribute assignment) coexisting under the same name, per PLAN.md's explicit instruction not to alter either. | Verified directly that this creates a real, if narrow, behavioral trap: before `loadARTCC()` is called on an instance, `nasr.artcc` resolves to the `NASR.artcc` bound method and `nasr.artcc("ZOB")` works; after `loadARTCC()` is called, the instance attribute shadows the method and `nasr.artcc("ZOB")` would fail (`ARB` objects aren't callable). Both entry points still "coexist" as required, but not simultaneously callable through the same name on one instance. Documented in a dedicated regression test (`test_legacy_load_artcc_still_works_alongside_the_modern_facade`) rather than silently leaving it undiscovered; not fixed because the plan explicitly forbids altering either name during the compatibility period. |
 | 2026-08-16 | Run the full six-command release gate (`pytest`, `ruff format --check`, `ruff check`, `mypy`, `build`, `twine check`) end-to-end in one pass for the first time, rather than continuing to rely on the piecemeal `pytest`/`mypy`/`ruff check` runs used throughout development. | `RELEASE.md` had explicitly listed "the full verification matrix has never been run as a single release-gate pass" as the one remaining blocker once Milestones 4B and 5B closed the engineering gaps. Running it surfaced two real, non-cosmetic fixes (`ruff format` reformatting hand-written code from this session, and two long f-string lines in `tools/generate_schema_manifests.py` that needed manual wrapping) — confirming the gate does real work and isn't a no-op. Also verified beyond the six commands: no `openNASR/data/` path in the built wheel, and a clean-virtualenv install/import succeeds from outside the source tree. |
 | 2026-08-16 | Complete Task 7.14: point the local `origin` remote and the live `README.md`/`pyproject.toml` references at `https://github.com/xDecisionSystems/openNASR`. | GitHub's own push response confirmed the repository move (a "This repository moved" redirect notice on push to the old `ADCLab/openNASR` URL), and the user then explicitly confirmed the update. `PLAN.md`/`RELEASE.md`'s own historical mentions of `ADCLab/openNASR` are left unchanged since they document the move itself, not live links. |
+| 2026-08-16 | Complete Milestone 12 Task 12.3: add `MaaRecord`/`MaaContactRecord`/`MaaRemarkRecord`/`MaaShapePointRecord`/`Maa`/`MaaRepository` to `airspace.py`, wire `nasr.maas`/`nasr.maa()`, and add a `dms_coordinate` converter to `records.py`. | Followed the `Artcc` precedent from Milestone 5B exactly (wrap, don't reimplement, geometry via `Boundary`) but `MAA_SHP` needed one genuinely new piece: it has no `*_DECIMAL` coordinate columns anywhere in the real schema (verified in task 12.2), only a formatted `DD-MM-SS.ssssH` string, so no existing converter could read it. |
+| 2026-08-16 | Do not fix `openNASR/cycles.py`'s `locate_csv_source` picking the wrong archive inside a cycle for several real FAA cycles. | Discovered while manually verifying Task 12.3 against the real `28DaySubscription_Effective_2024-06-13.zip` archive: `locate_csv_source` uses `root.rglob("*.zip")` and takes the alphabetically-first match when no CSVs are yet extracted, but real FAA archives also ship nested `Additional_Data/AIXM/.../*_AIXM.zip` sub-archives that sort before `CSV_Data/<date>_CSV.zip` (`A` < `C`), so it silently extracts and reads the wrong, unrelated AIXM zip instead of the actual CSV data — raising `TableNotFoundError` for every real table. Confirmed this is not new and not specific to 2024-06-13: `28DaySubscription_Effective_2021-11-04.zip` has the identical nested-AIXM-zip layout. It does not affect the test suite (synthetic fixtures never include nested AIXM zips) or this session's Milestone 12 verification (done via direct CSV/PDF reads and the `core`/`schema_only` fixtures instead), but it means `NASR()` cannot currently load several/most of the real archives already sitting in `openNASR/data/zip/` without manual workaround. Left unfixed rather than silently patched mid-Milestone-12-implementation; flagged here as a real, reproducible defect worth its own task. |

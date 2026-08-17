@@ -127,3 +127,99 @@ def test_legacy_load_artcc_still_works_alongside_the_modern_facade(
     assert nasr.artcc.getARTCC("ZOB").high.getShape.is_valid
     # The plural repository is unaffected by the legacy singular attribute.
     assert nasr.artccs.get("ZOB").high.getShape.is_valid
+
+
+def test_maa_repository_get_and_singular_facade_are_equivalent(make_nasr_from_fixture):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    from_repository = nasr.maas.get("aoh001")
+    from_singular_method = nasr.maa("AOH001")
+
+    assert from_repository.maa_id == from_singular_method.maa_id == "AOH001"
+
+
+def test_maa_record_exposes_typed_fields_including_type_name(make_nasr_from_fixture):
+    """MAA is the FAA's "Miscellaneous Activity Area" family (verified from
+    the FAA's own MAA DATA LAYOUT.pdf, PLAN.md Milestone 12 task 12.1) -- not
+    military airspace, despite living alongside PJA/MTR."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    maa = nasr.maas.get("AOH001")
+
+    assert maa.record.type_name == "AEROBATIC PRACTICE"
+    assert maa.name == "Synthetic Aerobatic Practice Area"
+    assert maa.record.state == "OH"
+    assert maa.record.airport_ids == ("BKL",)
+
+
+def test_maa_contacts_are_ordered_by_freq_seq_not_file_order(make_nasr_from_fixture):
+    """MAA_CON ordered by (MAA_ID, FREQ_SEQ) per the FAA layout document
+    (PLAN.md task 12.2); tests/fixtures/.../MAA_CON.csv lists FREQ_SEQ 2
+    before 1 specifically to catch a repository that trusted file order."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    maa = nasr.maas.get("AOH001")
+
+    assert [contact.sequence for contact in maa.contacts] == [1, 2]
+    assert maa.contacts[0].commercial_frequency == "121.5"
+    assert maa.contacts[1].commercial_frequency == "124.5"
+
+
+def test_maa_remarks_are_ordered_by_ref_col_seq_no(make_nasr_from_fixture):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    maa = nasr.maas.get("AOH001")
+
+    assert [remark.sequence for remark in maa.remarks] == [1, 2]
+    assert maa.remarks[0].remark == "First synthetic remark for fixture testing."
+
+
+def test_maa_geometry_closes_an_unclosed_source_ring_in_point_seq_order(
+    make_nasr_from_fixture,
+):
+    """MAA_SHP rings are not explicitly closed in real FAA source data
+    (verified against the real 2024-06-13 archive, PLAN.md task 12.2), unlike
+    ARB_SEG; tests/fixtures/.../MAA_SHP.csv lists POINT_SEQ out of file order
+    to also confirm points are sorted by sequence, not file order."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    maa = nasr.maas.get("AOH001")
+
+    assert [point.sequence for point in maa.shape_points] == [1, 2, 3, 4]
+    geometry = maa.geometry
+    assert geometry is not None
+    assert geometry.is_valid
+    assert geometry.equals(
+        Polygon(
+            [
+                (-82.0, 40.5),
+                (-81.98333333333333, 40.5),
+                (-81.98333333333333, 40.516666666666666),
+                (-82.0, 40.516666666666666),
+                (-82.0, 40.5),
+            ]
+        )
+    )
+
+
+def test_maa_geometry_is_none_when_no_shape_points_exist(make_nasr_from_fixture):
+    """Some MAA_BASE rows describe only a center point and radius, with no
+    matching MAA_SHP rows (verified from the real archive, task 12.2)."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    maa = nasr.maas.get("AOH001")
+    # Remove the shape points to simulate a radius-only area.
+    maa = maa.__class__(
+        maa.record, contacts=maa.contacts, remarks=maa.remarks, shape_points=()
+    )
+
+    assert maa.geometry is None
+
+
+def test_maa_repository_raises_record_not_found_for_an_unmatched_identifier(
+    make_nasr_from_fixture,
+):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    with pytest.raises(RecordNotFoundError):
+        nasr.maas.get("does-not-exist")

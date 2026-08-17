@@ -7,6 +7,21 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `nasr.maas`/`nasr.maa(identifier)`: rich `Maa` objects for the FAA's
+  Miscellaneous Activity Area family (`MAA_BASE`/`MAA_CON`/`MAA_RMK`/
+  `MAA_SHP`) — aerobatic practice, glider, hang glider, space launch,
+  ultralight, and unmanned-aircraft areas, confirmed from the FAA's own
+  `MAA DATA LAYOUT.pdf` (Milestone 12, not required for `1.0.0`). Contacts,
+  remarks, and shape points are ordered by their verified FAA keys.
+  `Maa.geometry` returns a Shapely polygon built from `MAA_SHP`'s ordered
+  points, closing the ring since FAA source data leaves it open (unlike
+  `ARB_SEG`), or `None` for radius-only areas with no shape rows.
+- `openNASR.records.dms_coordinate`: converts an FAA formatted
+  `DD-MM-SS.ssssH` coordinate string to decimal degrees, for tables such as
+  `MAA_SHP` that publish no `*_DECIMAL` column.
+
 ### Fixed
 
 - Airport lookups no longer fail for helipads and other airports with a

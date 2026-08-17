@@ -127,10 +127,10 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | `ARB_BASE` | `airspace.py` | `ArtccRecord` | `Artcc`; `nasr.artccs`; `nasr.artcc()` | Existing |
 | `ARB_SEG` | `airspace.py` | `ArtccBoundarySegmentRecord` | `ArtccBoundary`; `Artcc.boundaries` | Existing |
 | `CLS_ARSP` | `airspace.py` | `ClassAirspaceRecord` | `Airport.class_airspace` and `nasr.class_airspaces` | Keys verified; implementation pending |
-| `MAA_BASE` | `airspace.py` | `MaaRecord` | `Maa`; `nasr.maas`; `nasr.maa()` | FAA review complete — `MAA` = "Miscellaneous Activity Area" (PLAN.md 12.1); `Maa*` naming approved |
-| `MAA_CON` | `airspace.py` | `MaaContactRecord` | `Maa.contacts` | FAA review complete — see `MAA_BASE` |
-| `MAA_RMK` | `airspace.py` | `MaaRemarkRecord` | `Maa.remarks` | FAA review complete — see `MAA_BASE` |
-| `MAA_SHP` | `airspace.py` | `MaaShapePointRecord` | `Maa.geometry` | FAA review complete — see `MAA_BASE` |
+| `MAA_BASE` | `airspace.py` | `MaaRecord` | `Maa`; `nasr.maas`; `nasr.maa()` | Existing |
+| `MAA_CON` | `airspace.py` | `MaaContactRecord` | `Maa.contacts` | Existing |
+| `MAA_RMK` | `airspace.py` | `MaaRemarkRecord` | `Maa.remarks` | Existing |
+| `MAA_SHP` | `airspace.py` | `MaaShapePointRecord` | `Maa.geometry` | Existing |
 | `PJA_BASE` | `airspace.py` | `ParachuteJumpAreaRecord` | `ParachuteJumpArea`; `nasr.parachute_jump_areas` | Keys verified; implementation pending |
 | `PJA_CON` | `airspace.py` | `ParachuteJumpAreaContactRecord` | `ParachuteJumpArea.contacts` | Keys verified; implementation pending |
 
