@@ -671,6 +671,7 @@ def _is_departure_procedure(tables: Mapping[str, DataFrame], token: str) -> bool
     return bool(
         (
             departures is not None
+            and "DP_COMPUTER_CODE" in departures
             and departures["DP_COMPUTER_CODE"].map(_text).eq(token).any()
         )
         or (
