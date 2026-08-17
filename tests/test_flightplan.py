@@ -580,6 +580,118 @@ def test_star_body_uses_preceding_route_token_and_preserves_ambiguity(tables):
         flight_plan_path(tables, "KAAA CHOICE3 KBBB")
 
 
+def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "ENTRY", "LAT_DECIMAL": "33", "LONG_DECIMAL": "-80"},
+                    {
+                        "FIX_ID": "STARFIX",
+                        "LAT_DECIMAL": "32",
+                        "LONG_DECIMAL": "-81",
+                    },
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["NAV_BASE"] = pd.DataFrame(
+        [{"NAV_ID": "NAV", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-79"}]
+    )
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "DEP", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "DEP1"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "DEP",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "DEP1",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "KAAA",
+            },
+            {
+                "DP_NAME": "DEP",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "DEP1",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "ALPHA",
+            },
+        ]
+    )
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "ARR1", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": "ARR1",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "KBBB",
+            },
+            {
+                "STAR_COMPUTER_CODE": "ARR1",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "STARFIX",
+            },
+            {
+                "STAR_COMPUTER_CODE": "ARR1",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "30",
+                "POINT": "ENTRY",
+            },
+        ]
+    )
+    tables["AWY_BASE"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "D",
+                "AWY_ID": "1",
+                "AWY_DESIGNATION": "V",
+            }
+        ]
+    )
+    tables["AWY_SEG_ALT"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "D",
+                "AWY_ID": "1",
+                "POINT_SEQ": "1",
+                "FROM_POINT": "ALPHA",
+                "TO_POINT": "NAV",
+            }
+        ]
+    )
+
+    assert flight_plan_path(
+        tables, "KAAA.DEP1..ALPHA.V1.NAV..ENTRY.ARR1.KBBB"
+    ) == (
+        (38.0, -77.0),  # Origin and DP join.
+        (37.0, -78.0),  # DP exit and airway entry.
+        (34.0, -79.0),  # Airway navaid.
+        (33.0, -80.0),  # Direct segment's filed STAR connection.
+        (32.0, -81.0),
+        (35.0, -80.0),  # STAR exit and destination join.
+    )
+
+
 def test_flight_plan_path_accepts_double_dot_direct_routing(tables):
     assert flight_plan_path(tables, "KAAA..ALPHA..BBB/0354") == (
         (38.0, -77.0),
