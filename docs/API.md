@@ -18,6 +18,28 @@
 The command-line equivalents are `opennasr build-duckdb YYYY-MM-DD` (or
 `latest`) and `opennasr list --storage`.
 
+## Route-field paths
+
+`flight_plan_path(nasr, route)` returns an ordered tuple of source
+`(latitude, longitude)` coordinates. For batches, construct
+`RouteResolver(nasr)` once and call `.path(route)`; a resolver is a snapshot
+of one selected NASR cycle, so construct a new resolver after changing a
+table, backend, or cycle.
+
+The domestic parser accepts whitespace-separated and FAA dotted forms, `..`
+or `DCT` direct segments, and an optional trailing `/speed-altitude` suffix.
+It resolves domestic airports, fixes, navaids, published airways, DPs, STARs,
+and transitions from the selected cycle. Returned coordinates retain source
+order and are not an operational route validation or clearance.
+
+Foreign airports, external airways/procedures, oceanic coordinates, and
+radial-distance points are outside the domestic NASR contract and raise
+`UnsupportedRouteContentError`. Coordinate tokens are deliberately not parsed
+locally in this release because NASR cannot validate their surrounding route
+structure. Unknown domestic records raise `RecordNotFoundError`, ambiguous
+records raise `AmbiguousRecordError`, and a published procedure/airway pair
+with no valid source-backed join raises `RouteConnectivityError`.
+
 ## Repository facade
 
 `NASR` provides plural repositories and singular convenience lookups:

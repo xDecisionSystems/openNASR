@@ -127,7 +127,7 @@ Each in-flight task has exactly one owning agent.
   classification rules, and named representative routes (including a
   clearly labeled synthetic malformed-route control) are in
   [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md).
-- [ ] **T0.3 — Agent model: Luna.** Add a non-flaky regression sample: a fixed, curated
+- [x] **T0.3 — Agent model: Luna. Done.** Add a non-flaky regression sample: a fixed, curated
   list of route strings (not a random sample) covering each category from
   T0.2, checked into `tests/` as a small fixture file or Python list. Must
   not depend on `tests/exampleRoutes.csv` being present, since that file is
@@ -158,11 +158,11 @@ Each in-flight task has exactly one owning agent.
 
 ## Product Contract
 
-- [ ] **T0.6 — Agent model: Terra.** Keep `flight_plan_path(nasr, flight_plan)` as the
+- [x] **T0.6 — Agent model: Terra. Done.** Keep `flight_plan_path(nasr, flight_plan)` as the
   public API (`openNASR/flightplan.py:410`) returning ordered
   `(latitude, longitude)` tuples; every task in this plan must preserve
   this signature and return type.
-- [ ] **T0.7 — Agent model: Luna.** Document supported input forms in the module
+- [x] **T0.7 — Agent model: Luna. Done.** Document supported input forms in the module
   docstring and/or `docs/API.md`: whitespace-separated and FAA dotted route
   fields; `..` direct routing; optional trailing `/speed-altitude`;
   airports, fixes, navaids, airways, DPs, STARs, and transitions.
@@ -182,7 +182,7 @@ Each in-flight task has exactly one owning agent.
   `RouteConnectivityError` types when the corresponding production tasks
   land; their required attributes and precedence are specified in
   [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#typed-resulterror-policy).
-- [ ] **T0.9 — Agent model: Terra.** Preserve source coordinates and source ordering in
+- [x] **T0.9 — Agent model: Terra. Verified at Gates 3-4.** Preserve source coordinates and source ordering in
   every fix in this plan. Do not infer missing legs, manufacture
   geometries, or claim a returned path is a legal or cleared route — this
   is a standing constraint checked in code review for every task below, not
@@ -204,7 +204,7 @@ Each in-flight task has exactly one owning agent.
   the airway branch and fail as
   `Airway path record 'GNDLF3' was not found` instead of resolving as a
   procedure.
-- [ ] **T1.1 — Agent model: Terra.** Fix the bug found in T1.0. In
+- [x] **T1.1 — Agent model: Terra. Done.** Fix the bug found in T1.0. In
   `flight_plan_path`'s main dispatch loop (`flightplan.py:436-500`), before
   the airway-regex branch at line 451, probe `_procedure_path` for any bare
   token that matches `_AIRWAY.fullmatch`, not only dotted tokens. A bare
@@ -219,25 +219,25 @@ Each in-flight task has exactly one owning agent.
   following route segment begins at the procedure's intended exit point, and
   fails on the current code rather than only asserting a non-empty path.
   Dependencies: none (this is the first Terra task in the plan).
-- [ ] **T1.2 — Agent model: Terra.** Parse dotted route fields into a lossless token
+- [x] **T1.2 — Agent model: Terra. Done.** Parse dotted route fields into a lossless token
   stream in `_tokenize_flight_plan` (`flightplan.py:364-407`). Preserve the
   distinction between `.` component separators and `..` direct segments;
   this is largely already implemented (verify with a test, don't assume a
   rewrite is needed) — confirm existing behavior with
   `test_flight_plan_path_accepts_double_dot_direct_routing`
   (`tests/test_flightplan.py:242`) before changing anything.
-- [ ] **T1.3 — Agent model: Terra.** Strip only the trailing speed/altitude suffix from
+- [x] **T1.3 — Agent model: Terra. Done.** Strip only the trailing speed/altitude suffix from
   each whitespace field (`flightplan.py:381`, `field.split("/", 1)[0]`);
   retain the original token positions for diagnostics used by Phase 5's
   error reporting (T5.2).
-- [ ] **T1.4 — Agent model: Terra.** Recognize airport endpoint context, including FAA
+- [x] **T1.4 — Agent model: Terra. Done.** Recognize airport endpoint context, including FAA
   location identifiers and domestic ICAO identifiers, in
   `_waypoint`/`_WaypointResolver` (`flightplan.py:30-163`) via the existing
   `preferred_tables` mechanism. Verify against a route with both an FAA
   identifier and an ICAO identifier endpoint (e.g. `KBWI...` vs. `BWI...`
   if both resolve).
   Dependencies: T1.1 (avoid rebasing token-classification changes twice).
-- [ ] **T1.5 — Agent model: Luna.** Add parser tests for mixed spaces/dots, consecutive
+- [x] **T1.5 — Agent model: Luna. Done.** Add parser tests for mixed spaces/dots, consecutive
   direct segments, repeated airways, empty components, and malformed
   suffixes, extending `tests/test_flightplan.py`.
   Dependencies: T1.1-T1.4 merged.
@@ -247,9 +247,15 @@ category (re-run the T0.1 sample or an equivalent subset) and records the
 gate with the before/after success count. T0.1a confirmed the sample is
 re-runnable.
 
+**Gate 1 — APPROVED retrospectively (2026-08-17).** Focused bare-DP and
+bare-STAR regressions pass. The first comparable canonical rerun at Gate 2
+improved from 38/100 to 60/100 while procedure-resolution failures fell from
+40 to 8, with no baseline-success regression. That count includes later Phase
+2 work and is closure evidence, not an isolated T1.1 benchmark.
+
 ## Phase 2 — Departures and Arrivals
 
-- [ ] **T2.1 — Agent model: Terra.** Resolve a bare departure name (e.g. `RUGGD3`,
+- [x] **T2.1 — Agent model: Terra. Done.** Resolve a bare departure name (e.g. `RUGGD3`,
   `BAYLR6`) following the departure airport. **Depends on and is largely
   satisfied by T1.1** — confirm with a dedicated bare-DP-after-departure-
   airport regression rather than assuming T1.1 alone covers every case
@@ -257,20 +263,19 @@ re-runnable.
   immediately after the origin airport is a related but distinct code path
   through `_tokenize_flight_plan`/dispatch and needs its own test).
   Dependencies: T1.1.
-- [ ] **T2.2 — Agent model: Terra.** Resolve a bare arrival name preceding the
+- [x] **T2.2 — Agent model: Terra. Done.** Resolve a bare arrival name preceding the
   destination airport. **This and T2.1 are the single largest observed
   failure category (Phase 1's T1.0 finding), not an already-working case**
   — prioritize ahead of the dotted forms below (T2.3-T2.4).
   Dependencies: T1.1.
-- [ ] **T2.3 — Agent model: Terra.** Resolve `PROCEDURE.TRANSITION` forms such as
+- [x] **T2.3 — Agent model: Terra. Done.** Resolve `PROCEDURE.TRANSITION` forms such as
   `ORCO8.TRM` and `TORGY4.SSWAN` via `_procedure_path`
   (`flightplan.py:262-361`), which already implements this for the
   documented cases — verify with
   `test_flight_plan_path_expands_departure_and_arrival_procedures`
   (`tests/test_flightplan.py:118`) before assuming new work is needed here
   beyond T2.4's fix.
-- [x] **T2.4 — Agent model: Terra. Partially done; see T2.4a for what
-  remains open (2026-08-17).** The original diagnosis of this task was
+- [x] **T2.4 — Agent model: Terra. Done (2026-08-17).** The original diagnosis of this task was
   factually wrong about the `2024-06-13` cycle's data and has been
   corrected below; the bug it led to finding was real, just different from
   what was originally described.
@@ -313,7 +318,7 @@ re-runnable.
   Dependencies: T1.1, T2.1, T2.2 (shares dispatch/tokenizer code with all
   three; land after them to avoid re-resolving merge conflicts in the same
   functions).
-- [ ] **T2.4a — Agent model: Sol, then Terra.** Resolve what T2.4's original
+- [x] **T2.4a — Agent model: Sol, then Terra. Done.** Resolve what T2.4's original
   reproduction route still exposes on the real `2024-06-13` cycle, now that
   T2.4's actual bug is fixed: `KIAD.MCRAY2.MCRAY.Q178.LEJOY.DEMME5.KPIT/0037`
   now resolves the `MCRAY2.MCRAY` DP correctly, but the DP's own published
@@ -384,19 +389,19 @@ re-runnable.
   according to the chosen policy, with a test that documents which policy
   was chosen and why.
   Dependencies: T2.4.
-- [ ] **T2.5 — Agent model: Terra.** Use neighboring route tokens to choose the
+- [x] **T2.5 — Agent model: Terra. Done.** Use neighboring route tokens to choose the
   applicable procedure transition or runway/common portion. If more than
   one published candidate remains, raise a typed ambiguity
   (`AmbiguousRecordError`, already used elsewhere in this module) instead
   of selecting arbitrarily.
   Dependencies: T2.4.
-- [ ] **T2.6 — Agent model: Terra.** Support routes that combine a DP, direct segment,
+- [x] **T2.6 — Agent model: Terra. Done.** Support routes that combine a DP, direct segment,
   airway, fix/navaid, and STAR in one route string; deduplicate only
   adjacent identical coordinates at joins (matches the existing dedup
   pattern already used in `flight_plan_path`, e.g. lines 447-448, 498-499 —
   reuse it, don't add a second dedup mechanism).
   Dependencies: T2.1-T2.5.
-- [ ] **T2.7 — Agent model: Luna.** Test a current-cycle valid route for each of: bare
+- [x] **T2.7 — Agent model: Luna. Done.** Test a current-cycle valid route for each of: bare
   DP, dotted DP, bare STAR, dotted STAR, DP-to-airway, airway-to-STAR, and
   procedure-only airport pairs. Also add the two real-route regressions
   verified 2026-08-17 as their own named fixtures: a bare mid-route STAR
@@ -423,7 +428,7 @@ log. Full counts are in
 
 ## Phase 3 — Airways and Contextual Waypoints
 
-- [ ] **T3.1 — Agent model: Terra.** Fix the airway-designation matching bug verified
+- [x] **T3.1 — Agent model: Terra. Done.** Fix the airway-designation matching bug verified
   2026-08-17. `_airway_vertices` (`flightplan.py:166-225`) extracts a
   `designation` letter from the token text via the `_AIRWAY` regex (e.g.
   `Q822` → `designation="Q"`) and requires
@@ -464,13 +469,13 @@ log. Full counts are in
   proceed in parallel with Phase 2 once Phase 1 merges, per the
   coordination rules' file-sequencing note — confirm no open Phase 2 task
   is mid-edit on `_airway_vertices` before starting).
-- [ ] **T3.2 — Agent model: Terra.** Resolve airway paths only between confirmed
+- [x] **T3.2 — Agent model: Terra. Done.** Resolve airway paths only between confirmed
   endpoint records and support both directions through the published
   sequence — already implemented
   (`flightplan.py:204-211`, verified by
   `test_flight_plan_path_expands_an_airway_in_reverse`); confirm coverage
   rather than re-implementing.
-- [ ] **T3.3 — Agent model: Luna.** Clarify what "airway designation" means for this
+- [x] **T3.3 — Agent model: Luna. Done.** Clarify what "airway designation" means for this
   codebase before writing new classification logic: verified 2026-08-17
   that `AWY_DESIGNATION` values in the `2024-06-13` cycle are two-letter
   codes (`A, AT, B, BF, G, J, PA, PR, R, RN, V`), not literal `Q`/`T`/`V`
@@ -480,7 +485,7 @@ log. Full counts are in
   not reintroduce T3.1's bug by re-deriving "designation" from the token
   text.
   Dependencies: T3.1.
-- [ ] **T3.4 — Agent model: Terra.** Use context to disambiguate duplicate identifiers
+- [x] **T3.4 — Agent model: Terra. Done.** Use context to disambiguate duplicate identifiers
   such as `ABQ`, `SEA`, `STL`, `PVD`: procedure/airway connection fields
   take priority, then fix/navaid, with airports preferred at route
   endpoints. This is the existing `preferred_tables` mechanism in
@@ -489,7 +494,7 @@ log. Full counts are in
   `test_flight_plan_path_uses_route_position_to_disambiguate_waypoints`
   (`tests/test_flightplan.py:90`) and extend only if a specific real-route
   case is found not to be covered.
-- [ ] **T3.5 — Agent model: Terra.** Prefer a non-`VOT` navaid when a bare `NAV_ID`
+- [x] **T3.5 — Agent model: Terra. Done.** Prefer a non-`VOT` navaid when a bare `NAV_ID`
   collides within `NAV_BASE` itself. Verified 2026-08-17 against the
   `2024-06-13` cycle: `ICT` matches two distinct `NAV_BASE` rows
   (`NAV_TYPE=VORTAC` at one coordinate, `NAV_TYPE=VOT` at another), so
@@ -511,7 +516,7 @@ log. Full counts are in
   test (a genuine cross-table ambiguity) still passes unchanged.
   Dependencies: none (independent of T3.1's airway-table fix; touches
   `_WaypointResolver`/`_waypoint`, not `_airway_vertices`).
-- [ ] **T3.6 — Agent model: Terra.** Validate that an airway endpoint exists on the
+- [x] **T3.6 — Agent model: Terra. Done.** Validate that an airway endpoint exists on the
   selected airway and that every expanded intermediate identifier resolves
   to one unambiguous source coordinate — already implemented via
   `vertices.index(start)`/`vertices.index(end)`
@@ -519,7 +524,7 @@ log. Full counts are in
   per-vertex `_waypoint` call in `flight_plan_path`
   (`flightplan.py:476-483`); confirm coverage, do not re-implement.
   Dependencies: T3.1 (validate against the corrected designation logic).
-- [ ] **T3.7 — Agent model: Luna.** Add regression tests for forward/reverse routes,
+- [x] **T3.7 — Agent model: Luna. Done.** Add regression tests for forward/reverse routes,
   repeated airway designations, airway transition joins, and intentionally
   ambiguous names. Include the `ICT`-style same-table `VOT`-versus-
   operational-navaid case (T3.5) and a `Q`/`T`-prefixed airway case (T3.1)
@@ -564,7 +569,7 @@ rather than reusing anything across calls. At that per-call cost, the full
 46,580-row `tests/exampleRoutes.csv` would take on the order of 35 hours
 sequentially.
 
-- [ ] **T4.1 — Agent model: Terra.** Vectorize `_WaypointResolver.__init__`
+- [x] **T4.1 — Agent model: Terra. Done.** Vectorize `_WaypointResolver.__init__`
   (`flightplan.py:33-50`); do not just cache the slow version. The ~2.8s
   cost is `.to_dict(orient="records")` plus a Python `for` loop
   materializing a dict per row across ~90k rows. Replace it with
@@ -587,7 +592,7 @@ sequentially.
   parallel with Phase 2/3 tasks that do not touch
   `_WaypointResolver`/`_waypoint` (confirm via the coordination rules
   before starting).
-- [ ] **T4.2 — Agent model: Terra.** Vectorize `_airway_vertices`'s `AWY_BASE` lookup
+- [x] **T4.2 — Agent model: Terra. Done.** Vectorize `_airway_vertices`'s `AWY_BASE` lookup
   (`flightplan.py:178-185`) the same way: replace the
   `for record in base.to_dict(orient="records")` scan with a boolean-mask
   filter on `AWY_ID` (post-T3.1 fix; do not reintroduce the wrong
@@ -604,7 +609,7 @@ sequentially.
   airway tests pass unchanged.
   Dependencies: T3.1 (fix the matching bug before vectorizing the same
   comparison — vectorizing a wrong comparison just makes it wrong faster).
-- [ ] **T4.3 — Agent model: Terra.** Add an explicit route resolver/session object
+- [x] **T4.3 — Agent model: Terra. Done.** Add an explicit route resolver/session object
   (e.g. `RouteResolver(nasr)` built once, `.path(flight_plan)` called per
   route) that caches T4.1/T4.2's vectorized structures, while preserving
   the existing one-call `flight_plan_path` function (T0.6) as a thin
@@ -622,7 +627,7 @@ sequentially.
   are byte-identical with and without the new object (same route in, same
   path/exception out).
   Dependencies: T4.1, T4.2.
-- [ ] **T4.4 — Agent model: Luna.** Adopt and test the resolver snapshot policy: a
+- [x] **T4.4 — Agent model: Luna. Done.** Adopt and test the resolver snapshot policy: a
   `RouteResolver` indexes the supplied mapping at construction and callers
   must create a new resolver after mutating that mapping or any contained
   DataFrame. `NASR` is a mutable `dict` subclass, so do not describe it as
@@ -630,14 +635,14 @@ sequentially.
   isolation by showing that a fresh `NASR`/fresh resolver does not share
   cached state across cycles, and document this lifetime rule in the API.
   Dependencies: T4.3.
-- [ ] **T4.5 — Agent model: Luna.** Benchmark CSV and DuckDB storage with the same
+- [x] **T4.5 — Agent model: Luna. Done.** Benchmark CSV and DuckDB storage with the same
   already-loaded tables, fixed routes, warm-up policy, sample count,
   median, and p95. The benchmark matrix must include direct
   airport-to-airport routing, fix/navaid routing, airway-only routing,
   DP-to-airway routing, airway-to-STAR routing, and a route containing both
   a DP and STAR. Report loading time separately from path resolution.
   Dependencies: T4.3.
-- [ ] **T4.6 — Agent model: Luna.** For every procedure benchmark in T4.5, report the
+- [x] **T4.6 — Agent model: Luna. Done.** For every procedure benchmark in T4.5, report the
   number of procedure legs and expanded path coordinates, the selected
   procedure/transition identifiers, and whether the timing is cold (first
   procedure-table materialization) or warm (all required procedure tables
@@ -684,7 +689,7 @@ environment, policy, initial-failure history, and rerun evidence are in the
   hundreds of routes on unvectorized `flight_plan_path` would reintroduce
   the T0.5 performance problem this utility is meant to make practical to
   run).
-- [ ] **T5.2 — Agent model: Terra.** Report failure type, token, token position,
+- [x] **T5.2 — Agent model: Terra. Done.** Report failure type, token, token position,
   selected cycle, and route text in raised exceptions or the validation
   utility's output. Avoid printing entire candidate datasets in normal
   output (matches `AmbiguousRecordError`'s existing `candidates` field
