@@ -87,6 +87,76 @@ def test_flight_plan_path_expands_an_airway_in_reverse(tables):
     )
 
 
+def test_flight_plan_path_expands_prefixed_airway_ids(tables):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "QSTART", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-81"},
+                    {"FIX_ID": "QEND", "LAT_DECIMAL": "33", "LONG_DECIMAL": "-82"},
+                    {"FIX_ID": "TSTART", "LAT_DECIMAL": "32", "LONG_DECIMAL": "-83"},
+                    {"FIX_ID": "TEND", "LAT_DECIMAL": "31", "LONG_DECIMAL": "-84"},
+                    {"FIX_ID": "YSTART", "LAT_DECIMAL": "30", "LONG_DECIMAL": "-85"},
+                    {"FIX_ID": "YEND", "LAT_DECIMAL": "29", "LONG_DECIMAL": "-86"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["AWY_BASE"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": location,
+                "AWY_ID": airway,
+                "AWY_DESIGNATION": designation,
+            }
+            for location, airway, designation in (
+                ("Q", "Q1", "RN"),
+                ("T", "T2", "AT"),
+                ("Y", "Y3", "A"),
+            )
+        ]
+    )
+    tables["AWY_SEG_ALT"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": location,
+                "AWY_ID": airway,
+                "POINT_SEQ": "1",
+                "FROM_POINT": start,
+                "TO_POINT": end,
+            }
+            for location, airway, start, end in (
+                ("Q", "Q1", "QSTART", "QEND"),
+                ("T", "T2", "TSTART", "TEND"),
+                ("Y", "Y3", "YSTART", "YEND"),
+            )
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA QSTART Q1 QEND KBBB") == (
+        (38.0, -77.0),
+        (34.0, -81.0),
+        (33.0, -82.0),
+        (35.0, -80.0),
+    )
+    assert flight_plan_path(tables, "KAAA TSTART T2 TEND KBBB") == (
+        (38.0, -77.0),
+        (32.0, -83.0),
+        (31.0, -84.0),
+        (35.0, -80.0),
+    )
+    assert flight_plan_path(tables, "KAAA YSTART Y3 YEND KBBB") == (
+        (38.0, -77.0),
+        (30.0, -85.0),
+        (29.0, -86.0),
+        (35.0, -80.0),
+    )
+
+
 def test_flight_plan_path_rejects_unknown_waypoints(tables):
     with pytest.raises(RecordNotFoundError, match="Flight-plan waypoint"):
         flight_plan_path(tables, "KAAA UNKNOWN")

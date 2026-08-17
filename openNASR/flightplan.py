@@ -184,9 +184,7 @@ def _airway_vertices(
 
     matches: list[tuple[str, ...]] = []
     for record in base.to_dict(orient="records"):
-        if _text(record.get("AWY_DESIGNATION", "")) != match["designation"] or _text(
-            record.get("AWY_ID", "")
-        ) not in {
+        if _text(record.get("AWY_ID", "")) not in {
             match["identifier"],
             f"{match['designation']}{match['identifier']}",
         }:
@@ -241,8 +239,7 @@ def _is_published_airway(tables: Mapping[str, DataFrame], airway: str) -> bool:
     if match is None or base is None:
         return False
     return any(
-        _text(record.get("AWY_DESIGNATION", "")) == match["designation"]
-        and _text(record.get("AWY_ID", ""))
+        _text(record.get("AWY_ID", ""))
         in {match["identifier"], f"{match['designation']}{match['identifier']}"}
         for record in base.to_dict(orient="records")
     )
