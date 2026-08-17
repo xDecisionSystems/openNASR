@@ -354,6 +354,17 @@ def test_flight_plan_path_uses_route_position_to_disambiguate_waypoints(tables):
     )
 
 
+def test_waypoint_resolver_uses_column_iteration(tables, monkeypatch):
+    def fail_record_materialization(*args, **kwargs):
+        raise AssertionError("resolver must not materialize DataFrame records")
+
+    monkeypatch.setattr(pd.DataFrame, "to_dict", fail_record_materialization)
+
+    resolver = _WaypointResolver(tables)
+
+    assert resolver.resolve("ALPHA").latitude == 37.0
+
+
 def test_flight_plan_path_prefers_operational_navaid_over_vot(tables):
     tables["NAV_BASE"] = pd.DataFrame(
         [

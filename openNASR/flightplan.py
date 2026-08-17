@@ -46,22 +46,37 @@ class _WaypointResolver:
                 continue
             candidates: dict[str, list[_Waypoint]] = {}
             non_vot_candidates: dict[str, list[_Waypoint]] = {}
-            for row in frame.to_dict(orient="records"):
-                coordinates = _coordinates(row)
-                if coordinates is None:
+            if "LAT_DECIMAL" not in frame or "LONG_DECIMAL" not in frame:
+                self._candidates[table] = candidates
+                continue
+            coordinate_rows = frame[
+                frame["LAT_DECIMAL"].notna() & frame["LONG_DECIMAL"].notna()
+            ]
+            identifiers = tuple(coordinate_rows[column] for column in columns)
+            nav_types = (
+                coordinate_rows["NAV_TYPE"]
+                if "NAV_TYPE" in coordinate_rows
+                else ("",) * len(coordinate_rows)
+            )
+            for values in zip(
+                *identifiers,
+                coordinate_rows["LAT_DECIMAL"],
+                coordinate_rows["LONG_DECIMAL"],
+                nav_types,
+            ):
+                *raw_identifiers, latitude, longitude, nav_type = values
+                try:
+                    coordinates = float(str(latitude)), float(str(longitude))
+                except ValueError:
                     continue
-                for column in columns:
-                    identifier = _text(row.get(column, ""))
-                    if identifier:
-                        waypoint = _Waypoint(identifier, *coordinates)
-                        candidates.setdefault(identifier, []).append(waypoint)
-                        if (
-                            table == "NAV_BASE"
-                            and _text(row.get("NAV_TYPE", "")) != "VOT"
-                        ):
-                            non_vot_candidates.setdefault(identifier, []).append(
-                                waypoint
-                            )
+                for raw_identifier in raw_identifiers:
+                    identifier = _text(raw_identifier)
+                    if not identifier:
+                        continue
+                    waypoint = _Waypoint(identifier, *coordinates)
+                    candidates.setdefault(identifier, []).append(waypoint)
+                    if table == "NAV_BASE" and _text(nav_type) != "VOT":
+                        non_vot_candidates.setdefault(identifier, []).append(waypoint)
             if table == "NAV_BASE":
                 for identifier, operational in non_vot_candidates.items():
                     unique_operational = list(dict.fromkeys(operational))
