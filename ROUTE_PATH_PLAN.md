@@ -552,16 +552,33 @@ sequentially.
   procedure-table materialization) or warm (all required procedure tables
   and indexes already loaded).
   Dependencies: T4.5.
-- [ ] **T4.7 — Agent model: Sol.** Confirm no raw SQL API is introduced for route
+- [x] **T4.7 — Agent model: Sol. Done (2026-08-17).** Confirm no raw SQL API is introduced for route
   conversion (T4.1-T4.3 use pandas/DataFrame operations, not
   `openNASR.query`'s SQL surface) and that source-order fidelity is
   retained in DuckDB-backed reads — review, not new code.
   Dependencies: T4.1-T4.3.
+  Confirmed: T4.1-T4.3 use pandas/typed mappings only and introduce no SQL
+  or query-service dependency. On the available dual-backend `2026-08-06`
+  cycle, all nine route tables matched between CSV and DuckDB in columns,
+  values, and source row order; representative route results also matched.
+  DuckDB materializes by source `rowid`, while route legs are explicitly
+  ordered by their FAA sequence fields. Evidence is recorded in
+  [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#t47-review-and-gate-4-benchmark-2026-08-17).
 
 **Gate 4:** Sol records the benchmark machine, Python/pandas/DuckDB versions,
 canonical cycle, source backend, cold/warm policy, and before/after numbers
 for `_WaypointResolver` construction and a representative `flight_plan_path`
 call. T4.1 must meet its documented relative-improvement target.
+
+**Gate 4 — NOT APPROVED (2026-08-17, production `79864a5` + `2e7229c` +
+`51f530e`).** On the canonical `2026-05-14` CSV cycle, median resolver
+construction improves from 2.474700s to 0.308842s (**8.01×**) and a one-shot
+representative path from 2.511380s to 0.306761s (**8.19×**). A warm reusable
+session resolves the route in 8.18µs median (12.68µs p95), and T4.7's SQL/order
+review passes, but T4.1 explicitly requires at least 10× for resolver
+construction. Gate 4 remains closed until that threshold is met and rerun.
+Full machine, version, backend, policy, and parity evidence is in the
+[linked benchmark note](docs/route_path_baseline_2026-05-14.md#t47-review-and-gate-4-benchmark-2026-08-17).
 
 ## Phase 5 — Batch Validation and Diagnostics
 
@@ -682,3 +699,4 @@ denominator is accurate.
 | 2026-08-17 | Gate 2 not approved at production commit `4960111`: 56/100 overall and 54/84 domestic, with procedure errors down 40→8 but parser errors up 2→4. | Phase 2's focused 24-test matrix passes, 18 canonical failures now return paths, and no former no-exception row regresses. However, the written gate requires both procedure and parser categories to shrink; newly reached valid fixes `KM18K` and `KG66K` join the still-failing `E91`/`KO60C` lexical airway collisions, so the parser criterion is not met. |
 | 2026-08-17 | Gate 2 approved at production commit `3fd11e7`: 60/100 overall and 58/84 domestic, with procedure errors down 40→8 and parser errors down 2→0. | Data-backed airway dispatch resolves the failed review's valid alphanumeric waypoint collisions. The focused 25-test matrix passes, 22 baseline failures now return paths, and no former no-exception route regresses. The increased airway category (7→17) is expected later-defect exposure and remains assigned to Phase 3 rather than being counted as success. |
 | 2026-08-17 | Gate 3 approved at production commits `ecf8bfc` and `6faacb4`: 81/100 overall and 77/84 domestic, with airway errors down 17→0 and waypoint ambiguities down 5→0 from Gate 2. | Real-cycle Q/T/Y probes resolve by published `AWY_ID`, the ICT reproduction selects its VORTAC over its VOT, the focused 30-test matrix passes, 21 additional Gate 2 failures now return paths, and no Gate 2 success regresses. The one additional missing-data outcome is later unsupported-content exposure, not a regression. |
+| 2026-08-17 | T4.7 approved, but Gate 4 not approved at production commits `79864a5`, `2e7229c`, and `51f530e`: real-cycle resolver construction improves 8.01×, below T4.1's required 10×. | Route conversion adds no raw SQL surface, and CSV/DuckDB route-table order and representative results match. One-shot conversion improves 8.19× and a warm session is much faster, but neither substitutes for the explicit first-construction threshold; the gate remains closed pending further resolver optimization and a rerun. |

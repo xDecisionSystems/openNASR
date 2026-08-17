@@ -341,3 +341,56 @@ airway fix now allows one additional route to reach unsupported
 foreign/oceanic/coordinate content. The remaining eight procedure failures
 retain incorrect or unresolved procedure connection context and remain
 failures; Gate 3 approval does not reclassify them as airway defects.
+
+## T4.7 review and Gate 4 benchmark (2026-08-17)
+
+**T4.7 review: complete. Gate 4 decision: not approved.** The review covers
+T4.1 commit `79864a5`, T4.2 commit `2e7229c`, and T4.3 commit `51f530e`.
+Route conversion imports no query/SQL service and constructs no SQL statement:
+the changes use pandas masks, column `zip` iteration, `itertuples`, and explicit
+in-memory indexes. `RouteResolver` owns a visible snapshot/index lifetime and
+the public one-call wrapper delegates to it without creating a raw-SQL API.
+
+Source-order fidelity was checked separately on the available `2026-08-06`
+cycle, which has both CSV and completed DuckDB storage. All nine route tables
+(`APT_BASE`, `FIX_BASE`, `NAV_BASE`, `AWY_BASE`, `AWY_SEG_ALT`, `DP_BASE`,
+`DP_RTE`, `STAR_BASE`, `STAR_RTE`) had identical columns, row counts, values,
+and row order after materialization. DuckDB table loading orders by source
+`rowid`; route conversion also explicitly sorts airway rows by `POINT_SEQ` and
+procedure rows by `(BODY_SEQ, POINT_SEQ)`, so path order does not depend on an
+unspecified backend scan order. CSV and DuckDB produced identical outcomes for
+a direct route, the real ICT navaid route, and a procedure/airway route. The
+focused flight-plan and CSV/DuckDB parity suite passed all 44 tests.
+
+### Benchmark environment and policy
+
+- Host: `bleek`, Linux `6.8.0-137-generic`, x86-64.
+- CPU: Intel Core i7-1065G7, 4 cores / 8 threads, up to 3.9 GHz.
+- Python 3.12.3, pandas 3.0.5, DuckDB 1.5.5.
+- Canonical benchmark data: NASR `2026-05-14`, CSV backend; 19,410 airports,
+  70,003 fixes, 1,634 navaids, 1,519 airway-base rows, and 19,318 airway
+  segment rows.
+- Seven repetitions; reported values are medians from `time.perf_counter()`.
+  NASR construction (0.123s) and first load of the nine route tables (0.450s)
+  were measured separately and excluded from path/index medians.
+- “Cold path” below means already-loaded tables but a new resolver/index for
+  every call. “Warm session” means one `RouteResolver` was constructed and
+  called once before 50 timed `.path(...)` calls. The representative route was
+  `2W5..VKX/0010`.
+
+| Measurement | Preserved pre-T4 strategy | Current | Speedup |
+| --- | ---: | ---: | ---: |
+| `_WaypointResolver` construction | 2.474700s | 0.308842s | **8.01×** |
+| One-shot representative path | 2.511380s | 0.306761s | **8.19×** |
+| Warm `RouteResolver.path` | n/a | 0.00000818s median, 0.00001268s p95 | 37,513× vs current one-shot median |
+
+The checked-in 100,000-row synthetic benchmark (7 repetitions) independently
+reported 1.36× for resolver construction and 9.27× for airway-base matching.
+Absolute timings remain diagnostic, not CI thresholds.
+
+T4.1 requires at least a 10× real-cycle resolver-construction improvement.
+The measured 8.01× is substantial but below that explicit acceptance target,
+so Gate 4 remains closed. T4.7 itself is satisfied: no raw SQL surface was
+introduced, and CSV/DuckDB source ordering and route outcomes are faithful.
+The reusable warm session also behaves as intended, but its gain cannot be
+substituted for T4.1's separate first-construction requirement.
