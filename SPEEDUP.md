@@ -403,12 +403,25 @@ missing optimization in a known-slow legacy path. A user hitting the
   Re-run L1.3's benchmark against the canonical cycle and record the new
   first-call and warm numbers.
   Dependencies: T2.1, L1.3.
-- [ ] **S2.4 — Agent model: Sol.** Confirm no other repository or test in
+- [x] **S2.4 — Agent model: Sol. Done (2026-08-17, reviewed `2f85f4d`).** Confirm no other repository or test in
   the package silently depended on `_normalized_index`/`_related_index`
   values being full `DataFrame` objects rather than row-position arrays
   (e.g. via `isinstance` checks, `.columns` access on a cached value, or
   similar) — review, not new code.
   Dependencies: T2.1, T2.2.
+
+  Compatibility result: the only production consumers of these two private
+  caches are `AirportRepository.get`, `AirportRepository._related_records`,
+  and `RecordRepository._rows_for_identifier_column`. Commit `2f85f4d`
+  updates all three to materialize on demand with `frame.iloc[positions]`.
+  The composite-key path still intersects the materialized rows' original
+  labels, and the airport FAA/ICAO path still deduplicates by original row
+  label, so non-Range indexes and overlapping identifiers retain their prior
+  behavior. A package/test-wide search found no `.columns`, DataFrame type
+  check, or other reader of a cached value. Tests inspect only cache reuse;
+  the new structural test additionally requires `numpy.ndarray` positions.
+  The focused repository/airspace/domain suite passed 46 tests; Ruff and mypy
+  passed for the reviewed files.
 
 **Gate 2:** Sol confirms T2.1's fix drops `nasr.airport(...)`'s and
 `nasr.fixes.get(...)`'s first-call cost from ~41s/~14.9s to a small recorded
@@ -434,6 +447,32 @@ Before Batch C, Sol must turn Phase 0's long domain list into a short ranked
 manifest: module, public lookup, real-cycle cold/warm measurement, key
 columns, and exact regression tests. Entries without a material measured cost
 remain documented audit findings, not Terra implementation tasks.
+
+### Ranked Phase 3 manifest (2026-08-17)
+
+This is the bounded Batch C implementation manifest. Measurements use the
+`2026-05-14` CSV cycle with relevant tables already loaded: “cold” is the
+first public lookup after load and “warm” is the median of repeated lookups
+(20 repetitions, except 10 for the legacy `FIX` constructor). They measure
+lookup/index work, not archive or table loading. Ranking is by warm cost; the
+cutoff is a measured median of at least 10ms. Modules below the cutoff or not
+yet measured remain audit findings and must be profiled before being added.
+
+| Rank | Module / public lookup | Cold / warm evidence | Key columns to index | Exact regression test |
+| ---: | --- | ---: | --- | --- |
+| 1 | `fix.py`/`nasr.py`: `FIX("AABEE", nasr)` (representative for the legacy `FIX`/`Airport`/`NAVAID` and `is*` batch in T3.4) | 35.403ms / 32.780ms | `FIX_BASE.FIX_ID`; shared legacy helper must also cover `APT_BASE.(ARPT_ID, ICAO_ID)` and `NAV_BASE.NAV_ID` | `tests/test_milestone_1_terra.py::test_legacy_fix_constructor_resolves_identifier_case_insensitively` (plus the adjacent airport/navaid compatibility tests) |
+| 2 | `departure.py`: `nasr.preferred_routes.get(("ABE", "ACY", "TEC", "1"))` | 28.573ms / 29.794ms | `PFR_BASE`/`PFR_SEG`: `(ORIGIN_ID, DSTN_ID, PFR_TYPE_CODE, ROUTE_NO)`; `PFR_RMT_FMT`: `(Orig, Dest, Type, Seq)` | `tests/test_preferred_routes.py::test_preferred_route_orders_segments_and_attaches_format` |
+| 3 | `locations.py`: `nasr.location_identifiers.get(("US", "00A", "AEA", "PA", "BENSALEM", "LANDING FACILITY", "H"))` | 21.672ms / 21.970ms | `(COUNTRY_CODE, LOC_ID, REGION_CODE, STATE, CITY, LID_GROUP, FAC_TYPE)` | `tests/test_locations.py::test_location_identifier_uses_full_composite_key` |
+| 4 | `communications.py`: `nasr.frequencies.get(("00A", "00A", "HELIPORT", "PA", "US", "122.9", "", "CTAF"))` | 12.872ms / 12.565ms | `(FACILITY, SERVICED_FACILITY, SERVICED_SITE_TYPE, SERVICED_STATE, SERVICED_COUNTRY, FREQ, SECTORIZATION, FREQ_USE)` | `tests/test_communications.py::test_communication_outlet_and_frequency_repositories_expose_rich_records` |
+| 5 | `departure.py`: `nasr.coded_departure_routes.find("ABECLTGV")` | 13.818ms / 10.606ms | `CDR.RCode` | `tests/test_coded_departure_routes.py::test_coded_departure_route_repository_returns_typed_record` |
+
+The manifest intentionally does not authorize a blanket T3.3 rewrite of all
+remaining modules. The measured `ArtccRepository` `groupby` is also excluded:
+on the largest real `ARB_SEG` location (`ZAN`, 351 of 2,687 rows), it creates
+three source-ordered groups in 0.822ms median (100 repetitions). Its
+DataFrame groups are the required input to `Boundary`, not a persistent
+high-cardinality index. Other unranked domain repositories require the same
+cold/warm measurement and a named regression test before Terra work begins.
 
 ## Phase 3 — Index the domain-module repositories (`atc.py`, `communications.py`, `holding.py`, `fss.py`, `locations.py`, `military.py`, `weather.py`, `arrivals.py`, `departure.py`, `airway.py`, `airspace.py`, and legacy `airport.py`/`fix.py`/`nav.py`)
 
