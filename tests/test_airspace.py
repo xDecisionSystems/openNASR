@@ -2,6 +2,7 @@
 
 import pytest
 
+from openNASR.airspace import Maa, MaaRecord, MaaShapePointRecord
 from openNASR.arb import ARB, Boundary
 from openNASR.coordinates import ll2xy
 from openNASR.cfcn import ll2xy as legacy_ll2xy
@@ -214,6 +215,70 @@ def test_maa_geometry_is_none_when_no_shape_points_exist(make_nasr_from_fixture)
     )
 
     assert maa.geometry is None
+
+
+def test_maa_geometry_splits_an_already_multipart_shape_without_reclosing_it(
+    make_nasr_from_fixture,
+):
+    """MAA_SHP has no part/ring column, so a hypothetical multipart MAA_ID
+    would have to arrive as two individually pre-closed rings back to back
+    in POINT_SEQ order (PLAN.md task 12.6). Maa.geometry must detect that
+    the sequence already decomposes into closed rings and pass it through
+    unchanged, rather than always force-closing with the overall first
+    point -- which would append a spurious trailing point after an
+    already-closed final part and crash Shapely."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    points = [
+        (1, 40.0, -82.0),
+        (2, 40.0, -81.0),
+        (3, 41.0, -81.0),
+        (4, 41.0, -82.0),
+        (5, 40.0, -82.0),
+        (6, 42.0, -80.0),
+        (7, 42.0, -79.0),
+        (8, 43.0, -79.0),
+        (9, 43.0, -80.0),
+        (10, 42.0, -80.0),
+    ]
+    shape_points = tuple(
+        MaaShapePointRecord(
+            {
+                "POINT_SEQ": str(seq),
+                "LATITUDE": f"{int(lat):02d}-00-00.0000N",
+                "LONGITUDE": f"{abs(int(lon)):03d}-00-00.0000W",
+            }
+        )
+        for seq, lat, lon in points
+    )
+    maa = Maa(
+        MaaRecord({"MAA_ID": "SYNTH01"}),
+        contacts=(),
+        remarks=(),
+        shape_points=shape_points,
+    )
+
+    geometry = maa.geometry
+
+    assert isinstance(geometry, MultiPolygon)
+    assert len(geometry.geoms) == 2
+    assert geometry.is_valid
+
+
+def test_maa_contacts_and_shape_points_do_not_leak_across_maa_ids(
+    make_nasr_from_fixture,
+):
+    """The fixture's second area (AOH002) shares MAA_CON with AOH001;
+    MaaRepository must isolate each area's children by MAA_ID rather than
+    returning every MAA_CON row regardless of which area asked."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    first = nasr.maas.get("AOH001")
+    second = nasr.maas.get("AOH002")
+
+    assert [contact.facility_id for contact in first.contacts] == ["CLE", "CLE"]
+    assert [contact.facility_id for contact in second.contacts] == ["AKR"]
+    assert second.record.type_name == "GLIDER"
 
 
 def test_maa_repository_raises_record_not_found_for_an_unmatched_identifier(

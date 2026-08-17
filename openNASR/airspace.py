@@ -16,6 +16,25 @@ from .relationships import related_record
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
 
 
+def _ends_in_a_closed_ring(points: list[tuple[float, float]]) -> bool:
+    """Return whether ``points`` fully decomposes into closed rings under
+    :meth:`Boundary._rings`, with no trailing unclosed tail.
+
+    Used to decide whether a coordinate sequence is already in the
+    explicitly-closed-ring form ``Boundary``/``ARB_SEG`` expect (so it
+    should be passed through unchanged, preserving any multipart split) or
+    still needs its final ring closed (the common ``MAA_SHP`` case, which
+    publishes one flat, unclosed ring per area).
+    """
+
+    current: list[tuple[float, float]] = []
+    for point in points:
+        current.append(point)
+        if len(current) >= 4 and point == current[0]:
+            current = []
+    return not current
+
+
 class ClassAirspaceRecord(FaaRecord):
     """Typed conveniences for one airport-linked class-airspace row."""
 
@@ -497,13 +516,19 @@ class Maa:
 
     @property
     def geometry(self):
-        """A Shapely polygon built from the ordered ``MAA_SHP`` points.
+        """A Shapely polygon (or multipolygon) built from the ordered
+        ``MAA_SHP`` points.
 
         Returns ``None`` when the area has no published shape (some
         ``MAA_BASE`` rows describe only a center point and radius).
-        ``MAA_SHP`` rings are not explicitly closed in FAA source data
-        (unlike ``ARB_SEG``), so the first point is appended to close the
-        ring before building the polygon.
+        ``MAA_SHP`` has no part/ring column -- every sampled real ``MAA_ID``
+        is a single, flat, unclosed ring (unlike ``ARB_SEG``) -- so the
+        common case closes it by appending its first point. If the points
+        already contain one or more explicitly closed rings (each part
+        repeating its own first point, the way ``ARB_SEG`` and
+        ``Boundary._rings`` expect), they are passed through unchanged so a
+        hypothetical multipart ``MAA_ID`` still splits correctly instead of
+        gaining a spurious trailing point.
         """
 
         if not self.shape_points:
@@ -515,7 +540,7 @@ class Maa:
         ]
         if not points:
             return None
-        if points[0] != points[-1]:
+        if not _ends_in_a_closed_ring(points):
             points = [*points, points[0]]
         lons, lats = zip(*points)
         return Boundary(lons, lats).getShape

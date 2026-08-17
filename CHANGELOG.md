@@ -15,9 +15,10 @@ and versions follow Semantic Versioning.
   ultralight, and unmanned-aircraft areas, confirmed from the FAA's own
   `MAA DATA LAYOUT.pdf` (Milestone 12, not required for `1.0.0`). Contacts,
   remarks, and shape points are ordered by their verified FAA keys.
-  `Maa.geometry` returns a Shapely polygon built from `MAA_SHP`'s ordered
-  points, closing the ring since FAA source data leaves it open (unlike
-  `ARB_SEG`), or `None` for radius-only areas with no shape rows.
+  `Maa.geometry` returns a Shapely polygon (or multipolygon) built from
+  `MAA_SHP`'s ordered points, closing the ring since FAA source data leaves
+  it open (unlike `ARB_SEG`), or `None` for radius-only areas with no shape
+  rows.
 - `openNASR.records.dms_coordinate`: converts an FAA formatted
   `DD-MM-SS.ssssH` coordinate string to decimal degrees, for tables such as
   `MAA_SHP` that publish no `*_DECIMAL` column.

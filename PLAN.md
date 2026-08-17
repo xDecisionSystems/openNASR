@@ -2655,8 +2655,41 @@ Tasks:
       `_COMPATIBILITY_RECORD_MODULES`, and package exports. New
       `tests/test_military.py` (7 tests); extended `core/pre_2026_09` with
       one synthetic route across all six `MTR_*` tables.
-- [ ] **Agent: Sol.** **12.6** Preserve ordered points, widths, terrain, procedures, and
+- [x] **Agent: Sol.** **12.6** Preserve ordered points, widths, terrain, procedures, and
       multipart geometry without joining disconnected shapes or route parts.
+      **Done (2026-08-16):** audited every ordering claim from tasks
+      12.3-12.5 against its actual test coverage and found two real gaps,
+      both now closed:
+      1. **A latent crash bug in `Maa.geometry`.** It only compared the
+         overall first/last points to decide whether to close the ring, so
+         a hypothetical multipart `MAA_ID` (two rings already closed in
+         source order -- the only way `MAA_SHP`'s schema, which has no
+         part/ring column, could ever express a MultiPolygon) would append
+         a spurious trailing point after the already-closed final ring and
+         crash Shapely with "A linearring requires at least 4 coordinates."
+         Fixed with a new `_ends_in_a_closed_ring` helper that checks
+         whether the full point sequence already decomposes into closed
+         rings (passing it through unchanged, preserving the multipart
+         split) before falling back to force-closing the common
+         single-flat-ring case. Regression test:
+         `test_maa_geometry_splits_an_already_multipart_shape_without_reclosing_it`.
+      2. **No test proved child-collection isolation by parent key.** Every
+         MAA/PJA/MTR fixture built for 12.3-12.5 had exactly one parent
+         entity, so a `_matching()` filter that accidentally matched
+         everything (or nothing) could have passed unnoticed. Added a
+         second `MAA_ID` (`AOH002`) sharing `MAA_CON`/`MAA_SHP` with the
+         first and a dedicated
+         `test_maa_contacts_and_shape_points_do_not_leak_across_maa_ids`
+         test; `ParachuteJumpArea` already had two areas from task 12.4
+         whose isolation the existing contact-ordering test exercises.
+         `MilitaryTrainingRoute` was left with one route, since its
+         `_matching` implementation is structurally identical to the other
+         two (already reviewed and tested twice) and a third near-duplicate
+         isolation test had low marginal value.
+      No other gaps found: every `*_SEQ`/composite-key ordering claim from
+      12.2 already had a dedicated test with deliberately out-of-order
+      fixture rows before this task began (contacts, remarks, shape points,
+      agencies, route points, procedures, terrain, widths).
 - [ ] **Agent: Terra.** **12.7** Add both-schema fixtures, geometry validity tests, ordering and
       relationship tests, converter tests, exports, documentation, coverage
       reporting, and the `1.5.0` changelog entry.
@@ -2871,3 +2904,4 @@ report has no operational table without a rich API.
 | 2026-08-16 | Do not fix `openNASR/cycles.py`'s `locate_csv_source` picking the wrong archive inside a cycle for several real FAA cycles. | Discovered while manually verifying Task 12.3 against the real `28DaySubscription_Effective_2024-06-13.zip` archive: `locate_csv_source` uses `root.rglob("*.zip")` and takes the alphabetically-first match when no CSVs are yet extracted, but real FAA archives also ship nested `Additional_Data/AIXM/.../*_AIXM.zip` sub-archives that sort before `CSV_Data/<date>_CSV.zip` (`A` < `C`), so it silently extracts and reads the wrong, unrelated AIXM zip instead of the actual CSV data — raising `TableNotFoundError` for every real table. Confirmed this is not new and not specific to 2024-06-13: `28DaySubscription_Effective_2021-11-04.zip` has the identical nested-AIXM-zip layout. It does not affect the test suite (synthetic fixtures never include nested AIXM zips) or this session's Milestone 12 verification (done via direct CSV/PDF reads and the `core`/`schema_only` fixtures instead), but it means `NASR()` cannot currently load several/most of the real archives already sitting in `openNASR/data/zip/` without manual workaround. Left unfixed rather than silently patched mid-Milestone-12-implementation; flagged here as a real, reproducible defect worth its own task. |
 | 2026-08-16 | Complete Milestone 12 Task 12.4: add `ParachuteJumpAreaRecord`/`ParachuteJumpAreaContactRecord`/`ParachuteJumpArea`/`ParachuteJumpAreaRepository` to `airspace.py`, wire `nasr.parachute_jump_areas`/`nasr.parachute_jump_area()`, and resolve `ParachuteJumpArea.airport` as an optional relationship via `relationships.related_record`. | Task 12.2 found `SITE_NO` populated on only ~63% of real `PJA_BASE` rows, so treating the airport link as required (the way `AIRPORT_LINKED_TABLES` treats `CLS_ARSP`/`MIL_OPS`) would be wrong; reusing the existing optional-relationship helper (already proven correct for `HoldingPattern.fix`) was safer than writing new lookup logic for a case the codebase had not needed before. |
 | 2026-08-16 | Complete Milestone 12 Task 12.5: add the six `MilitaryTrainingRoute*` record types and `MilitaryTrainingRoute`/`MilitaryTrainingRouteRepository` to `military.py`, keyed by `(ROUTE_TYPE_CODE, ROUTE_ID)`, and give `MilitaryTrainingRoutePointRecord` separate `identifier` (`ROUTE_PT_ID`) and `sequence` (`ROUTE_PT_SEQ`) properties instead of one field serving both roles. | Every other `*_SEQ`-keyed child table in the codebase (`HPF_RMK`, `MAA_CON`, `ATC_RMK`, etc.) uses the same column for both identity and display order; `MTR_PT` is the one table where the FAA's own layout document says those must be different columns, and collapsing them into one property would have silently reintroduced the exact bug the FAA's footnote warns about. |
+| 2026-08-16 | Complete Milestone 12 Task 12.6: fix a latent crash in `Maa.geometry` for a hypothetical multipart `MAA_ID` and add missing child-collection cross-entity isolation tests. | A deliberate audit of every ordering/multipart claim from 12.3-12.5 (rather than treating 12.6 as satisfied by 12.3-12.5's existing tests) found that `Maa.geometry`'s ring-closing logic only checked the overall first/last point, not per-ring closure, so it would append a spurious point after an already-closed final ring and crash Shapely on a multipart shape -- unreachable by any fixture built so far but directly reachable if the FAA ever publishes a multipart `MAA_SHP` area, since nothing in the schema (no part/ring column) rules that out. Fixed with a proper per-ring closure check (`_ends_in_a_closed_ring`) instead of a blanket single check. |
