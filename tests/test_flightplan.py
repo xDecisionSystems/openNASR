@@ -768,7 +768,12 @@ def _procedure_matrix_tables():
     tables = {
         "APT_BASE": pd.DataFrame(
             [
-                {"ARPT_ID": name, "ICAO_ID": name, "LAT_DECIMAL": lat, "LONG_DECIMAL": lon}
+                {
+                    "ARPT_ID": name,
+                    "ICAO_ID": name,
+                    "LAT_DECIMAL": lat,
+                    "LONG_DECIMAL": lon,
+                }
                 for name, (lat, lon) in points.items()
                 if name in {"KAAA", "KBBB"}
             ]
