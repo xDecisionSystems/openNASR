@@ -4,6 +4,7 @@ from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
 from .fix import FixRecord
+from .indexing import NormalizedIndexCache, normalized_indexed_rows
 from .nav import NavaidRecord
 from .records import FaaRecord, integer, nullable_text
 from .relationships import related_record
@@ -83,6 +84,7 @@ class AirwayRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -96,10 +98,9 @@ class AirwayRepository:
     def _matching(
         self, frame: DataFrame, key: tuple[object, object, object]
     ) -> DataFrame:
-        rows = frame
-        for column, value in zip(AIRWAY_KEY, key):
-            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
-        return rows
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(AIRWAY_KEY, key), self._normalized
+        )
 
     def _airway(self, row: dict[str, object]) -> Airway:
         key = tuple(row[column] for column in AIRWAY_KEY)

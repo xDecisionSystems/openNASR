@@ -18,3 +18,4 @@ def test_airway_repository_orders_segments_and_exposes_altitudes():
 
     assert [segment["FROM_POINT"] for segment in airway.segments] == ["ALPHA", "BRAVO"]
     assert airway.segments[1].minimum_enroute_altitude == 5000
+    assert len(repository._indexes) == 6
