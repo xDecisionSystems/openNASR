@@ -376,21 +376,20 @@ missing optimization in a known-slow legacy path. A user hitting the
   real-cycle speedup in `benchmarks/repository_benchmark.py`; do not use an
   absolute wall-clock assertion in pytest because it is hardware-sensitive.
   Dependencies: none.
-- [ ] **T2.2 — Agent model: Terra.** Audit every other `groupby` call in the
-  package for the same anti-pattern (materializing one `DataFrame` per
-  group instead of using `.indices`/`.groups` or an aggregation) before
-  closing this phase — confirmed 2026-08-17 that `openNASR/airspace.py:296`
-  (`ArtccRepository`'s `ARB_SEG`-by-`(ALTITUDE, TYPE)` grouping) also uses
-  `frame.groupby(...)`, though over a much smaller, low-cardinality table
-  (`ARB_SEG`, 2,687 rows, grouped by a 2-valued altitude tier plus boundary
-  type — order-of-magnitude fewer, much larger groups, so likely not
-  triggering the same blowup; measure directly rather than assuming either
-  way, and note `ArtccRepository`'s grouping relies on preserved row order
-  for `Boundary`'s ring-closure detection — do not change to `.indices`
-  without confirming order is still preserved).
-  Acceptance: every `groupby` call site in the package is either confirmed
-  fast at real-cycle scale (measured, not assumed) or fixed the same way as
-  T2.1.
+- [x] **T2.2 — Agent model: Terra. Done (2026-08-17).** Audited every
+  remaining package `groupby` call after T2.1: the two in
+  `openNASR/repository.py` now use `.indices`, and the sole materializing
+  site is `ArtccRepository._boundaries` in `openNASR/airspace.py` (grouping
+  `ARB_SEG` by `(ALTITUDE, TYPE)`). Measured against the real 2026-05-14
+  cycle: `ARB_SEG` has 2,687 rows across 26 ARTCCs; the largest location
+  (`ZAN`) has 351 rows and only three groups. Over 100 warmed iterations,
+  the existing ordered group materialization had a 0.85 ms median versus
+  1.28 ms for `.indices` followed by the required per-group `.iloc`
+  materialization. It is therefore low-cardinality, does not exhibit T2.1's
+  eager-high-cardinality blowup, and a rewrite would be slower while adding
+  ordering risk: `Boundary` depends on source order to identify closed
+  rings. No production change was made. Acceptance: every `groupby` call
+  site is now either `.indices`-backed or directly measured as safe.
   Dependencies: T2.1 (reuse whatever pattern T2.1 settles on).
 - [ ] **L2.3 — Agent model: Luna.** Add a regression test reproducing the
   ~41s `nasr.airport(...)` first-call cost and the ~14.9s
