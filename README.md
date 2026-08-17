@@ -1,5 +1,10 @@
 # openNASR
 
+[![CI](https://github.com/xDecisionSystems/openNASR/actions/workflows/ci.yml/badge.svg)](https://github.com/xDecisionSystems/openNASR/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/openNASR.svg)](https://pypi.org/project/openNASR/)
+[![Python](https://img.shields.io/pypi/pyversions/openNASR.svg)](https://pypi.org/project/openNASR/)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](https://github.com/xDecisionSystems/openNASR/blob/main/LICENSE)
+
 `openNASR` is a Python library for loading and working with the Federal Aviation
 Administration (FAA) National Airspace System Resources (NASR) 28-day
 subscription data.
@@ -10,8 +15,7 @@ underlying tables remain available as pandas `DataFrame` objects when direct
 access is more convenient.
 
 > **Development status:** This project is under active development. The public
-> API and local data layout may change. Automatic NASR downloads are not yet
-> implemented.
+> API and local data layout may change between minor releases.
 
 ## Features
 
@@ -34,12 +38,13 @@ access is more convenient.
 - Convert latitude/longitude coordinates to local nautical-mile coordinates.
 - Plot airport runways and ILS information with Matplotlib.
 
-See the [API reference](docs/API.md) for public classes and methods.
-See the [FastAPI and DuckDB integration note](docs/FASTAPI_DUCKDB.md) for a
-future read-only web-service deployment design.
-See [MIGRATION.md](MIGRATION.md) when updating code from legacy constructors.
-See [CHANGELOG.md](CHANGELOG.md) for release history.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development and verification instructions.
+See the [API reference](https://github.com/xDecisionSystems/openNASR/blob/main/docs/API.md)
+for public classes and methods and the
+[migration guide](https://github.com/xDecisionSystems/openNASR/blob/main/MIGRATION.md)
+when updating legacy code. Release history is in the
+[changelog](https://github.com/xDecisionSystems/openNASR/blob/main/CHANGELOG.md),
+and development instructions are in the
+[contributing guide](https://github.com/xDecisionSystems/openNASR/blob/main/CONTRIBUTING.md).
 
 ## Requirements
 
@@ -51,59 +56,60 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and verification instruct
 
 ## Installation
 
-Clone the repository and install it in editable mode:
+Install the base package from PyPI:
+
+```bash
+python -m pip install openNASR
+```
+
+Install optional plotting or DuckDB support when needed:
+
+```bash
+python -m pip install "openNASR[plot]"
+python -m pip install "openNASR[duckdb]"
+```
+
+For development, clone the repository and use an editable installation:
 
 ```bash
 git clone https://github.com/xDecisionSystems/openNASR.git
 cd openNASR
-python -m pip install -e .
-```
-
-Editable installation is recommended while the package is in development.
-
-### Optional DuckDB support
-
-DuckDB is an optional local-storage acceleration feature. Install it only when
-you need the DuckDB backend; the normal installation does not install DuckDB:
-
-```bash
-python -m pip install -e ".[duckdb]"
+python -m pip install -e ".[dev,plot,duckdb,release]"
 ```
 
 ## NASR data setup
 
-FAA NASR data is published on a 28-day cycle. Download a full subscription ZIP
-from the [FAA 28-Day NASR Subscription page](https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/).
+FAA NASR data is published on a 28-day cycle. `openNASR` keeps archives and
+extracted cycles in an external user cache; it never writes data into the
+installed Python package.
 
-Place the downloaded archive in:
+Download the FAA's currently advertised cycle with the CLI:
 
-```text
-openNASR/data/zip/
+```bash
+opennasr check
+opennasr download latest
+opennasr list
 ```
 
-The expected filename format is:
+To use a ZIP downloaded manually from the
+[FAA 28-Day NASR Subscription page](https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/),
+import it explicitly:
+
+```python
+from openNASR import CycleManager
+
+cycle = CycleManager().import_archive(
+    "/downloads/28DaySubscription_Effective_2024-06-13.zip"
+)
+```
+
+The archive filename must have this format:
 
 ```text
 28DaySubscription_Effective_YYYY-MM-DD.zip
 ```
 
-For example:
-
-```text
-openNASR/data/zip/28DaySubscription_Effective_2024-06-13.zip
-```
-
-When `NASR` opens a cycle for the first time, it extracts the archive beneath:
-
-```text
-openNASR/data/uncompressed/
-```
-
-NASR archives and extracted data can be large and should not be committed to
-the repository.
-
-`CycleManager` stores downloaded archives and extracted cycles beneath its
-cache directory. Cache location precedence is:
+Cache location precedence is:
 
 1. an explicit `cache_dir` argument;
 2. the `OPENNASR_CACHE_DIR` environment variable; or
@@ -113,6 +119,9 @@ For example, `CycleManager(cache_dir="/data/nasr")` uses `/data/nasr`
 regardless of environment settings. Within that directory, archives are kept
 under `archives/` and extracted cycles under `cycles/`.
 
+NASR archives and extracted data can be large. They are runtime data, are not
+included in the PyPI package, and should not be committed to source control.
+
 ### Optional DuckDB cycle artifacts
 
 DuckDB is an explicit, opt-in derivative of an extracted cycle. It is not
@@ -120,7 +129,7 @@ created while importing or loading CSV data. After installing the optional
 extra, build one artifact by exact effective date:
 
 ```bash
-python -m pip install -e ".[duckdb]"
+python -m pip install "openNASR[duckdb]"
 opennasr build-duckdb 2024-06-13
 opennasr build-duckdb latest
 opennasr list --storage
@@ -148,25 +157,20 @@ The sidecar records the exact effective date and source/schema provenance, so
 the same date and source can be reproduced later. Treat both files as a pair;
 an incomplete or mismatched pair is rejected rather than used as a fallback.
 
-To import an archive downloaded manually, use the explicit import workflow:
+Programmatic downloads require an explicit provider. Importing a local archive
+never performs a network request:
 
 ```python
-from openNASR import CycleManager
+from openNASR.cycles import CycleManager, FaaCycleProvider
 
-cycle = CycleManager().import_archive(
-    "/downloads/28DaySubscription_Effective_2024-06-13.zip"
-)
+manager = CycleManager(provider=FaaCycleProvider())
+cycle = manager.download_latest()
 ```
-
-Automatic downloads are a separate provider-backed workflow (`download()` or
-`download_latest()`); they should be used only when a download provider is
-configured. Importing a local archive never performs a network request.
 
 ## Quick start
 
-The examples below are maintained against the public API and are covered by
-the README example validation test. They require a locally installed FAA cycle
-as described above; they never download data during tests.
+The examples below use the public API and require a cached FAA cycle. Package
+imports and `NASR(...)` construction never download data implicitly.
 
 Create a `NASR` object to load the most recent locally available cycle:
 
@@ -183,15 +187,14 @@ Each CSV filename becomes a dictionary key. For example,
 
 ### Select a data cycle
 
-Pass a cutoff date using ISO `YYYY-MM-DD` format. The loader selects the newest
-local cycle earlier than the supplied date:
+Select an exact locally cached effective date using ISO `YYYY-MM-DD` format:
 
 ```python
-nasr = NASR(useDate="2024-06-14")  # selects the 2024-06-13 cycle
+nasr = NASR(cycle="2024-06-13")
 ```
 
-Only cycles already present in `openNASR/data/zip/` can be selected. Supplying a
-cutoff date emits a warning identifying the cycle that was selected.
+If that exact cycle is absent, `NASR` raises `CycleNotFoundError`; it never
+silently substitutes a neighboring cycle or downloads one.
 
 ## Airports
 
@@ -357,7 +360,7 @@ figure, axes = plot_airspace(nasr, high_boundary)
 
 The helper accepts a Shapely longitude/latitude polygon or a NASR boundary
 object such as `high_boundary`. Install the optional plotting dependency with
-`pip install -e '.[plot]'`.
+`python -m pip install "openNASR[plot]"`.
 Set `plot_high_airways`, `plot_low_airways`, `plot_airports`, `plot_fixes`, or
 `plot_airnavs` to `False` to hide a layer; all are enabled by default.
 Set `plot_legend=False` to hide the default layer legend.
@@ -448,27 +451,31 @@ nautical miles.
 
 ## Current limitations
 
-- NASR archives must be downloaded manually.
-- `update=True` is reserved for future automatic download support.
-- `preloadAll=True` is experimental.
-- Procedure interfaces are not yet part of the public package API. The
-  ``flight_plan_path`` helper resolves route fields only; it does not validate
+- `NASR(update=True)` is a deprecated compatibility argument and does not
+  download data. Use `opennasr download latest` or `CycleManager` instead.
+- `preloadAll=True` is not supported; tables are loaded lazily.
+- The `flight_plan_path` helper resolves route fields only; it does not validate
   a flight plan for operational use.
-- For repeated route conversions, construct ``RouteResolver(nasr)`` once and
-  call ``.path(route)``. A resolver snapshots its supplied NASR mapping at
+- For repeated route conversions, construct `RouteResolver(nasr)` once and
+  call `.path(route)`. A resolver snapshots its supplied NASR mapping at
   construction; after changing a table or switching CSV/DuckDB cycles,
   construct a fresh resolver rather than expecting cache invalidation.
-- Only locally stored subscription cycles are available.
 
 ## Development
 
-Run the example scripts from the repository root after installing the package:
+Install the development dependencies, then run the complete verification gate:
 
 ```bash
-python tests/main_test_NASR_airport.py
-python tests/main_test_NASR_airspace.py
-python tests/main_test_NASR_fix.py
-python tests/main_test_NASR_navaid.py
+python -m pytest
+ruff format --check openNASR tests benchmarks tools
+ruff check openNASR tests benchmarks tools
+mypy openNASR
+```
+
+Plotting examples can be run from the repository root after downloading a
+cycle:
+
+```bash
 python plotExamples/main_test_NASR_atlanta_procedures.py
 python plotExamples/main_test_NASR_zob_airways.py
 python plotExamples/main_test_NASR_airport_runways_ils.py --airport ATL
@@ -481,7 +488,8 @@ generated figures, or Python cache files.
 ## License
 
 openNASR is licensed under the GNU General Public License version 3. See
-[`LICENSE`](LICENSE) for the full license text.
+[LICENSE](https://github.com/xDecisionSystems/openNASR/blob/main/LICENSE) for
+the full license text.
 
 ## Disclaimer
 

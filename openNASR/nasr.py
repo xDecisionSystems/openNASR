@@ -94,8 +94,13 @@ class NASR(dict):
         if preloadAll:
             raise NotImplementedError("preloadAll is not yet supported")
         if update:
-            # Code here will download new NASR data from FAA.
-            pass
+            warn(
+                "NASR(update=True) is deprecated and does not download data; "
+                "use `opennasr download latest` or "
+                "CycleManager(provider=FaaCycleProvider()).download_latest().",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if useDate is not None and cycle is not None and useDate != cycle:
             raise ValueError("useDate and cycle must agree when both are supplied")
         requested_cycle = cycle if cycle is not None else useDate

@@ -99,7 +99,6 @@ from .records import (
     MilitaryTrainingRouteWidthRecord as MilitaryTrainingRouteWidthRecord,
 )
 from .cycles import CycleManager as CycleManager
-from .cycles import notify_if_update_available
 from .query import InvalidQueryCursorError as InvalidQueryCursorError
 from .query import QueryError as QueryError
 from .query import QueryFieldNotFoundError as QueryFieldNotFoundError
@@ -204,5 +203,3 @@ __all__ = [
     "WeatherServiceRecord",
     "UnsupportedQueryOperatorError",
 ]
-
-notify_if_update_available()

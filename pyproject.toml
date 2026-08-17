@@ -1,23 +1,31 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "openNASR"
 version = "1.5.0"
-description = "Library to access FAA NASR data"
-readme = { file = "README.md", content-type = "text/markdown" }
+description = "Load, query, and plot FAA NASR subscription data"
+readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 authors = [
     { name = "Adan E Vela", email = "adan.vela@ucf.edu" },
 ]
-keywords = ["FAA", "NASR"]
+keywords = ["aviation", "FAA", "NASR", "navigation", "airspace"]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
 ]
 dependencies = [
     "numpy",
@@ -30,15 +38,23 @@ dependencies = [
 plot = ["matplotlib"]
 dev = ["pytest", "ruff", "mypy"]
 duckdb = ["duckdb>=1.2.2"]
+release = ["build", "twine"]
 
 [project.urls]
 Homepage = "https://github.com/xDecisionSystems/openNASR"
+Documentation = "https://github.com/xDecisionSystems/openNASR/blob/main/docs/API.md"
+Repository = "https://github.com/xDecisionSystems/openNASR.git"
+Issues = "https://github.com/xDecisionSystems/openNASR/issues"
+Changelog = "https://github.com/xDecisionSystems/openNASR/blob/main/CHANGELOG.md"
 
 [project.scripts]
 opennasr = "openNASR.cli:main"
 
 [tool.setuptools]
 packages = ["openNASR"]
+
+[tool.setuptools.package-data]
+openNASR = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

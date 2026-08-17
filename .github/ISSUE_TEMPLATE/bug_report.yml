@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible problem with openNASR
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not report security vulnerabilities here. Use GitHub private
+        vulnerability reporting as described in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: openNASR version
+      placeholder: "1.5.0"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version and operating system
+      placeholder: "Python 3.12.4 on Ubuntu 24.04"
+    validations:
+      required: true
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Storage backend
+      options:
+        - CSV
+        - DuckDB
+        - Not applicable
+    validations:
+      required: true
+  - type: input
+    id: cycle
+    attributes:
+      label: NASR effective date
+      placeholder: "YYYY-MM-DD, if applicable"
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest code sample and the complete traceback.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I removed credentials, private paths, and sensitive data.
+          required: true
+        - label: I searched existing issues for this problem.
+          required: true

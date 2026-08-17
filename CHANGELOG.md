@@ -7,12 +7,14 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
-## [1.5.0] - 2026-08-16
+## [1.5.0] - 2026-08-17
 
 ### Security
 
 - Nested FAA CSV archives are now validated before extraction and reject
   absolute or path-traversal member paths.
+- Importing `openNASR` no longer performs an update check, contacts the network,
+  or writes to the user's cache. Update checks and downloads are explicit.
 
 ### Fixed
 
@@ -61,9 +63,16 @@ and versions follow Semantic Versioning.
 - `AirportRepository` and the generic `RecordRepository` base now build and
   cache a lookup index per table/column instead of rescanning the full
   column on every lookup.
+- Added `PlottingIndex` for reuse across plot calls, eliminating repeated table
+  scans for airway, procedure, runway, and airport geometry.
 
 ### Changed
 
+- Modernized PyPI metadata, package descriptions, and release validation.
+- Added automated pull-request CI and a tag-driven PyPI Trusted Publishing
+  workflow that builds the distribution once and publishes that exact artifact.
+- `NASR(update=True)` now emits a deprecation warning; use the download CLI or
+  `CycleManager` for explicit data acquisition.
 - `TableRepository` moved to `openNASR/tables.py`;
   `openNASR/repository.py` re-exports it for compatibility.
 - **`NASR` now resolves its cycle through `CycleManager` instead of reading
