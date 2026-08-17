@@ -94,17 +94,81 @@ DuckDB version, creation time, and table row counts.
    unchanged. A later task may evaluate a separately installed spatial
    extension or PostGIS for web-service spatial workloads.
 
-## Agent operating rules
+## Agent roster and roles
 
-- Every agent reads this file, `PLAN.md`, `README.md`, `pyproject.toml`, and
-  all files touched by its task before editing.
-- Each task ends with focused tests. The integration owner runs the complete
-  suite, Ruff, mypy, build, and Twine checks before a milestone is marked
-  complete.
-- Every implementation task adds a decision-log row to this file if it changes
-  the storage format, public API, or compatibility policy.
-- Commit one task at a time with a narrow conventional commit. Do not mix
+Agent names below are roles, not fixed individuals — any capable agent may be
+assigned a role for a given task, but each in-flight task has exactly one
+owning agent at a time.
+
+| Role | Responsibility |
+| --- | --- |
+| **Sol** | Architecture, protocol/contract design, security and compatibility review, gate approval, performance/benchmark design. Sol does not write backend implementation code; Sol reviews it. |
+| **Terra** | Production implementation: storage format, builder, table-store backend, public `NASR`/`CycleManager` API, packaging, query acceleration. |
+| **Luna** | Fixtures, parity/regression tests, CLI surface, documentation, benchmark tooling. Luna does not change production behavior; Luna's tests must fail against a broken implementation and pass against a correct one. |
+
+If a phase's suggested-schedule table names a role with no available agent,
+reassign the task to another role rather than leaving it unowned — the goal
+is one clear owner per task, not adherence to a specific name.
+
+## Coordination rules for parallel agents
+
+- **Branch per task.** Each task in the Delivery sequence is done on its own
+  branch, named `duckdb/<task-id>-<short-slug>` (e.g. `duckdb/13.1.3-builder`).
+  Do not share a branch across two open tasks, even within the same phase —
+  two agents editing the same file on one branch is exactly the collision
+  this plan needs to avoid.
+- **File-ownership map.** Before starting a task that touches a file listed
+  in "New and shared files" below, confirm no other *currently open* task
+  claims the same file. Where the table's "Later editors" column names a
+  task, that task must not open its branch until the file's prior editor has
+  merged — rebase onto that merge rather than editing the file in parallel
+  from an older base.
+- **Merge order follows task order, not wall-clock completion.** Within a
+  phase, merge branches in ascending task-ID order (13.1.1 before 13.1.2,
+  etc.) even if a later task finishes first. A task that depends on another
+  (see each task's `Dependencies:` line) must not open its branch until its
+  dependency has merged to the integration branch.
+- **Integration branch.** All phase branches merge into a long-lived
+  `duckdb/integration` branch, not directly into `main`. Nothing from this
+  plan reaches `main` before Gate 13.5 passes on `duckdb/integration`.
+- **Every agent reads** this file, `PLAN.md`, `README.md`, `pyproject.toml`,
+  and every file its task will touch, before editing.
+- **Each task ends with focused tests** scoped to that task. The agent
+  merging last in a phase (by the task-ID order above) runs the complete
+  suite, Ruff, mypy, build, and Twine checks on the merged phase branch
+  before requesting the phase gate.
+- **Gate authority.** Only the role named in a phase's `**Gate 13.x:**` line
+  may record that gate as passed (Sol for every gate in this plan). A gate
+  is recorded by adding a dated row to the Decision log naming the gate,
+  not by checking off a task box. No task in the next phase may open its
+  branch until its phase's gate row exists in the Decision log.
+- Every implementation task adds a decision-log row to this file if it
+  changes the storage format, public API, or compatibility policy.
+- Commit one task at a time with a narrow conventional commit referencing
+  the task ID (e.g. `feat(duckdb): 13.1.3 per-cycle builder`). Do not mix
   benchmark output or cache contents into commits.
+
+## New and shared files
+
+Naming new files up front lets two agents on different tasks avoid guessing
+at each other's module boundaries. Task IDs mark who creates or first
+populates a file; other tasks that later touch the same file are listed
+under "later editors" so the collision is visible before either starts.
+
+| File | Created by | Purpose | Later editors |
+| --- | --- | --- | --- |
+| `openNASR/duckdb_metadata.py` | 13.1.1 | `DuckDbCycleMetadata`, storage-format version constant, metadata validation/typed errors | — |
+| `tests/fixtures/duckdb_parity/` | 13.1.2 | Tiny synthetic multi-table fixtures shared by CSV/DuckDB parity tests | 13.2.3 (adds cases, does not restructure) |
+| `openNASR/duckdb_builder.py` | 13.1.3 | Per-cycle DuckDB builder: import, validate, publish | 13.1.4 (concurrency/atomicity additions to the same module) |
+| `openNASR/storage.py` | 13.2.1 | The minimal table-store protocol extracted from `TableRepository`; `TableRepository` itself stays in `openNASR/tables.py` and is updated in place to satisfy the protocol | — |
+| `openNASR/duckdb_tables.py` | 13.2.2 | `DuckDbTableRepository` | — |
+| `openNASR/cycles.py` (existing, shared) | — | `CycleManager.build_duckdb`/`duckdb_path`/`remove(duckdb=True)` land here | 13.3.1 opens this file first; no other task in this plan edits it — if a future task needs to, it must rebase onto 13.3.1's merge |
+| `openNASR/nasr.py` (existing, shared) | — | `storage=` kwarg on `NASR.__init__` | 13.3.2 only; sequenced after 13.3.1 and 13.2.4 so it never overlaps another open edit to this file |
+| `openNASR/cli.py` (existing, shared) | — | `build-duckdb`, `list --storage` subcommands | 13.3.3 only |
+| `openNASR/registry.py` (existing, shared) | — | Read-only: 13.4.2 reads `TableRegistry` identity/relationship keys to choose indexes; it does not edit this file | — |
+
+Any task that needs a new file not listed here adds a row to this table in
+the same commit that creates the file.
 
 ## Delivery sequence
 
@@ -335,6 +399,11 @@ raw SQL or mutable database state.
 
 ## Suggested parallel schedule
 
+Each wave corresponds to one phase from the Delivery sequence (Wave 1 =
+Phase 13.0, Wave 2 = Phase 13.1, and so on); "Dependency" names the prior
+wave's gate, which must have its Decision-log row before this wave's
+branches open.
+
 | Wave | Agents | Work | Dependency |
 | --- | --- | --- | --- |
 | 1 | Sol + Terra | 13.0.1/13.0.2 architecture and benchmark contract; 13.0.3 packaging after version decision | none |
@@ -362,3 +431,4 @@ raw SQL or mutable database state.
 | 2026-08-17 | Plan DuckDB as an explicit optional, per-cycle local storage backend; retain CSV as the default first-release backend. | It accelerates repeated local/API-style queries while preserving the current public DataFrame and repository contract, avoids a forced dependency, and makes source/provenance boundaries clear. |
 | 2026-08-17 | Store the database beside the exact extracted cycle and treat it as a rebuildable derivative. | This makes historical-date selection deterministic and permits removal/rebuild without losing the FAA archive or CSV source data. |
 | 2026-08-17 | Preserve raw FAA values as strings before adding any typed/analytic views. | NASR fields include identifiers and source text where leading zeroes and blanks are meaningful; automatic database type inference risks silent data changes. |
+| 2026-08-17 | Add an agent roster table, a per-task branch/merge/gate-authority protocol, and a "New and shared files" ownership map; require gates to be recorded as dated Decision-log rows rather than task checkboxes. | The task-level `Agent: X` labels and phase gates already implied parallel execution but never said how two agents avoid editing the same file at once, who may declare a gate passed, or where new modules (`duckdb_metadata.py`, `duckdb_builder.py`, `storage.py`, `duckdb_tables.py`) actually live — leaving that implicit risks two agents guessing differently and colliding on `nasr.py`/`cycles.py` mid-phase. |
