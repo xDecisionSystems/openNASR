@@ -2,7 +2,7 @@
 
 Run from the repository root after installing the plotting extra:
 
-    python tests/plotExamples/main_test_NASR_airport_runways_ils.py --airport ATL
+    python plotExamples/main_test_NASR_airport_runways_ils.py --airport ATL
 """
 
 from __future__ import annotations

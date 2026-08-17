@@ -150,8 +150,8 @@ venv.bak/
 dmypy.json
 
 # Generated plotting examples
-/tests/plotExamples/plots/*
-!/tests/plotExamples/plots/.gitkeep
+/plotExamples/plots/*
+!/plotExamples/plots/.gitkeep
 
 # Pyre type checker
 .pyre/

@@ -2,7 +2,7 @@
 
 Run from the repository root after installing the plotting extra:
 
-    python tests/plotExamples/main_test_NASR_zob_airways.py
+    python plotExamples/main_test_NASR_zob_airways.py
 """
 
 from __future__ import annotations
