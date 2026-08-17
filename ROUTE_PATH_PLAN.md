@@ -130,11 +130,19 @@ Each in-flight task has exactly one owning agent.
   local-only test data, not a tracked repository asset (verified 2026-08-17:
   `tests/exampleRoutes.csv` is untracked and un-ignored in this repository).
   Dependencies: T0.2.
-- [ ] **T0.4 — Agent model: Sol.** Set and document a domestic-only success target once
+- [x] **T0.4 — Agent model: Sol. Done (2026-08-17).** Set and document a domestic-only success target once
   T0.2's categorization exists. Exclude rows requiring non-NASR
   international/oceanic data (Phase 6) from the domestic denominator;
   report them as a separate count, not silently dropped.
   Dependencies: T0.2.
+  Target: at least 76/84 (90%) of the fixed domestic NASR rows complete,
+  with no regression among the 36 current no-exception domestic rows; 84/84
+  is the stretch target. Sixteen rows remain visible but excluded from that
+  denominator: 13 require foreign/oceanic/external route content and 3 use
+  coordinate or radial-distance points reserved for separate Phase 6
+  coverage. The exact indices, baseline rate, exclusion rule, and success
+  definition are recorded in
+  [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#domestic-only-target-and-denominator).
 - [x] **T0.5 — Agent model: Sol. Done (2026-08-17).** Benchmark cold vs. warm
   conversion separately; a warm benchmark measures path generation only
   after NASR tables and resolver indexes are ready. Measured: a single
@@ -646,3 +654,4 @@ denominator is accurate.
 | 2026-08-17 | Add T0.1a: publish the exact sampling/hashing script behind T0.1's baseline, and confirm the `2026-05-14` NASR cycle archive is actually obtainable before treating the baseline as re-runnable. | Re-verifying T0.1 found its `random.Random(20260514).sample(...)` call and both SHA-256 digests are stated as facts but not as a runnable procedure — the `sample()` population argument, selection order, and serialization/encoding used to produce the index/route hashes are unrecorded, so no one can currently reproduce them to confirm a re-run used the same sample. Separately, `openNASR/data/zip/` in this checkout only has archives through `2024-06-13`; `2026-05-14` sits on the correct 28-day cycle lattice from that date (so it is plausibly a real, later cycle) but is not present locally, so Gate 1 cannot currently be re-run here without first obtaining it. |
 | 2026-08-17 | Classify a sampled row by the earliest faithfully diagnosed root cause, not the surfaced exception text or later content in the route. | The canonical sample contains 39 bare published DPs that surface as missing airway paths, while some routes contain later foreign/oceanic content that execution never reaches; root-cause classification keeps phase-gate comparisons actionable and stable. |
 | 2026-08-17 | Keep the existing lookup exceptions and add distinct public types for unsupported route content, malformed route text, and broken published connectivity. | A foreign/oceanic token is outside the domestic data contract rather than an unknown domestic record; malformed caller input is distinct from both lookup and data-connectivity failures; and an existing published record whose endpoints cannot form a path is not accurately described as a missing record. All remain catchable through `OpenNASRError`. |
+| 2026-08-17 | Set the Phase 1-5 domestic coverage gate at 76/84 (90%), require no regression among the 36 current no-exception domestic rows, and report 16 out-of-contract rows separately. | A fixed content-based denominator makes phase counts comparable. Thirteen sampled rows require foreign/oceanic/external routing and three require coordinate or radial-distance handling reserved for separate coverage; excluding them prevents Phase 1-5 domestic work from being judged against data NASR does not provide, while continuing to expose their outcomes in the 100-row report. |

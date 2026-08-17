@@ -189,3 +189,42 @@ content; record lookup/ambiguity; then connectivity after all participating
 records exist. This prevents a foreign ICAO identifier from being reported
 as an unknown domestic waypoint and prevents a missing endpoint record from
 being mislabeled as broken connectivity.
+
+## Domestic-only target and denominator
+
+The Phase 1-5 release target is **at least 90% of the fixed 84-row domestic
+NASR denominator (at least 76 successful routes), with no regression among
+the 36 currently no-exception domestic rows**. One hundred percent (84/84)
+is the stretch target. The baseline's raw domestic no-exception rate is
+36/84 (42.9%); the 90% gate therefore requires at least 40 additional
+domestic routes to convert successfully without losing an existing one.
+
+The denominator is content-based and remains fixed across phase gates. A row
+is excluded if faithfully converting it requires data or route constructs
+outside the domestic NASR contract, even when an earlier domestic procedure
+bug is the failure currently observed. Thus a later oceanic segment cannot
+remain hidden behind a preceding bare-DP failure and later inflate or shrink
+the denominator as bugs are fixed.
+
+Sixteen canonical rows are excluded and reported separately:
+
+| Exclusion class | Count | Zero-based source indices |
+| --- | ---: | --- |
+| Foreign/oceanic/external route content | 13 | `964`, `1837`, `4549`, `6867`, `19034`, `21402`, `24891`, `25943`, `43648`, `43922`, `44080`, `44466`, `45904` |
+| Coordinate or radial-distance route points handled as separate Phase 6 coverage | 3 | `2271`, `14154`, `29272` |
+| Total excluded | 16 | — |
+
+Excluded rows still run and are reported by category; they are never silently
+dropped from the 100-row report. Their current raw outcome is 2 no-exception
+and 14 exceptions. These counts are not part of the domestic percentage and
+improvements to them do not satisfy the Phase 1-5 target.
+
+For the target, a “success” means the validation utility completes the whole
+route and returns a non-empty ordered coordinate tuple without a typed error.
+Once token-position diagnostics exist (T5.2), it must also confirm that every
+non-suffix route component was consumed. A path produced by truncating the
+route at `./.` or mistaking an embedded coordinate slash for the trailing
+speed/altitude delimiter does not count, even if the current function returns
+without raising. Curated exact-order fixtures remain the fidelity check; the
+percentage is a coverage gate, not proof that every returned route is an
+operationally valid flight path.
