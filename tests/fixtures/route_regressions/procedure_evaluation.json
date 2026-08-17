@@ -1,0 +1,47 @@
+{
+  "cycle_date": "2026-05-14",
+  "routes": [
+    {
+      "id": "bare_dp",
+      "route": "KAAA DEP1 KBBB",
+      "procedures": ["DEP1"],
+      "connections": ["DEP"]
+    },
+    {
+      "id": "dotted_dp_transition",
+      "route": "KAAA.DEP1.TRANS KBBB",
+      "procedures": ["DEP1.TRANS"],
+      "connections": ["TRANS", "DEP"]
+    },
+    {
+      "id": "bare_star",
+      "route": "KAAA ARR1 KBBB",
+      "procedures": ["ARR1"],
+      "connections": ["MID"]
+    },
+    {
+      "id": "dotted_star_transition",
+      "route": "KAAA TRANS.ARR1 KBBB",
+      "procedures": ["TRANS.ARR1"],
+      "connections": ["ARR", "MID"]
+    },
+    {
+      "id": "dp_to_airway",
+      "route": "KAAA DEP1 V1 MID KBBB",
+      "procedures": ["DEP1"],
+      "connections": ["DEP"]
+    },
+    {
+      "id": "airway_to_star",
+      "route": "KAAA DEP V1 MID ARR1 KBBB",
+      "procedures": ["ARR1"],
+      "connections": ["MID"]
+    },
+    {
+      "id": "dp_to_airway_to_star",
+      "route": "KAAA DEP1 V1 MID ARR1 KBBB",
+      "procedures": ["DEP1", "ARR1"],
+      "connections": ["DEP", "MID"]
+    }
+  ]
+}
