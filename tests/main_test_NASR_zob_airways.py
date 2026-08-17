@@ -11,6 +11,10 @@ import argparse
 from pathlib import Path
 
 
+# Set to False to render in longitude/latitude instead of east/north NM.
+PLOT_IN_NAUTICAL_MILES = True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Plot ZOB with high- and low-altitude airways."
@@ -46,8 +50,10 @@ def main() -> None:
         boundary,
         plot_high_airways=True,
         plot_low_airways=True,
+        project_to_nm=PLOT_IN_NAUTICAL_MILES,
     )
-    axes.set_title("ZOB: high- and low-altitude airways")
+    units = "nautical miles" if PLOT_IN_NAUTICAL_MILES else "longitude/latitude"
+    axes.set_title(f"ZOB: high- and low-altitude airways ({units})")
     figure.savefig(args.output, dpi=200, bbox_inches="tight")
     print(f"wrote {args.output.resolve()} ({len(axes.lines)} line segments)")
     if args.show:
