@@ -583,7 +583,7 @@ in file-alphabetical order.
   2026-05-14 sample measured 12.14 ms warm for A216 (579.85 ms cold build)
   and 4.18 ms warm for the holding sample (583.49 ms cold build), without
   broadening the relationship optimization to communications or airspace.
-- [ ] **T3.4 — Agent model: Terra.** Fix the legacy uncached scans: `NASR.isFix`/
+- [ ] **T3.4 — Agent model: Terra. Partially landed.** Fix the legacy uncached scans: `NASR.isFix`/
   `isAirport`/`isNavaid` (`openNASR/nasr.py`) and `basictypes.py`'s
   `getAirportRecord`/`getAirportRecords` (backing `Airport`, `RWY`,
   `RWYEnd`, `ILSBase`, `ILSDME`, `ILSGS`, `ILSMKR`), plus `fix.py`'s
@@ -597,8 +597,12 @@ in file-alphabetical order.
   `isFix`/`isAirport`/`isNavaid` produce identical results before and after;
   a benchmark run confirms at least an order-of-magnitude reduction in
   repeated-construction cost.
+  Commit `88d30d8` completes the FIX/`isFix` portion only. Canonical Gate 3
+  evidence measured `FIX` at 1.433ms warm (22.87x), but legacy `Airport`
+  remains 26.339ms and `isAirport` 5.883ms; neither meets the amended Gate 3
+  policy. The airport and navaid portions therefore remain open.
   Dependencies: T2.1 (reuse the same technique).
-- [ ] **L3.5 — Agent model: Luna.** Add regression tests reproducing at
+- [x] **L3.5 — Agent model: Luna. Done (2026-08-17).** Add regression tests reproducing at
   least the `CDR`/`LID`/`FRQ` and legacy-constructor costs found in Phase 0,
   asserting a materially smaller post-fix cost using the same
   relative-improvement convention as Phase 4/5. Re-run L1.3's benchmark
@@ -606,39 +610,65 @@ in file-alphabetical order.
   repository/constructor T3.2-T3.4 touched.
   Dependencies: T3.2, T3.3, T3.4, L1.3.
 
-L3.5 tooling preparation: `benchmarks/repository_benchmark.py` now samples
+L3.5 tooling: `benchmarks/repository_benchmark.py` now samples
 seeded complete composite keys and reports separate cold/warm summaries for
 all bounded Phase 3 paths (CDR, LID, FRQ, PFR, airway, holding, military, and
 ATC), in addition to the legacy constructors and NASR predicates. It does not
-add timing thresholds to pytest. Final post-fix numbers and the checkbox stay
-open until T3.3a lands, after which the same command is rerun against the
-canonical cycle.
+add timing thresholds to pytest. Sol's post-T3.3a canonical rerun is recorded
+below; structural parity/position/ambiguity regressions remain the CI guard.
 
 **Gate 3:** Sol re-runs L1.3's benchmark and confirms every covered
 repository/constructor meets the performance policy below, with no test
 regression across the full suite (not just `tests/test_flightplan.py` — this
 phase touches roughly a dozen modules with their own test files).
 
-**Gate 3 — OPEN (2026-08-17).** Do not sign off until the four bounded T3.3
-additions, T3.3a, and T3.4 land, L3.5 covers every touched path, and a
-canonical rerun confirms the policy below. No unranked module outside the
-nine-entry manifest is authorized for Phase 3 implementation.
+**Gate 3 — NOT APPROVED (2026-08-17).** The post-T3.3a canonical rerun used
+the `2026-05-14` CSV cycle, already-loaded tables, each manifest's exact
+baseline key, one cold call, and 20 warm calls. Every nine-entry bounded
+manifest path now passes the amended policy:
+
+| Manifest path | Baseline warm | Current warm | Ratio | Policy result |
+| --- | ---: | ---: | ---: | --- |
+| airway `A216` | 147.626ms | 12.419ms | 11.89x | pass by ratio |
+| holding `AABEE INT*GA*K7` | 40.916ms | 4.359ms | 9.39x | pass by ≤5ms |
+| legacy `FIX("AABEE")` | 32.780ms | 1.433ms | 22.87x | pass by ratio |
+| preferred route | 29.794ms | 3.314ms | 8.99x | pass by ≤5ms |
+| location identifier | 21.970ms | 1.024ms | 21.45x | pass by ratio |
+| military training route | 20.905ms | 4.008ms | 5.22x | pass by ≤5ms |
+| ATC facility | 14.206ms | 3.607ms | 3.94x | pass by ≤5ms |
+| frequency | 12.565ms | 1.646ms | 7.63x | pass by ≤5ms |
+| coded departure route | 10.606ms | 0.639ms | 16.60x | pass by ratio |
+
+The expanded seeded 10-key tool also ran successfully. Its 25.432ms airway
+warm median is diagnostic across routes with different segment counts and is
+not compared to the single seven-segment `A216` baseline; formal gate ratios
+must use the same key and call shape before/after.
+
+The gate remains closed because T3.4 is incomplete. The same run measured
+legacy `Airport` at 26.339ms warm (essentially unchanged from ~27–28ms) and
+`isAirport` at 5.883ms; both fail the ratio and absolute-floor alternatives.
+Legacy NAVAID is below the floor at 4.056ms, while its implementation work is
+still unchecked. The full suite passed with **378 passed, 1 skipped**. A
+future review needs only the remaining bounded T3.4 implementation,
+corresponding tests, and a rerun of those legacy rows; it must not reopen the
+nine already-passing domain paths or add unranked modules.
 
 **Gate 3 performance policy amendment (2026-08-17):** a manifest path passes
 when its warm median is either at least 10x faster than baseline **or at most
 5ms after eliminating the repeated full-table normalized scan**. The absolute
 floor is half the 10ms admission threshold and prevents chasing a ratio by
 caching mutable public record objects or replacing small, source-faithful
-DataFrame materialization. It is not available to airway/holding while their
-profiles still contain repeated full-table relationship scans.
+DataFrame materialization. T3.3a removed the repeated relationship scans that
+previously made this alternative unavailable to airway/holding.
 
 Under this policy, T3.2's FRQ (1.665ms, 7.55x) and PFR (3.313ms, 8.99x)
 results pass, as do T3.3's military and ATC results above. Profiles of 100
 warm calls show FRQ/PFR time is now dominated by bounded `.iloc`/`to_dict`
 record materialization, not normalization of their full source tables.
 CDR (0.908ms, 11.69x) and LID (1.264ms, 17.38x) retain their ratio-based
-passes. Airway and holding remain the only indexed-domain performance misses;
-Gate 3 also remains blocked on the rest of T3.4 and release evidence.
+passes. The final table above supersedes these pre-T3.3a spot values; all nine
+indexed-domain paths now pass, and Gate 3 remains blocked only on the rest of
+T3.4 and its release evidence.
 
 ## Phase 4 — Index the procedure tables (`openNASR/flightplan.py`)
 
