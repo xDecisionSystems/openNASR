@@ -42,6 +42,7 @@ from .weather import WeatherLocationRepository as WeatherLocationRepository
 from .holding import HoldingPattern as HoldingPattern
 from .holding import HoldingPatternRepository as HoldingPatternRepository
 from .nav import NAVAID as NAVAID
+from .flightplan import flight_plan_path as flight_plan_path
 from .plotting import plot_airspace as plot_airspace
 from .plotting import plot_airport_procedures as plot_airport_procedures
 from .records import ArtccRecord as ArtccRecord
@@ -126,6 +127,7 @@ __all__ = [
     "Frequency",
     "FrequencyRecord",
     "FrequencyRepository",
+    "flight_plan_path",
     "FlightServiceStation",
     "FlightServiceStationRecord",
     "FlightServiceStationRemarkRecord",

@@ -390,8 +390,9 @@ nautical miles.
 - NASR archives must be downloaded manually.
 - `update=True` is reserved for future automatic download support.
 - `preloadAll=True` is experimental.
-- Airway, departure, and flight-plan interfaces are not yet part of the public
-  package API.
+- Procedure interfaces are not yet part of the public package API. The
+  ``flight_plan_path`` helper resolves route fields only; it does not validate
+  a flight plan for operational use.
 - Only locally stored subscription cycles are available.
 
 ## Development
