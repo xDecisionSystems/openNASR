@@ -65,15 +65,44 @@ Each in-flight task has exactly one owning agent.
   `random.Random(20260514).sample(...)` from the 46,580 non-empty rows of
   `tests/exampleRoutes.csv`, using NASR cycle `2026-05-14`, CSV storage, and
   one shared read-only waypoint resolver. Its source-file SHA-256 is
-  `9c52331afa6c8ac5fe661050370bc2fa7ecd87412e241fc55c4f6daf65e6f03c`,
-  selected-index SHA-256 is
+  `9c52331afa6c8ac5fe661050370bc2fa7ecd87412e241fc55c4f6daf65e6f03c`
+  (verified 2026-08-17: matches `tests/exampleRoutes.csv` in this checkout
+  exactly). Selected-index SHA-256 is
   `e4a8cbf7b5428f7dc01fc5b89d4264fc2b25e5c85010f3f19ffd2775944773b2`,
   selected-route SHA-256 is
   `71e060c887646a17681bd8541c8b8f8f0916bfb5cf370290b2aec321e9961750`,
-  and the result is 38 successes / 62 failures. The dominant observed
-  category is bare procedure names reaching airway resolution — see T1.1.
-  The separate 60-row, `2024-06-13` reproduction remains diagnostic evidence
-  only; do not compare phase-gate counts across different cycle dates.
+  and the result is 38 successes / 62 failures.
+  **Gap found on re-verification (2026-08-17): the exact hash construction
+  is not recorded.** Re-attempting these two hashes requires knowing the
+  precise `sample()` population argument (rows vs. row indices), the
+  selection order used before hashing (as sampled vs. sorted), the string
+  encoding, and the join/serialization format — none of which are written
+  down, so a future Sol cannot currently confirm a re-run used the same
+  sample as this one. **T0.1a below closes this gap; do not re-run Gate 1
+  until it lands.** Also unverified: `openNASR/data/zip/` in this checkout
+  only has archives through `2024-06-13`
+  (verified 2026-08-17 — `2026-05-14` is on the correct 28-day cycle
+  lattice from `2024-06-13`, so it is plausibly a real, later FAA cycle,
+  but it is not present locally and must be obtained (download or import)
+  before this baseline can be re-run in this repository).
+  The dominant observed category is bare procedure names reaching airway
+  resolution — see T1.1. The separate 60-row, `2024-06-13` reproduction
+  remains diagnostic evidence only; do not compare phase-gate counts across
+  different cycle dates.
+- [ ] **T0.1a — Agent model: Sol.** Close the gap found in T0.1: publish
+  the exact, runnable sampling/hashing script (as a code block in this
+  document or a small script under `tools/`) that reproduces T0.1's three
+  SHA-256 digests byte-for-byte, including the precise `random.sample(...)`
+  call, selection/serialization order, and encoding. Confirm the
+  `2026-05-14` NASR cycle archive is available (document where it was
+  obtained, e.g. the FAA subscription page or an existing local cache
+  outside this checkout) before treating T0.1 as re-runnable by another
+  agent. If the archive cannot be located, replace the canonical baseline
+  with an equivalent sample against a cycle that is actually available in
+  this repository (e.g. `2024-06-13`) and update every reference to
+  `2026-05-14`/`38 successes / 62 failures` accordingly, including Gate 1-3
+  and Release Gates.
+  Dependencies: none (blocks re-running Gate 1, not T1.1's implementation).
 - [ ] **T0.2 — Agent model: Sol.** Categorize each of T0.1's failures as: parser error,
   procedure-resolution error, airway-resolution error, waypoint ambiguity,
   missing NASR data, or malformed input. Retain at least one representative
@@ -190,7 +219,8 @@ Each in-flight task has exactly one owning agent.
 
 **Gate 1:** Sol confirms T1.1's fix resolves the dominant real-world failure
 category (re-run the T0.1 sample or an equivalent subset) and records the
-gate with the before/after success count.
+gate with the before/after success count. Requires T0.1a (the sample must
+be re-runnable to produce a comparable before/after count).
 
 ## Phase 2 — Departures and Arrivals
 
@@ -600,3 +630,4 @@ denominator is accurate.
 | 2026-08-17 | Give `RouteResolver` snapshot semantics and use a relative benchmark target. | `NASR` and pandas DataFrames are mutable, so implicit cache invalidation would be ambiguous and costly. Absolute timing thresholds also vary by hardware; a recorded environment plus before/after ratio gives a reproducible performance gate. |
 | 2026-08-17 | Restructure the entire plan into numbered tasks (`T0.x`-`T6.x`) with an assigned agent role, explicit dependencies, and a per-task acceptance test, reusing the Sol/Terra/Luna roster and coordination-rules convention from `DUCKDB_PLAN.md`; fact-check the previously-unreviewed Phase 3/5/6 bullets against real code and data during the restructure rather than only reformatting the existing prose. | The plan's four already-verified findings (bare-procedure misclassification, greedy dot-merge, `VOT` disambiguation, resolver vectorization) were implementable by a cold subagent, but most of the original bullets were outcome statements ("resolve a bare departure name") with no task boundary, acceptance criterion, or file-ownership guidance — two subagents assigned different Phase 2 bullets would likely collide on the same functions in `flightplan.py` with no sequencing rule to prevent it. |
 | 2026-08-17 | Fix `_airway_vertices`'s `AWY_DESIGNATION` comparison (T3.1): stop comparing the token's regex-extracted letter prefix against `AWY_DESIGNATION`; rely on `AWY_ID` matching plus the existing `REGULATORY`/`AWY_LOCATION` disambiguation instead. | Verified against the real `2024-06-13` cycle that `AWY_DESIGNATION` values (`A, AT, B, BF, G, J, PA, PR, R, RN, V`) are not the token's leading letters — every real `Q`/`T`-prefixed `AWY_ID` (e.g. `Q822`, a genuine RNAV airway) has `AWY_DESIGNATION` of `AT` or `RN`, never `"Q"` or `"T"` — so the current `or`-joined check silently rejects every `Q`/`T`-prefixed airway regardless of whether its waypoints are correct, reproduced directly against `Q822`'s own segment data. `AWY_ID` alone is not fully unique (53 of 1,483 values in this cycle are duplicated across regions), so the existing downstream `REGULATORY`/`AWY_LOCATION` filter must be confirmed to still disambiguate correctly, not simply dropped alongside the wrong comparison. |
+| 2026-08-17 | Add T0.1a: publish the exact sampling/hashing script behind T0.1's baseline, and confirm the `2026-05-14` NASR cycle archive is actually obtainable before treating the baseline as re-runnable. | Re-verifying T0.1 found its `random.Random(20260514).sample(...)` call and both SHA-256 digests are stated as facts but not as a runnable procedure — the `sample()` population argument, selection order, and serialization/encoding used to produce the index/route hashes are unrecorded, so no one can currently reproduce them to confirm a re-run used the same sample. Separately, `openNASR/data/zip/` in this checkout only has archives through `2024-06-13`; `2026-05-14` sits on the correct 28-day cycle lattice from that date (so it is plausibly a real, later cycle) but is not present locally, so Gate 1 cannot currently be re-run here without first obtaining it. |
