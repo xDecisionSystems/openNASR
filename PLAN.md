@@ -2505,11 +2505,83 @@ Goal: complete rich coverage for `MAA_*`, `PJA_*`, and `MTR_*`.
 
 Tasks:
 
-- [ ] **Agent: Sol.** **12.1** Verify the FAA meaning of `MAA` from official documentation. Keep
+- [x] **Agent: Sol.** **12.1** Verify the FAA meaning of `MAA` from official documentation. Keep
       the approved conservative `Maa*` names unless a later user-approved naming
       decision updates `FILESTYPES.md`.
-- [ ] **Agent: Sol.** **12.2** Verify identity, contact, sequence, multipart geometry, route, and
+      **Resolved (2026-08-16): `MAA` = "Miscellaneous Activity Area", confirmed
+      directly from the FAA's own primary-source layout document,
+      `openNASR/data/uncompressed/28DaySubscription_Effective_2024-06-13/CSV_Data/13_Jun_2024_CSV/MAA DATA LAYOUT.pdf`,
+      whose title page reads "MISCELLANEOUS ACTIVITY AREA (MAA) DATA". Field
+      descriptions in that document (`MAA_TYPE_NAME`: AEROBATIC PRACTICE,
+      GLIDER, HANG GLIDER, SPACE LAUNCH, ULTRALIGHT, UNMANNED AIRCRAFT, OTHER)
+      were cross-checked against the legacy fixed-width `MAA.txt` subscriber
+      file from an independent, older cycle
+      (`openNASR/data/zip/28DaySubscription_Effective_2021-11-04/MAA.txt`),
+      which contains matching `MAA_TYPE_NAME`-style values ("AEROBATIC
+      PRACTICE", "SPACE LAUNCH ACTIVITY", etc.) — confirming this is not a
+      one-cycle typo. **`MAA` is not military** — this milestone's title
+      inherited that assumption from `PJA_*`/`MTR_*` and should be read as
+      "special-use, sport, and military airspace," not "military airspace"
+      generically. Decision: keep the existing `Maa*` class names (they
+      already match the acronym FAA itself uses in the file names and layout
+      document heading); no `FILESTYPES.md` rename is needed. Update
+      `FILESTYPES.md`'s "Needs FAA review" status for the four `MAA_*` rows
+      to reflect this resolved finding.
+- [x] **Agent: Sol.** **12.2** Verify identity, contact, sequence, multipart geometry, route, and
       ordering keys for all twelve tables across both schema generations.
+      **Resolved (2026-08-16):** verified against the FAA's own primary-source
+      layout PDFs (`MAA DATA LAYOUT.pdf`, `PJA DATA LAYOUT.pdf`,
+      `MTR DATA LAYOUT.pdf` in `.../28DaySubscription_Effective_2024-06-13/CSV_Data/13_Jun_2024_CSV/`),
+      cross-checked against the same cycle's real CSV data and both
+      `CSV_DATA_STRUCTURE.csv` files, and confirmed both `pre_2026_09` and
+      `nasr_2026_09` fixture headers already match. Findings:
+      - `MAA_BASE` key: `MAA_ID`. `MAA_CON` key: `MAA_ID, FREQ_SEQ`
+        (verified unique in real data). `MAA_RMK` key: `MAA_ID, TAB_NAME,
+        REF_COL_NAME, REF_COL_SEQ_NO` (generic remark-attachment pattern,
+        `REF_COL_NAME` can be the literal `GENERAL_REMARK` sentinel for
+        non-specific remarks). `MAA_SHP` key: `MAA_ID, POINT_SEQ` — an
+        **ordered polygon point list**, single-part (no part/ring column
+        exists), so `Maa.geometry` should build one ordered ring per `MAA_ID`,
+        not a MultiPolygon.
+      - `PJA_BASE` key: `PJA_ID` (single-part, no `PJA_SHP` table exists —
+        parachute jump areas are described by `PJA_RADIUS` around a center
+        point, not a polygon). `PJA_CON` key: `PJA_ID, FAC_NAME` (verified
+        unique in real data) — note this is a **name-based key, not a
+        numeric sequence**, unlike every other `*_CON`/`*_RMK` table in the
+        codebase; do not assume a `*_SEQ` column exists.
+      - All six `MTR_*` tables share `EFF_DATE, ROUTE_TYPE_CODE, ROUTE_ID`
+        as their real functional key prefix. `ARTCC` is listed as "common to
+        all MTR files" in the layout PDF and present as a column on every
+        MTR table, **but it is not part of the key** — it is a
+        space-separated list of ARTCC idents the route traverses (sample
+        values include `"ZJX ZTL"`), and is declared `Nullable=Yes` in
+        `MTR_CSV_DATA_STRUCTURE.csv` while `ROUTE_TYPE_CODE`/`ROUTE_ID` are
+        `No`. Verified empirically: `(ROUTE_TYPE_CODE, ROUTE_ID)` alone is
+        unique across all 519 `MTR_BASE` rows in the sample cycle. Per-table
+        keys: `MTR_BASE` → `ROUTE_TYPE_CODE, ROUTE_ID`; `MTR_AGY` →
+        `+ AGENCY_TYPE`; `MTR_SOP` → `+ SOP_SEQ_NO`; `MTR_TERR` →
+        `+ TERRAIN_SEQ_NO`; `MTR_WDTH` → `+ WIDTH_SEQ_NO` (all verified
+        unique in real data).
+      - **`MTR_PT` is the one exception the FAA's own documentation flags
+        explicitly**: its stated "ordered by" list is
+        `ROUTE_TYPE_CODE, ROUTE_ID, ROUTE_PT_SEQ`, but the layout PDF adds a
+        footnote — *"For key, use ROUTE_PT_ID instead of ROUTE_PT_SEQ in the
+        above list."* In the sampled cycle both `ROUTE_PT_SEQ` and
+        `ROUTE_PT_ID` were independently unique per route (no observed case
+        where they'd disagree), but per FAA's own warning,
+        `MilitaryTrainingRoutePointRecord`'s identifier/dedup key **must use
+        `ROUTE_PT_ID`, not `ROUTE_PT_SEQ`**, even though `ROUTE_PT_SEQ` is
+        what determines display/ring order (points are explicitly "in order
+        adapted for given MTR", sequenced in multiples of ten, and carry a
+        `NEXT_ROUTE_PT_ID` forward-link that can be used as an
+        ordering cross-check). This is exactly the kind of route-part/point
+        ordering subtlety Task 12.6 needs to preserve.
+      - No multipart/disconnected geometry exists on any of the twelve
+        tables in this cycle: `MAA_SHP` is one ordered ring per `MAA_ID`,
+        `MTR_PT` is one ordered polyline per route, and `PJA_BASE` has no
+        shape table at all (radius-only). Task 12.3-12.5's rich objects
+        should not assume Polygon/MultiPolygon branching is needed for these
+        families the way `Artcc`/`ArtccBoundary` needed it for `ARB_SEG`.
 - [ ] **Agent: Terra.** **12.3** Implement `MaaRecord`, `MaaContactRecord`, `MaaRemarkRecord`, and
       `MaaShapePointRecord`; expose rich `Maa` objects through `nasr.maas`,
       `nasr.maa()`, contacts, remarks, and validated geometry.

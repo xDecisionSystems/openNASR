@@ -127,12 +127,12 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | `ARB_BASE` | `airspace.py` | `ArtccRecord` | `Artcc`; `nasr.artccs`; `nasr.artcc()` | Existing |
 | `ARB_SEG` | `airspace.py` | `ArtccBoundarySegmentRecord` | `ArtccBoundary`; `Artcc.boundaries` | Existing |
 | `CLS_ARSP` | `airspace.py` | `ClassAirspaceRecord` | `Airport.class_airspace` and `nasr.class_airspaces` | Keys verified; implementation pending |
-| `MAA_BASE` | `airspace.py` | `MaaRecord` | `Maa`; `nasr.maas`; `nasr.maa()` | Needs FAA review |
-| `MAA_CON` | `airspace.py` | `MaaContactRecord` | `Maa.contacts` | Needs FAA review |
-| `MAA_RMK` | `airspace.py` | `MaaRemarkRecord` | `Maa.remarks` | Needs FAA review |
-| `MAA_SHP` | `airspace.py` | `MaaShapePointRecord` | `Maa.geometry` | Needs FAA review |
-| `PJA_BASE` | `airspace.py` | `ParachuteJumpAreaRecord` | `ParachuteJumpArea`; `nasr.parachute_jump_areas` | Proposed |
-| `PJA_CON` | `airspace.py` | `ParachuteJumpAreaContactRecord` | `ParachuteJumpArea.contacts` | Proposed |
+| `MAA_BASE` | `airspace.py` | `MaaRecord` | `Maa`; `nasr.maas`; `nasr.maa()` | FAA review complete — `MAA` = "Miscellaneous Activity Area" (PLAN.md 12.1); `Maa*` naming approved |
+| `MAA_CON` | `airspace.py` | `MaaContactRecord` | `Maa.contacts` | FAA review complete — see `MAA_BASE` |
+| `MAA_RMK` | `airspace.py` | `MaaRemarkRecord` | `Maa.remarks` | FAA review complete — see `MAA_BASE` |
+| `MAA_SHP` | `airspace.py` | `MaaShapePointRecord` | `Maa.geometry` | FAA review complete — see `MAA_BASE` |
+| `PJA_BASE` | `airspace.py` | `ParachuteJumpAreaRecord` | `ParachuteJumpArea`; `nasr.parachute_jump_areas` | Keys verified; implementation pending |
+| `PJA_CON` | `airspace.py` | `ParachuteJumpAreaContactRecord` | `ParachuteJumpArea.contacts` | Keys verified; implementation pending |
 
 ## Air traffic control and radar files
 
@@ -226,12 +226,12 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
 | `MIL_OPS` | `military.py` | `MilitaryOperationRecord` | `Airport.military_operations` | Keys verified; implementation pending |
-| `MTR_BASE` | `military.py` | `MilitaryTrainingRouteRecord` | `MilitaryTrainingRoute`; `nasr.military_training_routes` | Proposed |
-| `MTR_AGY` | `military.py` | `MilitaryTrainingRouteAgencyRecord` | `MilitaryTrainingRoute.agencies` | Proposed |
-| `MTR_PT` | `military.py` | `MilitaryTrainingRoutePointRecord` | `MilitaryTrainingRoute.points` | Proposed |
-| `MTR_SOP` | `military.py` | `MilitaryTrainingRouteProcedureRecord` | `MilitaryTrainingRoute.procedures` | Proposed |
-| `MTR_TERR` | `military.py` | `MilitaryTrainingRouteTerrainRecord` | `MilitaryTrainingRoute.terrain` | Proposed |
-| `MTR_WDTH` | `military.py` | `MilitaryTrainingRouteWidthRecord` | `MilitaryTrainingRoute.widths` | Proposed |
+| `MTR_BASE` | `military.py` | `MilitaryTrainingRouteRecord` | `MilitaryTrainingRoute`; `nasr.military_training_routes` | Keys verified; implementation pending |
+| `MTR_AGY` | `military.py` | `MilitaryTrainingRouteAgencyRecord` | `MilitaryTrainingRoute.agencies` | Keys verified; implementation pending |
+| `MTR_PT` | `military.py` | `MilitaryTrainingRoutePointRecord` | `MilitaryTrainingRoute.points` | Keys verified (use `ROUTE_PT_ID`, not `ROUTE_PT_SEQ`, per FAA); implementation pending |
+| `MTR_SOP` | `military.py` | `MilitaryTrainingRouteProcedureRecord` | `MilitaryTrainingRoute.procedures` | Keys verified; implementation pending |
+| `MTR_TERR` | `military.py` | `MilitaryTrainingRouteTerrainRecord` | `MilitaryTrainingRoute.terrain` | Keys verified; implementation pending |
+| `MTR_WDTH` | `military.py` | `MilitaryTrainingRouteWidthRecord` | `MilitaryTrainingRoute.widths` | Keys verified; implementation pending |
 
 ## Navaid files
 
