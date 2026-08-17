@@ -2,7 +2,12 @@ import pandas as pd
 import pytest
 
 from openNASR.exceptions import RecordNotFoundError
-from openNASR.flightplan import flight_plan_path
+from openNASR.flightplan import (
+    _RouteToken,
+    _WaypointResolver,
+    _tokenize_flight_plan,
+    flight_plan_path,
+)
 
 
 @pytest.fixture
@@ -320,4 +325,16 @@ def test_flight_plan_path_accepts_double_dot_direct_routing(tables):
         (38.0, -77.0),
         (37.0, -78.0),
         (35.0, -80.0),
+    )
+
+
+def test_tokenizer_retains_source_positions_when_stripping_speed_altitude(tables):
+    resolver = _WaypointResolver(tables)
+
+    assert _tokenize_flight_plan(
+        tables, "KAAA ALPHA/0354 BBB", resolver=resolver
+    ) == (
+        _RouteToken("KAAA", 0),
+        _RouteToken("ALPHA", 5),
+        _RouteToken("BBB", 16),
     )

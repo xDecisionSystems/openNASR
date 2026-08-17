@@ -27,6 +27,14 @@ class _Waypoint:
     longitude: float
 
 
+@dataclass(frozen=True)
+class _RouteToken:
+    """One normalized route token with its offset in the filed route text."""
+
+    value: str
+    position: int
+
+
 class _WaypointResolver:
     """Build one lossless lookup across the waypoint tables for a route."""
 
@@ -366,7 +374,7 @@ def _tokenize_flight_plan(
     flight_plan: str,
     *,
     resolver: _WaypointResolver,
-) -> tuple[str, ...]:
+) -> tuple[_RouteToken, ...]:
     """Normalize space- or dot-delimited FAA route text into route tokens.
 
     FAA route strings use a single dot as a component separator and ``..``
@@ -376,18 +384,21 @@ def _tokenize_flight_plan(
     (for example ``KMSP/0354``) is speed/altitude information, not geometry.
     """
 
-    normalized: list[str] = []
-    for field in flight_plan.upper().split():
-        field = field.split("/", 1)[0]
+    normalized: list[_RouteToken] = []
+    for field_match in re.finditer(r"\S+", flight_plan.upper()):
+        field = field_match.group().split("/", 1)[0]
         if not field:
             continue
         components = field.split(".")
         index = 0
+        component_offset = 0
         while index < len(components):
             component = _text(components[index])
+            position = field_match.start() + component_offset
             if not component:
-                if not normalized or normalized[-1] != _DIRECT:
-                    normalized.append(_DIRECT)
+                if not normalized or normalized[-1].value != _DIRECT:
+                    normalized.append(_RouteToken(_DIRECT, position))
+                component_offset += 1
                 index += 1
                 continue
             combined = (
@@ -399,10 +410,12 @@ def _tokenize_flight_plan(
                 combined is not None
                 and _procedure_path(tables, combined, resolver=resolver) is not None
             ):
-                normalized.append(combined)
+                normalized.append(_RouteToken(combined, position))
+                component_offset += len(component) + 1 + len(components[index + 1])
                 index += 2
             else:
-                normalized.append(component)
+                normalized.append(_RouteToken(component, position))
+                component_offset += len(component) + 1
                 index += 1
     return tuple(normalized)
 
@@ -428,13 +441,13 @@ def flight_plan_path(
         raise ValueError("flight_plan must be non-empty FAA route-field text")
     resolver = _WaypointResolver(nasr)
     tokens = _tokenize_flight_plan(nasr, flight_plan, resolver=resolver)
-    if not tokens or any(not token for token in tokens):
+    if not tokens or any(not token.value for token in tokens):
         raise ValueError("flight_plan must contain route tokens")
 
     output: list[tuple[float, float]] = []
     index = 0
     while index < len(tokens):
-        token = tokens[index]
+        token = tokens[index].value
         if token == _DIRECT:
             index += 1
             continue
@@ -455,27 +468,31 @@ def flight_plan_path(
             index += 1
             continue
         if airway is not None and "AWY_BASE" in nasr:
-            if not output or index + 1 >= len(tokens) or tokens[index + 1] == _DIRECT:
+            if (
+                not output
+                or index + 1 >= len(tokens)
+                or tokens[index + 1].value == _DIRECT
+            ):
                 raise ValueError(f"Airway {token!r} must have waypoints on both sides")
             previous_procedure = (
-                _procedure_path(nasr, tokens[index - 1], resolver=resolver)
-                if "." in tokens[index - 1]
+                _procedure_path(nasr, tokens[index - 1].value, resolver=resolver)
+                if "." in tokens[index - 1].value
                 else None
             )
             following_procedure = (
-                _procedure_path(nasr, tokens[index + 1], resolver=resolver)
-                if "." in tokens[index + 1]
+                _procedure_path(nasr, tokens[index + 1].value, resolver=resolver)
+                if "." in tokens[index + 1].value
                 else None
             )
             previous = (
                 previous_procedure[-1].identifier
                 if previous_procedure is not None
-                else tokens[index - 1]
+                else tokens[index - 1].value
             )
             following = (
                 following_procedure[0].identifier
                 if following_procedure is not None
-                else tokens[index + 1]
+                else tokens[index + 1].value
             )
             vertices = _airway_vertices(nasr, token, previous, following)
             for identifier in vertices[1:]:
