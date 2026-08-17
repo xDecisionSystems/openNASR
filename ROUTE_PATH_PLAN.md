@@ -338,6 +338,47 @@ re-runnable.
   fabricate a geometry — before Terra implements either. Document the
   decision in the Decision log; it changes the typed-error/truncation
   contract for every future procedure-to-airway join, not just this route.
+  **Sol decision complete (2026-08-17): choose (b), faithful truncation at
+  the filed join.** Re-verification against the `2024-06-13`, `2026-05-14`,
+  and `2026-08-06` NASR cycles found the same source facts in all three:
+  `MCRAY2.MCRAY` is the published DP computer code; its ordered body is
+  `MCRAY`, then `HAYGR`; and `Q178` contains `LEJOY -> MCRAY -> BUFFR` but
+  no `HAYGR`. The route therefore names a source-backed early join at
+  `MCRAY`. Returning the prefix through `MCRAY` preserves FAA coordinates
+  and order and omits an incompatible suffix; it does not infer a leg or
+  manufacture geometry. Always returning `HAYGR` would instead contradict
+  the filed `Q178` join and make a faithful representation impossible.
+
+  **Terra implementation contract:**
+
+  1. Resolve the complete published DP and the following published airway
+     first. Truncation is permitted only for a DP immediately followed (apart
+     from `DCT`) by an airway and its filed exit token; it is not a generic
+     instruction to shorten procedures near arbitrary later waypoints.
+  2. A truncation candidate must be explicitly named by the selected
+     published procedure computer/transition code, occur in the procedure's
+     ordered source points, occur on the adjacent airway, and yield a real
+     published airway path to the following filed endpoint. Select no point
+     by distance, coordinate proximity, or inferred geometry.
+  3. Exactly one candidate must satisfy those rules. Return the procedure's
+     source-ordered prefix through that point (inclusive), join the airway
+     there, and deduplicate only the adjacent shared coordinate. For the
+     reproduction, output includes `MCRAY` once, omits `HAYGR`, and continues
+     on `Q178` to `LEJOY` before the rest of the filed route.
+  4. If more than one eligible published join remains, raise
+     `AmbiguousRecordError` with bounded candidate identifiers. If the DP,
+     airway, and filed endpoint exist but no eligible join yields a path,
+     raise the T0.8 `RouteConnectivityError`, not `RecordNotFoundError` and
+     not a silently completed/truncated path. Include the procedure, airway,
+     filed join (when one was named), following endpoint, and cycle as
+     structured context.
+  5. Add a real-cycle or source-shaped regression asserting the exact ordered
+     identifiers/coordinates and the negative typed-connectivity case. Keep
+     standalone procedure expansion complete; context-specific truncation
+     applies only while forming this validated procedure-to-airway join.
+
+  The detailed error-policy clarification and evidence are in
+  [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#t24a-procedure-to-airway-join-policy).
   Acceptance: the reproduction route (or an equivalent fixture, if the
   `2024-06-13` cycle's data changes across future FAA amendments) resolves
   according to the chosen policy, with a test that documents which policy
@@ -763,3 +804,4 @@ denominator is accurate.
 | 2026-08-17 | Gate 4 approved at production commit `8264d80`: real-cycle resolver construction improves 10.67× and one-shot conversion 10.98× under the unchanged benchmark policy. | Non-copying NumPy array iteration removes enough boxed pandas overhead to exceed T4.1's explicit 10× threshold while preserving indexed candidates and session semantics. The focused 44-test suite, Ruff, mypy, and T4.7 SQL/order audit pass; this supersedes but retains the initial failed measurement as audit history. |
 | 2026-08-17 | Correct T2.4's diagnosis and split it into T2.4 (fixed) and T2.4a (still open): the real bug was the tokenizer's redundant, wrong `exact_dp_allowed` position-based gate, not `MCRAY2` being coincidentally merged with an unrelated plain fix. | Direct re-check against real `DP_BASE` data found `MCRAY2` is not a standalone DP code in the `2024-06-13` cycle — only the compound `"MCRAY2.MCRAY"` exists — so the original diagnosis's premise did not hold. The actual defect was that `_is_published_dotted_procedure`'s own internal first-component check already correctly distinguished a genuine exact compound code from an ambiguous one, but the caller's separate `exact_dp_allowed` gate (true only when no further dotted components followed in the same field) incorrectly vetoed real compound codes anyway, since FAA route text routinely dot-chains a DP directly into a following airway/fix with no space. Removed the redundant gate; `_is_published_dotted_procedure` now always performs its own check. A second, distinct issue remains open in T2.4a: the DP's own published body genuinely continues past the route-filed join point (`MCRAY`) to a further point (`HAYGR`), so the following airway lookup still fails — this needs a Sol policy decision (always return the complete body vs. truncate at a point the filed text also names), not a mechanical fix. |
 | 2026-08-17 | Confirmed the `2026-05-14` NASR archive genuinely exists (in `CycleManager`'s default platform cache, not the repository checkout) and independently reproduced all three of T0.1's SHA-256 digests using the methodology published in `docs/route_path_baseline_2026-05-14.md`; closed T0.1a. | A prior review flagged both the archive's availability and the hash methodology as unverified gaps. Direct re-verification found both were already resolved by later work: the methodology is exact and reproducible (`random.Random(20260514).sample(range(46580), 100)`, sorted-index and route-string joins), and a direct resolver-construction timing against the real archive (~0.24s) matched the Gate 4 approval note, confirming the recorded gate approvals used real measurements, not fabricated numbers. |
+| 2026-08-17 | For a DP immediately followed by a published airway, permit faithful truncation at one uniquely validated, explicitly filed published join; otherwise raise typed ambiguity/connectivity rather than guessing or forcing an incompatible complete body. | `MCRAY2.MCRAY` has the ordered published body `MCRAY -> HAYGR`, while `Q178` contains `LEJOY -> MCRAY -> BUFFR` and no `HAYGR` in three checked cycles. The filed DP code explicitly names the unique shared point `MCRAY`; returning the source prefix through it preserves order and coordinates without inventing geometry, whereas forcing `HAYGR` contradicts the filed airway join. |

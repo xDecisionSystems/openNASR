@@ -173,7 +173,7 @@ that cannot be resolved faithfully.
 | Ambiguous domestic record/procedure/path | Existing `AmbiguousRecordError` | `entity_type`, `identifier`, applicable `filters`, and bounded `candidates`. Never pick arbitrarily. |
 | Recognized external/oceanic/coordinate/radial content outside the supported domestic contract | New `UnsupportedRouteContentError(OpenNASRError)` | `token`, zero-based `position`, `content_type` (`foreign_airport`, `oceanic_coordinate`, `radial_distance`, or `external_route`), and selected `cycle`. It must not subclass `RecordNotFoundError`: the record was not promised by the data source. |
 | Malformed route text | New `MalformedRouteError(OpenNASRError)` | `route_text`, offending `token` when one exists, zero-based `position` when one exists, and a concise `reason`. Covers empty input, malformed separators/suffixes, and an airway without two endpoint tokens. Replace route-parser `ValueError`; do not use it for syntactically valid unsupported content. |
-| Broken published connectivity | New `RouteConnectivityError(OpenNASRError)` | `entity_type` (`Airway`/`DepartureProcedure`/`StarProcedure`), `identifier`, `from_identifier`, `to_identifier`, and selected `cycle`. Raise only when the named published record and both endpoints exist but the selected-cycle rows do not yield one faithful ordered path. |
+| Broken published connectivity | New `RouteConnectivityError(OpenNASRError)` | `entity_type` (`Airway`/`DepartureProcedure`/`StarProcedure`/`Procedure-airway join`), `identifier`, `from_identifier`, `to_identifier`, and selected `cycle`. For a procedure-airway join also retain `procedure_identifier`, `airway_identifier`, `filed_join_identifier` when named, `following_identifier`, and bounded `candidate_joins`. Raise only when the named published records/endpoints exist but the selected-cycle rows do not yield one faithful ordered path. |
 
 All three proposed types should be exported from `openNASR.exceptions` and
 the package API when their production tasks land. They are intentionally
@@ -189,6 +189,44 @@ content; record lookup/ambiguity; then connectivity after all participating
 records exist. This prevents a foreign ICAO identifier from being reported
 as an unknown domestic waypoint and prevents a missing endpoint record from
 being mislabeled as broken connectivity.
+
+## T2.4a procedure-to-airway join policy
+
+The selected contract is **faithful truncation at one explicitly filed,
+uniquely validated published join**. It is narrower than “truncate at any
+later matching waypoint.” The resolver may shorten a DP body only when the
+following non-`DCT` token is a published airway, a following filed airway
+endpoint exists, and exactly one point explicitly named by the selected
+published procedure computer/transition code is both an ordered procedure
+point and a vertex on a published airway path to that endpoint.
+
+The `MCRAY2.MCRAY` evidence is unchanged across the checked `2024-06-13`,
+`2026-05-14`, and `2026-08-06` cycles:
+
+- `DP_BASE` has one `MCRAY` procedure with
+  `DP_COMPUTER_CODE="MCRAY2.MCRAY"`; there is no standalone `MCRAY2` code.
+- Its `DP_RTE` body is `POINT_SEQ=10 MCRAY`, then `POINT_SEQ=20 HAYGR`.
+- `Q178` is published with the ordered local segment
+  `AVERE -> LEJOY -> MCRAY -> BUFFR`; it contains no `HAYGR`.
+- Current conversion expands the full DP to `HAYGR` and then raises
+  `RecordNotFoundError` for `Q178` from `HAYGR` to `LEJOY`. The same airway
+  lookup from the explicitly named join `MCRAY` returns
+  `MCRAY -> LEJOY`.
+
+Accordingly, the reproduction must emit the DP prefix through `MCRAY`, omit
+the incompatible `HAYGR` suffix, include the shared `MCRAY` coordinate only
+once, and continue in published reverse-airway order to `LEJOY`. This is a
+selection of source rows, not a manufactured segment. A standalone request
+for the DP still returns its complete published body.
+
+If no unique source-backed join exists after the DP, airway, and following
+endpoint have all resolved, the failure is connectivity rather than lookup:
+raise `RouteConnectivityError` with the procedure, airway, filed join (if
+named), following endpoint, cycle, and bounded candidate joins. Multiple
+eligible joins raise `AmbiguousRecordError`. Implementations must not scan
+arbitrary later route text, choose the geographically nearest point, silently
+drop unmatched legs, or return the full incompatible body and relabel the
+result as a successful route conversion.
 
 ## Domestic-only target and denominator
 
