@@ -131,8 +131,8 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | `MAA_CON` | `airspace.py` | `MaaContactRecord` | `Maa.contacts` | Existing |
 | `MAA_RMK` | `airspace.py` | `MaaRemarkRecord` | `Maa.remarks` | Existing |
 | `MAA_SHP` | `airspace.py` | `MaaShapePointRecord` | `Maa.geometry` | Existing |
-| `PJA_BASE` | `airspace.py` | `ParachuteJumpAreaRecord` | `ParachuteJumpArea`; `nasr.parachute_jump_areas` | Keys verified; implementation pending |
-| `PJA_CON` | `airspace.py` | `ParachuteJumpAreaContactRecord` | `ParachuteJumpArea.contacts` | Keys verified; implementation pending |
+| `PJA_BASE` | `airspace.py` | `ParachuteJumpAreaRecord` | `ParachuteJumpArea`; `nasr.parachute_jump_areas` | Existing |
+| `PJA_CON` | `airspace.py` | `ParachuteJumpAreaContactRecord` | `ParachuteJumpArea.contacts` | Existing |
 
 ## Air traffic control and radar files
 

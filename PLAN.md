@@ -2607,9 +2607,27 @@ Tasks:
       `tests/test_record_converters.py` (`dms_coordinate` across all four
       hemispheres, empty field, invalid hemisphere letter). Extended the
       `core/pre_2026_09` fixture with one synthetic `MAA_*` area.
-- [ ] **Agent: Terra.** **12.4** Implement `ParachuteJumpAreaRecord` and
+- [x] **Agent: Terra.** **12.4** Implement `ParachuteJumpAreaRecord` and
       `ParachuteJumpAreaContactRecord`; expose rich `ParachuteJumpArea` objects
       through `nasr.parachute_jump_areas` and contact collections.
+      **Done (2026-08-16):** implemented in `openNASR/airspace.py`, wired to
+      `nasr.parachute_jump_areas`/`nasr.parachute_jump_area()`. `PJA_BASE`
+      has `LAT_DECIMAL`/`LONG_DECIMAL` directly (no `dms_coordinate` needed,
+      unlike `MAA_SHP`) and no shape table -- areas are described by a
+      center point plus `PJA_RADIUS` (task 12.2 finding). `SITE_NO`/
+      `SITE_TYPE_CODE` are populated on only ~63% of real rows, so
+      `ParachuteJumpArea.airport` resolves through `relationships
+      .related_record` (same helper `HoldingPattern.fix` uses) and is `None`
+      rather than required when absent. `ParachuteJumpAreaContactRecord`
+      collections are sorted by `(PJA_ID, FAC_NAME)` -- verified as the real
+      key in task 12.2, notably name-based rather than the numeric `*_SEQ`
+      pattern every other contact table uses, which the fixture data and a
+      dedicated test both exercise by listing contacts out of alphabetical
+      file order. Registered in `RICH_RECORD_TYPES`,
+      `_COMPATIBILITY_RECORD_MODULES`, and package exports. Tests added to
+      `tests/test_airspace.py`; extended `core/pre_2026_09` with two
+      synthetic areas (one airport-linked, one not) and out-of-order
+      contacts.
 - [ ] **Agent: Terra.** **12.5** Implement `MilitaryTrainingRouteRecord`,
       `MilitaryTrainingRouteAgencyRecord`, `MilitaryTrainingRoutePointRecord`,
       `MilitaryTrainingRouteProcedureRecord`,
@@ -2830,3 +2848,4 @@ report has no operational table without a rich API.
 | 2026-08-16 | Complete Task 7.14: point the local `origin` remote and the live `README.md`/`pyproject.toml` references at `https://github.com/xDecisionSystems/openNASR`. | GitHub's own push response confirmed the repository move (a "This repository moved" redirect notice on push to the old `ADCLab/openNASR` URL), and the user then explicitly confirmed the update. `PLAN.md`/`RELEASE.md`'s own historical mentions of `ADCLab/openNASR` are left unchanged since they document the move itself, not live links. |
 | 2026-08-16 | Complete Milestone 12 Task 12.3: add `MaaRecord`/`MaaContactRecord`/`MaaRemarkRecord`/`MaaShapePointRecord`/`Maa`/`MaaRepository` to `airspace.py`, wire `nasr.maas`/`nasr.maa()`, and add a `dms_coordinate` converter to `records.py`. | Followed the `Artcc` precedent from Milestone 5B exactly (wrap, don't reimplement, geometry via `Boundary`) but `MAA_SHP` needed one genuinely new piece: it has no `*_DECIMAL` coordinate columns anywhere in the real schema (verified in task 12.2), only a formatted `DD-MM-SS.ssssH` string, so no existing converter could read it. |
 | 2026-08-16 | Do not fix `openNASR/cycles.py`'s `locate_csv_source` picking the wrong archive inside a cycle for several real FAA cycles. | Discovered while manually verifying Task 12.3 against the real `28DaySubscription_Effective_2024-06-13.zip` archive: `locate_csv_source` uses `root.rglob("*.zip")` and takes the alphabetically-first match when no CSVs are yet extracted, but real FAA archives also ship nested `Additional_Data/AIXM/.../*_AIXM.zip` sub-archives that sort before `CSV_Data/<date>_CSV.zip` (`A` < `C`), so it silently extracts and reads the wrong, unrelated AIXM zip instead of the actual CSV data — raising `TableNotFoundError` for every real table. Confirmed this is not new and not specific to 2024-06-13: `28DaySubscription_Effective_2021-11-04.zip` has the identical nested-AIXM-zip layout. It does not affect the test suite (synthetic fixtures never include nested AIXM zips) or this session's Milestone 12 verification (done via direct CSV/PDF reads and the `core`/`schema_only` fixtures instead), but it means `NASR()` cannot currently load several/most of the real archives already sitting in `openNASR/data/zip/` without manual workaround. Left unfixed rather than silently patched mid-Milestone-12-implementation; flagged here as a real, reproducible defect worth its own task. |
+| 2026-08-16 | Complete Milestone 12 Task 12.4: add `ParachuteJumpAreaRecord`/`ParachuteJumpAreaContactRecord`/`ParachuteJumpArea`/`ParachuteJumpAreaRepository` to `airspace.py`, wire `nasr.parachute_jump_areas`/`nasr.parachute_jump_area()`, and resolve `ParachuteJumpArea.airport` as an optional relationship via `relationships.related_record`. | Task 12.2 found `SITE_NO` populated on only ~63% of real `PJA_BASE` rows, so treating the airport link as required (the way `AIRPORT_LINKED_TABLES` treats `CLS_ARSP`/`MIL_OPS`) would be wrong; reusing the existing optional-relationship helper (already proven correct for `HoldingPattern.fix`) was safer than writing new lookup logic for a case the codebase had not needed before. |

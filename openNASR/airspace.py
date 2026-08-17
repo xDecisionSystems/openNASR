@@ -7,9 +7,11 @@ from collections.abc import Mapping
 
 from pandas import DataFrame
 
+from .airport import AirportRecord
 from .arb import Boundary
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
 from .records import FaaRecord, dms_coordinate, integer, nullable_text
+from .relationships import related_record
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
 
@@ -618,6 +620,231 @@ class MaaRepository:
         return records[0]
 
 
+class ParachuteJumpAreaRecord(FaaRecord):
+    """Typed conveniences for one ``PJA_BASE`` row.
+
+    ``PJA_BASE`` has no matching shape table -- unlike ``MAA_SHP``/
+    ``ARB_SEG``, a parachute jump area is described by a center point and
+    ``PJA_RADIUS``, not a polygon (verified against the real FAA archive,
+    PLAN.md Milestone 12 task 12.2).
+    """
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def pja_id(self) -> str | None:
+        return self._text("PJA_ID")
+
+    @property
+    def drop_zone_name(self) -> str | None:
+        return self._text("DROP_ZONE_NAME")
+
+    @property
+    def city(self) -> str | None:
+        return self._text("CITY")
+
+    @property
+    def state(self) -> str | None:
+        return self._text("STATE_CODE")
+
+    @property
+    def latitude(self) -> float | None:
+        value = self._text("LAT_DECIMAL")
+        return None if value is None else float(value)
+
+    @property
+    def longitude(self) -> float | None:
+        value = self._text("LONG_DECIMAL")
+        return None if value is None else float(value)
+
+    @property
+    def airport_id(self) -> str | None:
+        return self._text("ARPT_ID")
+
+    @property
+    def airport_site_key(self) -> tuple[str, str] | None:
+        """The linked airport's key, when this area has one (not every
+        ``PJA_BASE`` row does -- ``SITE_NO`` is populated on roughly two
+        thirds of rows in the verified sample cycle)."""
+
+        site_no = self._text("SITE_NO")
+        site_type_code = self._text("SITE_TYPE_CODE")
+        if site_no is None or site_type_code is None:
+            return None
+        return site_no, site_type_code
+
+    @property
+    def max_altitude(self) -> str | None:
+        return self._text("MAX_ALTITUDE")
+
+    @property
+    def radius(self) -> str | None:
+        return self._text("PJA_RADIUS")
+
+    @property
+    def description(self) -> str | None:
+        return self._text("DESCRIPTION")
+
+    @property
+    def use(self) -> str | None:
+        return self._text("PJA_USE")
+
+    @property
+    def time_of_use(self) -> str | None:
+        return self._text("TIME_OF_USE")
+
+    @property
+    def remark(self) -> str | None:
+        return self._text("REMARK")
+
+
+class ParachuteJumpAreaContactRecord(FaaRecord):
+    """Typed conveniences for one ``PJA_CON`` contact row.
+
+    Ordered by ``PJA_ID, FAC_NAME`` -- a name-based key, not the numeric
+    ``*_SEQ`` pattern every other contact table in this codebase uses
+    (verified against the real FAA archive, task 12.2).
+    """
+
+    def _text(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        return None if value is None or value != value else nullable_text(str(value))
+
+    @property
+    def facility_id(self) -> str | None:
+        return self._text("FAC_ID")
+
+    @property
+    def facility_name(self) -> str | None:
+        return self._text("FAC_NAME")
+
+    @property
+    def location_id(self) -> str | None:
+        return self._text("LOC_ID")
+
+    @property
+    def commercial_frequency(self) -> str | None:
+        return self._text("COMMERCIAL_FREQ")
+
+    @property
+    def military_frequency(self) -> str | None:
+        return self._text("MIL_FREQ")
+
+    @property
+    def sector(self) -> str | None:
+        return self._text("SECTOR")
+
+
+class ParachuteJumpArea:
+    """One parachute jump area with its contacts and (optional) airport."""
+
+    def __init__(
+        self,
+        record: ParachuteJumpAreaRecord,
+        *,
+        contacts: tuple[ParachuteJumpAreaContactRecord, ...],
+        airport: AirportRecord | None,
+    ) -> None:
+        self.record = record
+        self.contacts = contacts
+        self.airport = airport
+
+    @property
+    def pja_id(self) -> str | None:
+        return self.record.pja_id
+
+    @property
+    def drop_zone_name(self) -> str | None:
+        return self.record.drop_zone_name
+
+
+class ParachuteJumpAreaRepository:
+    """Lookup parachute jump areas by ``PJA_ID``."""
+
+    entity_type = "ParachuteJumpArea"
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        self._nasr = nasr
+
+    @staticmethod
+    def _normalized(value: object) -> str:
+        if value is None or value != value:
+            return ""
+        return str(value).strip().upper()
+
+    @property
+    def _table(self) -> DataFrame:
+        return self._nasr["PJA_BASE"]
+
+    def _matching(self, frame: DataFrame, pja_id: str) -> DataFrame:
+        return frame[frame["PJA_ID"].map(self._normalized).eq(pja_id)]
+
+    @staticmethod
+    def _contact_order(row: dict[str, object]) -> tuple[str, str]:
+        return (str(row.get("PJA_ID", "")), str(row.get("FAC_NAME", "")))
+
+    def _parachute_jump_area(self, row: dict[str, object]) -> ParachuteJumpArea:
+        pja_id = self._normalized(row["PJA_ID"])
+        contacts = sorted(
+            self._matching(self._nasr["PJA_CON"], pja_id).to_dict(orient="records"),
+            key=self._contact_order,
+        )
+        return ParachuteJumpArea(
+            ParachuteJumpAreaRecord(row),
+            contacts=tuple(ParachuteJumpAreaContactRecord(item) for item in contacts),
+            airport=related_record(
+                self._nasr,
+                source=row,
+                target_table="APT_BASE",
+                columns=(
+                    ("SITE_NO", "SITE_NO"),
+                    ("SITE_TYPE_CODE", "SITE_TYPE_CODE"),
+                ),
+                record_type=AirportRecord,
+                relationship="parachute-jump-area airport",
+            ),
+        )
+
+    def find(
+        self, identifier: object | None = None, **filters: object
+    ) -> tuple[ParachuteJumpArea, ...]:
+        """Return areas matching ``PJA_ID`` and every supported filter."""
+
+        rows = self._table
+        if identifier is not None:
+            normalized = self._normalized(identifier)
+            rows = rows[rows["PJA_ID"].map(self._normalized).eq(normalized)]
+        for column, value in filters.items():
+            if column not in {"state", "airport_id"}:
+                raise ValueError(f"Unsupported ParachuteJumpArea filter: {column}")
+            source_column = {"state": "STATE_CODE", "airport_id": "ARPT_ID"}[column]
+            rows = rows[
+                rows[source_column].map(self._normalized).eq(self._normalized(value))
+            ]
+        return tuple(
+            self._parachute_jump_area(row) for row in rows.to_dict(orient="records")
+        )
+
+    def get(self, identifier: object, **filters: object) -> ParachuteJumpArea:
+        """Return exactly one area for a ``PJA_ID`` (and any filters)."""
+
+        records = self.find(identifier, **filters)
+        if not records:
+            raise RecordNotFoundError(
+                entity_type=self.entity_type, identifier=identifier, filters=filters
+            )
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type=self.entity_type,
+                identifier=identifier,
+                filters=filters,
+                candidates=records,
+            )
+        return records[0]
+
+
 __all__ = [
     "Artcc",
     "ArtccBoundary",
@@ -631,4 +858,8 @@ __all__ = [
     "MaaRemarkRecord",
     "MaaRepository",
     "MaaShapePointRecord",
+    "ParachuteJumpArea",
+    "ParachuteJumpAreaContactRecord",
+    "ParachuteJumpAreaRecord",
+    "ParachuteJumpAreaRepository",
 ]

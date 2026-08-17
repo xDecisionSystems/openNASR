@@ -223,3 +223,68 @@ def test_maa_repository_raises_record_not_found_for_an_unmatched_identifier(
 
     with pytest.raises(RecordNotFoundError):
         nasr.maas.get("does-not-exist")
+
+
+def test_parachute_jump_area_repository_and_singular_facade_are_equivalent(
+    make_nasr_from_fixture,
+):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    from_repository = nasr.parachute_jump_areas.get("pmd001")
+    from_singular_method = nasr.parachute_jump_area("PMD001")
+
+    assert from_repository.pja_id == from_singular_method.pja_id == "PMD001"
+
+
+def test_parachute_jump_area_record_exposes_typed_fields(make_nasr_from_fixture):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    area = nasr.parachute_jump_areas.get("PMD001")
+
+    assert area.drop_zone_name == "Synthetic Drop Zone"
+    assert area.record.state == "MD"
+    assert area.record.radius == "1.0"
+    assert area.record.airport_site_key == ("00000001A", "A")
+
+
+def test_parachute_jump_area_links_its_airport_when_a_site_key_is_present(
+    make_nasr_from_fixture,
+):
+    """PJA_BASE.SITE_NO is populated on roughly two thirds of rows in the
+    real FAA archive, not every row (verified in task 12.2); the airport
+    link must be optional, not required."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    linked = nasr.parachute_jump_areas.get("PMD001")
+    unlinked = nasr.parachute_jump_areas.get("PMD002")
+
+    assert linked.airport is not None
+    assert linked.airport.raw["ARPT_ID"] == "BWI"
+    assert unlinked.record.airport_site_key is None
+    assert unlinked.airport is None
+
+
+def test_parachute_jump_area_contacts_are_ordered_by_pja_id_then_fac_name(
+    make_nasr_from_fixture,
+):
+    """PJA_CON is ordered by (PJA_ID, FAC_NAME) -- a name-based key, not a
+    numeric sequence (verified in task 12.2); the fixture lists "BALTIMORE
+    TOWER" after "WASHINGTON APPROACH" in file order specifically to catch a
+    repository that trusted file order instead of sorting by FAC_NAME."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    area = nasr.parachute_jump_areas.get("PMD001")
+
+    assert [contact.facility_name for contact in area.contacts] == [
+        "BALTIMORE TOWER",
+        "WASHINGTON APPROACH",
+    ]
+
+
+def test_parachute_jump_area_repository_raises_record_not_found_for_an_unmatched(
+    make_nasr_from_fixture,
+):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    with pytest.raises(RecordNotFoundError):
+        nasr.parachute_jump_areas.get("does-not-exist")

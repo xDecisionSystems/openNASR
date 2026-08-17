@@ -8,6 +8,8 @@ from .airspace import ClassAirspace as ClassAirspace
 from .airspace import ClassAirspaceRepository as ClassAirspaceRepository
 from .airspace import Maa as Maa
 from .airspace import MaaRepository as MaaRepository
+from .airspace import ParachuteJumpArea as ParachuteJumpArea
+from .airspace import ParachuteJumpAreaRepository as ParachuteJumpAreaRepository
 from .atc import AtcFacility as AtcFacility
 from .atc import AtcFacilityRepository as AtcFacilityRepository
 from .atc import Radar as Radar
@@ -44,6 +46,8 @@ from .records import MaaRecord as MaaRecord
 from .records import MaaContactRecord as MaaContactRecord
 from .records import MaaRemarkRecord as MaaRemarkRecord
 from .records import MaaShapePointRecord as MaaShapePointRecord
+from .records import ParachuteJumpAreaRecord as ParachuteJumpAreaRecord
+from .records import ParachuteJumpAreaContactRecord as ParachuteJumpAreaContactRecord
 from .records import AirwayRecord as AirwayRecord
 from .records import AirwaySegmentRecord as AirwaySegmentRecord
 from .records import AtcFacilityRecord as AtcFacilityRecord
@@ -126,6 +130,10 @@ __all__ = [
     "LocationIdentifierRepository",
     "NASR",
     "NAVAID",
+    "ParachuteJumpArea",
+    "ParachuteJumpAreaContactRecord",
+    "ParachuteJumpAreaRecord",
+    "ParachuteJumpAreaRepository",
     "plot_airspace",
     "plot_airport_procedures",
     "Radar",

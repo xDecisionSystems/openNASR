@@ -4,7 +4,12 @@ from warnings import warn
 from zipfile import ZipFile
 from pandas import DataFrame
 from .arb import ARB
-from .airspace import ArtccRepository, ClassAirspaceRepository, MaaRepository
+from .airspace import (
+    ArtccRepository,
+    ClassAirspaceRepository,
+    MaaRepository,
+    ParachuteJumpAreaRepository,
+)
 from .atc import AtcFacilityRepository, RadarRepository
 from .weather import AutomatedWeatherStationRepository, WeatherLocationRepository
 from .fss import FlightServiceStationRepository
@@ -72,6 +77,7 @@ class NASR(dict):
         self.class_airspaces = ClassAirspaceRepository(self)
         self.artccs = ArtccRepository(self)
         self.maas = MaaRepository(self)
+        self.parachute_jump_areas = ParachuteJumpAreaRepository(self)
         self.atc_facilities = AtcFacilityRepository(self)
         self.radars = RadarRepository(self)
         self.weather_stations = AutomatedWeatherStationRepository(self)
@@ -309,6 +315,10 @@ class NASR(dict):
     def maa(self, identifier: str, **filters):
         """Return the Miscellaneous Activity Area selected by :attr:`maas`."""
         return self.maas.get(identifier, **filters)
+
+    def parachute_jump_area(self, identifier: str, **filters):
+        """Return the area selected by :attr:`parachute_jump_areas`."""
+        return self.parachute_jump_areas.get(identifier, **filters)
 
     def airway(self, identifier: tuple[str, str, str]):
         """Return the airway selected by its complete FAA composite key."""

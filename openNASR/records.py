@@ -179,6 +179,8 @@ _COMPATIBILITY_RECORD_MODULES = {
     "MaaContactRecord": "airspace",
     "MaaRemarkRecord": "airspace",
     "MaaShapePointRecord": "airspace",
+    "ParachuteJumpAreaRecord": "airspace",
+    "ParachuteJumpAreaContactRecord": "airspace",
     "MilitaryOperationRecord": "military",
     "NavaidRecord": "nav",
     "AirportRecord": "airport",

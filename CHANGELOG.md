@@ -21,6 +21,11 @@ and versions follow Semantic Versioning.
 - `openNASR.records.dms_coordinate`: converts an FAA formatted
   `DD-MM-SS.ssssH` coordinate string to decimal degrees, for tables such as
   `MAA_SHP` that publish no `*_DECIMAL` column.
+- `nasr.parachute_jump_areas`/`nasr.parachute_jump_area(identifier)`: rich
+  `ParachuteJumpArea` objects for `PJA_BASE`/`PJA_CON` (Milestone 12, not
+  required for `1.0.0`). Contacts are ordered by `(PJA_ID, FAC_NAME)`, and
+  `ParachuteJumpArea.airport` is an optional link (present on only about
+  two thirds of real rows) rather than a required relationship.
 
 ### Fixed
 

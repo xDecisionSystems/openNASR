@@ -15,6 +15,8 @@ from .airspace import (
     MaaRecord,
     MaaRemarkRecord,
     MaaShapePointRecord,
+    ParachuteJumpAreaContactRecord,
+    ParachuteJumpAreaRecord,
 )
 from .airway import AirwayRecord, AirwaySegmentRecord
 from .arrivals import StarAirportRecord, StarProcedureRecord, StarRouteRecord
@@ -221,6 +223,8 @@ RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "MAA_CON": MaaContactRecord,
     "MAA_RMK": MaaRemarkRecord,
     "MAA_SHP": MaaShapePointRecord,
+    "PJA_BASE": ParachuteJumpAreaRecord,
+    "PJA_CON": ParachuteJumpAreaContactRecord,
     "MIL_OPS": MilitaryOperationRecord,
     "HPF_BASE": HoldingPatternRecord,
     "HPF_CHRT": HoldingPatternChartRecord,

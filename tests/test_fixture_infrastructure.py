@@ -46,6 +46,8 @@ def test_core_fixture_loads_without_package_data(make_nasr_from_fixture):
         "MAA_CON",
         "MAA_RMK",
         "MAA_SHP",
+        "PJA_BASE",
+        "PJA_CON",
     }
     assert set(nasr["APT_BASE"]["ARPT_ID"]) == {"BWI", "DCA"}
     assert len(nasr["NAV_BASE"].query("NAV_ID == 'DUP'")) == 2
