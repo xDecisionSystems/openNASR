@@ -12,6 +12,12 @@ and versions follow Semantic Versioning.
 - Query exceptions are transport-neutral and no longer expose protocol status
   metadata.
 - Documentation now presents openNASR exclusively as a local Python library.
+- Read the Docs now provides a dedicated guide and generated API page for each
+  major NASR domain type, including its FAA tables, lookup key, relationships,
+  and usage example.
+- Read the Docs now includes one reference page for each of the 63 operational
+  FAA CSV tables, documenting all 1,151 columns with descriptions, formats,
+  units, nullability, and representative cycle values.
 
 ## [1.5.0] - 2026-08-17
 

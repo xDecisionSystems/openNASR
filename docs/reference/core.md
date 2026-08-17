@@ -1,21 +1,8 @@
-# Cycles and the main facade
+# Table discovery and loading
 
-Use `NASR` to select one exact locally cached cycle. Use `CycleManager` for
-explicit discovery, download, import, extraction, DuckDB construction, and
-removal operations. Merely importing the package or constructing `NASR` never
-contacts the network.
-
-## Main NASR facade
-
-```{eval-rst}
-.. automodule:: openNASR.nasr
-```
-
-## Cycle management
-
-```{eval-rst}
-.. automodule:: openNASR.cycles
-```
+The {doc}`../types/nasr-cycle` page documents `NASR`, `CycleManager`, and cycle
+metadata. This page covers the lower-level lazy CSV table repository used by
+the facade.
 
 ## Lazy CSV tables
 

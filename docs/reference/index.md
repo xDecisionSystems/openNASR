@@ -1,17 +1,14 @@
 # Python API reference
 
-The generated reference below documents openNASR's public classes, data
-objects, methods, properties, and functions directly from the installed
-package. Start with {doc}`../API` for usage patterns and identifier rules.
+The generated reference below documents openNASR's supporting table, record,
+query, plotting, and error APIs directly from the installed package. The
+{doc}`../types/index` provides one focused page for each major domain type.
+Start with {doc}`../API` for usage patterns and identifier rules.
 
 ```{toctree}
 :maxdepth: 2
 
 core
-facilities
-airspace
-routes
-services
 records
 query-storage
 plotting-coordinates
@@ -31,4 +28,5 @@ tables into three useful layers:
    properties for commonly used values.
 
 The legacy `Airport`, `FIX`, `NAVAID`, and `ARB` constructors remain available
-for compatibility. New applications should prefer the repository facade.
+for compatibility and are documented on their corresponding type pages. New
+applications should prefer the repository facade.
