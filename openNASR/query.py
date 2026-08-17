@@ -36,43 +36,29 @@ _CURSOR_VERSION = 1
 class QueryError(OpenNASRError):
     """Base class for public read-only query failures."""
 
-    http_status = 400
-
 
 class QueryValidationError(QueryError):
     """Raised when a query does not meet its bounded public contract."""
-
-    http_status = 422
 
 
 class QueryTableNotFoundError(QueryError):
     """Raised when a selected table is absent from the current cycle."""
 
-    http_status = 404
-
 
 class QueryFieldNotFoundError(QueryError):
     """Raised when a projection or filter names an unavailable field."""
-
-    http_status = 422
 
 
 class UnsupportedQueryOperatorError(QueryError):
     """Raised when a filter operator is outside the stable query surface."""
 
-    http_status = 422
-
 
 class InvalidQueryCursorError(QueryError):
     """Raised when a cursor is malformed or belongs to another query."""
 
-    http_status = 422
-
 
 class QueryResultTooLargeError(QueryError):
     """Raised when even one source row exceeds the response payload cap."""
-
-    http_status = 413
 
 
 class QueryOperator(str, Enum):

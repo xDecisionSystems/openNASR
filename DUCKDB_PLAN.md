@@ -2,18 +2,18 @@
 
 ## Goal
 
-Make repeated openNASR use substantially faster—locally and as the data layer
-for a future web service—by converting each validated FAA NASR cycle into an
-immutable, queryable DuckDB representation. The implementation must preserve
-the library's current CSV/Pandas API, exact historical-date behavior, and raw
-FAA source fidelity while making DuckDB an optional acceleration path.
+Make repeated local openNASR use substantially faster by converting each
+validated FAA NASR cycle into an immutable, queryable DuckDB representation.
+The implementation must preserve the library's current CSV/Pandas API, exact
+historical-date behavior, and raw FAA source fidelity while making DuckDB an
+optional acceleration path.
 
 ## Objective
 
 Add an optional, local DuckDB backend that makes repeated use of an imported
 FAA NASR cycle faster without changing the library's existing CSV/Pandas
-contract. The backend must support exact historical-cycle selection and provide
-a sound base for a later FastAPI service.
+contract. The backend must support exact historical-cycle selection and remain
+entirely local to the calling Python process.
 
 This is a performance feature, not a replacement for FAA source data. A NASR
 archive and its extracted CSV files remain the source of record.
@@ -92,7 +92,7 @@ DuckDB version, creation time, and table row counts.
 6. **Spatial scope is deferred.** DuckDB spatial support is not required for
    the first backend release. Existing Shapely plotting/geometry remains
    unchanged. A later task may evaluate a separately installed spatial
-   extension or PostGIS for web-service spatial workloads.
+   extension for larger local spatial-analysis workloads.
 
 ## Agent roster and roles
 
@@ -520,21 +520,19 @@ currently public lookup/repository workflows.
 database, select it by exact date, and remove it without affecting archive or
 CSV source data unless explicitly requested.
 
-### Phase 13.4 — Query acceleration and service readiness
+### Phase 13.4 — Query acceleration and bounded local access
 
 - [x] **13.4.1 — Agent: Sol.** Select a small, stable public query surface for
-  server use. Prefer typed, parameterized filters over a public raw-SQL
-  endpoint. Define pagination, maximum result size, field selection, and error
-  semantics.
+  local use. Prefer typed, parameterized filters over a public raw-SQL method.
+  Define pagination, maximum result size, field selection, and error semantics.
 
-  Acceptance: proposal names exact endpoints/functions and explicitly defers
-  arbitrary SQL execution.
+  Acceptance: proposal names exact functions and explicitly defers arbitrary
+  SQL execution.
 
 #### 13.4.1 public read-only query contract
 
-The first query surface is one library method and one direct HTTP mapping; it
-is intentionally table-oriented so it does not create a second set of domain
-record models:
+The first query surface is one local library method. It is intentionally
+table-oriented so it does not create a second set of domain record models:
 
 ```python
 page = nasr.query_table(
@@ -550,11 +548,7 @@ The exact public Python entry point is
 `NASR.query_table(table, *, filters=(), fields=None, page_size=100,
 cursor=None) -> QueryPage`. `QueryFilter`, `QueryOperator`, `QueryPage`, and
 the query error types live in `openNASR.query` and are re-exported from
-`openNASR`. The corresponding future service operation is
-`POST /v1/cycles/{cycle}/query`; its JSON body contains `table`, `filters`,
-`fields`, `page_size`, and `cursor`, and its response is the JSON form of
-`QueryPage`. This plan defines that transport mapping but does not add FastAPI
-or an HTTP server.
+`openNASR`.
 
 `QueryFilter` is immutable and has `field`, `operator`, and `value` members.
 The first release supports only `QueryOperator.EQ` with one string value and
@@ -585,7 +579,7 @@ as a field. CSV and DuckDB produce byte-for-byte equivalent values and page
 boundaries.
 
 Pagination is cursor-based. `page_size` must be from 1 through 1,000. The
-default is 100 and the server may configure a lower cap, never a higher one.
+default is 100; callers may choose any value within that bound.
 The opaque, versioned cursor binds the effective date, schema fingerprint,
 canonical table, normalized filters, selected fields, page size, and next
 source-row position. Reusing it with any different request or cycle raises
@@ -593,32 +587,30 @@ source-row position. Reusing it with any different request or cycle raises
 artifacts are immutable. Implementations must additionally stop before an
 8 MiB UTF-8 JSON-equivalent page payload and return a smaller non-empty page
 with `next_cursor` when possible. If one row alone exceeds 8 MiB,
-`QueryResultTooLargeError` is raised. These are library limits; an HTTP
-deployment may impose stricter request/body limits.
+`QueryResultTooLargeError` is raised.
 
 All query failures are typed beneath `QueryError`:
 
-| Error | Meaning | Suggested HTTP mapping |
-| --- | --- | --- |
-| `QueryValidationError` | Invalid page size, empty/oversized selection, too many filters/values, or malformed typed value. | 422 |
-| `QueryTableNotFoundError` | The requested table is not in the selected cycle's validated catalog. | 404 |
-| `QueryFieldNotFoundError` | A selected or filtered field is absent. | 422 |
-| `UnsupportedQueryOperatorError` | The operator is not `EQ` or `IN`. | 422 |
-| `InvalidQueryCursorError` | Cursor is malformed, unsupported, or does not match the exact query/cycle. | 422 |
-| `QueryResultTooLargeError` | One source row cannot fit under the payload cap. | 413 |
+| Error | Meaning |
+| --- | --- |
+| `QueryValidationError` | Invalid page size, empty/oversized selection, too many filters/values, or malformed typed value. |
+| `QueryTableNotFoundError` | The requested table is not in the selected cycle's validated catalog. |
+| `QueryFieldNotFoundError` | A selected or filtered field is absent. |
+| `UnsupportedQueryOperatorError` | The operator is not `EQ` or `IN`. |
+| `InvalidQueryCursorError` | Cursor is malformed, unsupported, or does not match the exact query/cycle. |
+| `QueryResultTooLargeError` | One source row cannot fit under the payload cap. |
 
 Cycle/database absence and incompatibility continue to use the lifecycle
 errors defined by 13.1/13.3; the query layer does not relabel them as an empty
 result. Storage/driver failures also propagate as typed storage errors rather
-than leaking DuckDB exceptions. HTTP error bodies should contain a stable
-machine code and message but no SQL, filesystem path, cursor internals, or
-bound values.
+than leaking DuckDB exceptions. Error messages must not expose SQL, filesystem
+paths, cursor internals, or bound values.
 
 Arbitrary SQL execution is explicitly outside the public contract. There is
-no `NASR.sql`, SQL request field, `/sql` endpoint, or escape hatch accepting a
-predicate/order expression. The implementation in 13.4.3 may generate private
-read-only SQL for the operations above and must retain the DataFrame fallback
-when an operation is unsupported by a backend.
+no `NASR.sql` or escape hatch accepting a predicate/order expression. The
+implementation in 13.4.3 may generate private read-only SQL for the operations
+above and must retain the DataFrame fallback when an operation is unsupported
+by a backend.
 
 Tests required when 13.4.3 implements this contract:
 
@@ -632,11 +624,11 @@ Tests required when 13.4.3 implements this contract:
   different cycle, schema, table, filter, projection, or page size;
 - exercise the 8 MiB boundary, early page truncation, one-oversized-row error,
   maximum filter count, maximum aggregate `IN` values, and empty `IN`;
-- assert every public error class and proposed HTTP status, and verify messages
-  do not expose SQL, bound values, cursor payloads, or local paths;
+- assert every public error class and verify messages do not expose SQL, bound
+  values, cursor payloads, or local paths;
 - use adversarial table/field/value strings to prove identifier allowlisting,
   bound parameters, read-only operation, and the absence of any public raw-SQL
-  method or `/sql` route;
+  method;
 - verify result provenance, deterministic source ordering, no total-count
   query, DataFrame fallback behavior, and no mutation of the per-cycle DB.
 
@@ -649,7 +641,7 @@ Tests required when 13.4.3 implements this contract:
   Acceptance: no index is retained without a reproducible benchmark; raw-data
   fidelity and parity remain unchanged.
 
-- [x] **13.4.3 — Agent: Terra.** Add an internal read-only query service that
+- [x] **13.4.3 — Agent: Terra.** Add an internal read-only query layer that
   permits repositories to avoid materializing whole tables for supported exact
   identity/filter queries, while retaining DataFrame fallback for unsupported
   paths.
@@ -671,14 +663,11 @@ Tests required when 13.4.3 implements this contract:
   `docs/DUCKDB_BENCHMARK_REPORT_TEMPLATE.md` is the non-generated report form;
   benchmark JSON and FAA data remain outside the repository.
 
-- [x] **13.4.5 — Agent: Sol.** Produce a FastAPI integration note, not a
-  runtime dependency. Specify a lifespan-managed read-only database pool,
-  cycle selection via `cycle` or `as_of` (mutually exclusive), response
-  provenance, pagination, and deployment limits. Evaluate DuckDB versus
-  PostGIS only for spatial multi-user workloads.
+- [x] **13.4.5 — Agent: Sol.** Document local read-only DuckDB lifecycle,
+  exact-cycle selection, provenance, pagination, and resource limits.
 
 **Gate 13.4:** benchmarks prove whether DuckDB is a worthwhile local option;
-the FastAPI design can serve immutable exact-date cycle data without exposing
+the bounded query API reads immutable exact-date cycle data without exposing
 raw SQL or mutable database state.
 
 ### Phase 13.5 — Release hardening
@@ -758,14 +747,13 @@ branches open.
 | 3 | Terra + Sol | 13.1.3/13.1.4 builder; 13.1.5 security review | 13.1.1/13.1.2 |
 | 4 | Terra + Luna + Sol | 13.2.1/13.2.2 protocol/backend, 13.2.3 parity tests, 13.2.4 semantics review | 13.1 gate |
 | 5 | Terra + Luna | 13.3.1/13.3.2 lifecycle/API, 13.3.3/13.3.4 CLI/docs | 13.2 gate |
-| 6 | Sol + Terra + Luna | 13.4 query design/indexing/backend path, benchmarks, FastAPI note | 13.3 gate |
+| 6 | Sol + Terra + Luna | 13.4 query design/indexing/backend path, benchmarks, local usage note | 13.3 gate |
 | 7 | Terra + Sol | 13.5 release matrix and approval | 13.4 gate |
 
 ## Explicit non-goals for the first DuckDB release
 
 - Replacing pandas as the public table return type.
 - Automatically converting every cached cycle during package import.
-- Adding a FastAPI runtime dependency or deploying a web service.
 - Downloading DuckDB extensions at runtime.
 - Public arbitrary SQL execution.
 - Treating a database built from one FAA effective date as valid for another.
@@ -778,12 +766,11 @@ branches open.
 | 2026-08-17 | Approve the DuckDB implementation release gate after rollback hardening. | The final committed tree passed 325 tests (one intentional skip), Ruff format/check, mypy, isolated sdist/wheel build, and twine validation; package-content inspection found no fixtures, FAA data, local caches, virtual environments, or DuckDB artifacts. |
 | 2026-08-17 | Complete the available-environment 13.5.1 release matrix: isolated base and `.[duckdb]` installs plus current CSV/DuckDB fixtures, invalid-artifact, and exact-cycle checks all passed on CPython 3.12.3; retain Python 3.10/3.11 validation as an explicit CI requirement. | The runner provides only Python 3.12, so recording the unavailable supported interpreters avoids overstating matrix coverage while the passing isolated installs prove DuckDB remains optional and the backend works when explicitly installed. |
 | 2026-08-17 | Approve release review 13.5.2 for backward compatibility, atomic publication, cache removal, disk-growth documentation, source fidelity, and exact-date semantics. | The optional dependency and CSV default remain intact; database- and sidecar-publication failure tests both preserve the prior valid pair; colocated removal reporting and rebuild headroom are explicit; exact-date and raw-value parity checks pass as part of a 72-test focused review suite. |
-| 2026-08-17 | Define the future FastAPI deployment as bounded lifespan-managed read-only DuckDB pools, with exactly one `cycle` or `as_of` selector, cursor pagination, and sidecar-derived response provenance; reserve PostGIS evaluation for spatial multi-user workloads. | This preserves immutable exact-cycle artifacts and the allowlisted query contract, makes effective-on-date resolution visible and reproducible, prevents request-time writes/downloads, and avoids adding FastAPI or database-server infrastructure to the library. |
 | 2026-08-17 | Approve per-repository shared DataFrame caching for DuckDB, deep isolation for `copy=True`, and no mutation write-through; retain the CSV backend's documented stale-index behavior after direct caller mutation. | It preserves the existing public table-store contract, while read-only connections and regression tests prove that caller changes remain in memory and a new repository rematerializes the immutable source values. |
 | 2026-08-17 | Fail closed on an existing DuckDB build lock and require manual removal of an orphan only after confirming no writer is active; defer a source-content manifest digest to a future storage-format version. | Automatically stealing a PID- or age-based lock can create concurrent publishers. The first release treats the locally owned FAA archive/cache as trusted, validates the database against its sidecar digest, and records the restored-mtime provenance gap explicitly rather than implying tamper resistance it does not provide. |
-| 2026-08-17 | Approve the 13.4.1 read-only query contract: `NASR.query_table(...) -> QueryPage` and the future `POST /v1/cycles/{cycle}/query` mapping support only allowlisted fields, typed `EQ`/`IN` filters, cursor pagination, and bounded projection/results; no public arbitrary-SQL surface is provided. | A narrow parameterized API serves common identity/filter workloads, preserves exact-cycle provenance and CSV/DuckDB parity, and keeps SQL injection, unbounded scans/results, and backend-specific expressions out of the compatibility contract. |
-| 2026-08-17 | Complete 13.4.2 with no physical DuckDB indexes retained. | The approved benchmark specification requires an A/B measurement on the same real-cycle database before an index can be retained. No reproducible benchmark result exists yet, so adding registry or relationship indexes would be arbitrary; the query service uses source-order scans and preserves raw-data parity. |
-| 2026-08-17 | Plan DuckDB as an explicit optional, per-cycle local storage backend; retain CSV as the default first-release backend. | It accelerates repeated local/API-style queries while preserving the current public DataFrame and repository contract, avoids a forced dependency, and makes source/provenance boundaries clear. |
+| 2026-08-17 | Approve the 13.4.1 local read-only query contract: `NASR.query_table(...) -> QueryPage` supports only allowlisted fields, typed `EQ`/`IN` filters, cursor pagination, and bounded projection/results; no public arbitrary-SQL surface is provided. | A narrow parameterized API serves common identity/filter workloads, preserves exact-cycle provenance and CSV/DuckDB parity, and keeps unbounded scans/results and backend-specific expressions out of the compatibility contract. |
+| 2026-08-17 | Complete 13.4.2 with no physical DuckDB indexes retained. | The approved benchmark specification requires an A/B measurement on the same real-cycle database before an index can be retained. No reproducible benchmark result exists yet, so adding registry or relationship indexes would be arbitrary; the query layer uses source-order scans and preserves raw-data parity. |
+| 2026-08-17 | Plan DuckDB as an explicit optional, per-cycle local storage backend; retain CSV as the default first-release backend. | It accelerates repeated local queries while preserving the current public DataFrame and repository contract, avoids a forced dependency, and makes source/provenance boundaries clear. |
 | 2026-08-17 | Store the database beside the exact extracted cycle and treat it as a rebuildable derivative. | This makes historical-date selection deterministic and permits removal/rebuild without losing the FAA archive or CSV source data. |
 | 2026-08-17 | Preserve raw FAA values as strings before adding any typed/analytic views. | NASR fields include identifiers and source text where leading zeroes and blanks are meaningful; automatic database type inference risks silent data changes. |
 | 2026-08-17 | Add an agent roster table, a per-task branch/merge/gate-authority protocol, and a "New and shared files" ownership map; require gates to be recorded as dated Decision-log rows rather than task checkboxes. | The task-level `Agent: X` labels and phase gates already implied parallel execution but never said how two agents avoid editing the same file at once, who may declare a gate passed, or where new modules (`duckdb_metadata.py`, `duckdb_builder.py`, `storage.py`, `duckdb_tables.py`) actually live — leaving that implicit risks two agents guessing differently and colliding on `nasr.py`/`cycles.py` mid-phase. |

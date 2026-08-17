@@ -53,6 +53,20 @@ class FixRecord(FaaRecord):
 
 
 class FIX(Raw):
+    """Legacy single-fix adapter retained for compatibility.
+
+    Args:
+        fix: FAA fix identifier, matched case-insensitively.
+        NASR: Loaded :class:`~openNASR.nasr.NASR` cycle.
+
+    Raises:
+        RecordNotFoundError: If the selected cycle has no matching fix.
+
+    Notes:
+        New applications should prefer ``nasr.fixes.get(identifier)``, which
+        returns a typed :class:`FixRecord`.
+    """
+
     def __init__(self, fix, NASR):
         if NASR.isFix(fix):
             self._addBASE(fix, NASR)

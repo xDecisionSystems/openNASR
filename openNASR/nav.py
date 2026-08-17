@@ -59,6 +59,28 @@ class NavaidRecord(FaaRecord):
 
 
 class NAVAID(Raw):
+    """Legacy single-navaid adapter retained for compatibility.
+
+    Args:
+        navaid: FAA navaid identifier, matched case-insensitively.
+        NASR: Loaded :class:`~openNASR.nasr.NASR` cycle or compatible table
+            mapping.
+        inCenter: Optional high- or low-altitude ARTCC identifier filter.
+        inState: Optional state-code filter.
+        inCountry: Optional country-code filter.
+        navType: Optional legacy navaid-type filter.
+        nav_type: Keyword spelling of ``navType``; both spellings must agree
+            if supplied together.
+
+    Raises:
+        RecordNotFoundError: If no navaid matches the identifier and filters.
+        AmbiguousRecordError: If more than one navaid remains after filtering.
+
+    Notes:
+        New applications should prefer ``nasr.navaids.get(...)``, which
+        returns a typed :class:`NavaidRecord`.
+    """
+
     def __init__(
         self,
         navaid,

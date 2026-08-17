@@ -349,8 +349,8 @@ class MaaRecord(FaaRecord):
 
     ``MAA`` is the FAA's "Miscellaneous Activity Area" family (aerobatic
     practice, glider, hang glider, space launch, ultralight, and unmanned
-    aircraft areas) — confirmed from the FAA's own ``MAA DATA LAYOUT.pdf``
-    (PLAN.md Milestone 12, task 12.1). It is unrelated to military airspace.
+    aircraft areas) as defined by the FAA's ``MAA DATA LAYOUT.pdf``. It is
+    unrelated to military airspace.
     """
 
     def _text(self, column: str) -> str | None:
@@ -650,8 +650,7 @@ class ParachuteJumpAreaRecord(FaaRecord):
 
     ``PJA_BASE`` has no matching shape table -- unlike ``MAA_SHP``/
     ``ARB_SEG``, a parachute jump area is described by a center point and
-    ``PJA_RADIUS``, not a polygon (verified against the real FAA archive,
-    PLAN.md Milestone 12 task 12.2).
+    ``PJA_RADIUS``, not a polygon.
     """
 
     def _text(self, column: str) -> str | None:

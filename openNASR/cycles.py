@@ -1,8 +1,8 @@
 """Cycle-cache location helpers.
 
-The cache lives outside the installed package.  Its location is resolved with
-the public precedence documented in :mod:`PLAN`: an explicit argument, then
-``OPENNASR_CACHE_DIR``, then the platform-specific user cache directory.
+The cache lives outside the installed package. Its location is resolved using
+an explicit argument first, then ``OPENNASR_CACHE_DIR``, and finally the
+platform-specific user cache directory.
 """
 
 from __future__ import annotations
@@ -309,10 +309,12 @@ def notify_if_update_available(manager=None) -> bool:
 
 
 class CycleManager:
-    """Manage locally cached FAA NASR cycles.
+    """Manage locally cached FAA NASR cycles and their storage artifacts.
 
-    This initial implementation establishes the cache-location contract; the
-    remaining cycle operations are added by the subsequent Milestone 3 tasks.
+    The manager discovers cached cycles, imports or downloads FAA archives,
+    extracts cycle data, builds optional DuckDB derivatives, reports available
+    updates, and removes explicitly selected representations. Network access
+    occurs only through provider-backed discovery or download methods.
     """
 
     def __init__(self, cache_dir: str | Path | None = None, *, provider=None) -> None:

@@ -76,6 +76,33 @@ def timestampToYearDecimal(useDate):
 
 
 class NASR(dict):
+    """Lazy facade over one exact locally cached FAA NASR cycle.
+
+    The object behaves as a mapping from canonical FAA table names to pandas
+    ``DataFrame`` objects. Tables are loaded on first access and cached for the
+    lifetime of the instance. Repository attributes such as ``airports``,
+    ``fixes``, ``navaids``, and ``airways`` provide the higher-level object
+    interface over the same tables.
+
+    Args:
+        useDate: Deprecated alias for ``cycle``.
+        update: Deprecated compatibility flag. It emits a warning and never
+            downloads data.
+        preloadAll: Unsupported legacy flag; passing true raises
+            ``NotImplementedError``.
+        diagnostic: Retained compatibility flag for legacy loaders.
+        cycle: Exact effective date in ``YYYY-MM-DD`` form. If omitted, the
+            newest locally cached cycle is selected.
+        cache_dir: Explicit cycle-cache root. Otherwise the environment and
+            platform-default cache locations are consulted.
+        storage: ``"csv"`` for extracted FAA tables or ``"duckdb"`` for an
+            already-built exact-cycle DuckDB derivative.
+
+    Notes:
+        Construction never downloads data or silently substitutes a different
+        explicitly requested cycle.
+    """
+
     def __init__(
         self,
         useDate=None,

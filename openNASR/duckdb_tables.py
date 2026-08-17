@@ -187,7 +187,7 @@ class DuckDbTableRepository(Mapping[str, DataFrame]):
     def _columns(self, name: str) -> tuple[str, ...]:
         """Return validated source columns without materializing table rows.
 
-        This deliberately private helper is used by the narrow query service.
+        This deliberately private helper is used by the narrow query layer.
         It is not a general SQL interface: callers receive only the catalog
         names that already exist in the completed, read-only artifact.
         """

@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Query exceptions are transport-neutral and no longer expose protocol status
+  metadata.
+- Documentation now presents openNASR exclusively as a local Python library.
+
 ## [1.5.0] - 2026-08-17
 
 ### Security

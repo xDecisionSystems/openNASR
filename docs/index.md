@@ -7,7 +7,7 @@ Load, query, and plot FAA National Airspace System Resources subscription data.
 :caption: Documentation
 
 API
-FASTAPI_DUCKDB
+reference/index
 ```
 
 ```{toctree}

@@ -2,6 +2,13 @@ from shapely.geometry import MultiPolygon, Polygon
 
 
 class Boundary:
+    """Shapely boundary assembled from FAA longitude and latitude vertices.
+
+    Explicitly closed rings are preserved as separate polygons. Geographic
+    output is available in both ``lonlat`` and ``latlon`` ordering, and
+    ``getShape`` exposes the underlying Shapely geometry.
+    """
+
     def __init__(self, lons=None, lats=None):
         points = [(lon, lat) for lon, lat in zip(lons, lats)]
         parts = self._rings(points)
@@ -59,6 +66,8 @@ class Boundary:
 
 
 class ARTCC:
+    """Legacy ARTCC center with altitude-keyed :class:`Boundary` objects."""
+
     def __init__(self, id, name, centerType, city, state, country, lat, lon):
         self.id = id
         self.name = name
@@ -83,6 +92,20 @@ class ARTCC:
 
 
 class ARB:
+    """Legacy collection of ARTCC centers and boundary geometry.
+
+    Args:
+        nasr: Loaded :class:`~openNASR.nasr.NASR` cycle containing
+            ``ARB_BASE`` and ``ARB_SEG``.
+
+    Attributes:
+        centers: FAA ARTCC location identifiers in source order.
+
+    Notes:
+        New applications should prefer ``nasr.artccs`` or
+        ``nasr.artcc(identifier)`` for typed repository access.
+    """
+
     def __init__(self, nasr):
         arb_base = nasr["ARB_BASE"]
         arb_seg = nasr["ARB_SEG"]

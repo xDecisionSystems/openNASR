@@ -159,10 +159,9 @@ class MilitaryTrainingRouteRecord(FaaRecord):
     ``ARTCC`` is listed as "common to all MTR files" in the FAA's own
     ``MTR DATA LAYOUT.pdf`` and present as a column on every ``MTR_*`` table,
     but it is a space-separated list of ARTCC idents the route traverses
-    (e.g. ``"ZJX ZTL"``), not part of the identity key -- verified against
-    the real archive and confirmed by ``MTR_CSV_DATA_STRUCTURE.csv``
-    declaring it ``Nullable`` while ``ROUTE_TYPE_CODE``/``ROUTE_ID`` are not
-    (PLAN.md Milestone 12 task 12.2).
+    (e.g. ``"ZJX ZTL"``), not part of the identity key. The FAA's
+    ``MTR_CSV_DATA_STRUCTURE.csv`` declares it nullable while
+    ``ROUTE_TYPE_CODE`` and ``ROUTE_ID`` are required.
     """
 
     def _text(self, column: str) -> str | None:
@@ -249,9 +248,8 @@ class MilitaryTrainingRoutePointRecord(FaaRecord):
     ``MTR_*`` table where the "ordered by" list and the actual unique key
     diverge: it is *ordered* by ``ROUTE_PT_SEQ`` (points "in order adapted
     for given MTR", sequenced in multiples of ten) but its *identity key*
-    uses ``ROUTE_PT_ID`` instead, per an explicit footnote (PLAN.md
-    Milestone 12 task 12.2). :attr:`identifier` therefore uses
-    ``ROUTE_PT_ID``, while :attr:`sequence` is used only for display order.
+    uses ``ROUTE_PT_ID`` instead. :attr:`identifier` therefore uses
+    ``ROUTE_PT_ID``, while :attr:`sequence` controls display order only.
     """
 
     def _text(self, column: str) -> str | None:

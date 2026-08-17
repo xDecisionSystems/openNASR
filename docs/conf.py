@@ -16,6 +16,16 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 
+autoclass_content = "both"
+autodoc_class_signature = "separated"
+autodoc_default_options = {
+    "members": True,
+    "member-order": "bysource",
+    "show-inheritance": True,
+    "undoc-members": True,
+}
+autodoc_typehints = "description"
+
 source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",

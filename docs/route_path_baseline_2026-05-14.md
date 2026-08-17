@@ -384,7 +384,7 @@ failures; Gate 3 approval does not reclassify them as airway defects.
 
 **T4.7 review: complete. Gate 4 decision: not approved.** The review covers
 T4.1 commit `79864a5`, T4.2 commit `2e7229c`, and T4.3 commit `51f530e`.
-Route conversion imports no query/SQL service and constructs no SQL statement:
+Route conversion imports no query/SQL layer and constructs no SQL statement:
 the changes use pandas masks, column `zip` iteration, `itertuples`, and explicit
 in-memory indexes. `RouteResolver` owns a visible snapshot/index lifetime and
 the public one-call wrapper delegates to it without creating a raw-SQL API.

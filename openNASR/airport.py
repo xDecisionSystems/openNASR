@@ -145,6 +145,12 @@ class AirportRecord(FaaRecord):
 
 
 class AirportBase(Raw):
+    """Legacy airport base-row adapter.
+
+    New applications should prefer :class:`AirportRecord` from
+    ``nasr.airports.get(identifier)``.
+    """
+
     def __init__(self, cached_row):
         super().__init__(SimpleNamespace(**cached_row))
 
@@ -162,6 +168,27 @@ class AirportBase(Raw):
 
 
 class Airport:
+    """Legacy aggregate airport view retained for compatibility.
+
+    Args:
+        airport: FAA or ICAO airport identifier, matched case-insensitively.
+        nasr: Loaded :class:`~openNASR.nasr.NASR` cycle.
+
+    Attributes:
+        base: Legacy airport base-row adapter.
+        rwy: Runways keyed by FAA runway identifier.
+        rwyend: Runway-end records.
+        ils: Instrument landing system base records.
+        dme: ILS distance-measuring-equipment records.
+        gs: ILS glide-slope records.
+        mkr: ILS marker records.
+
+    Notes:
+        New applications should normally use ``nasr.airports.get(identifier)``,
+        which returns a lossless :class:`AirportRecord` with typed related
+        collections.
+    """
+
     def __init__(self, airport, nasr):
         isAirport, airportIDCol, airport = nasr.isAirport(airport, forceFAA=True)
         if isAirport:

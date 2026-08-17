@@ -1,4 +1,8 @@
-# API reference
+# API guide
+
+This guide explains the public object model and common lookup patterns. For
+complete generated signatures, attributes, methods, return types, and source
+links, see the {doc}`reference/index`.
 
 ## Main entry points
 
