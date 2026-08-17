@@ -199,6 +199,19 @@ def _plot_boundary(axes: Any, geometry: BaseGeometry, **kwargs: Any) -> None:
         axes.plot(x_values, y_values, **kwargs)
 
 
+def _line_parts(geometry: BaseGeometry) -> tuple[LineString, ...]:
+    """Return every non-empty line component from an intersection result."""
+
+    if isinstance(geometry, LineString):
+        return () if geometry.is_empty else (geometry,)
+    if hasattr(geometry, "geoms"):
+        parts: list[LineString] = []
+        for component in geometry.geoms:
+            parts.extend(_line_parts(component))
+        return tuple(parts)
+    return ()
+
+
 def plot_airspace(
     nasr: Mapping[str, DataFrame],
     boundary: object,
@@ -255,9 +268,11 @@ def plot_airspace(
     for level, segment in _airway_segments(nasr):
         enabled = plot_high_airways if level == "high" else plot_low_airways
         if enabled and geometry.intersects(segment):
-            x_values, y_values = segment.xy
-            color = "tab:red" if level == "high" else "tab:orange"
-            axes.plot(x_values, y_values, color=color, linewidth=1)
+            clipped = geometry.intersection(segment)
+            for line in _line_parts(clipped):
+                x_values, y_values = line.xy
+                color = "tab:red" if level == "high" else "tab:orange"
+                axes.plot(x_values, y_values, color=color, linewidth=1)
 
     axes.set_xlabel("Longitude")
     axes.set_ylabel("Latitude")

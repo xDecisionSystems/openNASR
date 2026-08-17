@@ -48,6 +48,8 @@ def test_plot_airspace_draws_contained_airports_and_intersecting_airways():
 
     assert figure is axes.figure
     assert len(axes.lines) == 3  # boundary, one airport, and one airway segment
+    assert list(axes.lines[-1].get_xdata()) == [0.0, 2.0]
+    assert list(axes.lines[-1].get_ydata()) == [1.0, 1.0]
 
 
 def test_plot_airspace_visibility_switches_filter_airway_levels_and_points():
