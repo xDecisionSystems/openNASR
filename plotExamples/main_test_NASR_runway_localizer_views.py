@@ -197,13 +197,6 @@ def main() -> None:
         linewidth=4,
         label=f"Runway {runway_id}",
     )
-    side.plot(
-        (-threshold_distance, 0, ILS_APPROACH_LENGTH_NM - threshold_distance),
-        (localizer_elevation, threshold_elevation, threshold_elevation),
-        color="tab:blue",
-        linewidth=1.5,
-        label="Localizer centerline (lateral guidance)",
-    )
     approach_end_distance = ILS_APPROACH_LENGTH_NM - threshold_distance
     glide_slope_end_elevation = glide_slope_elevation + (
         approach_end_distance - glide_slope_distance
