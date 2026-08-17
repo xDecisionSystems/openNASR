@@ -1,4 +1,4 @@
-"""Render top and side views for one runway and its ILS localizer.
+"""Render top and side views for one runway, localizer, and glide slope.
 
 Run from the repository root after installing the plotting extra:
 
@@ -9,7 +9,7 @@ Run from the repository root after installing the plotting extra:
 from __future__ import annotations
 
 import argparse
-from math import cos, radians, sin
+from math import cos, radians, sin, tan
 from pathlib import Path
 
 from openNASR.cfcn import ll2xy
@@ -37,7 +37,7 @@ def _true_bearing(row) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Plot top and side views of a runway and ILS localizer."
+        description="Plot top and side views of a runway, localizer, and glide slope."
     )
     parser.add_argument("--airport", default="ATL", help="FAA airport identifier")
     parser.add_argument("--runway-end", default="08L", help="Runway-end identifier")
@@ -86,9 +86,24 @@ def main() -> None:
         raise ValueError(
             f"Expected one ILS localizer for {airport_id} runway end {runway_end_id}"
         )
+    glide_slope = nasr["ILS_GS"]
+    glide_slope = glide_slope[
+        (glide_slope["ARPT_ID"].str.strip().str.upper() == airport_id)
+        & (glide_slope["RWY_END_ID"].str.strip().str.upper() == runway_end_id)
+        & (
+            glide_slope["ILS_LOC_ID"].str.strip().str.upper()
+            == localizer.iloc[0]["ILS_LOC_ID"].strip().upper()
+        )
+    ]
+    if len(glide_slope) != 1:
+        raise ValueError(
+            f"Expected one glide-slope component for {airport_id} runway end "
+            f"{runway_end_id}"
+        )
 
     threshold = selected_end.iloc[0]
     ils = localizer.iloc[0]
+    glide_slope = glide_slope.iloc[0]
     threshold_x, threshold_y, _, _ = ll2xy(
         float(threshold["LAT_DECIMAL"]), float(threshold["LONG_DECIMAL"]), llc=center
     )
@@ -158,6 +173,16 @@ def main() -> None:
 
     threshold_elevation = float(threshold["RWY_END_ELEV"])
     localizer_elevation = float(ils["SITE_ELEVATION"])
+    glide_slope_x, glide_slope_y, _, _ = ll2xy(
+        float(glide_slope["LAT_DECIMAL"]),
+        float(glide_slope["LONG_DECIMAL"]),
+        llc=center,
+    )
+    glide_slope_distance = (glide_slope_x - threshold_x) * direction_x + (
+        glide_slope_y - threshold_y
+    ) * direction_y
+    glide_slope_elevation = float(glide_slope["SITE_ELEVATION"])
+    glide_slope_angle = float(glide_slope["G_S_ANGLE"])
     other_end = runway[
         runway["RWY_END_ID"].str.strip().str.upper() != runway_end_id
     ].iloc[0]
@@ -179,7 +204,19 @@ def main() -> None:
         linewidth=1.5,
         label="Localizer centerline (lateral guidance)",
     )
+    approach_end_distance = ILS_APPROACH_LENGTH_NM - threshold_distance
+    glide_slope_end_elevation = glide_slope_elevation + (
+        approach_end_distance - glide_slope_distance
+    ) * FEET_PER_NAUTICAL_MILE * tan(radians(glide_slope_angle))
+    side.plot(
+        (glide_slope_distance, approach_end_distance),
+        (glide_slope_elevation, glide_slope_end_elevation),
+        color="tab:red",
+        linewidth=2,
+        label=f"Glide slope ({glide_slope_angle:g}°)",
+    )
     side.scatter(-threshold_distance, localizer_elevation, color="tab:blue", zorder=3)
+    side.scatter(glide_slope_distance, glide_slope_elevation, color="tab:red", zorder=3)
     side.axvline(0, color="gray", linestyle="--", linewidth=1)
     side.annotate(
         "Threshold", (0, threshold_elevation), xytext=(4, 6), textcoords="offset points"
@@ -187,6 +224,12 @@ def main() -> None:
     side.annotate(
         "Localizer",
         (-threshold_distance, localizer_elevation),
+        xytext=(4, 6),
+        textcoords="offset points",
+    )
+    side.annotate(
+        "Glide slope",
+        (glide_slope_distance, glide_slope_elevation),
         xytext=(4, 6),
         textcoords="offset points",
     )
