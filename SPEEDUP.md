@@ -327,13 +327,13 @@ task below that references `tools/route_benchmark.py` or a new
   Phase 0's order-of-magnitude findings (the `nasr.airport`/`nasr.fixes.get`
   first-call cost in particular) before any Phase 2/3 fix lands.
   Dependencies: none.
-- [ ] **L1.4 — Agent model: Luna.** Add a non-CI benchmark report template
+- [x] **L1.4 — Agent model: Luna. Done (2026-08-17).** Add a non-CI benchmark report template
   for this plan's numbers, following `docs/DUCKDB_BENCHMARK_REPORT_TEMPLATE.md`'s
   existing convention (environment, versions, canonical cycle, cold/warm
   policy, before/after table). Do not duplicate
   `docs/route_path_baseline_2026-05-14.md`; link to it for the route-only
   numbers and add sections here for the repository and plotting findings.
-  Dependencies: L1.1, L1.2, L1.3.
+  Dependencies: L1.1, L1.2, L1.3. Template: `docs/SPEEDUP_BENCHMARK_REPORT_TEMPLATE.md`.
 
 **Gate 1:** Sol confirms all three benchmark tools (`run_benchmarks.py`,
 `plotting_benchmark.py`, `repository_benchmark.py`) run against the
