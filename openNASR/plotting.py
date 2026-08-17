@@ -9,6 +9,7 @@ from pandas import DataFrame
 from shapely.geometry import LineString, Point
 from shapely.geometry.base import BaseGeometry
 
+from .cfcn import ll2xy
 from .flightplan import flight_plan_path
 
 
@@ -171,6 +172,30 @@ def _runway_segments(
     )
 
 
+def _projection_center(
+    geometry: BaseGeometry, center: tuple[float, float] | None
+) -> tuple[float, float]:
+    """Return a latitude/longitude gnomonic center for an airspace plot."""
+
+    if center is not None:
+        if len(center) != 2:
+            raise ValueError("projection_center must be a (latitude, longitude) pair")
+        return float(center[0]), float(center[1])
+    centroid = geometry.centroid
+    return float(centroid.y), float(centroid.x)
+
+
+def _project_coordinates(
+    longitudes: Any, latitudes: Any, *, center: tuple[float, float] | None
+) -> tuple[Any, Any]:
+    """Project longitude/latitude coordinates to NM when a center is supplied."""
+
+    if center is None:
+        return longitudes, latitudes
+    x_values, y_values, _, _ = ll2xy(latitudes, longitudes, llc=center)
+    return x_values, y_values
+
+
 def _plot_points(
     axes: Any,
     frame: DataFrame | None,
@@ -179,6 +204,7 @@ def _plot_points(
     marker: str,
     color: str,
     label: str,
+    projection_center: tuple[float, float] | None,
 ) -> None:
     if frame is None or not {"LAT_DECIMAL", "LONG_DECIMAL"}.issubset(frame.columns):
         return
@@ -189,9 +215,12 @@ def _plot_points(
         except (TypeError, ValueError):
             continue
         if geometry.covers(point):
+            x_values, y_values = _project_coordinates(
+                point.x, point.y, center=projection_center
+            )
             axes.plot(
-                point.x,
-                point.y,
+                x_values,
+                y_values,
                 marker=marker,
                 color=color,
                 markersize=4,
@@ -201,12 +230,21 @@ def _plot_points(
             plotted = True
 
 
-def _plot_boundary(axes: Any, geometry: BaseGeometry, **kwargs: Any) -> None:
+def _plot_boundary(
+    axes: Any,
+    geometry: BaseGeometry,
+    *,
+    projection_center: tuple[float, float] | None,
+    **kwargs: Any,
+) -> None:
     geometries = geometry.geoms if hasattr(geometry, "geoms") else (geometry,)
     for polygon in geometries:
         if not hasattr(polygon, "exterior"):
             continue
         x_values, y_values = polygon.exterior.xy
+        x_values, y_values = _project_coordinates(
+            x_values, y_values, center=projection_center
+        )
         axes.plot(x_values, y_values, **kwargs)
 
 
@@ -234,6 +272,8 @@ def plot_airspace(
     plot_fixes: bool = True,
     plot_airnavs: bool = True,
     plot_legend: bool = True,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
 ) -> tuple[Any, Any]:
     """Plot a boundary with contained airports and intersecting airway segments.
 
@@ -252,22 +292,38 @@ def plot_airspace(
     plot_legend:
         Draw a legend for the layers represented in the plot. Defaults to
         ``True``.
+    project_to_nm:
+        Project longitude/latitude coordinates onto a local gnomonic plane in
+        nautical miles. Defaults to ``False``.
+    projection_center:
+        Optional ``(latitude, longitude)`` center for ``project_to_nm``. When
+        omitted, the center of the plotted airspace is used.
 
     Returns
     -------
     tuple
-        The Matplotlib ``(figure, axes)`` pair. Longitude is plotted on x and
-        latitude on y.
+        The Matplotlib ``(figure, axes)`` pair. Coordinates are longitude and
+        latitude by default, or east/north nautical miles when projected.
     """
 
     geometry = _geometry(boundary)
+    active_projection_center = (
+        _projection_center(geometry, projection_center) if project_to_nm else None
+    )
     from matplotlib import pyplot as plt
 
     if axes is None:
         figure, axes = plt.subplots()
     else:
         figure = axes.figure
-    _plot_boundary(axes, geometry, color="black", linewidth=1.5, label="Airspace")
+    _plot_boundary(
+        axes,
+        geometry,
+        projection_center=active_projection_center,
+        color="black",
+        linewidth=1.5,
+        label="Airspace",
+    )
 
     if plot_airports:
         _plot_points(
@@ -277,6 +333,7 @@ def plot_airspace(
             marker="o",
             color="tab:blue",
             label="Airports",
+            projection_center=active_projection_center,
         )
     if plot_fixes:
         _plot_points(
@@ -286,6 +343,7 @@ def plot_airspace(
             marker="x",
             color="tab:green",
             label="Fixes",
+            projection_center=active_projection_center,
         )
     if plot_airnavs:
         _plot_points(
@@ -295,6 +353,7 @@ def plot_airspace(
             marker="^",
             color="tab:purple",
             label="Navaids",
+            projection_center=active_projection_center,
         )
 
     airway_labels = {"high": "High-altitude airways", "low": "Low-altitude airways"}
@@ -305,6 +364,9 @@ def plot_airspace(
             clipped = geometry.intersection(segment)
             for line in _line_parts(clipped):
                 x_values, y_values = line.xy
+                x_values, y_values = _project_coordinates(
+                    x_values, y_values, center=active_projection_center
+                )
                 color = "tab:red" if level == "high" else "tab:orange"
                 axes.plot(
                     x_values,
@@ -317,8 +379,8 @@ def plot_airspace(
 
     if plot_legend:
         axes.legend()
-    axes.set_xlabel("Longitude")
-    axes.set_ylabel("Latitude")
+    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
+    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 

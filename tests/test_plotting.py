@@ -133,6 +133,31 @@ def test_plot_airspace_can_hide_its_legend():
     assert axes.get_legend() is None
 
 
+def test_plot_airspace_projects_to_nautical_miles_about_its_center():
+    pytest.importorskip("matplotlib").use("Agg")
+    boundary = Polygon([(-76, 39), (-74, 39), (-74, 41), (-76, 41)])
+    tables = {
+        "APT_BASE": pd.DataFrame(
+            [{"ARPT_ID": "CENTER", "LAT_DECIMAL": "40", "LONG_DECIMAL": "-75"}]
+        )
+    }
+
+    _, axes = plot_airspace(
+        tables,
+        boundary,
+        plot_high_airways=False,
+        plot_low_airways=False,
+        plot_fixes=False,
+        plot_airnavs=False,
+        project_to_nm=True,
+    )
+
+    assert axes.get_xlabel() == "East (NM)"
+    assert axes.get_ylabel() == "North (NM)"
+    assert axes.lines[1].get_xdata()[0] == pytest.approx(0.0)
+    assert axes.lines[1].get_ydata()[0] == pytest.approx(0.0)
+
+
 def test_plot_flight_plan_draws_the_resolved_route():
     pytest.importorskip("matplotlib").use("Agg")
     tables = {

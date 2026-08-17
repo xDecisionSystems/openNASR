@@ -316,6 +316,10 @@ Set `plot_high_airways`, `plot_low_airways`, `plot_airports`, `plot_fixes`, or
 `plot_airnavs` to `False` to hide a layer; all are enabled by default.
 Set `plot_legend=False` to hide the default layer legend.
 
+Set `project_to_nm=True` to plot in east/north nautical miles using the local
+gnomonic projection. By default its center is the airspace centroid; provide
+`projection_center=(latitude, longitude)` to select a different center.
+
 Use `plot_airport_procedures(nasr, "BWI")` to draw an airport's runways,
 departure procedures, and standard terminal arrival routes.
 
