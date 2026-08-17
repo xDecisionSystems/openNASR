@@ -230,10 +230,18 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
         ignore_index=True,
     )
 
-    assert flight_plan_path(tables, "ALPHA1.ALPHA J1 ENTRY.STAR1") == (
+    assert flight_plan_path(tables, "ALPHA1.ALPHA.J1.ENTRY.STAR1/0354") == (
         (37.0, -78.0),
         (36.0, -79.0),
         (40.0, -81.0),
         (41.0, -82.0),
         (42.0, -83.0),
+    )
+
+
+def test_flight_plan_path_accepts_double_dot_direct_routing(tables):
+    assert flight_plan_path(tables, "KAAA..ALPHA..BBB/0354") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (35.0, -80.0),
     )

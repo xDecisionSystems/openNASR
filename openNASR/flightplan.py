@@ -361,6 +361,52 @@ def _procedure_path(
     return None
 
 
+def _tokenize_flight_plan(
+    tables: Mapping[str, DataFrame],
+    flight_plan: str,
+    *,
+    resolver: _WaypointResolver,
+) -> tuple[str, ...]:
+    """Normalize space- or dot-delimited FAA route text into route tokens.
+
+    FAA route strings use a single dot as a component separator and ``..``
+    for direct routing. A procedure/transition itself also contains one dot,
+    so adjacent components are greedily retained as one token only when they
+    identify a procedure in the selected NASR cycle. A trailing ``/`` field
+    (for example ``KMSP/0354``) is speed/altitude information, not geometry.
+    """
+
+    normalized: list[str] = []
+    for field in flight_plan.upper().split():
+        field = field.split("/", 1)[0]
+        if not field:
+            continue
+        components = field.split(".")
+        index = 0
+        while index < len(components):
+            component = _text(components[index])
+            if not component:
+                if not normalized or normalized[-1] != _DIRECT:
+                    normalized.append(_DIRECT)
+                index += 1
+                continue
+            combined = (
+                f"{component}.{_text(components[index + 1])}"
+                if index + 1 < len(components) and components[index + 1]
+                else None
+            )
+            if (
+                combined is not None
+                and _procedure_path(tables, combined, resolver=resolver) is not None
+            ):
+                normalized.append(combined)
+                index += 2
+            else:
+                normalized.append(component)
+                index += 1
+    return tuple(normalized)
+
+
 def flight_plan_path(
     nasr: Mapping[str, DataFrame], flight_plan: str
 ) -> tuple[tuple[float, float], ...]:
@@ -380,12 +426,12 @@ def flight_plan_path(
 
     if not isinstance(flight_plan, str) or not flight_plan.strip():
         raise ValueError("flight_plan must be non-empty FAA route-field text")
-    tokens = tuple(_text(token.split("/", 1)[0]) for token in flight_plan.split())
+    resolver = _WaypointResolver(nasr)
+    tokens = _tokenize_flight_plan(nasr, flight_plan, resolver=resolver)
     if not tokens or any(not token for token in tokens):
         raise ValueError("flight_plan must contain route tokens")
 
     output: list[tuple[float, float]] = []
-    resolver = _WaypointResolver(nasr)
     index = 0
     while index < len(tokens):
         token = tokens[index]
