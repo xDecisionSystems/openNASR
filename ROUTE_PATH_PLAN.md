@@ -183,15 +183,48 @@ airway token instead of vectorized pandas filtering); both need to move off
 row-by-row Python iteration, not only the waypoint resolver named below.
 - [ ] Build the airport/fix/navaid candidate index once per immutable NASR
   dataset instead of rebuilding it for every `flight_plan_path` call.
-- [ ] **Apply the same fix to `_airway_vertices`'s `AWY_BASE` lookup**, which
-  currently iterates every row via `.to_dict(orient="records")` per airway
-  token rather than filtering the DataFrame directly; this table is smaller
-  than the waypoint tables but is re-scanned once per airway token in a
-  route, not once per call.
+- [ ] **Vectorize `_WaypointResolver.__init__`; do not just cache the slow
+  version.** The ~2.8s cost is `.to_dict(orient="records")` plus a Python
+  `for` loop materializing a dict per row across ~90k rows. Replace it with
+  column-oriented pandas operations: for each `(table, columns)` pair, drop
+  rows with missing `LAT_DECIMAL`/`LONG_DECIMAL` via a vectorized mask
+  (`frame[["LAT_DECIMAL", "LONG_DECIMAL"]].notna().all(axis=1)`, or the
+  DuckDB-backed equivalent), then build the identifier index by iterating
+  `zip(frame[column], frame["LAT_DECIMAL"], frame["LONG_DECIMAL"])` — a
+  column-array walk, not a per-row dict allocation — or a single
+  `frame.groupby(column)` per identifier column. Target: this construction
+  drops from ~2.8s to well under 100ms on the same real cycle; verify with
+  a microbenchmark before and after, not just the end-to-end call time.
+- [ ] **Vectorize `_airway_vertices`'s `AWY_BASE` lookup the same way.**
+  Replace the `for record in base.to_dict(orient="records")` scan with a
+  boolean-mask filter on `AWY_DESIGNATION`/`AWY_ID` (matching the pattern
+  `AirportRepository`/other domain repositories already use elsewhere in
+  the codebase — grep for `.map(_text).eq(` for the existing convention),
+  then only convert the *matched* rows (typically one airway, a handful of
+  rows) to records, not the full ~1,537-row table. This table is smaller
+  than the waypoint tables but is rescanned once per airway token in a
+  route, not once per call, so its relative cost grows with route
+  complexity.
+- [ ] **Cache the vectorized resolver, keyed by the identity of the
+  underlying table set, so repeated calls against the same loaded `NASR`
+  reuse it.** Vectorizing fixes the *per-build* cost; caching fixes the
+  *rebuild-every-call* cost — both are needed for the batch/Phase-5 use
+  case, since even a sub-100ms rebuild is wasted work when nothing in the
+  underlying tables changed between calls. A plain `functools.lru_cache`
+  is not safe here (DataFrames are unhashable and mutable); key on
+  `id(nasr)` plus each relevant table's row count as a cheap staleness
+  check, or accept an explicit resolver/session object (see the next
+  bullet) as the real cache boundary instead of an implicit global cache.
 - [ ] Keep public results and errors identical with and without the cache;
   add mutation/isolation tests for CSV and DuckDB storage.
 - [ ] Add an optional route resolver/session object for batch conversion while
-  preserving the existing one-call function.
+  preserving the existing one-call function. **This is the primary
+  mechanism for avoiding repeated resolver construction across many
+  `flight_plan_path`-equivalent calls** (e.g. `RouteResolver(nasr)` built
+  once, then `.path(flight_plan)` called per route) — prefer it over an
+  implicit module-level or `NASR`-attached cache, since an explicit object
+  makes the cache's lifetime and invalidation visible to the caller instead
+  of hidden behind the existing one-call function signature.
 - [ ] Benchmark CSV and DuckDB storage with the same already-loaded tables,
   fixed routes, warm-up policy, sample count, median, and p95. The benchmark
   matrix must include direct airport-to-airport routing, fix/navaid routing,
@@ -260,3 +293,4 @@ row-by-row Python iteration, not only the waypoint resolver named below.
 | 2026-08-17 | Require `PROCEDURE.CANDIDATE` resolution to verify the candidate is a published transition/runway identifier, not merely that some route exists for the procedure name. | Verified against real data that the tokenizer's greedy dot-merge accepts `MCRAY2.MCRAY` as one procedure token even though `MCRAY` is a plain enroute fix filed after the DP, not a transition; `_procedure_path` silently falls back to the DP's default routing and the airway lookup that follows then uses the wrong endpoint with no error raised. |
 | 2026-08-17 | Prefer a non-`VOT` navaid when a bare `NAV_ID` collides within `NAV_BASE` itself, instead of always raising ambiguity. | Verified against real data (`ICT`: one `VORTAC` row, one `VOT` row, different coordinates) that a VOR-test-facility component can share an identifier with the real operational navaid; a VOT is never a valid filed route fix, so this collision has one correct answer, unlike a genuine cross-table or cross-airport ambiguity. |
 | 2026-08-17 | Do not schedule Phase 4's resolver-caching work strictly after Phases 1-3 finish. | Measured a single `flight_plan_path` call at ~2.7s on a real cycle, almost entirely spent rebuilding `_WaypointResolver` from three full tables (~90k rows) on every call; at that cost a 100-route baseline sample takes minutes and the full 46,580-row example file is impractical (~35h extrapolated), which would bottleneck Phase 5's own "run the sample after each phase" requirement before Phase 4 ever starts. |
+| 2026-08-17 | Specify vectorization (column-oriented pandas operations, not just caching the existing row-by-row builder) as the primary Phase 4 fix for both `_WaypointResolver.__init__` and `_airway_vertices`, with an explicit resolver/session object as the caching layer on top. | A quick vectorized-mask-plus-`zip` prototype over the real `FIX_BASE` table (68,122 rows, the largest of the three) ran in ~0.14s versus multiple seconds for the existing `.to_dict(orient="records")` loop, confirming the row-by-row conversion itself — not merely the lack of a cache — is the dominant cost; caching a slow builder would still leave the first call (and any cache miss) slow, while a plain `functools.lru_cache` cannot key on unhashable, mutable DataFrames safely. |
