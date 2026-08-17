@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
+import json
 from pathlib import Path
 import random
 import statistics
@@ -109,6 +110,7 @@ def run(
     seed: int,
     sample_size: int,
     warm_iterations: int,
+    output: Path | None = None,
 ) -> None:
     print("openNASR benchmark: diverse real flight-plan route resolution")
     print("=" * 63)
@@ -200,6 +202,31 @@ def run(
             "more common in this sample -- read the per-category numbers "
             "above for the real picture, not just this line."
         )
+    if output is not None:
+        output.write_text(
+            json.dumps(
+                {
+                    "cycle": effective_date.isoformat(),
+                    "storage": storage,
+                    "routes": str(routes_path),
+                    "seed": seed,
+                    "sample_size": len(sample),
+                    "load_seconds": load_seconds,
+                    "index_seconds": index_seconds,
+                    "failures": failures,
+                    "direct_or_airway_only": _summarize(direct_samples)
+                    if direct_samples
+                    else None,
+                    "procedure": _summarize(procedure_samples)
+                    if procedure_samples
+                    else None,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        print(f"JSON report: {output}")
 
 
 def main() -> None:
@@ -228,6 +255,7 @@ def main() -> None:
         default=DEFAULT_WARM_ITERATIONS,
         help="repeated timed calls per route, after one untimed warm-up call",
     )
+    parser.add_argument("--output", type=Path, help="optional JSON report path")
     arguments = parser.parse_args()
     run(
         cycle=arguments.cycle,
@@ -237,6 +265,7 @@ def main() -> None:
         seed=arguments.seed,
         sample_size=arguments.sample_size,
         warm_iterations=arguments.warm_iterations,
+        output=arguments.output,
     )
 
 

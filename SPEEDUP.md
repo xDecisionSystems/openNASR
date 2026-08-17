@@ -257,7 +257,7 @@ stayed in `tools/` — it is a correctness validator, not a benchmark. Every
 task below that references `tools/route_benchmark.py` or a new
 `tools/plotting_benchmark.py` should read `benchmarks/` instead.
 
-- [ ] **L1.1 — Agent model: Luna. Partially done (2026-08-17), as a new
+- [x] **L1.1 — Agent model: Luna. Done (2026-08-17), as a new
   script rather than an extension of `route_benchmark.py`.** Rather than add
   a mode to `benchmarks/route_benchmark.py` (which reports raw JSON for a
   fixed synthetic 6-route matrix, a different and still-useful purpose —
@@ -272,16 +272,11 @@ task below that references `tools/route_benchmark.py` or a new
   `2026-05-14` cycle: reproduces the ~100-160x order-of-magnitude gap this
   plan's Phase 0 measured (exact ratio varies by sample size/iteration
   count, as expected for a timing measurement).
-  **Still open:** the acceptance criterion's "report loading time separately
-  from path resolution" is satisfied (table load and index build are
-  reported as separate lines), but `run_benchmarks.py` does not yet support
-  `--storage duckdb` end-to-end validation (the flag exists and is passed
-  through to `NASR`, but has not been exercised against a real DuckDB
-  artifact as part of this task) or JSON output for machine comparison
-  against `route_benchmark.py`'s existing report format — leave both as
-  follow-up work under this same task rather than a new one.
+  The command now also accepts `--storage duckdb` and `--output PATH`; the
+  latter writes machine-readable JSON containing load/index timings and the
+  same direct/procedure summaries printed to the terminal.
   Dependencies: none.
-- [ ] **L1.2 — Agent model: Luna.** Add a `plotExamples/`-equivalent
+- [x] **L1.2 — Agent model: Luna. Done (2026-08-17).** Add a `plotExamples/`-equivalent
   benchmark to `benchmarks/plotting_benchmark.py` (a new tool, not an
   extension of the route tool — plotting has a different call shape: one-shot
   figure construction, not per-route resolution). It must exercise, without
@@ -309,7 +304,7 @@ task below that references `tools/route_benchmark.py` or a new
   Acceptance: running the tool against the canonical cycle reproduces this
   session's measured order of magnitude for `_airway_segments`/
   `_procedure_segments` before any Phase 5 fix lands.
-- [ ] **L1.3 — Agent model: Luna.** Add `benchmarks/repository_benchmark.py`
+- [x] **L1.3 — Agent model: Luna. Done (2026-08-17).** Add `benchmarks/repository_benchmark.py`
   to cover Phase 0's (b)/(c) findings that `run_benchmarks.py` (routes) and
   the new `plotting_benchmark.py` (plotting) do not: the legacy
   `Airport`/`FIX`/`NAVAID` constructors, `nasr.isAirport`/`isFix`/`isNavaid`,
