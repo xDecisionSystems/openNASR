@@ -285,6 +285,20 @@ def test_csv_source_locator_accepts_nested_directories_and_archives(tmp_path):
     assert locate_csv_source(archive_cycle) == nested_archive
 
 
+def test_csv_source_locator_prefers_faa_csv_data_over_other_nested_archives(tmp_path):
+    cycle = tmp_path / "cycle"
+    csv_archive = cycle / "CSV_Data" / "subscription.zip"
+    csv_archive.parent.mkdir(parents=True)
+    with ZipFile(csv_archive, "w") as output:
+        output.writestr("APT_BASE.csv", "ARPT_ID\nBWI\n")
+    unrelated = cycle / "Additional_Data" / "AIXM" / "airport.zip"
+    unrelated.parent.mkdir(parents=True)
+    with ZipFile(unrelated, "w") as output:
+        output.writestr("airport.xml", "<airport />")
+
+    assert locate_csv_source(cycle) == csv_archive
+
+
 def test_get_reuses_cached_cycle_without_rewriting_archive(tmp_path):
     manager = CycleManager(tmp_path)
     manager.archives_dir.mkdir(parents=True)

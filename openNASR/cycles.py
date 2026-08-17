@@ -267,6 +267,15 @@ def locate_csv_source(data_path: str | Path) -> Path:
     """Locate a nested CSV directory or FAA CSV archive within a cycle."""
 
     root = Path(data_path)
+    csv_directories = sorted(path for path in root.rglob("CSV_Data") if path.is_dir())
+    for directory in csv_directories:
+        csv_files = sorted(directory.rglob("*.csv"))
+        if csv_files:
+            return csv_files[0].parent
+    for directory in csv_directories:
+        archives = sorted(path for path in directory.rglob("*.zip") if is_zipfile(path))
+        if archives:
+            return archives[0]
     csv_files = sorted(root.rglob("*.csv"))
     if csv_files:
         return csv_files[0].parent

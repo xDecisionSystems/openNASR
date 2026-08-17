@@ -59,7 +59,7 @@ def test_download_commands_delegate_to_cycle_manager(capsys):
 
 
 def test_default_check_and_download_use_a_provider_and_report_typed_errors(
-    monkeypatch, capsys
+    monkeypatch, capsys, tmp_path
 ):
     class Provider:
         def __init__(self):
@@ -69,6 +69,7 @@ def test_default_check_and_download_use_a_provider_and_report_typed_errors(
             raise OSError("offline")
 
     monkeypatch.setattr("openNASR.cli.FaaCycleProvider", Provider)
+    monkeypatch.setattr("openNASR.cycles.resolve_cache_dir", lambda _cache: tmp_path)
 
     assert main(["check", "--force"]) == ExitCode.UNAVAILABLE
     assert main(["download", "latest"]) == ExitCode.UNAVAILABLE
