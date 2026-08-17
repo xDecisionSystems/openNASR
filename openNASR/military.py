@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
+from .indexing import NormalizedIndexCache, normalized_indexed_rows
 from .records import FaaRecord, integer, nullable_text
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
@@ -372,6 +373,7 @@ class MilitaryTrainingRouteRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -390,10 +392,9 @@ class MilitaryTrainingRouteRepository:
         return identifier
 
     def _matching(self, frame: DataFrame, key: tuple[object, object]) -> DataFrame:
-        rows = frame
-        for column, value in zip(MTR_KEY, key):
-            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
-        return rows
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(MTR_KEY, key), self._normalized
+        )
 
     @staticmethod
     def _sequence_order(column: str):

@@ -14,6 +14,7 @@ def test_military_training_route_repository_and_singular_facade_are_equivalent(
     from_singular_method = nasr.military_training_route(("IR", "999"))
 
     assert from_repository.route_key == from_singular_method.route_key == ("IR", "999")
+    assert len(nasr.military_training_routes._indexes) == 12
 
 
 def test_military_training_route_artccs_is_parsed_from_a_space_separated_list(
