@@ -117,6 +117,24 @@ def test_remove_can_select_archive_or_extracted_data_independently(tmp_path):
         manager.remove(date(2026, 8, 6), archive=False, extracted=False)
 
 
+def test_remove_reports_which_representations_actually_existed(tmp_path):
+    manager = CycleManager(tmp_path)
+    manager.archives_dir.mkdir()
+    archive = manager.archives_dir / "28DaySubscription_Effective_2026-08-06.zip"
+    archive.touch()
+    manager.cycles_dir.mkdir()
+    extracted = manager.cycles_dir / "2026-08-06"
+    extracted.mkdir()
+
+    both = manager.remove(date(2026, 8, 6))
+    assert (both.removed_archive, both.removed_extracted) == (True, True)
+    assert both.removed_anything is True
+
+    neither = manager.remove(date(2026, 8, 6))
+    assert (neither.removed_archive, neither.removed_extracted) == (False, False)
+    assert neither.removed_anything is False
+
+
 def test_archive_dates_are_validated_and_ordered_by_parsed_dates(tmp_path):
     manager = CycleManager(tmp_path)
     manager.archives_dir.mkdir()
@@ -282,7 +300,7 @@ def test_get_reuses_cached_cycle_without_rewriting_archive(tmp_path):
     assert manager.get(date(2026, 8, 6), force=True) is None
 
 
-def test_faa_provider_discovers_only_mocked_metadata():
+def test_faa_provider_follows_current_landing_link_to_explicit_nfdc_archive():
     calls = []
 
     class Response:
@@ -295,15 +313,67 @@ def test_faa_provider_discovers_only_mocked_metadata():
         def __exit__(self, *_):
             return False
 
+    landing_url = "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/"
+    detail_url = f"{landing_url}2026-08-06/"
+    archive_url = (
+        "https://nfdc.faa.gov/webContent/28DaySub/"
+        "28DaySubscription_Effective_2026-08-06.zip"
+    )
+
     def opener(url, timeout):
         calls.append((url, timeout))
-        return Response()
+        response = Response()
+        if url == landing_url:
+            response.read = lambda: (
+                b"<h2>Preview</h2><a href='/air_traffic/flight_info/aeronav/"
+                b"Aero_Data/NASR_Subscription/2026-09-03/'>Preview</a>"
+                b"<h2>Current</h2><a href='/air_traffic/flight_info/aeronav/"
+                b"Aero_Data/NASR_Subscription/2026-08-06/'>Current cycle</a>"
+            )
+        else:
+            response.read = lambda: (
+                b"<a href='https://nfdc.faa.gov/webContent/28DaySub/"
+                b"28DaySubscription_Effective_2026-08-06.zip'>"
+                b"Full subscription</a>"
+            )
+        return response
 
-    cycle = FaaCycleProvider("https://example.test/metadata", opener).discover()
+    cycle = FaaCycleProvider(landing_url, opener).discover()
 
     assert cycle.effective_date == date(2026, 8, 6)
-    assert cycle.archive_url.endswith("a.zip")
-    assert calls == [("https://example.test/metadata", 2)]
+    assert cycle.archive_url == archive_url
+    assert calls == [(landing_url, 2), (detail_url, 2)]
+
+
+def test_faa_provider_rejects_non_nfdc_or_mismatched_archive_links():
+    class Response:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def read(self):
+            return self.payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    landing_url = "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/"
+
+    def opener(url, timeout):
+        if url == landing_url:
+            return Response(
+                b"<h2>Current</h2><a href='/air_traffic/flight_info/aeronav/"
+                b"Aero_Data/NASR_Subscription/2026-08-06/'>Current cycle</a>"
+            )
+        return Response(
+            b"<a href='https://example.test/28DaySubscription_Effective_2026-08-06.zip'>"
+            b"Full subscription</a>"
+        )
+
+    with pytest.raises(ValueError, match="full-subscription NFDC ZIP"):
+        FaaCycleProvider(landing_url, opener).discover()
 
 
 def test_update_checks_reuse_successful_metadata(tmp_path):
@@ -379,3 +449,19 @@ def test_disable_update_check_skips_provider(monkeypatch):
             raise AssertionError("provider should not be called")
 
     assert not notify_if_update_available(FailingManager())
+
+
+def test_update_notification_uses_default_faa_provider(monkeypatch, tmp_path):
+    used = []
+
+    class Provider:
+        def discover(self):
+            used.append(True)
+            return RemoteCycle(date(2026, 8, 6), "https://example.test/archive.zip")
+
+    monkeypatch.delenv("OPENNASR_DISABLE_UPDATE_CHECK", raising=False)
+    monkeypatch.setattr(cycles, "FaaCycleProvider", Provider)
+    monkeypatch.setattr(cycles, "resolve_cache_dir", lambda _: tmp_path)
+
+    assert notify_if_update_available() is True
+    assert used == [True]

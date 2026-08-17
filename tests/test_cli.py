@@ -4,6 +4,7 @@ from openNASR.cli import build_parser
 from openNASR.cli import ExitCode
 from openNASR.cli import main
 from openNASR.cycles import UpdateStatus
+from openNASR.exceptions import DownloadError
 
 
 def test_cli_exposes_check_command_and_force_option():
@@ -55,6 +56,40 @@ def test_download_commands_delegate_to_cycle_manager(capsys):
     assert "downloaded: 2026-09-03" in capsys.readouterr().out
     assert main(["download", "2026-08-06"], manager=manager) == 0
     assert "downloaded: 2026-08-06" in capsys.readouterr().out
+
+
+def test_default_check_and_download_use_a_provider_and_report_typed_errors(
+    monkeypatch, capsys
+):
+    class Provider:
+        def __init__(self):
+            self.used = True
+
+        def discover(self):
+            raise OSError("offline")
+
+    monkeypatch.setattr("openNASR.cli.FaaCycleProvider", Provider)
+
+    assert main(["check", "--force"]) == ExitCode.UNAVAILABLE
+    assert main(["download", "latest"]) == ExitCode.UNAVAILABLE
+    error = capsys.readouterr().err
+    assert "FAA cycle metadata check failed" in error
+    assert "Traceback" not in error
+
+
+def test_cli_maps_configuration_and_validation_errors_without_tracebacks(capsys):
+    class ConfigurationManager:
+        def check_for_updates(self, *, force):
+            raise ValueError("provider configuration is invalid")
+
+    class ValidationManager:
+        def check_for_updates(self, *, force):
+            raise DownloadError("archive unavailable")
+
+    assert main(["check"], manager=ConfigurationManager()) == ExitCode.USAGE_ERROR
+    assert main(["check"], manager=ValidationManager()) == ExitCode.UNAVAILABLE
+    error = capsys.readouterr().err
+    assert "Traceback" not in error
 
 
 def test_list_reports_cached_archive_and_extracted_cycle(tmp_path, capsys):

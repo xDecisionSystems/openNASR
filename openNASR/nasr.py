@@ -1,10 +1,10 @@
 from pathlib import Path
-from datetime import datetime
+from datetime import date as date_cls, datetime
 from warnings import warn
 from zipfile import ZipFile
-from pandas import read_csv
+from pandas import DataFrame
 from .arb import ARB
-from .airspace import ClassAirspaceRepository
+from .airspace import ArtccRepository, ClassAirspaceRepository
 from .atc import AtcFacilityRepository, RadarRepository
 from .weather import AutomatedWeatherStationRepository, WeatherLocationRepository
 from .fss import FlightServiceStationRepository
@@ -19,10 +19,12 @@ from .routes import (
     StarProcedureRepository,
 )
 from .military import MilitaryOperationRepository
+from .cycles import CycleManager, locate_csv_source
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
 from .repository import AirportRepository, FixRepository, NavaidRepository
 from .schemas import SCHEMA_SUFFIX, SchemaCatalog
+from .tables import TableRepository, discover_tables
 import calendar
 # from .airport import AIRPORT
 
@@ -47,15 +49,28 @@ def timestampToYearDecimal(useDate):
 
 
 class NASR(dict):
-    def __init__(self, useDate=None, update=False, preloadAll=False, diagnostic=False):
+    def __init__(
+        self,
+        useDate=None,
+        update=False,
+        preloadAll=False,
+        diagnostic=False,
+        *,
+        cycle=None,
+        cache_dir=None,
+    ):
         if preloadAll:
             raise NotImplementedError("preloadAll is not yet supported")
         if update:
             # Code here will download new NASR data from FAA.
             pass
+        if useDate is not None and cycle is not None and useDate != cycle:
+            raise ValueError("useDate and cycle must agree when both are supplied")
+        requested_cycle = cycle if cycle is not None else useDate
         self.__diagnostic = diagnostic
-        self.setupFiles(useDate)
+        self.setupFiles(requested_cycle, cache_dir)
         self.class_airspaces = ClassAirspaceRepository(self)
+        self.artccs = ArtccRepository(self)
         self.atc_facilities = AtcFacilityRepository(self)
         self.radars = RadarRepository(self)
         self.weather_stations = AutomatedWeatherStationRepository(self)
@@ -75,155 +90,200 @@ class NASR(dict):
         self.fixes = FixRepository(self)
         self.navaids = NavaidRepository(self)
 
-    def setupFiles(self, useDate):
-        self.__module_fd = Path(__file__).parent
-        self.__data_zip_fd = self.__module_fd.joinpath("data/zip")
-        self.__data_fd = self.__module_fd.joinpath("data/uncompressed")
-
-        NASRZipPaths = list(self.__data_zip_fd.glob("*.zip"))
-        availableZips = [cFile.name for cFile in NASRZipPaths]
-        availableZips.sort()
-        availableDates = [cFile.stem.split("_")[-1] for cFile in NASRZipPaths]
-        if not availableDates:
-            self._raise_cycle_not_found(useDate)
+    def setupFiles(self, useDate, cache_dir=None):
+        manager = CycleManager(cache_dir)
+        self.__cache_dir = manager.cache_dir
 
         if useDate is None:
-            useDate = availableDates[-1]
-            useDateZip = availableZips[-1]
+            cycle = manager.latest()
         else:
-            requestedDate = useDate
-            earlierDates = [
-                (cZip, cDate)
-                for cZip, cDate in zip(availableZips, availableDates)
-                if cDate <= useDate
-            ]
-            if not earlierDates:
-                self._raise_cycle_not_found(useDate)
-            useDateZip, useDate = earlierDates[-1]
-            if useDate != requestedDate:
-                warn(
-                    "NASR database does not exist for %s; using %s instead"
-                    % (requestedDate, useDate),
-                    stacklevel=2,
+            try:
+                requested_date = date_cls.fromisoformat(useDate)
+            except ValueError as error:
+                raise CycleNotFoundError(
+                    f"Invalid NASR cycle date {useDate!r}; expected YYYY-MM-DD."
+                ) from error
+            found = manager.get(requested_date)
+            if found is None:
+                raise CycleNotFoundError(
+                    f"No NASR cycle found for requested date {useDate} in "
+                    f"{manager.cache_dir}. Import or download a matching "
+                    "28DaySubscription_Effective_YYYY-MM-DD.zip archive first."
                 )
+            cycle = found
 
-        self.__useDate = useDate
-        self.__useDateZip = self.__data_zip_fd.joinpath(useDateZip)
-        self.__useDateFolder = self.__data_fd.joinpath(self.__useDateZip.stem)
-        self.checkForDecompressed()
-        self.loadCSVData()
+        self.__useDate = cycle.effective_date.isoformat()
 
-    def _raise_cycle_not_found(self, requested_date):
-        requested = f" for requested date {requested_date}" if requested_date else ""
-        raise CycleNotFoundError(
-            f"No NASR cycle found{requested} in {self.__data_zip_fd}. "
-            "Add a 28DaySubscription_Effective_YYYY-MM-DD.zip file to that directory."
+        if cycle.data_path is None:
+            if cycle.archive_path is None:
+                raise CycleNotFoundError(
+                    f"No archive or extracted data found for NASR cycle "
+                    f"{self.__useDate} in {manager.cache_dir}."
+                )
+            cycle = manager.extract_archive(cycle.archive_path)
+
+        self.__useDateCSVFolder = self._resolve_csv_source(cycle.data_path)
+        available_tables = discover_tables(self.__useDateCSVFolder)
+        schema_files = [
+            name for name in available_tables if name.endswith(SCHEMA_SUFFIX)
+        ]
+        read_options = (
+            {"dtype": str, "keep_default_na": False, "na_filter": False}
+            if schema_files
+            else {}
+        )
+        self.__tables = TableRepository(
+            self.__useDateCSVFolder, read_options=read_options
         )
 
-    @property
-    def yearDecimal(self):
-        return timestampToYearDecimal(self.__useDate)
-
-    def checkForDecompressed(self):
-        if not self.__useDateFolder.exists():
-            warn(
-                "NASR archive is being decompressed: %s" % self.__useDateZip,
-                stacklevel=2,
-            )
-            with ZipFile(self.__useDateZip, "r") as zObject:
-                zObject.extractall(self.__useDateFolder)
-
-        CSVPath = self.__useDateFolder.joinpath("CSV_Data/")
-        CSVDecompressedFolder = [
-            cPath for cPath in CSVPath.glob("*/") if cPath.is_dir()
-        ]
-        if len(CSVDecompressedFolder):
-            self.__useDateCSVFolder = CSVDecompressedFolder[0]
-        else:
-            zipFilePath = list(CSVPath.glob("*.zip"))[0]
-            FilePathOut = CSVPath.joinpath(zipFilePath.name.split(".")[0])
-            with ZipFile(zipFilePath, "r") as zObject:
-                zObject.extractall(FilePathOut)
-            self.__useDateCSVFolder = FilePathOut
-
-    def loadCSVData(self):
-        csv_files = sorted(self.__useDateCSVFolder.glob("*.csv"))
-        schema_files = [path for path in csv_files if path.stem.endswith(SCHEMA_SUFFIX)]
-        catalog = None
-        registry = None
+        # Schema identification and the "every discovered table is modeled"
+        # check are whole-cycle questions independent of which table is
+        # requested first, so they run once here, eagerly, exactly as the
+        # legacy eager-construction behavior did. Per-table structural
+        # validation (`SchemaCatalog.validate`/`ValidationReport
+        # .require_compatible`) is comparatively expensive (it inspects a
+        # loaded DataFrame's columns) and is deferred to `_load_table`, so a
+        # schema mismatch on one table never blocks constructing `NASR` or
+        # using a different, unrelated table that passes validation.
         if schema_files:
             catalog = SchemaCatalog()
-            self.schema_id = catalog.identify_schema(self.__useDateCSVFolder)
+            schema_id = catalog.identify_schema(self.__useDateCSVFolder)
             registry = TableRegistry(catalog=catalog)
             operational_names = [
-                path.stem for path in csv_files if not path.stem.endswith(SCHEMA_SUFFIX)
+                name for name in available_tables if not name.endswith(SCHEMA_SUFFIX)
             ]
             registry.require_modeled(
                 operational_names,
                 cycle=self.__useDate,
                 diagnostic=self.__diagnostic,
             )
+            self.__schema_catalog: tuple[SchemaCatalog, str, TableRegistry] | None = (
+                catalog,
+                schema_id,
+                registry,
+            )
+        else:
+            self.__schema_catalog = None
 
-        for cFile in csv_files:
-            dfName = cFile.name.split(".")[0]
-            read_options = {}
-            if catalog is not None:
-                read_options = {
-                    "dtype": str,
-                    "keep_default_na": False,
-                    "na_filter": False,
-                }
-            try:
-                self[dfName] = read_csv(cFile, index_col=False, **read_options)
-            except Exception as error:
-                # handle the exception
-                warn(
-                    "Unable to read %s with the default CSV decoder (%s); retrying "
-                    "with encoding_errors='backslashreplace'." % (cFile, error),
-                    stacklevel=2,
-                )
-                self[dfName] = read_csv(
-                    cFile,
-                    index_col=False,
-                    encoding_errors="backslashreplace",
-                    **read_options,
-                )
-            if catalog is not None and not dfName.endswith(SCHEMA_SUFFIX):
-                if dfName in registry.supported_tables():
-                    report = catalog.validate(dfName, self[dfName], self.schema_id)
-                    if not self.__diagnostic:
-                        table_spec = registry.table(dfName)
-                        report.require_compatible(
-                            cycle=self.__useDate,
-                            table_spec=table_spec,
-                            record_class=table_spec.record_type,
-                        )
+    @staticmethod
+    def _resolve_csv_source(data_path: Path) -> Path:
+        """Return a directory of CSVs, extracting one more nested archive if needed."""
 
-        if "APT_BASE" in self and "ARPT_ID" not in self["APT_BASE"].columns:
+        source = locate_csv_source(data_path)
+        if source.is_dir():
+            return source
+        extracted = source.parent / source.stem
+        if not extracted.exists():
+            warn(
+                "NASR archive is being decompressed: %s" % source,
+                stacklevel=3,
+            )
+            with ZipFile(source, "r") as zObject:
+                zObject.extractall(extracted)
+        return extracted
+
+    @property
+    def yearDecimal(self):
+        return timestampToYearDecimal(self.__useDate)
+
+    def _load_table(self, name: str) -> DataFrame:
+        """Load one table and, if the cycle has a known schema, validate it.
+
+        Only this table's own structural validation happens here; whole-cycle
+        schema identification and the modeled-table check already happened
+        once, eagerly, in :meth:`setupFiles`.
+        """
+
+        frame = self.__tables.load(name)
+        if self.__schema_catalog is not None and not name.endswith(SCHEMA_SUFFIX):
+            catalog, schema_id, registry = self.__schema_catalog
+            if name in registry.supported_tables():
+                report = catalog.validate(name, frame, schema_id)
+                if not self.__diagnostic:
+                    table_spec = registry.table(name)
+                    report.require_compatible(
+                        cycle=self.__useDate,
+                        table_spec=table_spec,
+                        record_class=table_spec.record_type,
+                    )
+        if name == "APT_BASE" and "ARPT_ID" not in frame.columns:
             raise SchemaMismatchError(
                 "APT_BASE is missing required identifier column ARPT_ID",
                 cycle=self.__useDate,
                 table="APT_BASE",
                 missing_columns=("ARPT_ID",),
             )
+        return frame
+
+    def table(self, name: str, *, copy: bool = False) -> DataFrame:
+        """Return a lazily loaded, validated, per-table-cached DataFrame.
+
+        Storage lives entirely in the wrapped :class:`TableRepository`; this
+        instance's own ``dict`` body is never populated. Every ``Mapping``
+        method below delegates so ``nasr["APT_BASE"]``, ``"APT_BASE" in
+        nasr``, ``nasr.keys()``, and similar legacy usage keep working.
+
+        Validation (schema drift, the ``APT_BASE`` identifier check) runs
+        only the first time a table is loaded; :class:`TableRepository`
+        itself caches the DataFrame, so a validated table is never
+        re-validated on subsequent access.
+        """
+
+        already_loaded = self.__tables.is_loaded(name)
+        frame = self.__tables.load(name) if already_loaded else self._load_table(name)
+        return frame.copy(deep=True) if copy else frame
+
+    def is_loaded(self, name: str) -> bool:
+        return self.__tables.is_loaded(name)
+
+    def __getitem__(self, name):
+        return self.table(name)
+
+    def __contains__(self, name):
+        try:
+            return name.strip().upper() in self.__tables.available_tables
+        except AttributeError:
+            return False
+
+    def keys(self):
+        return self.__tables.available_tables
+
+    def __iter__(self):
+        return iter(self.__tables.available_tables)
+
+    def __len__(self):
+        return len(self.__tables.available_tables)
+
+    def get(self, name, default=None):
+        try:
+            return self[name]
+        except SchemaMismatchError:
+            raise
+        except Exception:
+            return default
 
     def isAirport(self, airport: str, forceFAA: bool = True):
         """Return whether an airport exists and its matched identifier details.
 
         Returns ``(exists, matched_column, faa_identifier)``. When
         ``forceFAA`` is true, related-table callers receive ``ARPT_ID`` as the
-        matched column and the FAA identifier as the lookup value.
+        matched column and the FAA identifier as the lookup value. FAA and
+        ICAO identifiers are matched case-insensitively, consistent with the
+        modern ``nasr.airport()``/``nasr.airports`` facade.
         """
         isAirportBool = False
         airportIDCol = None
         ARPT_ID = None
+        normalized_airport = str(airport).strip().upper()
         for useCol in ["ARPT_ID", "ICAO_ID"]:
-            if any(self["APT_BASE"][useCol] == airport):
+            column = self["APT_BASE"][useCol]
+            matches = column.map(lambda value: str(value).strip().upper()) == (
+                normalized_airport
+            )
+            if any(matches):
                 isAirportBool = True
                 airportIDCol = useCol
-                ARPT_ID = self["APT_BASE"][self["APT_BASE"][useCol] == airport][
-                    "ARPT_ID"
-                ].tolist()[0]
+                ARPT_ID = self["APT_BASE"][matches]["ARPT_ID"].tolist()[0]
                 break
         if forceFAA:
             airportIDCol = "ARPT_ID"
@@ -240,6 +300,10 @@ class NASR(dict):
     def navaid(self, identifier: str, **filters):
         """Return the navaid selected by :attr:`navaids`."""
         return self.navaids.get(identifier, **filters)
+
+    def artcc(self, identifier: str, **filters):
+        """Return the ARTCC selected by :attr:`artccs`."""
+        return self.artccs.get(identifier, **filters)
 
     def airway(self, identifier: tuple[str, str, str]):
         """Return the airway selected by its complete FAA composite key."""
@@ -301,10 +365,22 @@ class NASR(dict):
         )
 
     def isFix(self, fix: str):
-        return fix in self["FIX_BASE"]["FIX_ID"].to_list()
+        normalized_fix = str(fix).strip().upper()
+        return (
+            normalized_fix
+            in (
+                self["FIX_BASE"]["FIX_ID"].map(lambda value: str(value).strip().upper())
+            ).to_list()
+        )
 
     def isNavaid(self, nav: str):
-        return nav in self["NAV_BASE"]["NAV_ID"].to_list()
+        normalized_nav = str(nav).strip().upper()
+        return (
+            normalized_nav
+            in (
+                self["NAV_BASE"]["NAV_ID"].map(lambda value: str(value).strip().upper())
+            ).to_list()
+        )
 
     def isStar(self, star: str):
         return (

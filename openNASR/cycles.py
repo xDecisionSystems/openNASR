@@ -13,6 +13,8 @@ import json
 import hashlib
 import tempfile
 import sys
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlparse
 from urllib.request import urlopen
 from datetime import date, datetime, timedelta, timezone
 from dataclasses import dataclass
@@ -30,6 +32,46 @@ CACHE_DIR_ENV_VAR = "OPENNASR_CACHE_DIR"
 ARCHIVE_NAME_PATTERN = re.compile(
     r"^28DaySubscription_Effective_(?P<effective_date>\d{4}-\d{2}-\d{2})\.zip$"
 )
+FAA_NASR_SUBSCRIPTION_URL = (
+    "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/"
+)
+FAA_LANDING_HOSTS = frozenset({"www.faa.gov"})
+FAA_ARCHIVE_HOSTS = frozenset({"nfdc.faa.gov"})
+
+
+class _CurrentSectionLinkParser(HTMLParser):
+    """Collect links in the FAA landing page's current-cycle section only."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.links: list[str] = []
+        self._heading_level: int | None = None
+        self._heading_text: list[str] = []
+        self._in_current_section = False
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+            self._heading_level = int(tag[1])
+            self._heading_text = []
+        elif tag == "a" and self._in_current_section:
+            href = dict(attrs).get("href")
+            if href:
+                self.links.append(href)
+
+    def handle_data(self, data: str) -> None:
+        if self._heading_level is not None:
+            self._heading_text.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._heading_level is None or tag != f"h{self._heading_level}":
+            return
+        heading = " ".join(self._heading_text).strip().casefold()
+        if "current" in heading:
+            self._in_current_section = True
+        elif self._in_current_section:
+            self._in_current_section = False
+        self._heading_level = None
+        self._heading_text = []
 
 
 @dataclass(frozen=True)
@@ -51,6 +93,18 @@ class RemoteCycle:
 
 
 @dataclass(frozen=True)
+class RemovalResult:
+    """Which locally cached representations of a cycle were actually removed."""
+
+    removed_archive: bool
+    removed_extracted: bool
+
+    @property
+    def removed_anything(self) -> bool:
+        return self.removed_archive or self.removed_extracted
+
+
+@dataclass(frozen=True)
 class UpdateStatus:
     newest_remote_cycle: date
     newest_cached_cycle: date | None
@@ -61,18 +115,83 @@ class UpdateStatus:
 
 
 class FaaCycleProvider:
-    """Metadata-only FAA cycle provider with an injectable transport."""
+    """Discover the FAA's currently advertised full NASR subscription.
 
-    def __init__(self, metadata_url: str, opener=urlopen) -> None:
-        self.metadata_url = metadata_url
+    Discovery deliberately follows the FAA's public two-page flow: the
+    official subscription landing page's *Current* section supplies a dated
+    FAA detail page, and that detail page supplies the explicit NFDC ZIP URL.
+    It never infers a future cycle from the 28-day cadence or selects Preview
+    material.
+    """
+
+    def __init__(
+        self, landing_url: str = FAA_NASR_SUBSCRIPTION_URL, opener=urlopen
+    ) -> None:
+        self.landing_url = landing_url
         self.opener = opener
 
     def discover(self) -> RemoteCycle:
-        with self.opener(self.metadata_url, timeout=2) as response:
-            metadata = json.loads(response.read().decode("utf-8"))
-        return RemoteCycle(
-            effective_date=date.fromisoformat(metadata["effective_date"]),
-            archive_url=metadata["archive_url"],
+        landing = self._read_text(self.landing_url)
+        effective_date, detail_url = self._current_detail(landing)
+        detail = self._read_text(detail_url)
+        archive_url = self._archive_url(detail, detail_url, effective_date)
+        return RemoteCycle(effective_date=effective_date, archive_url=archive_url)
+
+    def _read_text(self, url: str) -> str:
+        with self.opener(url, timeout=2) as response:
+            return response.read().decode("utf-8")
+
+    def _current_detail(self, landing: str) -> tuple[date, str]:
+        parser = _CurrentSectionLinkParser()
+        parser.feed(landing)
+        for href in parser.links:
+            detail_url = urljoin(self.landing_url, href)
+            parsed = urlparse(detail_url)
+            match = re.search(r"/NASR_Subscription/(\d{4}-\d{2}-\d{2})/?$", parsed.path)
+            if (
+                parsed.scheme == "https"
+                and parsed.hostname in FAA_LANDING_HOSTS
+                and match is not None
+                and "preview" not in detail_url.casefold()
+            ):
+                try:
+                    return date.fromisoformat(match.group(1)), detail_url
+                except ValueError:
+                    continue
+        raise ValueError(
+            "The FAA subscription page did not publish a valid Current NASR cycle link"
+        )
+
+    @staticmethod
+    def _archive_url(detail: str, detail_url: str, effective_date: date) -> str:
+        # A detail page has no Current section; collect every explicit link.
+        class DetailLinkParser(HTMLParser):
+            def __init__(self) -> None:
+                super().__init__(convert_charrefs=True)
+                self.links: list[str] = []
+
+            def handle_starttag(self, tag: str, attrs) -> None:
+                if tag == "a":
+                    href = dict(attrs).get("href")
+                    if href:
+                        self.links.append(href)
+
+        detail_parser = DetailLinkParser()
+        detail_parser.feed(detail)
+        expected_name = f"28DaySubscription_Effective_{effective_date.isoformat()}.zip"
+        for href in detail_parser.links:
+            archive_url = urljoin(detail_url, href)
+            parsed = urlparse(archive_url)
+            if (
+                parsed.scheme == "https"
+                and parsed.hostname in FAA_ARCHIVE_HOSTS
+                and Path(parsed.path).name == expected_name
+                and "/webContent/28DaySub/" in parsed.path
+            ):
+                return archive_url
+        raise ValueError(
+            "The FAA cycle detail page did not publish the expected "
+            "full-subscription NFDC ZIP"
         )
 
 
@@ -163,7 +282,9 @@ def notify_if_update_available(manager=None) -> bool:
     if os.environ.get("OPENNASR_DISABLE_UPDATE_CHECK") == "1":
         return False
     try:
-        status = (manager or CycleManager()).check_for_updates()
+        status = (
+            manager or CycleManager(provider=FaaCycleProvider())
+        ).check_for_updates()
     except Exception:
         return False
     if status.update_available:
@@ -281,8 +402,13 @@ class CycleManager:
         *,
         archive: bool = True,
         extracted: bool = True,
-    ) -> None:
-        """Remove selected local representations of an exact cached cycle."""
+    ) -> RemovalResult:
+        """Remove selected local representations of an exact cached cycle.
+
+        Returns which representations actually existed and were removed, so
+        callers never need to duplicate this method's path construction just
+        to report what happened.
+        """
 
         if not archive and not extracted:
             raise ValueError("At least one of archive or extracted must be True")
@@ -290,11 +416,18 @@ class CycleManager:
         archive_path = self.archives_dir / (
             f"28DaySubscription_Effective_{effective_date}.zip"
         )
-        if archive:
-            archive_path.unlink(missing_ok=True)
+        removed_archive = False
+        if archive and archive_path.is_file():
+            archive_path.unlink()
+            removed_archive = True
         data_path = self.cycles_dir / effective_date.isoformat()
+        removed_extracted = False
         if extracted and data_path.is_dir():
             rmtree(data_path)
+            removed_extracted = True
+        return RemovalResult(
+            removed_archive=removed_archive, removed_extracted=removed_extracted
+        )
 
     def check_for_updates(self, *, force: bool = False) -> UpdateStatus:
         """Return remote-cycle status, reusing successful metadata for 24 hours."""
@@ -506,11 +639,13 @@ __all__ = [
     "Cycle",
     "CycleManager",
     "FaaCycleProvider",
+    "FAA_NASR_SUBSCRIPTION_URL",
     "parse_archive_date",
     "locate_csv_source",
     "notify_if_update_available",
     "read_cycle_date",
     "RemoteCycle",
+    "RemovalResult",
     "UpdateStatus",
     "resolve_cache_dir",
     "sha256_file",

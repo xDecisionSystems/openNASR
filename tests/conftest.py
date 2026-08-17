@@ -9,7 +9,6 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import pytest
 
 from openNASR.nasr import NASR
-import openNASR.nasr as nasr_module
 
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
@@ -47,22 +46,19 @@ def fixture_cycle_archive(extracted_cycle: Path, tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def fixture_nasr(
-    fixture_cycle_archive: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> tuple[NASR, Path]:
+def fixture_nasr(fixture_cycle_archive: Path, tmp_path: Path) -> tuple[NASR, Path]:
     """Construct ``NASR`` from the Task 2.1 archive in a temporary cache."""
 
     cache_root = tmp_path / "cycle_cache"
-    zip_dir = cache_root / "data" / "zip"
-    zip_dir.mkdir(parents=True)
-    copyfile(fixture_cycle_archive, zip_dir / fixture_cycle_archive.name)
+    archives_dir = cache_root / "archives"
+    archives_dir.mkdir(parents=True)
+    copyfile(fixture_cycle_archive, archives_dir / fixture_cycle_archive.name)
 
-    monkeypatch.setattr(nasr_module, "__file__", str(cache_root / "nasr.py"))
-    return NASR(), cache_root
+    return NASR(cache_dir=cache_root), cache_root
 
 
 @pytest.fixture
-def make_nasr_from_fixture(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def make_nasr_from_fixture(tmp_path: Path):
     """Construct ``NASR`` against a synthetic fixture in a temporary cache."""
 
     def make(fixture_name: str) -> tuple[NASR, Path]:
@@ -73,12 +69,11 @@ def make_nasr_from_fixture(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
 
         source = FIXTURE_ROOT / fixture_name
         cache_root = tmp_path / fixture_name.replace("/", "_")
-        zip_dir = cache_root / "data" / "zip"
-        zip_dir.mkdir(parents=True)
-        archive = zip_dir / f"28DaySubscription_Effective_{cycle_date}.zip"
+        archives_dir = cache_root / "archives"
+        archives_dir.mkdir(parents=True)
+        archive = archives_dir / f"28DaySubscription_Effective_{cycle_date}.zip"
         _create_fixture_archive(source, archive)
 
-        monkeypatch.setattr(nasr_module, "__file__", str(cache_root / "nasr.py"))
-        return NASR(), cache_root
+        return NASR(cache_dir=cache_root), cache_root
 
     return make
