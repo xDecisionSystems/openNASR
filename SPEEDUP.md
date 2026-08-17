@@ -493,14 +493,21 @@ yet measured remain audit findings and must be profiled before being added.
 
 | Rank | Module / public lookup | Cold / warm evidence | Key columns to index | Exact regression test |
 | ---: | --- | ---: | --- | --- |
-| 1 | `fix.py`/`nasr.py`: `FIX("AABEE", nasr)` (representative for the legacy `FIX`/`Airport`/`NAVAID` and `is*` batch in T3.4) | 35.403ms / 32.780ms | `FIX_BASE.FIX_ID`; shared legacy helper must also cover `APT_BASE.(ARPT_ID, ICAO_ID)` and `NAV_BASE.NAV_ID` | `tests/test_milestone_1_terra.py::test_legacy_fix_constructor_resolves_identifier_case_insensitively` (plus the adjacent airport/navaid compatibility tests) |
-| 2 | `departure.py`: `nasr.preferred_routes.get(("ABE", "ACY", "TEC", "1"))` | 28.573ms / 29.794ms | `PFR_BASE`/`PFR_SEG`: `(ORIGIN_ID, DSTN_ID, PFR_TYPE_CODE, ROUTE_NO)`; `PFR_RMT_FMT`: `(Orig, Dest, Type, Seq)` | `tests/test_preferred_routes.py::test_preferred_route_orders_segments_and_attaches_format` |
-| 3 | `locations.py`: `nasr.location_identifiers.get(("US", "00A", "AEA", "PA", "BENSALEM", "LANDING FACILITY", "H"))` | 21.672ms / 21.970ms | `(COUNTRY_CODE, LOC_ID, REGION_CODE, STATE, CITY, LID_GROUP, FAC_TYPE)` | `tests/test_locations.py::test_location_identifier_uses_full_composite_key` |
-| 4 | `communications.py`: `nasr.frequencies.get(("00A", "00A", "HELIPORT", "PA", "US", "122.9", "", "CTAF"))` | 12.872ms / 12.565ms | `(FACILITY, SERVICED_FACILITY, SERVICED_SITE_TYPE, SERVICED_STATE, SERVICED_COUNTRY, FREQ, SECTORIZATION, FREQ_USE)` | `tests/test_communications.py::test_communication_outlet_and_frequency_repositories_expose_rich_records` |
-| 5 | `departure.py`: `nasr.coded_departure_routes.find("ABECLTGV")` | 13.818ms / 10.606ms | `CDR.RCode` | `tests/test_coded_departure_routes.py::test_coded_departure_route_repository_returns_typed_record` |
+| 1 | `airway.py`: `nasr.airways.get(("N", "C", "A216"))` | 147.533ms / 147.626ms | `(REGULATORY, AWY_LOCATION, AWY_ID)` across `AWY_BASE`/`AWY_SEG_ALT`; preserve segment and related fix/navaid order | `tests/test_airways.py::test_airway_repository_orders_segments_and_exposes_altitudes` |
+| 2 | `holding.py`: `nasr.holding_patterns.get(("AABEE INT*GA*K7", "1", "GA", "US"))` | 39.512ms / 40.916ms | `(HP_NAME, HP_NO, STATE_CODE, COUNTRY_CODE)` across `HPF_BASE`/`HPF_CHRT`/`HPF_RMK`/`HPF_SPD_ALT` | `tests/test_holding_patterns.py::test_holding_pattern_uses_full_key_and_orders_remarks` |
+| 3 | `fix.py`/`nasr.py`: `FIX("AABEE", nasr)` (representative for the legacy `FIX`/`Airport`/`NAVAID` and `is*` batch in T3.4) | 35.403ms / 32.780ms | `FIX_BASE.FIX_ID`; shared legacy helper must also cover `APT_BASE.(ARPT_ID, ICAO_ID)` and `NAV_BASE.NAV_ID` | `tests/test_milestone_1_terra.py::test_legacy_fix_constructor_resolves_identifier_case_insensitively` (plus the adjacent airport/navaid compatibility tests) |
+| 4 | `departure.py`: `nasr.preferred_routes.get(("ABE", "ACY", "TEC", "1"))` | 28.573ms / 29.794ms | `PFR_BASE`/`PFR_SEG`: `(ORIGIN_ID, DSTN_ID, PFR_TYPE_CODE, ROUTE_NO)`; `PFR_RMT_FMT`: `(Orig, Dest, Type, Seq)` | `tests/test_preferred_routes.py::test_preferred_route_orders_segments_and_attaches_format` |
+| 5 | `locations.py`: `nasr.location_identifiers.get(("US", "00A", "AEA", "PA", "BENSALEM", "LANDING FACILITY", "H"))` | 21.672ms / 21.970ms | `(COUNTRY_CODE, LOC_ID, REGION_CODE, STATE, CITY, LID_GROUP, FAC_TYPE)` | `tests/test_locations.py::test_location_identifier_uses_full_composite_key` |
+| 6 | `military.py`: `nasr.military_training_routes.get(("IR", "002"))` | 19.591ms / 20.905ms | `(ROUTE_TYPE_CODE, ROUTE_ID)` across `MTR_BASE` and its agency/point/SOP/terrain/width children | `tests/test_military.py::test_military_training_route_repository_and_singular_facade_are_equivalent` |
+| 7 | `atc.py`: `nasr.atc_facilities.get(("24226.1", "A", "NON-ATCT", "TX", "00R", "LIVINGSTON", "US"))` | 14.070ms / 14.206ms | `(SITE_NO, SITE_TYPE_CODE, FACILITY_TYPE, STATE_CODE, FACILITY_ID, CITY, COUNTRY_CODE)` across `ATC_BASE` and child tables | `tests/test_atc.py::test_atc_facility_collects_matching_child_records_in_remark_order` |
+| 8 | `communications.py`: `nasr.frequencies.get(("00A", "00A", "HELIPORT", "PA", "US", "122.9", "", "CTAF"))` | 12.872ms / 12.565ms | `(FACILITY, SERVICED_FACILITY, SERVICED_SITE_TYPE, SERVICED_STATE, SERVICED_COUNTRY, FREQ, SECTORIZATION, FREQ_USE)` | `tests/test_communications.py::test_communication_outlet_and_frequency_repositories_expose_rich_records` |
+| 9 | `departure.py`: `nasr.coded_departure_routes.find("ABECLTGV")` | 13.818ms / 10.606ms | `CDR.RCode` | `tests/test_coded_departure_routes.py::test_coded_departure_route_repository_returns_typed_record` |
 
-The manifest intentionally does not authorize a blanket T3.3 rewrite of all
-remaining modules. The measured `ArtccRepository` `groupby` is also excluded:
+The manifest intentionally does not authorize a blanket T3.3 rewrite. A
+second real-cycle screen admitted only the four newly ranked paths above.
+Representative warm medians below the 10ms cutoff remain audit-only: FSS
+5.895ms, weather location 7.247ms, STAR 8.631ms, class airspace 1.605ms, and
+MAA 4.397ms. The measured `ArtccRepository` `groupby` is also excluded:
 on the largest real `ARB_SEG` location (`ZAN`, 351 of 2,687 rows), it creates
 three source-ordered groups in 0.822ms median (100 repetitions). Its
 DataFrame groups are the required input to `Boundary`, not a persistent
@@ -533,7 +540,8 @@ in file-alphabetical order.
   shared primitive only for the five measured manifest paths below;
   T3.2/T3.4 remain responsible for applying it.
   Dependencies: T2.1 (reuse the same underlying technique).
-- [x] **T3.2 — Agent model: Terra. Done (2026-08-17).** Applied T3.1's
+- [x] **T3.2 — Agent model: Terra. Implementation done; Gate 3 performance
+  verification incomplete (2026-08-17).** Applied T3.1's
   position-index helper to the manifest-approved high-value paths only:
   `CodedDepartureRouteRepository` (`CDR`),
   `LocationIdentifierRepository` (`LID`), `FrequencyRepository` (`FRQ`),
@@ -545,12 +553,18 @@ in file-alphabetical order.
   3.22 ms (PFR), all more than an order of magnitude below the 10.606–29.794
   ms manifest baseline; cold measurements include one index build per
   queried column (133.848–228.763 ms) and are not compared cross-host.
+  Sol's same-host verification measured CDR 0.908ms (11.69x) and LID 1.264ms
+  (17.38x), but FRQ 1.665ms (7.55x) and PFR 3.313ms (8.99x). Results are all
+  materially faster, but FRQ/PFR do not yet meet Gate 3's stated 10x target;
+  they require a confirming rerun/optimization or an explicit gate-policy
+  decision before approval.
   Dependencies: T3.1.
-- [ ] **T3.3 — Agent model: Terra.** Apply T3.1's helper to the remaining
-  domain-module repositories: `atc.py`, `holding.py`, `fss.py`,
-  `military.py`, `weather.py`, `arrivals.py`, `airway.py`, and
-  `airspace.py`'s `ClassAirspaceRepository`/`ArtccRepository`/
-  `MaaRepository`/`ParachuteJumpAreaRepository`.
+- [ ] **T3.3 — Agent model: Terra. Bounded disposition complete;
+  implementation pending.** Apply T3.1's helper only to the four additional
+  manifest-qualified repositories: `airway.py`, `holding.py`, `military.py`'s
+  military-training-route path, and `atc.py`'s facility path. FSS, weather,
+  arrivals, and the measured airspace paths remain audit findings because
+  their representative warm calls are below the 10ms profiler threshold.
   Acceptance: same as T3.2, applied to each remaining repository.
   Dependencies: T3.1, T3.2 (land the highest-value tables first so the
   shared helper is proven at scale before the long tail).
@@ -581,6 +595,11 @@ in file-alphabetical order.
 improvement for every repository/constructor covered, with no test
 regression across the full suite (not just `tests/test_flightplan.py` —
 this phase touches roughly a dozen modules with their own test files).
+
+**Gate 3 — OPEN (2026-08-17).** Do not sign off until the four bounded T3.3
+additions and T3.4 land, L3.5 covers every touched path, and the canonical
+rerun resolves the FRQ/PFR shortfall recorded under T3.2. No unranked module
+outside the nine-entry manifest is authorized for Phase 3 implementation.
 
 ## Phase 4 — Index the procedure tables (`openNASR/flightplan.py`)
 
