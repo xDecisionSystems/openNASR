@@ -178,16 +178,26 @@ def _plot_points(
     *,
     marker: str,
     color: str,
+    label: str,
 ) -> None:
     if frame is None or not {"LAT_DECIMAL", "LONG_DECIMAL"}.issubset(frame.columns):
         return
+    plotted = False
     for row in frame.to_dict(orient="records"):
         try:
             point = Point(float(row["LONG_DECIMAL"]), float(row["LAT_DECIMAL"]))
         except (TypeError, ValueError):
             continue
         if geometry.covers(point):
-            axes.plot(point.x, point.y, marker=marker, color=color, markersize=4)
+            axes.plot(
+                point.x,
+                point.y,
+                marker=marker,
+                color=color,
+                markersize=4,
+                label=None if plotted else label,
+            )
+            plotted = True
 
 
 def _plot_boundary(axes: Any, geometry: BaseGeometry, **kwargs: Any) -> None:
@@ -222,6 +232,7 @@ def plot_airspace(
     plot_airports: bool = True,
     plot_fixes: bool = True,
     plot_airnavs: bool = True,
+    plot_legend: bool = True,
 ) -> tuple[Any, Any]:
     """Plot a boundary with contained airports and intersecting airway segments.
 
@@ -237,6 +248,9 @@ def plot_airspace(
     plot_high_airways, plot_low_airways, plot_airports, plot_fixes, plot_airnavs:
         Toggle high-altitude J/Q airways, low airways, airports, fixes, and
         navaids respectively. All default to ``True``.
+    plot_legend:
+        Draw a legend for the layers represented in the plot. Defaults to
+        ``True``.
 
     Returns
     -------
@@ -255,16 +269,35 @@ def plot_airspace(
     _plot_boundary(axes, geometry, color="black", linewidth=1.5, label="Airspace")
 
     if plot_airports:
-        _plot_points(axes, nasr.get("APT_BASE"), geometry, marker="o", color="tab:blue")
+        _plot_points(
+            axes,
+            nasr.get("APT_BASE"),
+            geometry,
+            marker="o",
+            color="tab:blue",
+            label="Airports",
+        )
     if plot_fixes:
         _plot_points(
-            axes, nasr.get("FIX_BASE"), geometry, marker="x", color="tab:green"
+            axes,
+            nasr.get("FIX_BASE"),
+            geometry,
+            marker="x",
+            color="tab:green",
+            label="Fixes",
         )
     if plot_airnavs:
         _plot_points(
-            axes, nasr.get("NAV_BASE"), geometry, marker="^", color="tab:purple"
+            axes,
+            nasr.get("NAV_BASE"),
+            geometry,
+            marker="^",
+            color="tab:purple",
+            label="Navaids",
         )
 
+    airway_labels = {"high": "High-altitude airways", "low": "Low-altitude airways"}
+    drawn_levels: set[str] = set()
     for level, segment in _airway_segments(nasr):
         enabled = plot_high_airways if level == "high" else plot_low_airways
         if enabled and geometry.intersects(segment):
@@ -272,8 +305,17 @@ def plot_airspace(
             for line in _line_parts(clipped):
                 x_values, y_values = line.xy
                 color = "tab:red" if level == "high" else "tab:orange"
-                axes.plot(x_values, y_values, color=color, linewidth=1)
+                axes.plot(
+                    x_values,
+                    y_values,
+                    color=color,
+                    linewidth=1,
+                    label=None if level in drawn_levels else airway_labels[level],
+                )
+                drawn_levels.add(level)
 
+    if plot_legend:
+        axes.legend()
     axes.set_xlabel("Longitude")
     axes.set_ylabel("Latitude")
     axes.set_aspect("equal", adjustable="datalim")

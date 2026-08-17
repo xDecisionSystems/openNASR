@@ -50,6 +50,11 @@ def test_plot_airspace_draws_contained_airports_and_intersecting_airways():
     assert len(axes.lines) == 3  # boundary, one airport, and one airway segment
     assert list(axes.lines[-1].get_xdata()) == [0.0, 2.0]
     assert list(axes.lines[-1].get_ydata()) == [1.0, 1.0]
+    assert [item.get_text() for item in axes.get_legend().get_texts()] == [
+        "Airspace",
+        "Airports",
+        "High-altitude airways",
+    ]
 
 
 def test_plot_airspace_visibility_switches_filter_airway_levels_and_points():
@@ -114,6 +119,17 @@ def test_plot_airspace_visibility_switches_filter_airway_levels_and_points():
 def test_plot_airspace_rejects_objects_without_geometry():
     with pytest.raises(TypeError, match="Shapely geometry"):
         plot_airspace({}, object())
+
+
+def test_plot_airspace_can_hide_its_legend():
+    pytest.importorskip("matplotlib").use("Agg")
+    _, axes = plot_airspace(
+        {"APT_BASE": pd.DataFrame()},
+        Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+        plot_legend=False,
+    )
+
+    assert axes.get_legend() is None
 
 
 def test_plot_flight_plan_draws_the_resolved_route():

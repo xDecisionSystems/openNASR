@@ -314,6 +314,7 @@ object such as `high_boundary`. Install the optional plotting dependency with
 `pip install -e '.[plot]'`.
 Set `plot_high_airways`, `plot_low_airways`, `plot_airports`, `plot_fixes`, or
 `plot_airnavs` to `False` to hide a layer; all are enabled by default.
+Set `plot_legend=False` to hide the default layer legend.
 
 Use `plot_airport_procedures(nasr, "BWI")` to draw an airport's runways,
 departure procedures, and standard terminal arrival routes.
