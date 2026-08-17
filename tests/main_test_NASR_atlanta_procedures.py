@@ -11,6 +11,10 @@ import argparse
 from pathlib import Path
 
 
+# Set to False to render in longitude/latitude instead of east/north NM.
+PLOT_IN_NAUTICAL_MILES = True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Plot ATL airport runways and arrival/departure procedures."
@@ -33,8 +37,14 @@ def main() -> None:
     from openNASR import NASR, plot_airport_procedures
 
     nasr = NASR()
-    figure, axes = plot_airport_procedures(nasr, "ATL")
-    axes.set_title("ATL: runways, departures, and arrivals")
+    figure, axes = plot_airport_procedures(
+        nasr,
+        "ATL",
+        project_to_nm=PLOT_IN_NAUTICAL_MILES,
+        plot_legend=True,
+    )
+    units = "nautical miles" if PLOT_IN_NAUTICAL_MILES else "longitude/latitude"
+    axes.set_title(f"ATL: runways, departures, and arrivals ({units})")
     figure.savefig(args.output, dpi=200, bbox_inches="tight")
     print(f"wrote {args.output.resolve()} ({len(axes.lines)} line segments)")
     if args.show:
