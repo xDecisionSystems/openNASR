@@ -27,6 +27,63 @@ class _Waypoint:
     longitude: float
 
 
+class _WaypointResolver:
+    """Build one lossless lookup across the waypoint tables for a route."""
+
+    def __init__(self, tables: Mapping[str, DataFrame]) -> None:
+        self._candidates: dict[str, dict[str, list[_Waypoint]]] = {}
+        for table, columns in _WAYPOINT_TABLES:
+            frame = tables.get(table)
+            if frame is None:
+                continue
+            candidates: dict[str, list[_Waypoint]] = {}
+            for row in frame.to_dict(orient="records"):
+                coordinates = _coordinates(row)
+                if coordinates is None:
+                    continue
+                for column in columns:
+                    identifier = _text(row.get(column, ""))
+                    if identifier:
+                        candidates.setdefault(identifier, []).append(
+                            _Waypoint(identifier, *coordinates)
+                        )
+            self._candidates[table] = candidates
+
+    def resolve(
+        self, identifier: str, *, preferred_tables: tuple[str, ...] = ()
+    ) -> _Waypoint:
+        for table in preferred_tables:
+            preferred = tuple(
+                dict.fromkeys(self._candidates.get(table, {}).get(identifier, ()))
+            )
+            if len(preferred) == 1:
+                return preferred[0]
+            if len(preferred) > 1:
+                raise AmbiguousRecordError(
+                    entity_type="Flight-plan waypoint",
+                    identifier=identifier,
+                    candidates=preferred,
+                )
+        unique = tuple(
+            dict.fromkeys(
+                candidate
+                for candidates in self._candidates.values()
+                for candidate in candidates.get(identifier, ())
+            )
+        )
+        if not unique:
+            raise RecordNotFoundError(
+                entity_type="Flight-plan waypoint", identifier=identifier
+            )
+        if len(unique) > 1:
+            raise AmbiguousRecordError(
+                entity_type="Flight-plan waypoint",
+                identifier=identifier,
+                candidates=unique,
+            )
+        return unique[0]
+
+
 def _text(value: object) -> str:
     return str(value).strip().upper()
 
@@ -54,8 +111,12 @@ def _waypoint(
     identifier: str,
     *,
     preferred_tables: tuple[str, ...] = (),
+    resolver: _WaypointResolver | None = None,
 ) -> _Waypoint:
     """Resolve one waypoint, applying filed-route position context first."""
+
+    if resolver is not None:
+        return resolver.resolve(identifier, preferred_tables=preferred_tables)
 
     candidates_by_table: dict[str, list[_Waypoint]] = {}
     for table, columns in _WAYPOINT_TABLES:
@@ -115,10 +176,12 @@ def _airway_vertices(
 
     matches: list[tuple[str, ...]] = []
     for record in base.to_dict(orient="records"):
-        if (
-            _text(record.get("AWY_DESIGNATION", "")) != match["designation"]
-            or _text(record.get("AWY_ID", "")) != match["identifier"]
-        ):
+        if _text(record.get("AWY_DESIGNATION", "")) != match["designation"] or _text(
+            record.get("AWY_ID", "")
+        ) not in {
+            match["identifier"],
+            f"{match['designation']}{match['identifier']}",
+        }:
             continue
         key = tuple(
             record.get(column) for column in ("REGULATORY", "AWY_LOCATION", "AWY_ID")
@@ -163,7 +226,11 @@ def _airway_vertices(
 
 
 def _route_rows_points(
-    tables: Mapping[str, DataFrame], rows: DataFrame, *, reverse: bool = False
+    tables: Mapping[str, DataFrame],
+    rows: DataFrame,
+    *,
+    resolver: _WaypointResolver | None = None,
+    reverse: bool = False,
 ) -> tuple[_Waypoint, ...]:
     """Resolve ordered FAA procedure-route rows into coordinate waypoints."""
 
@@ -185,6 +252,7 @@ def _route_rows_points(
             tables,
             identifier,
             preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
+            resolver=resolver,
         )
         if not points or points[-1] != point:
             points.append(point)
@@ -192,7 +260,10 @@ def _route_rows_points(
 
 
 def _procedure_path(
-    tables: Mapping[str, DataFrame], token: str
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    resolver: _WaypointResolver | None = None,
 ) -> tuple[_Waypoint, ...] | None:
     """Expand one FAA departure or arrival procedure/transition token.
 
@@ -252,7 +323,7 @@ def _procedure_path(
                 .eq(_text(record["DP_COMPUTER_CODE"]))
             )
         ]
-        return _route_rows_points(tables, rows)
+        return _route_rows_points(tables, rows, resolver=resolver)
     if transition_matches or base_matches:
         assert star_routes is not None
         if transition_matches:
@@ -285,8 +356,8 @@ def _procedure_path(
             else star_routes.iloc[0:0]
         )
         return _route_rows_points(
-            tables, transition, reverse=True
-        ) + _route_rows_points(tables, body, reverse=True)
+            tables, transition, resolver=resolver, reverse=True
+        ) + _route_rows_points(tables, body, resolver=resolver, reverse=True)
     return None
 
 
@@ -314,13 +385,16 @@ def flight_plan_path(
         raise ValueError("flight_plan must contain route tokens")
 
     output: list[tuple[float, float]] = []
+    resolver = _WaypointResolver(nasr)
     index = 0
     while index < len(tokens):
         token = tokens[index]
         if token == _DIRECT:
             index += 1
             continue
-        procedure = _procedure_path(nasr, token) if "." in token else None
+        procedure = (
+            _procedure_path(nasr, token, resolver=resolver) if "." in token else None
+        )
         if procedure is not None:
             for point in procedure:
                 coordinate = point.latitude, point.longitude
@@ -332,24 +406,48 @@ def flight_plan_path(
         if airway is not None and "AWY_BASE" in nasr:
             if not output or index + 1 >= len(tokens) or tokens[index + 1] == _DIRECT:
                 raise ValueError(f"Airway {token!r} must have waypoints on both sides")
-            previous = tokens[index - 1]
-            following = tokens[index + 1]
+            previous_procedure = (
+                _procedure_path(nasr, tokens[index - 1], resolver=resolver)
+                if "." in tokens[index - 1]
+                else None
+            )
+            following_procedure = (
+                _procedure_path(nasr, tokens[index + 1], resolver=resolver)
+                if "." in tokens[index + 1]
+                else None
+            )
+            previous = (
+                previous_procedure[-1].identifier
+                if previous_procedure is not None
+                else tokens[index - 1]
+            )
+            following = (
+                following_procedure[0].identifier
+                if following_procedure is not None
+                else tokens[index + 1]
+            )
             vertices = _airway_vertices(nasr, token, previous, following)
             for identifier in vertices[1:]:
                 point = _waypoint(
                     nasr,
                     identifier,
                     preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
+                    resolver=resolver,
                 )
                 output.append((point.latitude, point.longitude))
-            index += 2
+            # Process the following token too: normal waypoints are deduplicated
+            # below, while a following procedure must contribute its remaining
+            # ordered legs beyond the airway connection point.
+            index += 1
             continue
         preferred_tables = (
             ("APT_BASE", "FIX_BASE", "NAV_BASE")
             if index in {0, len(tokens) - 1}
             else ("FIX_BASE", "NAV_BASE", "APT_BASE")
         )
-        point = _waypoint(nasr, token, preferred_tables=preferred_tables)
+        point = _waypoint(
+            nasr, token, preferred_tables=preferred_tables, resolver=resolver
+        )
         coordinate = point.latitude, point.longitude
         if not output or output[-1] != coordinate:
             output.append(coordinate)

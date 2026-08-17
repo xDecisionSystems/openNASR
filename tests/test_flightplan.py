@@ -195,8 +195,42 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
             },
         ]
     )
+    tables["AWY_BASE"] = pd.concat(
+        [
+            tables["AWY_BASE"],
+            pd.DataFrame(
+                [
+                    {
+                        "REGULATORY": "Y",
+                        "AWY_LOCATION": "D",
+                        "AWY_ID": "J1",
+                        "AWY_DESIGNATION": "J",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["AWY_SEG_ALT"] = pd.concat(
+        [
+            tables["AWY_SEG_ALT"],
+            pd.DataFrame(
+                [
+                    {
+                        "REGULATORY": "Y",
+                        "AWY_LOCATION": "D",
+                        "AWY_ID": "J1",
+                        "POINT_SEQ": "1",
+                        "FROM_POINT": "BRAVO",
+                        "TO_POINT": "ENTRY",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
 
-    assert flight_plan_path(tables, "ALPHA1.ALPHA DCT ENTRY.STAR1") == (
+    assert flight_plan_path(tables, "ALPHA1.ALPHA J1 ENTRY.STAR1") == (
         (37.0, -78.0),
         (36.0, -79.0),
         (40.0, -81.0),
