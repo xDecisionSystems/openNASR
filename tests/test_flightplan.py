@@ -85,3 +85,31 @@ def test_flight_plan_path_expands_an_airway_in_reverse(tables):
 def test_flight_plan_path_rejects_unknown_waypoints(tables):
     with pytest.raises(RecordNotFoundError, match="Flight-plan waypoint"):
         flight_plan_path(tables, "KAAA UNKNOWN")
+
+
+def test_flight_plan_path_uses_route_position_to_disambiguate_waypoints(tables):
+    tables["APT_BASE"] = pd.concat(
+        [
+            tables["APT_BASE"],
+            pd.DataFrame(
+                [
+                    {
+                        "ARPT_ID": "TRM",
+                        "ICAO_ID": "KTRM",
+                        "LAT_DECIMAL": "33",
+                        "LONG_DECIMAL": "-116",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["NAV_BASE"] = pd.DataFrame(
+        [{"NAV_ID": "TRM", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-117"}]
+    )
+
+    assert flight_plan_path(tables, "AAA TRM BBB") == (
+        (38.0, -77.0),
+        (34.0, -117.0),
+        (35.0, -80.0),
+    )

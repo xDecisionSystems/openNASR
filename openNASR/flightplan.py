@@ -42,16 +42,27 @@ def _coordinates(row: Mapping[str, object]) -> tuple[float, float] | None:
         return None
 
 
-def _waypoint(tables: Mapping[str, DataFrame], identifier: str) -> _Waypoint:
-    candidates: list[_Waypoint] = []
-    for table, columns in (
-        ("APT_BASE", ("ARPT_ID", "ICAO_ID")),
-        ("FIX_BASE", ("FIX_ID",)),
-        ("NAV_BASE", ("NAV_ID",)),
-    ):
+_WAYPOINT_TABLES = (
+    ("APT_BASE", ("ARPT_ID", "ICAO_ID")),
+    ("FIX_BASE", ("FIX_ID",)),
+    ("NAV_BASE", ("NAV_ID",)),
+)
+
+
+def _waypoint(
+    tables: Mapping[str, DataFrame],
+    identifier: str,
+    *,
+    preferred_tables: tuple[str, ...] = (),
+) -> _Waypoint:
+    """Resolve one waypoint, applying filed-route position context first."""
+
+    candidates_by_table: dict[str, list[_Waypoint]] = {}
+    for table, columns in _WAYPOINT_TABLES:
         frame = tables.get(table)
         if frame is None:
             continue
+        candidates: list[_Waypoint] = []
         for row in frame.to_dict(orient="records"):
             if not any(_text(row.get(column, "")) == identifier for column in columns):
                 continue
@@ -59,7 +70,27 @@ def _waypoint(tables: Mapping[str, DataFrame], identifier: str) -> _Waypoint:
             if coordinates is not None:
                 candidates.append(_Waypoint(identifier, *coordinates))
 
-    unique = tuple(dict.fromkeys(candidates))
+        if candidates:
+            candidates_by_table[table] = candidates
+
+    for table in preferred_tables:
+        preferred = tuple(dict.fromkeys(candidates_by_table.get(table, ())))
+        if len(preferred) == 1:
+            return preferred[0]
+        if len(preferred) > 1:
+            raise AmbiguousRecordError(
+                entity_type="Flight-plan waypoint",
+                identifier=identifier,
+                candidates=preferred,
+            )
+
+    unique = tuple(
+        dict.fromkeys(
+            candidate
+            for candidates in candidates_by_table.values()
+            for candidate in candidates
+        )
+    )
     if not unique:
         raise RecordNotFoundError(
             entity_type="Flight-plan waypoint", identifier=identifier
@@ -169,11 +200,20 @@ def flight_plan_path(
             following = tokens[index + 1]
             vertices = _airway_vertices(nasr, token, previous, following)
             for identifier in vertices[1:]:
-                point = _waypoint(nasr, identifier)
+                point = _waypoint(
+                    nasr,
+                    identifier,
+                    preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
+                )
                 output.append((point.latitude, point.longitude))
             index += 2
             continue
-        point = _waypoint(nasr, token)
+        preferred_tables = (
+            ("APT_BASE", "FIX_BASE", "NAV_BASE")
+            if index in {0, len(tokens) - 1}
+            else ("FIX_BASE", "NAV_BASE", "APT_BASE")
+        )
+        point = _waypoint(nasr, token, preferred_tables=preferred_tables)
         coordinate = point.latitude, point.longitude
         if not output or output[-1] != coordinate:
             output.append(coordinate)
