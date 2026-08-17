@@ -111,6 +111,39 @@ For example, `CycleManager(cache_dir="/data/nasr")` uses `/data/nasr`
 regardless of environment settings. Within that directory, archives are kept
 under `archives/` and extracted cycles under `cycles/`.
 
+### Optional DuckDB cycle artifacts
+
+DuckDB is an explicit, opt-in derivative of an extracted cycle. It is not
+created while importing or loading CSV data. After installing the optional
+extra, build one artifact by exact effective date:
+
+```bash
+python -m pip install -e ".[duckdb]"
+opennasr build-duckdb 2024-06-13
+opennasr build-duckdb latest
+opennasr list --storage
+```
+
+The artifact and its provenance sidecar are stored beside that cycle:
+
+```text
+<cache>/cycles/2024-06-13/nasr.duckdb
+<cache>/cycles/2024-06-13/nasr.duckdb.json
+```
+
+Use `NASR(cycle="2024-06-13", storage="duckdb")` to open an already-built
+artifact. DuckDB mode never silently selects a neighboring cycle, downloads a
+cycle, or rebuilds a missing artifact. The CSV-backed default remains
+`storage="csv"`. Building a database requires additional disk space roughly
+equal to the materialized tables; rebuilding replaces only that cycle's
+derivative. Remove it selectively with
+`CycleManager().remove("2024-06-13", archive=False, extracted=False, duckdb=True)`.
+Removing the DuckDB artifact does not remove the archive or extracted CSVs.
+
+The sidecar records the exact effective date and source/schema provenance, so
+the same date and source can be reproduced later. Treat both files as a pair;
+an incomplete or mismatched pair is rejected rather than used as a fallback.
+
 To import an archive downloaded manually, use the explicit import workflow:
 
 ```python

@@ -7,7 +7,11 @@ from pathlib import Path
 from pandas.testing import assert_frame_equal
 import pytest
 
-from openNASR.duckdb_builder import SOURCE_TEXT_READ_OPTIONS, build_duckdb
+from openNASR.duckdb_builder import (
+    DuckDbBuildError,
+    SOURCE_TEXT_READ_OPTIONS,
+    build_duckdb,
+)
 from openNASR.duckdb_tables import DuckDbTableRepository
 from openNASR.exceptions import TableNotFoundError
 from openNASR.tables import TableRepository
@@ -75,3 +79,43 @@ def test_duckdb_store_preserves_missing_table_error(table_stores):
     with pytest.raises(TableNotFoundError, match="MISSING"):
         duckdb.load("missing")
     assert not duckdb.is_loaded("missing")
+
+
+def test_duckdb_mutation_is_cached_per_instance_without_database_write(tmp_path: Path):
+    source = FIXTURE_ROOT / "pre_2026_09" / "CSV_Data" / "pre_2026_09"
+    database = tmp_path / "nasr.duckdb"
+    result = build_duckdb(source, database, "2026-08-06")
+    original_database = database.read_bytes()
+
+    first = DuckDbTableRepository(database)
+    try:
+        shared = first.table("FIX_BASE")
+        original_value = shared.loc[0, "FIX_ID"]
+        shared.loc[0, "FIX_ID"] = "IN-MEMORY-ONLY"
+
+        assert first["FIX_BASE"] is shared
+        assert first.table("FIX_BASE").loc[0, "FIX_ID"] == "IN-MEMORY-ONLY"
+        isolated = first.table("FIX_BASE", copy=True)
+        isolated.loc[0, "FIX_ID"] = "COPY-ONLY"
+        assert first.table("FIX_BASE").loc[0, "FIX_ID"] == "IN-MEMORY-ONLY"
+    finally:
+        first.close()
+
+    assert database.read_bytes() == original_database
+    second = DuckDbTableRepository(database)
+    try:
+        assert second.table("FIX_BASE").loc[0, "FIX_ID"] == original_value
+    finally:
+        second.close()
+    assert result.metadata_path.is_file()
+
+
+def test_duckdb_repository_rejects_database_tampering(tmp_path: Path):
+    source = FIXTURE_ROOT / "pre_2026_09" / "CSV_Data" / "pre_2026_09"
+    database = tmp_path / "nasr.duckdb"
+    build_duckdb(source, database, "2026-08-06")
+    with database.open("ab") as output:
+        output.write(b"tampered")
+
+    with pytest.raises(DuckDbBuildError, match="metadata sidecar"):
+        DuckDbTableRepository(database)

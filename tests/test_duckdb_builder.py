@@ -191,3 +191,29 @@ def test_completed_database_is_opened_read_only(tmp_path: Path):
             connection.execute('CREATE TABLE "WRITE_TEST" (id VARCHAR)')
     finally:
         connection.close()
+
+
+def test_builder_quotes_untrusted_table_identifiers(tmp_path: Path):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "SAFE.csv").write_text("VALUE\nunchanged\n", encoding="utf-8")
+    hostile_name = 'ODD"; DROP TABLE SAFE;--'
+    (source / f"{hostile_name}.csv").write_text(
+        "VALUE\nquoted identifier\n", encoding="utf-8"
+    )
+    database = tmp_path / "nasr.duckdb"
+
+    result = build_duckdb(source, database, "2026-08-06")
+
+    assert set(result.metadata.tables) == {"SAFE", hostile_name}
+    connection = open_duckdb_read_only(database)
+    try:
+        assert connection.execute('SELECT VALUE FROM "SAFE"').fetchone() == (
+            "unchanged",
+        )
+        quoted = hostile_name.replace('"', '""')
+        assert connection.execute(
+            f'SELECT VALUE FROM "{quoted}"'
+        ).fetchone() == ("quoted identifier",)
+    finally:
+        connection.close()

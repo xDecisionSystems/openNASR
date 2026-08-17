@@ -26,7 +26,16 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--force", action="store_true", help="refresh metadata")
     download = subcommands.add_parser("download", help="download a NASR cycle")
     download.add_argument("cycle", help="latest or an ISO cycle date")
-    subcommands.add_parser("list", help="list cached NASR cycles")
+    list_command = subcommands.add_parser("list", help="list cached NASR cycles")
+    list_command.add_argument(
+        "--storage",
+        action="store_true",
+        help="also report per-cycle DuckDB artifact state",
+    )
+    build_duckdb = subcommands.add_parser(
+        "build-duckdb", help="build the DuckDB derivative for a cached cycle"
+    )
+    build_duckdb.add_argument("cycle", help="latest or an exact ISO cycle date")
     remove = subcommands.add_parser("remove", help="remove a cached NASR cycle")
     remove.add_argument("cycle", help="ISO cycle date")
     remove.add_argument("--yes", action="store_true", help="skip confirmation")
@@ -55,6 +64,23 @@ def main(argv: list[str] | None = None, *, manager=None, confirm=input) -> int:
                 print(f"archive {archive.name} {archive.stat().st_size} {archive}")
             for cycle_path in active_manager.extracted_paths():
                 print(f"extracted {cycle_path.name} {cycle_path}")
+            if args.storage:
+                for effective_date in active_manager.available_cycles():
+                    database = active_manager.duckdb_path(effective_date)
+                    sidecar = database.with_name(f"{database.name}.json")
+                    state = (
+                        "ready"
+                        if database.is_file() and sidecar.is_file()
+                        else "absent"
+                    )
+                    print(f"duckdb {effective_date} {state} {database}")
+        elif args.command == "build-duckdb":
+            if args.cycle == "latest":
+                effective_date = active_manager.latest().effective_date
+            else:
+                effective_date = date.fromisoformat(args.cycle)
+            result = active_manager.build_duckdb(effective_date)
+            print(f"duckdb {effective_date} ready {result.database_path}")
         elif args.command == "remove":
             effective_date = date.fromisoformat(args.cycle)
             confirmed = args.yes or (

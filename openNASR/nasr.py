@@ -1,10 +1,11 @@
 from pathlib import Path, PurePosixPath
 from datetime import date as date_cls, datetime
 import tempfile
+from typing import Literal
 from warnings import warn
 from zipfile import ZipFile
 from shutil import rmtree
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 from .arb import ARB
 from .airspace import (
     ArtccRepository,
@@ -27,10 +28,24 @@ from .routes import (
 )
 from .military import MilitaryOperationRepository, MilitaryTrainingRouteRepository
 from .cycles import CycleManager, locate_csv_source
-from .exceptions import ArchiveError, CycleNotFoundError, SchemaMismatchError
+from .duckdb_builder import (
+    DuckDbBuildError,
+    SOURCE_TEXT_READ_OPTIONS,
+    duckdb_metadata_path,
+    source_schema_fingerprint,
+)
+from .duckdb_metadata import read_metadata
+from .duckdb_tables import DuckDbTableRepository
+from .exceptions import (
+    ArchiveError,
+    ConfigurationError,
+    CycleNotFoundError,
+    SchemaMismatchError,
+)
 from .registry import TableRegistry
 from .repository import AirportRepository, FixRepository, NavaidRepository
 from .schemas import SCHEMA_SUFFIX, SchemaCatalog
+from .storage import TableStore
 from .tables import TableRepository, discover_tables
 import calendar
 # from .airport import AIRPORT
@@ -65,7 +80,13 @@ class NASR(dict):
         *,
         cycle=None,
         cache_dir=None,
+        storage: Literal["csv", "duckdb"] = "csv",
     ):
+        if storage not in {"csv", "duckdb"}:
+            raise ConfigurationError(
+                "NASR storage must be either 'csv' or 'duckdb'; "
+                f"received {storage!r}."
+            )
         if preloadAll:
             raise NotImplementedError("preloadAll is not yet supported")
         if update:
@@ -75,7 +96,8 @@ class NASR(dict):
             raise ValueError("useDate and cycle must agree when both are supplied")
         requested_cycle = cycle if cycle is not None else useDate
         self.__diagnostic = diagnostic
-        self.setupFiles(requested_cycle, cache_dir)
+        self.__storage = storage
+        self.setupFiles(requested_cycle, cache_dir, storage=storage)
         self.class_airspaces = ClassAirspaceRepository(self)
         self.artccs = ArtccRepository(self)
         self.maas = MaaRepository(self)
@@ -100,7 +122,7 @@ class NASR(dict):
         self.fixes = FixRepository(self)
         self.navaids = NavaidRepository(self)
 
-    def setupFiles(self, useDate, cache_dir=None):
+    def setupFiles(self, useDate, cache_dir=None, *, storage: str = "csv"):
         manager = CycleManager(cache_dir)
         self.__cache_dir = manager.cache_dir
 
@@ -132,6 +154,7 @@ class NASR(dict):
                 )
             cycle = manager.extract_archive(cycle.archive_path)
 
+        assert cycle.data_path is not None
         self.__useDateCSVFolder = self._resolve_csv_source(cycle.data_path)
         available_tables = discover_tables(self.__useDateCSVFolder)
         schema_files = [
@@ -142,9 +165,27 @@ class NASR(dict):
             if schema_files
             else {}
         )
-        self.__tables = TableRepository(
-            self.__useDateCSVFolder, read_options=read_options
-        )
+        self.__tables: TableStore
+        if storage == "csv":
+            self.__tables = TableRepository(
+                self.__useDateCSVFolder, read_options=read_options
+            )
+        else:
+            database = manager.duckdb_path(cycle.effective_date)
+            if not database.is_file():
+                raise DuckDbBuildError(
+                    "DuckDB storage was requested, but no completed artifact "
+                    f"exists for NASR cycle {self.__useDate}: {database}. "
+                    "Build it first with CycleManager.build_duckdb(...)."
+                )
+            metadata = read_metadata(
+                duckdb_metadata_path(database),
+                effective_date=cycle.effective_date,
+                source_schema_fingerprint=self._source_schema_fingerprint(
+                    self.__useDateCSVFolder
+                ),
+            )
+            self.__tables = DuckDbTableRepository(database, metadata=metadata)
 
         # Schema identification and the "every discovered table is modeled"
         # check are whole-cycle questions independent of which table is
@@ -174,6 +215,30 @@ class NASR(dict):
             )
         else:
             self.__schema_catalog = None
+
+    @staticmethod
+    def _source_schema_fingerprint(source: Path) -> str:
+        """Fingerprint CSV table names and headers without materializing rows.
+
+        DuckDB metadata records this same source-schema fingerprint during its
+        build.  Checking it before opening the database makes an extracted
+        cycle/database mismatch a typed lifecycle error rather than a silent
+        fallback or a later, misleading table failure.
+        """
+
+        frames: dict[str, DataFrame] = {}
+        for name in discover_tables(source):
+            path = source / f"{name}.csv"
+            try:
+                frames[name] = read_csv(path, nrows=0, **SOURCE_TEXT_READ_OPTIONS)
+            except UnicodeDecodeError:
+                frames[name] = read_csv(
+                    path,
+                    nrows=0,
+                    encoding="latin-1",
+                    **SOURCE_TEXT_READ_OPTIONS,
+                )
+        return source_schema_fingerprint(frames)
 
     @staticmethod
     def _resolve_csv_source(data_path: Path) -> Path:
@@ -212,6 +277,12 @@ class NASR(dict):
     @property
     def yearDecimal(self):
         return timestampToYearDecimal(self.__useDate)
+
+    @property
+    def storage(self) -> Literal["csv", "duckdb"]:
+        """Return the explicitly selected immutable table storage backend."""
+
+        return self.__storage
 
     def _load_table(self, name: str) -> DataFrame:
         """Load one table and, if the cycle has a known schema, validate it.

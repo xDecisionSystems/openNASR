@@ -2,14 +2,21 @@
 
 ## Main entry points
 
-- `NASR(useDate=None, update=False, preloadAll=False, diagnostic=False)` loads a
-  local FAA cycle. Tables remain available by FAA name, for example
+- `NASR(useDate=None, update=False, preloadAll=False, diagnostic=False,
+  cycle=None, storage="csv")` loads a local FAA cycle. `storage="duckdb"`
+  opens a previously built exact-date DuckDB artifact and never falls back to
+  CSV or another cycle. Tables remain available by FAA name, for example
   `nasr["APT_BASE"]`.
 - `Airport(identifier, nasr)`, `FIX(identifier, nasr)`, `NAVAID(identifier,
   nasr, ...)`, and `ARB(nasr)` are the legacy compatibility constructors.
-- `CycleManager(cache_dir=None, provider=None)` manages cached archive and
-  extracted-cycle data. Use `import_archive(path)`, `get(effective_date)`, and
-  `check_for_updates(force=False)` for cycle operations.
+- `CycleManager(cache_dir=None, provider=None)` manages cached archive,
+  extracted-cycle, and optional per-cycle DuckDB data. Use
+  `import_archive(path)`, `get(effective_date)`, `build_duckdb(cycle)`,
+  `duckdb_path(cycle)`, and `check_for_updates(force=False)` for cycle
+  operations. `remove(..., duckdb=True)` removes only the derivative.
+
+The command-line equivalents are `opennasr build-duckdb YYYY-MM-DD` (or
+`latest`) and `opennasr list --storage`.
 
 ## Repository facade
 

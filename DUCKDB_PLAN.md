@@ -390,7 +390,7 @@ backend code begins until this gate is recorded in the decision log.
   pre-existing-valid-database tests pass. A reader never observes a partial
   database.
 
-- [ ] **13.1.5 — Agent: Sol.** Security review ingestion paths, SQL object
+- [x] **13.1.5 — Agent: Sol.** Security review ingestion paths, SQL object
   quoting, temporary file handling, lock behavior, and metadata provenance.
 
   Acceptance: review findings are resolved or recorded with explicit approval
@@ -428,13 +428,44 @@ observable contents; corrupted/partial artifacts are rejected.
   Acceptance: every repository fixture test runs in both storage modes; any
   deliberate difference requires an approved decision-log entry.
 
-- [ ] **13.2.4 — Agent: Sol.** Review mutation and cache semantics. Decide and
+- [x] **13.2.4 — Agent: Sol.** Review mutation and cache semantics. Decide and
   document whether a DuckDB-backed DataFrame is cached per `NASR` instance
   exactly like CSV mode, and confirm that user mutation never writes through
   to the immutable database.
 
   Acceptance: regression tests prove mutation/copy behavior and source
   database immutability.
+
+#### 13.1.5 and 13.2.4 review record
+
+- Nested archive extraction rejects absolute and parent-traversal members;
+  direct `build_duckdb()` input remains an explicitly local, caller-selected
+  directory and is not treated as a sandbox for hostile filesystem content.
+- Table names are derived from CSV filenames but are always SQL-identifier
+  quoted. A regression test uses a filename containing a quote and SQL tokens
+  and confirms that the adjacent table is unchanged.
+- Database and sidecar temporary files are randomly named in the destination
+  directory. Publication uses same-filesystem replacement, stale temporary
+  cleanup occurs only while holding the exclusive build lock, and readers
+  validate the completed sidecar's database digest before opening the file.
+- The lock uses exclusive creation with mode `0600` and fails closed. A process
+  killed without running cleanup can leave an orphaned lock; automatic PID- or
+  age-based lock stealing is not approved because it can admit concurrent
+  writers. Operators must first confirm that no build owns the path, then
+  remove the single `.nasr.duckdb.lock` file and retry.
+- Each `DuckDbTableRepository` caches one DataFrame per table, matching CSV
+  behavior. `copy=False` returns shared per-instance state and `copy=True`
+  returns a deep isolated copy. Neither form writes through to DuckDB; a new
+  repository instance rematerializes original values from the read-only
+  database. As in CSV mode, an index built before direct caller mutation can
+  become stale; preserving this existing behavior is approved for parity.
+- Residual provenance follow-up: artifact reuse detects database/sidecar
+  tampering by digest and ordinary newer source files by modification time,
+  but a local actor can change CSV cell content while restoring an older
+  modification time. Before treating the cache as an untrusted boundary, add
+  a source-content manifest digest to a future storage-format version. FAA
+  archive digests and normal cache ownership remain the approved first-release
+  trust boundary.
 
 **Gate 13.2:** CSV and DuckDB modes are behaviorally interchangeable for all
 currently public lookup/repository workflows.
@@ -449,7 +480,7 @@ currently public lookup/repository workflows.
   Acceptance: exact-cycle, absent-cycle, idempotent build, stale database, and
   selective remove tests pass using temporary cache roots.
 
-- [ ] **13.3.2 — Agent: Terra.** Add `NASR(storage="csv" | "duckdb")` with
+- [x] **13.3.2 — Agent: Terra.** Add `NASR(storage="csv" | "duckdb")` with
   clear typed errors when DuckDB is not installed, no database exists, or a
   database is incompatible with the extracted cycle. Default remains `"csv"`.
 
@@ -458,7 +489,7 @@ currently public lookup/repository workflows.
   Acceptance: `NASR(cycle="YYYY-MM-DD", storage="duckdb")` never falls back to
   another cycle or silently rebuilds/downloads. CSV mode remains unchanged.
 
-- [ ] **13.3.3 — Agent: Luna.** Add CLI commands:
+- [x] **13.3.3 — Agent: Luna.** Add CLI commands:
 
   ```text
   opennasr build-duckdb YYYY-MM-DD
@@ -471,7 +502,7 @@ currently public lookup/repository workflows.
   Acceptance: all CLI tests use mocked providers and temporary caches; output
   identifies effective date, artifact state, and typed failure messages.
 
-- [ ] **13.3.4 — Agent: Luna.** Update README, API docs, cache layout docs,
+- [x] **13.3.4 — Agent: Luna.** Update README, API docs, cache layout docs,
   migration notes, and examples. Explain `storage="duckdb"`, optional install,
   per-cycle disk use, rebuild/removal behavior, and date reproducibility.
 
@@ -688,6 +719,8 @@ branches open.
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
+| 2026-08-17 | Approve per-repository shared DataFrame caching for DuckDB, deep isolation for `copy=True`, and no mutation write-through; retain the CSV backend's documented stale-index behavior after direct caller mutation. | It preserves the existing public table-store contract, while read-only connections and regression tests prove that caller changes remain in memory and a new repository rematerializes the immutable source values. |
+| 2026-08-17 | Fail closed on an existing DuckDB build lock and require manual removal of an orphan only after confirming no writer is active; defer a source-content manifest digest to a future storage-format version. | Automatically stealing a PID- or age-based lock can create concurrent publishers. The first release treats the locally owned FAA archive/cache as trusted, validates the database against its sidecar digest, and records the restored-mtime provenance gap explicitly rather than implying tamper resistance it does not provide. |
 | 2026-08-17 | Approve the 13.4.1 read-only query contract: `NASR.query_table(...) -> QueryPage` and the future `POST /v1/cycles/{cycle}/query` mapping support only allowlisted fields, typed `EQ`/`IN` filters, cursor pagination, and bounded projection/results; no public arbitrary-SQL surface is provided. | A narrow parameterized API serves common identity/filter workloads, preserves exact-cycle provenance and CSV/DuckDB parity, and keeps SQL injection, unbounded scans/results, and backend-specific expressions out of the compatibility contract. |
 | 2026-08-17 | Plan DuckDB as an explicit optional, per-cycle local storage backend; retain CSV as the default first-release backend. | It accelerates repeated local/API-style queries while preserving the current public DataFrame and repository contract, avoids a forced dependency, and makes source/provenance boundaries clear. |
 | 2026-08-17 | Store the database beside the exact extracted cycle and treat it as a rebuildable derivative. | This makes historical-date selection deterministic and permits removal/rebuild without losing the FAA archive or CSV source data. |

@@ -58,6 +58,47 @@ def test_download_commands_delegate_to_cycle_manager(capsys):
     assert "downloaded: 2026-08-06" in capsys.readouterr().out
 
 
+def test_build_duckdb_commands_delegate_exact_and_latest_cycles(capsys):
+    class Manager:
+        def __init__(self):
+            self.built = []
+
+        def latest(self):
+            return type("Cycle", (), {"effective_date": date(2026, 9, 3)})()
+
+        def build_duckdb(self, effective_date):
+            self.built.append(effective_date)
+            return type(
+                "BuildResult",
+                (),
+                {"database_path": "/tmp/cycles/nasr.duckdb"},
+            )()
+
+    manager = Manager()
+    assert main(["build-duckdb", "latest"], manager=manager) == 0
+    assert main(["build-duckdb", "2026-08-06"], manager=manager) == 0
+    assert manager.built == [date(2026, 9, 3), date(2026, 8, 6)]
+    assert capsys.readouterr().out.count("ready") == 2
+
+
+def test_list_storage_reports_duckdb_artifact_state(tmp_path, capsys):
+    from openNASR.cycles import CycleManager
+
+    manager = CycleManager(tmp_path)
+    manager.cycles_dir.mkdir()
+    (manager.cycles_dir / "2026-08-06").mkdir()
+
+    assert main(["list", "--storage"], manager=manager) == 0
+    output = capsys.readouterr().out
+    assert "duckdb 2026-08-06 absent" in output
+
+    database = manager.duckdb_path("2026-08-06")
+    database.write_bytes(b"database")
+    database.with_name("nasr.duckdb.json").write_text("{}")
+    assert main(["list", "--storage"], manager=manager) == 0
+    assert "duckdb 2026-08-06 ready" in capsys.readouterr().out
+
+
 def test_default_check_and_download_use_a_provider_and_report_typed_errors(
     monkeypatch, capsys, tmp_path
 ):
