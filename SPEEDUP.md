@@ -416,8 +416,8 @@ use cached NumPy row positions and that repeated lookups reuse the same index;
 `tests/test_repository.py` blocks the former per-group DataFrame materializer.
 `benchmarks/repository_benchmark.py` samples seeded real-cycle identifiers and
 reports first-call (cold) and repeated (warm) medians/p95 for modern and
-legacy APIs. This shell lacks pandas, so a fresh canonical-cycle timing report
-was not generated here; Gate 2 remains the Sol-owned numerical sign-off.
+legacy APIs. Gate 2's canonical-cycle results below supersede the earlier
+environment note that no fresh timing report was available.
 
   Compatibility result: the only production consumers of these two private
   caches are `AirportRepository.get`, `AirportRepository._related_records`,
@@ -437,6 +437,30 @@ was not generated here; Gate 2 remains the Sol-owned numerical sign-off.
 number (target: comfortably under 1s each on the benchmark host),
 that T2.2's audit found and fixed every other instance of the same
 anti-pattern, and that the full test suite passes with no behavior change.
+
+**Gate 2 — APPROVED (2026-08-17).** On the canonical `2026-05-14` CSV cycle,
+with all tables loaded before lookup timing, a fresh one-identifier benchmark
+process measured the following valid public lookups (`FIBEE` and `VT47` both
+returned their expected record types):
+
+| Public lookup | Phase 0 first-call baseline | Current first call | Speedup | Current repeated call |
+| --- | ---: | ---: | ---: | ---: |
+| `nasr.fixes.get(...)` | ~14.9s | 103.860ms | ~143x | 1.764ms |
+| `nasr.airport(...)` | ~41.3s | 138.936ms | ~297x | 15.793ms |
+
+Both first calls are comfortably below the 1s target. A separate seeded
+10-identifier run reported first-build-inclusive p95 values of 103.542ms for
+fixes and 140.079ms for airports, with warm medians of 1.566ms and 15.019ms,
+respectively. T2.2 accounts for every package `groupby`: the two repository
+indexes use row-position `.indices`, while the sole remaining DataFrame-group
+materialization is the measured low-cardinality, source-order-sensitive ARTCC
+boundary case. The full suite passed with **376 passed, 1 skipped** using
+`.venv/bin/python -m pytest -q`; no behavior regression was observed.
+
+Gate approval does not broaden Batch C. Its manifest remains exactly the five
+ranked, measured entries below. Unranked modules and the sub-millisecond ARTCC
+grouping remain audit findings until a cold/warm measurement and named
+regression test justify adding them.
 
 ## Execution order and bounded parallelism
 
