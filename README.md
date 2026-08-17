@@ -422,6 +422,7 @@ python tests/main_test_NASR_navaid.py
 python plotExamples/main_test_NASR_atlanta_procedures.py
 python plotExamples/main_test_NASR_zob_airways.py
 python plotExamples/main_test_NASR_airport_runways_ils.py --airport ATL
+python plotExamples/main_test_NASR_runway_localizer_views.py --airport ATL --runway-end 08L
 ```
 
 Contributions should avoid committing FAA archives, extracted cycle data,
