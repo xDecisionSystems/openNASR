@@ -170,23 +170,77 @@ class Airport:
     def __init__(self, airport, nasr):
         isAirport, airportIDCol, airport = nasr.isAirport(airport, forceFAA=True)
         if isAirport:
-            base_rows = nasr._legacy_normalized_rows("APT_BASE", airportIDCol, airport)
+            base_records = nasr._legacy_normalized_records(
+                "APT_BASE", airportIDCol, airport
+            )
             self.base = AirportBase(
                 airport,
                 nasr["APT_BASE"],
                 airportIDCol,
-                cached_row=base_rows.to_dict(orient="records")[0],
+                cached_row=base_records[0],
             )
             self.rwy = RWY(
-                RWYitem, airport, nasr["APT_RWY"], airportIDCol, useRWYID=True
+                RWYitem,
+                airport,
+                nasr["APT_RWY"],
+                airportIDCol,
+                useRWYID=True,
+                cached_records=nasr._legacy_normalized_records(
+                    "APT_RWY", airportIDCol, airport
+                ),
             )
-            self.ils = ILSBase(ILSitem, airport, nasr["ILS_BASE"], airportIDCol)
-            # self.ils.setDecl(self.decl)
-            self.dme = ILSDME(DMEitem, airport, nasr["ILS_DME"], airportIDCol)
-            self.gs = ILSGS(GSitem, airport, nasr["ILS_GS"], airportIDCol)
-            marker_table = nasr.get("ILS_MKR", nasr["ILS_BASE"].iloc[0:0])
-            self.mkr = ILSMKR(MKRitem, airport, marker_table, airportIDCol)
-            self.rwyend = RWYEnd(RWYEnditem, airport, nasr["APT_RWY_END"], airportIDCol)
+            self.ils = ILSBase(
+                ILSitem,
+                airport,
+                nasr["ILS_BASE"],
+                airportIDCol,
+                cached_records=nasr._legacy_normalized_records(
+                    "ILS_BASE", airportIDCol, airport
+                ),
+            )
+            self.dme = ILSDME(
+                DMEitem,
+                airport,
+                nasr["ILS_DME"],
+                airportIDCol,
+                cached_records=nasr._legacy_normalized_records(
+                    "ILS_DME", airportIDCol, airport
+                ),
+            )
+            self.gs = ILSGS(
+                GSitem,
+                airport,
+                nasr["ILS_GS"],
+                airportIDCol,
+                cached_records=nasr._legacy_normalized_records(
+                    "ILS_GS", airportIDCol, airport
+                ),
+            )
+            missing_marker_table = object()
+            marker_table = nasr.get("ILS_MKR", missing_marker_table)
+            if marker_table is missing_marker_table:
+                marker_table = nasr["ILS_BASE"].iloc[0:0]
+                marker_records = ()
+            else:
+                marker_records = nasr._legacy_normalized_records(
+                    "ILS_MKR", airportIDCol, airport
+                )
+            self.mkr = ILSMKR(
+                MKRitem,
+                airport,
+                marker_table,
+                airportIDCol,
+                cached_records=marker_records,
+            )
+            self.rwyend = RWYEnd(
+                RWYEnditem,
+                airport,
+                nasr["APT_RWY_END"],
+                airportIDCol,
+                cached_records=nasr._legacy_normalized_records(
+                    "APT_RWY_END", airportIDCol, airport
+                ),
+            )
             self.makeRWYbnds()
 
         else:

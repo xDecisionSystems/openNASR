@@ -109,10 +109,24 @@ class Raw:
 
 
 class RawDict(dict):
-    def __init__(self, classType, airport, nasrDF, airportIDCol, useRWYID=False):
+    def __init__(
+        self,
+        classType,
+        airport,
+        nasrDF,
+        airportIDCol,
+        useRWYID=False,
+        *,
+        cached_records=None,
+    ):
         self._map = {}
         self._raw = {}
-        for cRec in getAirportRecords(airport, nasrDF, airportIDCol):
+        records = (
+            getAirportRecords(airport, nasrDF, airportIDCol)
+            if cached_records is None
+            else [SimpleNamespace(**record) for record in cached_records]
+        )
+        for cRec in records:
             if useRWYID:
                 record_id = str(cRec.RWY_ID)
             else:

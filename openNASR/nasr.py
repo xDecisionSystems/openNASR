@@ -103,6 +103,14 @@ class NASR(dict):
         self.__storage = storage
         self.__schema_fingerprint: str | None = None
         self.__legacy_indexes: NormalizedIndexCache = {}
+        # Legacy ``Airport`` builds several RawDict collections from related
+        # airport tables.  Keep their row mappings snapshot-scoped so repeat
+        # construction does not repeatedly select and convert the same rows.
+        # Constructors still make fresh ``SimpleNamespace`` instances from
+        # these mappings, preserving the legacy object-identity behavior.
+        self.__legacy_record_rows: dict[
+            tuple[int, str, str], tuple[dict[str, object], ...]
+        ] = {}
         self.setupFiles(requested_cycle, cache_dir, storage=storage)
         self.class_airspaces = ClassAirspaceRepository(self)
         self.artccs = ArtccRepository(self)
@@ -608,6 +616,29 @@ class NASR(dict):
             self.__legacy_indexes, frame, column, self._legacy_normalized
         )
         return normalized_index_rows(frame, index, value, self._legacy_normalized)
+
+    def _legacy_normalized_records(
+        self, table: str, column: str, value: object
+    ) -> tuple[dict[str, object], ...]:
+        """Return cached row mappings for a legacy compatibility lookup.
+
+        This intentionally layers on ``_legacy_normalized_rows`` so the
+        source-order, case-insensitive matching rule remains centralized.
+        It is only consumed by legacy Airport assembly; callers must make
+        fresh raw objects from the mappings rather than sharing them.
+        """
+
+        frame = self[table]
+        key = (id(frame), column, self._legacy_normalized(value))
+        records = self.__legacy_record_rows.get(key)
+        if records is None:
+            records = tuple(
+                self._legacy_normalized_rows(table, column, value).to_dict(
+                    orient="records"
+                )
+            )
+            self.__legacy_record_rows[key] = records
+        return records
 
     def isNavaid(self, nav: str):
         return not self._legacy_normalized_rows("NAV_BASE", "NAV_ID", nav).empty

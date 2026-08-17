@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from pandas import DataFrame
 
 from openNASR.airport import Airport
 from openNASR.basictypes import Raw
@@ -76,6 +77,25 @@ def test_legacy_airport_constructor_resolves_identifiers_case_insensitively(
     airport = Airport(identifier, nasr)
 
     assert airport.faa_id == "BWI"
+
+
+def test_legacy_airport_reuses_related_row_mappings_but_not_raw_objects(
+    make_nasr_from_fixture, monkeypatch
+):
+    """Warm legacy airport assembly must not rescan or reconvert child rows."""
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+    first = Airport("BWI", nasr)
+    first_runway_raw = first.rwy.getRawByID("10/28")
+
+    def fail_to_dict(*_args, **_kwargs):
+        raise AssertionError("warm Airport construction converted a DataFrame row")
+
+    monkeypatch.setattr(DataFrame, "to_dict", fail_to_dict)
+    second = Airport("BWI", nasr)
+
+    assert second.rwy.ids == first.rwy.ids == ["10/28"]
+    assert second.rwy.getRawByID("10/28").RWY_LEN == 5000
+    assert second.rwy.getRawByID("10/28") is not first_runway_raw
 
 
 def test_legacy_fix_constructor_resolves_identifier_case_insensitively(
