@@ -8,6 +8,8 @@ import math
 
 import pytest
 
+pytest.importorskip("duckdb")
+
 from openNASR.cycles import CycleManager
 from openNASR.exceptions import TableNotFoundError
 from openNASR.nasr import NASR

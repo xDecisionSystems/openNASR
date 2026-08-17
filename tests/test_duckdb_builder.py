@@ -10,6 +10,8 @@ from pandas import read_csv
 from pandas.testing import assert_frame_equal
 import pytest
 
+pytest.importorskip("duckdb")
+
 from openNASR.duckdb_builder import (
     DuckDbBuildError,
     DuckDbBuildLockedError,

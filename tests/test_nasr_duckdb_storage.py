@@ -6,6 +6,8 @@ import json
 
 import pytest
 
+pytest.importorskip("duckdb")
+
 from openNASR.cycles import CycleManager
 from openNASR.duckdb_builder import DuckDbBuildError, duckdb_metadata_path
 from openNASR.duckdb_metadata import DuckDbMetadataDateMismatchError

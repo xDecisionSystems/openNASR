@@ -155,6 +155,7 @@ def test_duckdb_path_requires_an_exact_iso_cycle(tmp_path):
 
 
 def test_build_duckdb_requires_the_requested_cycle_and_is_idempotent(tmp_path):
+    pytest.importorskip("duckdb")
     manager = CycleManager(tmp_path / "cache")
     archive = _duckdb_cycle_archive(tmp_path)
     manager.import_archive(archive)
@@ -174,6 +175,7 @@ def test_build_duckdb_requires_the_requested_cycle_and_is_idempotent(tmp_path):
 
 
 def test_build_duckdb_rebuilds_when_extracted_source_is_stale(tmp_path):
+    pytest.importorskip("duckdb")
     manager = CycleManager(tmp_path / "cache")
     manager.import_archive(_duckdb_cycle_archive(tmp_path))
     first = manager.build_duckdb("2026-08-06")
@@ -189,6 +191,7 @@ def test_build_duckdb_rebuilds_when_extracted_source_is_stale(tmp_path):
 
 
 def test_remove_can_select_the_duckdb_derivative_without_source_removal(tmp_path):
+    pytest.importorskip("duckdb")
     manager = CycleManager(tmp_path / "cache")
     manager.import_archive(_duckdb_cycle_archive(tmp_path))
     manager.build_duckdb("2026-08-06")
@@ -206,6 +209,7 @@ def test_remove_can_select_the_duckdb_derivative_without_source_removal(tmp_path
 
 
 def test_remove_extracted_cycle_reports_its_colocated_duckdb_derivative(tmp_path):
+    pytest.importorskip("duckdb")
     manager = CycleManager(tmp_path / "cache")
     manager.import_archive(_duckdb_cycle_archive(tmp_path))
     manager.build_duckdb("2026-08-06")

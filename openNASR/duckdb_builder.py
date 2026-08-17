@@ -109,7 +109,7 @@ def build_duckdb(
                 metadata_path=duckdb_metadata_path(destination),
                 metadata=metadata,
             )
-        except DuckDbBuildError:
+        except (DuckDbBuildError, DuckDbUnavailableError):
             temporary.unlink(missing_ok=True)
             raise
         except Exception as error:

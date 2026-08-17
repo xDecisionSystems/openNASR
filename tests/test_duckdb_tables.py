@@ -7,6 +7,8 @@ from pathlib import Path
 from pandas.testing import assert_frame_equal
 import pytest
 
+pytest.importorskip("duckdb")
+
 from openNASR.duckdb_builder import (
     DuckDbBuildError,
     SOURCE_TEXT_READ_OPTIONS,
