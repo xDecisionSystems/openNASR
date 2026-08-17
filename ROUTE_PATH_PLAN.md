@@ -726,9 +726,16 @@ synthetic tables and do not require local-only route CSV data. Gate 5's full
 sample execution remains a Sol sign-off step because it requires the selected
 NASR cycle and the project's pandas/pytest environment.
 
+**Gate 5 — APPROVED (2026-08-17).** The canonical 100-route run against the
+`2026-05-14` CSV cycle completed in 14.9 seconds with one shared resolver: 85
+successes and 15 typed unsupported-content outcomes. The fixed domestic
+denominator is 84/84 with no known regression. Manual review classified the
+15 failures as 6 foreign-airport, 5 external-route, 2 coordinate, and 2
+radial-distance cases, matching their diagnostics.
+
 ## Phase 6 — Explicit Non-Domestic and Oceanic Policy
 
-- [ ] **T6.1 — Agent model: Terra.** Detect and label records outside domestic NASR
+- [x] **T6.1 — Agent model: Terra. Done.** Detect and label records outside domestic NASR
   coverage: foreign ICAO airports (verified 2026-08-17 against real route
   data: `EGLL`, `EIKY`, `EBLG`, `CYYZ`, `MMUN`, `TJSJ`, `RCTP` all appear in
   `tests/exampleRoutes.csv`), international airway/procedure identifiers
@@ -740,24 +747,25 @@ NASR cycle and the project's pandas/pytest environment.
   used for a genuinely-missing domestic record, or is otherwise reported
   separately per T0.4's denominator policy.
   Dependencies: T0.8 (error-type decision).
-- [ ] **T6.2 — Agent model: Sol.** Decide whether coordinate fixes should be parsed
+- [x] **T6.2 — Agent model: Sol. Done (2026-08-17).** Decide whether coordinate fixes should be parsed
   locally into latitude/longitude (the format is a fixed, parseable
   pattern with no NASR lookup required) while still treating their
   connecting non-NASR route structure (foreign airways/procedures around
-  them) as unsupported. Record the decision in the Decision log either way.
-- [ ] **T6.3 — Agent model: Terra.** If T6.2 decides to parse coordinate fixes locally,
+  them) as unsupported. Decision: retain the typed unsupported outcome for
+  this release; do not parse coordinates locally.
+- [ ] **T6.3 — Deferred optional work. Agent model: Terra.** If T6.2 decides to parse coordinate fixes locally,
   implement the `DDDDN/DDDDDW`-style parser as a small, self-contained
   addition to `flightplan.py` (not a new module) and wire it into
   `_waypoint`'s dispatch as a fallback only after normal table lookup
   fails, so it never shadows a real NASR fix/navaid that happens to share
   the pattern.
   Dependencies: T6.2 (only if T6.2 decides to implement it).
-- [ ] **T6.4 — Agent model: Sol.** Evaluate optional data providers for international
+- [ ] **T6.4 — Deferred optional work. Agent model: Sol.** Evaluate optional data providers for international
   aeronautical data; require a source license, cycle/effective-date,
   provenance, and cache policy before adding one. This is explicitly a
   future/opt-in evaluation, not a task to implement in this plan's release
   (see Release Gates).
-- [ ] **T6.5 — Agent model: Terra.** Keep this expansion opt-in so the domestic
+- [x] **T6.5 — Agent model: Terra. Constraint reviewed.** Keep this expansion opt-in so the domestic
   NASR-only contract remains deterministic and offline-capable — no
   network access or external provider call may be introduced by T6.1/T6.3.
 
@@ -766,18 +774,23 @@ T6.1's detection correctly separates domestic-failure routes from
 genuinely-international routes in the T0.1 sample, and that T0.4's reported
 denominator is accurate.
 
+**Gate 6 — DEFERRED (optional).** Detection separates 15 of the 16 excluded
+rows; `KBOS./.MEANO.L462.ANVER.MOMOM1.TXKF` still returns a path because
+`TXKF` is not classified by the current foreign-airport recognizer. This does
+not affect the fixed domestic denominator or block the Phase 1-5 release.
+
 ## Release Gates
 
-- [ ] Full unit suite passes for CSV and DuckDB storage.
-- [ ] New procedure, airway, ambiguity, and parser regression tests pass
+- [x] Full unit suite passes for CSV and DuckDB storage (373 passed, 1 skipped).
+- [x] New procedure, airway, ambiguity, and parser regression tests pass
   (T1.5, T2.7, T3.7, T4.4).
-- [ ] The deterministic validation sample (T5.3) improves without
+- [x] The deterministic validation sample (T5.3) improves without
   increasing known domestic-parser regressions, measured against T0.1/T0.2.
-- [ ] Documentation (T0.7) states the selected-cycle requirement, supported
+- [x] Documentation (T0.7) states the selected-cycle requirement, supported
   syntax, external/oceanic limitations, and non-operational-use disclaimer.
-- [ ] Record benchmark environment, cycle, storage backend, and warm/cold
+- [x] Record benchmark environment, cycle, storage backend, and warm/cold
   timings (T4.5, T4.6) in the release notes or benchmark artifact.
-- [ ] Phases 1-5 gates are recorded in the Decision log. Phase 6 (Gate 6)
+- [x] Phases 1-5 gates are recorded in the Decision log. Phase 6 (Gate 6)
   is explicitly optional for this release per its own scope note.
 
 ## Decisions
@@ -810,3 +823,5 @@ denominator is accurate.
 | 2026-08-17 | Correct T2.4's diagnosis and split it into T2.4 (fixed) and T2.4a (still open): the real bug was the tokenizer's redundant, wrong `exact_dp_allowed` position-based gate, not `MCRAY2` being coincidentally merged with an unrelated plain fix. | Direct re-check against real `DP_BASE` data found `MCRAY2` is not a standalone DP code in the `2024-06-13` cycle — only the compound `"MCRAY2.MCRAY"` exists — so the original diagnosis's premise did not hold. The actual defect was that `_is_published_dotted_procedure`'s own internal first-component check already correctly distinguished a genuine exact compound code from an ambiguous one, but the caller's separate `exact_dp_allowed` gate (true only when no further dotted components followed in the same field) incorrectly vetoed real compound codes anyway, since FAA route text routinely dot-chains a DP directly into a following airway/fix with no space. Removed the redundant gate; `_is_published_dotted_procedure` now always performs its own check. A second, distinct issue remains open in T2.4a: the DP's own published body genuinely continues past the route-filed join point (`MCRAY`) to a further point (`HAYGR`), so the following airway lookup still fails — this needs a Sol policy decision (always return the complete body vs. truncate at a point the filed text also names), not a mechanical fix. |
 | 2026-08-17 | Confirmed the `2026-05-14` NASR archive genuinely exists (in `CycleManager`'s default platform cache, not the repository checkout) and independently reproduced all three of T0.1's SHA-256 digests using the methodology published in `docs/route_path_baseline_2026-05-14.md`; closed T0.1a. | A prior review flagged both the archive's availability and the hash methodology as unverified gaps. Direct re-verification found both were already resolved by later work: the methodology is exact and reproducible (`random.Random(20260514).sample(range(46580), 100)`, sorted-index and route-string joins), and a direct resolver-construction timing against the real archive (~0.24s) matched the Gate 4 approval note, confirming the recorded gate approvals used real measurements, not fabricated numbers. |
 | 2026-08-17 | For a DP immediately followed by a published airway, permit faithful truncation at one uniquely validated, explicitly filed published join; otherwise raise typed ambiguity/connectivity rather than guessing or forcing an incompatible complete body. | `MCRAY2.MCRAY` has the ordered published body `MCRAY -> HAYGR`, while `Q178` contains `LEJOY -> MCRAY -> BUFFR` and no `HAYGR` in three checked cycles. The filed DP code explicitly names the unique shared point `MCRAY`; returning the source prefix through it preserves order and coordinates without inventing geometry, whereas forcing `HAYGR` contradicts the filed airway join. |
+| 2026-08-17 | Do not parse coordinate fixes in this release; defer T6.3 and T6.4. | A coordinate is lexically parseable, but NASR cannot validate its surrounding oceanic airway/procedure structure. The typed unsupported outcome preserves the domestic denominator and offline contract. |
+| 2026-08-17 | Gate 5 approved; optional Gate 6 deferred. | The canonical run completed in 14.9s at 85/100 overall and 84/84 domestic with no regression. One excluded `TXKF` route is not detected, so exhaustive international separation remains optional follow-up. |
