@@ -45,6 +45,7 @@ class _WaypointResolver:
             if frame is None:
                 continue
             candidates: dict[str, list[_Waypoint]] = {}
+            non_vot_candidates: dict[str, list[_Waypoint]] = {}
             for row in frame.to_dict(orient="records"):
                 coordinates = _coordinates(row)
                 if coordinates is None:
@@ -52,9 +53,20 @@ class _WaypointResolver:
                 for column in columns:
                     identifier = _text(row.get(column, ""))
                     if identifier:
-                        candidates.setdefault(identifier, []).append(
-                            _Waypoint(identifier, *coordinates)
-                        )
+                        waypoint = _Waypoint(identifier, *coordinates)
+                        candidates.setdefault(identifier, []).append(waypoint)
+                        if (
+                            table == "NAV_BASE"
+                            and _text(row.get("NAV_TYPE", "")) != "VOT"
+                        ):
+                            non_vot_candidates.setdefault(identifier, []).append(
+                                waypoint
+                            )
+            if table == "NAV_BASE":
+                for identifier, operational in non_vot_candidates.items():
+                    unique_operational = list(dict.fromkeys(operational))
+                    if len(unique_operational) == 1:
+                        candidates[identifier] = unique_operational
             self._candidates[table] = candidates
 
     def resolve(
@@ -132,12 +144,21 @@ def _waypoint(
         if frame is None:
             continue
         candidates: list[_Waypoint] = []
+        non_vot_candidates: list[_Waypoint] = []
         for row in frame.to_dict(orient="records"):
             if not any(_text(row.get(column, "")) == identifier for column in columns):
                 continue
             coordinates = _coordinates(row)
             if coordinates is not None:
-                candidates.append(_Waypoint(identifier, *coordinates))
+                waypoint = _Waypoint(identifier, *coordinates)
+                candidates.append(waypoint)
+                if table == "NAV_BASE" and _text(row.get("NAV_TYPE", "")) != "VOT":
+                    non_vot_candidates.append(waypoint)
+
+        if table == "NAV_BASE":
+            unique_operational = list(dict.fromkeys(non_vot_candidates))
+            if len(unique_operational) == 1:
+                candidates = unique_operational
 
         if candidates:
             candidates_by_table[table] = candidates

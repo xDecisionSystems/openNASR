@@ -240,6 +240,59 @@ def test_flight_plan_path_uses_route_position_to_disambiguate_waypoints(tables):
     )
 
 
+def test_flight_plan_path_prefers_operational_navaid_over_vot(tables):
+    tables["NAV_BASE"] = pd.DataFrame(
+        [
+            {
+                "NAV_ID": "ICT",
+                "NAV_TYPE": "VORTAC",
+                "LAT_DECIMAL": "37",
+                "LONG_DECIMAL": "-97",
+            },
+            {
+                "NAV_ID": "ICT",
+                "NAV_TYPE": "VOT",
+                "LAT_DECIMAL": "38",
+                "LONG_DECIMAL": "-98",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA ICT KBBB") == (
+        (38.0, -77.0),
+        (37.0, -97.0),
+        (35.0, -80.0),
+    )
+
+
+def test_flight_plan_path_keeps_multiple_operational_navaids_ambiguous(tables):
+    tables["NAV_BASE"] = pd.DataFrame(
+        [
+            {
+                "NAV_ID": "ICT",
+                "NAV_TYPE": "VOR",
+                "LAT_DECIMAL": "37",
+                "LONG_DECIMAL": "-97",
+            },
+            {
+                "NAV_ID": "ICT",
+                "NAV_TYPE": "VORTAC",
+                "LAT_DECIMAL": "38",
+                "LONG_DECIMAL": "-98",
+            },
+            {
+                "NAV_ID": "ICT",
+                "NAV_TYPE": "VOT",
+                "LAT_DECIMAL": "39",
+                "LONG_DECIMAL": "-99",
+            },
+        ]
+    )
+
+    with pytest.raises(AmbiguousRecordError, match="Flight-plan waypoint"):
+        flight_plan_path(tables, "KAAA ICT KBBB")
+
+
 def test_flight_plan_path_prefers_faa_and_icao_airports_at_endpoints(tables):
     tables["FIX_BASE"] = pd.concat(
         [
