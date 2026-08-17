@@ -583,7 +583,8 @@ in file-alphabetical order.
   2026-05-14 sample measured 12.14 ms warm for A216 (579.85 ms cold build)
   and 4.18 ms warm for the holding sample (583.49 ms cold build), without
   broadening the relationship optimization to communications or airspace.
-- [ ] **T3.4 — Agent model: Terra. Partially landed.** Fix the legacy uncached scans: `NASR.isFix`/
+- [x] **T3.4 — Agent model: Terra. Implementation complete; Gate 3
+  performance acceptance open.** Fix the legacy uncached scans: `NASR.isFix`/
   `isAirport`/`isNavaid` (`openNASR/nasr.py`) and `basictypes.py`'s
   `getAirportRecord`/`getAirportRecords` (backing `Airport`, `RWY`,
   `RWYEnd`, `ILSBase`, `ILSDME`, `ILSGS`, `ILSMKR`), plus `fix.py`'s
@@ -597,10 +598,10 @@ in file-alphabetical order.
   `isFix`/`isAirport`/`isNavaid` produce identical results before and after;
   a benchmark run confirms at least an order-of-magnitude reduction in
   repeated-construction cost.
-  Commit `88d30d8` completes the FIX/`isFix` portion only. Canonical Gate 3
-  evidence measured `FIX` at 1.433ms warm (22.87x), but legacy `Airport`
-  remains 26.339ms and `isAirport` 5.883ms; neither meets the amended Gate 3
-  policy. The airport and navaid portions therefore remain open.
+  Commits `88d30d8` and `11e18dc` complete the FIX, airport, navaid, and
+  predicate lookup caches. On a successful real-cycle airport (`XS29`), the
+  final rerun measured `Airport` at 19.483ms warm (1.41x), so the code task is
+  complete but its public-constructor performance acceptance remains unmet.
   Dependencies: T2.1 (reuse the same technique).
 - [x] **L3.5 — Agent model: Luna. Done (2026-08-17).** Add regression tests reproducing at
   least the `CDR`/`LID`/`FRQ` and legacy-constructor costs found in Phase 0,
@@ -649,9 +650,39 @@ legacy `Airport` at 26.339ms warm (essentially unchanged from ~27–28ms) and
 `isAirport` at 5.883ms; both fail the ratio and absolute-floor alternatives.
 Legacy NAVAID is below the floor at 4.056ms, while its implementation work is
 still unchecked. The full suite passed with **378 passed, 1 skipped**. A
-future review needs only the remaining bounded T3.4 implementation,
-corresponding tests, and a rerun of those legacy rows; it must not reopen the
-nine already-passing domain paths or add unranked modules.
+At that review, only the remaining bounded T3.4 implementation, corresponding
+tests, and a rerun of those legacy rows remained; the nine already-passing
+domain paths did not need to be reopened.
+
+### Gate 3 rerun after T3.4 (`11e18dc`)
+
+**Decision: not approved.** The exact successful legacy probes used the same
+`2026-05-14` CSV cycle, preloaded tables, one cold call, and 20 warm calls:
+
+| Legacy path | Baseline warm | Current warm | Ratio | Policy result |
+| --- | ---: | ---: | ---: | --- |
+| `FIX("AABEE")` | 32.780ms | 1.532ms | 21.39x | pass by ratio |
+| `isFix("AABEE")` | 16.003ms | 0.267ms | 60.01x | pass by ratio |
+| `Airport("XS29")` | ~27.5ms | 19.483ms | 1.41x | **fail** |
+| `isAirport("XS29")` | ~5.6ms | 0.892ms | 6.28x | pass by ≤5ms |
+| `NAVAID("ABR")` | 4.210ms | 3.675ms | 1.15x | pass by ≤5ms |
+| `isNavaid("ABR")` | 0.511ms | 0.686ms | 0.74x | pass by ≤5ms |
+
+The expanded seeded benchmark likewise reported 20.092ms warm median for
+legacy Airport, but that aggregate is not valid success-only evidence: six of
+its ten sampled airport identifiers raised the pre-existing runway-geometry
+`TypeError`, and the tool intentionally times through caught exceptions.
+`XS29` was selected from the four successful samples so the formal row above
+measures complete constructor work, not an early failure. Future benchmark
+reporting should count successful and failed calls separately.
+
+All nine indexed-domain manifest paths retain their prior passes; no rerun
+showed a domain regression. The full suite again passed with **378 passed, 1
+skipped**. Gate 3 stays closed solely on the successful legacy Airport public
+call, which meets neither alternative in the amended policy. The next review
+must profile that constructor's post-lookup geometry/record assembly and make
+a bounded fix or an explicit scope decision; it must not expand Phase 3 to
+unranked domain modules.
 
 **Gate 3 performance policy amendment (2026-08-17):** a manifest path passes
 when its warm median is either at least 10x faster than baseline **or at most
