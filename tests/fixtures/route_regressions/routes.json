@@ -17,6 +17,16 @@
       "category": "procedure-resolution error"
     },
     {
+      "id": "GNDLF3_BARE_STAR",
+      "route": "GOLLM.GNDLF3.KATL",
+      "category": "procedure-resolution error"
+    },
+    {
+      "id": "MCRAY2_PLAIN_ENROUTE_FIX",
+      "route": "MCRAY2.MCRAY.Q178.LEJOY.DEMME5.KPIT/0037",
+      "category": "procedure-resolution error"
+    },
+    {
       "id": "AIRWAY_Q75_DESIGNATION",
       "route": "KALB..PWL..BIZEX.Q75.MXE.V378.NUGGY.TRISH4.KBWI/0049",
       "category": "airway-resolution error"

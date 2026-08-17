@@ -710,3 +710,148 @@ def test_tokenizer_retains_source_positions_when_stripping_speed_altitude(tables
         _RouteToken("ALPHA", 5),
         _RouteToken("BBB", 16),
     )
+
+
+def _procedure_matrix_tables():
+    """Tiny current-cycle-shaped tables shared by the T2.7 route matrix."""
+
+    points = {
+        "KAAA": (38, -77),
+        "DEP": (37, -78),
+        "TRANS": (36, -79),
+        "MID": (35, -80),
+        "ARR": (34, -81),
+        "KBBB": (33, -82),
+    }
+    tables = {
+        "APT_BASE": pd.DataFrame(
+            [
+                {"ARPT_ID": name, "ICAO_ID": name, "LAT_DECIMAL": lat, "LONG_DECIMAL": lon}
+                for name, (lat, lon) in points.items()
+                if name in {"KAAA", "KBBB"}
+            ]
+        ),
+        "FIX_BASE": pd.DataFrame(
+            [
+                {"FIX_ID": name, "LAT_DECIMAL": lat, "LONG_DECIMAL": lon}
+                for name, (lat, lon) in points.items()
+                if name not in {"KAAA", "KBBB"}
+            ]
+        ),
+        "NAV_BASE": pd.DataFrame(),
+        "DP_BASE": pd.DataFrame(
+            [{"DP_NAME": "DEP", "ARTCC": "ZXX", "DP_COMPUTER_CODE": "DEP1"}]
+        ),
+        "DP_RTE": pd.DataFrame(
+            [
+                {
+                    "DP_NAME": "DEP",
+                    "ARTCC": "ZXX",
+                    "DP_COMPUTER_CODE": code,
+                    "ROUTE_PORTION_TYPE": portion,
+                    "TRANSITION_COMPUTER_CODE": transition,
+                    "BODY_SEQ": "1",
+                    "POINT_SEQ": str(sequence),
+                    "POINT": point,
+                }
+                for code, portion, transition, sequence, point in (
+                    ("DEP1", "BODY", "", 10, "TRANS"),
+                    ("DEP1", "BODY", "", 20, "DEP"),
+                    ("DEP1", "TRANSITION", "DEP1.TRANS", 10, "KAAA"),
+                    ("DEP1", "TRANSITION", "DEP1.TRANS", 20, "TRANS"),
+                )
+            ]
+        ),
+        "STAR_BASE": pd.DataFrame(
+            [{"STAR_COMPUTER_CODE": "ARR1", "ARTCC": "ZXX"}]
+        ),
+        "STAR_RTE": pd.DataFrame(
+            [
+                {
+                    "STAR_COMPUTER_CODE": "ARR1",
+                    "ARTCC": "ZXX",
+                    "ROUTE_PORTION_TYPE": portion,
+                    "TRANSITION_COMPUTER_CODE": transition,
+                    "BODY_SEQ": "1",
+                    "POINT_SEQ": str(sequence),
+                    "POINT": point,
+                }
+                for portion, transition, sequence, point in (
+                    ("BODY", "", 10, "KBBB"),
+                    ("BODY", "", 20, "MID"),
+                    ("TRANSITION", "TRANS.ARR1", 10, "MID"),
+                    ("TRANSITION", "TRANS.ARR1", 20, "ARR"),
+                )
+            ]
+        ),
+        "AWY_BASE": pd.DataFrame(
+            [
+                {
+                    "REGULATORY": "Y",
+                    "AWY_LOCATION": "D",
+                    "AWY_ID": "1",
+                    "AWY_DESIGNATION": "V",
+                }
+            ]
+        ),
+        "AWY_SEG_ALT": pd.DataFrame(
+            [
+                {
+                    "REGULATORY": "Y",
+                    "AWY_LOCATION": "D",
+                    "AWY_ID": "1",
+                    "POINT_SEQ": "1",
+                    "FROM_POINT": "DEP",
+                    "TO_POINT": "MID",
+                }
+            ]
+        ),
+    }
+    return tables
+
+
+@pytest.mark.parametrize(
+    ("name", "route", "expected"),
+    (
+        (
+            "bare DP",
+            "KAAA DEP1 KBBB",
+            ((38.0, -77.0), (36.0, -79.0), (37.0, -78.0), (33.0, -82.0)),
+        ),
+        (
+            "dotted DP",
+            "KAAA.DEP1.TRANS KBBB",
+            ((38.0, -77.0), (36.0, -79.0), (37.0, -78.0), (33.0, -82.0)),
+        ),
+        (
+            "bare STAR",
+            "KAAA ARR1 KBBB",
+            ((38.0, -77.0), (35.0, -80.0), (33.0, -82.0)),
+        ),
+        (
+            "dotted STAR",
+            "KAAA TRANS.ARR1 KBBB",
+            ((38.0, -77.0), (34.0, -81.0), (35.0, -80.0), (33.0, -82.0)),
+        ),
+        (
+            "DP-to-airway",
+            "KAAA DEP1 V1 MID KBBB",
+            ((38.0, -77.0), (36.0, -79.0), (37.0, -78.0), (35.0, -80.0), (33.0, -82.0)),
+        ),
+        (
+            "airway-to-STAR",
+            "KAAA DEP V1 MID ARR1 KBBB",
+            ((38.0, -77.0), (37.0, -78.0), (35.0, -80.0), (33.0, -82.0)),
+        ),
+        (
+            "procedure-only airport pair",
+            "KAAA DEP1 ARR1 KBBB",
+            ((38.0, -77.0), (36.0, -79.0), (37.0, -78.0), (35.0, -80.0), (33.0, -82.0)),
+        ),
+    ),
+)
+def test_current_cycle_procedure_matrix(name, route, expected):
+    """T2.7 matrix; synthetic rows model the pinned 2026-05-14 cycle."""
+
+    assert name
+    assert flight_plan_path(_procedure_matrix_tables(), route) == expected
