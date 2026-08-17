@@ -45,9 +45,7 @@ def test_procedure_evaluation_routes_have_ordered_connections_and_coordinates():
             tables, case["route"], resolver=resolver._waypoints
         )
         procedures = [
-            token.value
-            for token in tokens
-            if token.value in case["procedures"]
+            token.value for token in tokens if token.value in case["procedures"]
         ]
         assert procedures == case["procedures"], case["id"]
         for identifier in case["connections"]:

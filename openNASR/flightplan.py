@@ -327,9 +327,9 @@ def _airway_vertices(
         matching_base = airway_index.matching(airway)
         assert matching_base is not None
     matches: list[tuple[str, ...]] = []
-    for key in matching_base[
-        ["REGULATORY", "AWY_LOCATION", "AWY_ID"]
-    ].itertuples(index=False, name=None):
+    for key in matching_base[["REGULATORY", "AWY_LOCATION", "AWY_ID"]].itertuples(
+        index=False, name=None
+    ):
         rows = segments
         for column, value in zip(("REGULATORY", "AWY_LOCATION", "AWY_ID"), key):
             rows = rows[rows[column].map(_text).eq(_text(value))]
@@ -452,9 +452,7 @@ def _select_procedure_body(
             candidate
             for candidate in candidates
             if candidate
-            and (
-                candidate[0].identifier if reverse else candidate[-1].identifier
-            )
+            and (candidate[0].identifier if reverse else candidate[-1].identifier)
             == connection_token
         )
         if len(matches) == 1:
@@ -598,9 +596,7 @@ def _procedure_path(
             & (departure_routes["DP_COMPUTER_CODE"].map(_text).eq(code))
             & (departure_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token))
         ]
-        transition_points = _route_rows_points(
-            tables, transition, resolver=resolver
-        )
+        transition_points = _route_rows_points(tables, transition, resolver=resolver)
         body_points = _select_procedure_body(
             tables,
             body,
@@ -658,16 +654,20 @@ def _procedure_path(
     return None
 
 
-def _is_published_dotted_procedure(
-    tables: Mapping[str, DataFrame], token: str, *, exact_dp_allowed: bool
-) -> bool:
+def _is_published_dotted_procedure(tables: Mapping[str, DataFrame], token: str) -> bool:
     """Whether a dotted token is a published procedure token.
 
-    A dotted DP computer code is retained as a unit only when it is followed
-    by a direct connector (or ends the field) and its first component is not
-    also a complete DP code. This keeps a filed bare DP plus a following fix
-    (for example ``MCRAY2.MCRAY.Q178``) from being swallowed by a
-    coincidentally matching composite code.
+    A dotted DP computer code is retained as a unit only when its first
+    component is not also a complete DP code on its own. This keeps a filed
+    bare DP plus a following fix (for example ``MCRAY2.MCRAY.Q178``, where
+    ``MCRAY2`` alone is a published DP) from being swallowed by a
+    coincidentally matching composite code. Unlike that ambiguous case, an
+    exact composite ``DP_COMPUTER_CODE`` (for example a real
+    ``MCRAY2.MCRAY`` DP with no standalone ``MCRAY2`` code) must merge
+    regardless of what else follows it in the same unspaced field, since FAA
+    route text routinely dot-chains a DP directly into a following airway or
+    fix with no separating space (for example
+    ``MCRAY2.MCRAY.Q178.LEJOY.DEMME5``).
     """
 
     for table in ("DP_RTE", "STAR_RTE"):
@@ -682,9 +682,7 @@ def _is_published_dotted_procedure(
     first_component = token.split(".", 1)[0]
     computer_codes = departure["DP_COMPUTER_CODE"].map(_text)
     return (
-        exact_dp_allowed
-        and computer_codes.eq(token).any()
-        and not computer_codes.eq(first_component).any()
+        computer_codes.eq(token).any() and not computer_codes.eq(first_component).any()
     )
 
 
@@ -726,14 +724,9 @@ def _tokenize_flight_plan(
                 if index + 1 < len(components) and components[index + 1]
                 else None
             )
-            exact_dp_allowed = (
-                index + 2 >= len(components) or not components[index + 2]
-            )
             if (
                 combined is not None
-                and _is_published_dotted_procedure(
-                    tables, combined, exact_dp_allowed=exact_dp_allowed
-                )
+                and _is_published_dotted_procedure(tables, combined)
                 and _procedure_path(tables, combined, resolver=resolver) is not None
             ):
                 normalized.append(_RouteToken(combined, position))
@@ -909,9 +902,7 @@ class RouteResolver:
                 content_type=content_type,
                 cycle=self._cycle,
             )
-            _attach_route_diagnostic(
-                error, flight_plan=flight_plan, cycle=self._cycle
-            )
+            _attach_route_diagnostic(error, flight_plan=flight_plan, cycle=self._cycle)
             raise error
         try:
             return _flight_plan_path(

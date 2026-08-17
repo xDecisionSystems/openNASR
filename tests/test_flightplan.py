@@ -221,9 +221,7 @@ def test_airway_lookup_uses_column_matching_for_base_records(tables, monkeypatch
     def fail_record_materialization(*args, **kwargs):
         raise AssertionError("airway base must not materialize DataFrame records")
 
-    monkeypatch.setattr(
-        tables["AWY_BASE"], "to_dict", fail_record_materialization
-    )
+    monkeypatch.setattr(tables["AWY_BASE"], "to_dict", fail_record_materialization)
 
     assert flight_plan_path(tables, "KAAA ALPHA V1 BBB") == (
         (38.0, -77.0),
@@ -1019,6 +1017,43 @@ def test_tokenizer_retains_exact_dotted_departure_computer_code(tables):
     )
 
 
+def test_exact_dotted_departure_code_merges_with_trailing_dotted_components(tables):
+    """A real ``DP_COMPUTER_CODE`` that itself contains a dot (for example a
+    real FAA ``MCRAY2.MCRAY`` code with no standalone ``MCRAY2`` code) must
+    still merge as one token even when more dotted components follow it in
+    the same unspaced field, since FAA route text routinely dot-chains a DP
+    directly into a following airway or fix. Verified against the real
+    2024-06-13 NASR cycle: ``KIAD.MCRAY2.MCRAY.LEJOY.KPIT``-shaped text
+    previously split ``MCRAY2`` off as its own token (it is not a published
+    identifier on its own) and failed with ``RecordNotFoundError`` for
+    'MCRAY2', because the tokenizer's ``exact_dp_allowed`` heuristic only
+    permitted the merge when no further dotted components followed in the
+    same field."""
+
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "EXACT", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "EXACT3.PART"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "EXACT",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "EXACT3.PART",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "ALPHA",
+            }
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA.EXACT3.PART.BRAVO.KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+
+
 def test_star_body_uses_preceding_route_token_and_preserves_ambiguity(tables):
     tables["STAR_BASE"] = pd.DataFrame(
         [{"STAR_COMPUTER_CODE": "CHOICE3", "ARTCC": "ZJX"}]
@@ -1137,9 +1172,7 @@ def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
             },
         ]
     )
-    tables["STAR_BASE"] = pd.DataFrame(
-        [{"STAR_COMPUTER_CODE": "ARR1", "ARTCC": "ZJX"}]
-    )
+    tables["STAR_BASE"] = pd.DataFrame([{"STAR_COMPUTER_CODE": "ARR1", "ARTCC": "ZJX"}])
     tables["STAR_RTE"] = pd.DataFrame(
         [
             {
@@ -1194,9 +1227,7 @@ def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
         ]
     )
 
-    assert flight_plan_path(
-        tables, "KAAA.DEP1..ALPHA.V1.NAV..ENTRY.ARR1.KBBB"
-    ) == (
+    assert flight_plan_path(tables, "KAAA.DEP1..ALPHA.V1.NAV..ENTRY.ARR1.KBBB") == (
         (38.0, -77.0),  # Origin and DP join.
         (37.0, -78.0),  # DP exit and airway entry.
         (34.0, -79.0),  # Airway navaid.
@@ -1217,9 +1248,7 @@ def test_flight_plan_path_accepts_double_dot_direct_routing(tables):
 def test_tokenizer_retains_source_positions_when_stripping_speed_altitude(tables):
     resolver = _WaypointResolver(tables)
 
-    assert _tokenize_flight_plan(
-        tables, "KAAA ALPHA/0354 BBB", resolver=resolver
-    ) == (
+    assert _tokenize_flight_plan(tables, "KAAA ALPHA/0354 BBB", resolver=resolver) == (
         _RouteToken("KAAA", 0),
         _RouteToken("ALPHA", 5),
         _RouteToken("BBB", 16),
@@ -1281,9 +1310,7 @@ def _procedure_matrix_tables():
                 )
             ]
         ),
-        "STAR_BASE": pd.DataFrame(
-            [{"STAR_COMPUTER_CODE": "ARR1", "ARTCC": "ZXX"}]
-        ),
+        "STAR_BASE": pd.DataFrame([{"STAR_COMPUTER_CODE": "ARR1", "ARTCC": "ZXX"}]),
         "STAR_RTE": pd.DataFrame(
             [
                 {

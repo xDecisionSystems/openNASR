@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from openNASR.duckdb_builder import SOURCE_TEXT_READ_OPTIONS
 from openNASR.exceptions import AmbiguousRecordError
 from openNASR.flightplan import RouteResolver
 from openNASR.tables import TableRepository
@@ -16,7 +17,7 @@ FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "duckdb_parity"
 def csv_tables(request):
     generation = str(request.param)
     source = FIXTURE_ROOT / generation / "CSV_Data" / generation
-    return TableRepository(source, read_options={})
+    return TableRepository(source, read_options=SOURCE_TEXT_READ_OPTIONS)
 
 
 def test_route_resolver_snapshot_isolated_from_csv_table_mutation(csv_tables):

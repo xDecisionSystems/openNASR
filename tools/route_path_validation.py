@@ -50,9 +50,7 @@ def _category(error: Exception) -> str:
     return name
 
 
-def validate(
-    tables, routes: list[dict[str, str]], *, cycle: str
-) -> dict[str, object]:
+def validate(tables, routes: list[dict[str, str]], *, cycle: str) -> dict[str, object]:
     resolver = RouteResolver(tables)
     results = []
     for entry in routes:

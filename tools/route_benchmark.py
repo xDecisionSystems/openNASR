@@ -57,9 +57,7 @@ def _procedure_details(tables, route: str) -> dict[str, object]:
                 "identifier": token.value,
                 "transition": "." in token.value,
                 "legs": max(0, len(points) - 1),
-                "coordinates": [
-                    [point.latitude, point.longitude] for point in points
-                ],
+                "coordinates": [[point.latitude, point.longitude] for point in points],
             }
         )
     return {"procedures": procedures}
