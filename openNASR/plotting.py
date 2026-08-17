@@ -479,14 +479,21 @@ def plot_airport_procedures(
 
 
 def plot_flight_plan(
-    nasr: Mapping[str, DataFrame], flight_plan: str, *, axes: Any | None = None
+    nasr: Mapping[str, DataFrame],
+    flight_plan: str,
+    *,
+    axes: Any | None = None,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
 ) -> tuple[Any, Any]:
     """Plot the route-field path from a submitted FAA flight plan.
 
     ``flight_plan`` uses the same FAA route-field syntax accepted by
-    :func:`openNASR.flightplan.flight_plan_path`. The line is plotted with
-    longitude on x and latitude on y. The returned route is source data only;
-    it is not an operationally validated flight plan or clearance.
+    :func:`openNASR.flightplan.flight_plan_path`. Set ``project_to_nm=True``
+    to use a local gnomonic projection in nautical miles. Without an explicit
+    ``projection_center=(latitude, longitude)``, the route's center is used.
+    The returned route is source data only; it is not an operationally
+    validated flight plan or clearance.
     """
 
     from matplotlib import pyplot as plt
@@ -497,10 +504,18 @@ def plot_flight_plan(
     else:
         figure = axes.figure
     latitudes, longitudes = zip(*path)
-    axes.plot(longitudes, latitudes, color="tab:blue", marker="o", linewidth=1.5)
+    active_projection_center = (
+        _projection_center(LineString(zip(longitudes, latitudes)), projection_center)
+        if project_to_nm
+        else None
+    )
+    x_values, y_values = _project_coordinates(
+        longitudes, latitudes, center=active_projection_center
+    )
+    axes.plot(x_values, y_values, color="tab:blue", marker="o", linewidth=1.5)
     axes.set_title("FAA flight plan")
-    axes.set_xlabel("Longitude")
-    axes.set_ylabel("Latitude")
+    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
+    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 

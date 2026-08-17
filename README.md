@@ -325,6 +325,11 @@ departure procedures, and standard terminal arrival routes.
 Pass `project_to_nm=True` to use east/north nautical miles centered on that
 airport, or provide `projection_center=(latitude, longitude)`.
 
+All plotting helpers accept `project_to_nm=True` and an optional
+`projection_center=(latitude, longitude)`. Airspace plots default to the
+airspace centroid, airport procedure plots to the airport, and flight-plan
+plots to the route center.
+
 ## Special-use, sport, and military airspace
 
 ```python

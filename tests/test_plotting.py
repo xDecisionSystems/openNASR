@@ -188,6 +188,42 @@ def test_plot_flight_plan_draws_the_resolved_route():
     assert list(axes.lines[0].get_ydata()) == [1.0, 3.0]
 
 
+def test_plot_flight_plan_projects_to_nm_about_an_explicit_center():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_BASE": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "ICAO_ID": "KAAA",
+                    "LAT_DECIMAL": "40",
+                    "LONG_DECIMAL": "-75",
+                },
+                {
+                    "ARPT_ID": "BBB",
+                    "ICAO_ID": "KBBB",
+                    "LAT_DECIMAL": "41",
+                    "LONG_DECIMAL": "-74",
+                },
+            ]
+        ),
+        "FIX_BASE": pd.DataFrame(),
+        "NAV_BASE": pd.DataFrame(),
+    }
+
+    _, axes = plot_flight_plan(
+        tables,
+        "KAAA DCT KBBB",
+        project_to_nm=True,
+        projection_center=(40, -75),
+    )
+
+    assert axes.get_xlabel() == "East (NM)"
+    assert axes.get_ylabel() == "North (NM)"
+    assert axes.lines[0].get_xdata()[0] == pytest.approx(0.0)
+    assert axes.lines[0].get_ydata()[0] == pytest.approx(0.0)
+
+
 def test_plot_airport_procedures_draws_runways_departures_and_arrivals():
     pytest.importorskip("matplotlib").use("Agg")
     tables = {
