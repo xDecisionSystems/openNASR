@@ -633,7 +633,7 @@ environment, policy, initial-failure history, and rerun evidence are in the
 
 ## Phase 5 — Batch Validation and Diagnostics
 
-- [ ] **T5.1 — Agent model: Luna.** Add a maintained validation command or test utility
+- [x] **T5.1 — Agent model: Luna.** Add a maintained validation command or test utility
   (e.g. `tools/route_path_validation.py`, matching the existing
   `benchmarks/duckdb_benchmark.py` convention of a standalone, non-pytest
   script) that samples route rows deterministically by seed and records
@@ -649,18 +649,18 @@ environment, policy, initial-failure history, and rerun evidence are in the
   output (matches `AmbiguousRecordError`'s existing `candidates` field
   being available but not auto-printed).
   Dependencies: T1.3 (token positions), T5.1.
-- [ ] **T5.3 — Agent model: Luna.** Run the T0.1 deterministic sample (or T0.3's fixed
+- [x] **T5.3 — Agent model: Luna.** Run the T0.1 deterministic sample (or T0.3's fixed
   regression sample) after each phase gate and compare it to the baseline
   by category from T0.2.
   Dependencies: T5.1, each phase's gate.
-- [ ] **T5.4 — Agent model: Luna.** Maintain a small, cycle-pinned procedure evaluation
+- [x] **T5.4 — Agent model: Luna.** Maintain a small, cycle-pinned procedure evaluation
   set containing a bare DP, dotted DP transition, bare STAR, dotted STAR
   transition, DP-to-airway, airway-to-STAR, and DP-to-airway-to-STAR route.
   Verify both the expected ordered procedure connection identifiers and
   non-empty lat/lon output before using these routes in T4.5/T4.6's
   performance measurements.
   Dependencies: T2.7 (reuses those fixtures where possible).
-- [ ] **T5.5 — Agent model: Luna.** Add an opt-in full-file validation mode (an
+- [x] **T5.5 — Agent model: Luna.** Add an opt-in full-file validation mode (an
   environment variable or CLI flag on T5.1's utility) suitable for CI
   artifacts or a local benchmark; do not make routine unit tests depend on
   the large, untracked `tests/exampleRoutes.csv` file (confirmed
@@ -670,6 +670,15 @@ environment, policy, initial-failure history, and rerun evidence are in the
 **Gate 5:** Sol confirms T5.1's utility runs the full sample in a practical
 time (using T4's caching) and that its category breakdown matches manual
 spot-checks from T0.2.
+
+Implementation evidence: `tools/route_path_validation.py` defaults to the
+tracked `tests/fixtures/route_regressions/routes.json`, samples with an
+explicit seed, and supports opt-in `--full-file PATH` validation. The
+cycle-pinned procedure set is in
+`tests/fixtures/route_regressions/procedure_evaluation.json`; its tests use
+synthetic tables and do not require local-only route CSV data. Gate 5's full
+sample execution remains a Sol sign-off step because it requires the selected
+NASR cycle and the project's pandas/pytest environment.
 
 ## Phase 6 — Explicit Non-Domestic and Oceanic Policy
 
