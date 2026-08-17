@@ -23,7 +23,7 @@ from .routes import (
     PreferredRouteRepository,
     StarProcedureRepository,
 )
-from .military import MilitaryOperationRepository
+from .military import MilitaryOperationRepository, MilitaryTrainingRouteRepository
 from .cycles import CycleManager, locate_csv_source
 from .exceptions import CycleNotFoundError, SchemaMismatchError
 from .registry import TableRegistry
@@ -93,6 +93,7 @@ class NASR(dict):
         self.preferred_routes = PreferredRouteRepository(self)
         self.stars = StarProcedureRepository(self)
         self.military_operations = MilitaryOperationRepository(self)
+        self.military_training_routes = MilitaryTrainingRouteRepository(self)
         self.airports = AirportRepository(self)
         self.fixes = FixRepository(self)
         self.navaids = NavaidRepository(self)
@@ -319,6 +320,10 @@ class NASR(dict):
     def parachute_jump_area(self, identifier: str, **filters):
         """Return the area selected by :attr:`parachute_jump_areas`."""
         return self.parachute_jump_areas.get(identifier, **filters)
+
+    def military_training_route(self, identifier: tuple[str, str]):
+        """Return the route selected by its ``(ROUTE_TYPE_CODE, ROUTE_ID)`` key."""
+        return self.military_training_routes.get(identifier)
 
     def airway(self, identifier: tuple[str, str, str]):
         """Return the airway selected by its complete FAA composite key."""

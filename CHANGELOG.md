@@ -26,6 +26,13 @@ and versions follow Semantic Versioning.
   required for `1.0.0`). Contacts are ordered by `(PJA_ID, FAC_NAME)`, and
   `ParachuteJumpArea.airport` is an optional link (present on only about
   two thirds of real rows) rather than a required relationship.
+- `nasr.military_training_routes`/`nasr.military_training_route(identifier)`:
+  rich `MilitaryTrainingRoute` objects for all six `MTR_*` tables
+  (Milestone 12, not required for `1.0.0`), keyed by
+  `(ROUTE_TYPE_CODE, ROUTE_ID)`. `MilitaryTrainingRoutePointRecord` exposes
+  separate `identifier` (`ROUTE_PT_ID`) and `sequence` (`ROUTE_PT_SEQ`)
+  properties, matching the FAA's own documentation that `MTR_PT`'s identity
+  key and its display order use different columns.
 
 ### Fixed
 

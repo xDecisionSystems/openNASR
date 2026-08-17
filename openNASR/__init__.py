@@ -25,6 +25,10 @@ from .communications import FrequencyRepository as FrequencyRepository
 from .fix import FIX as FIX
 from .military import MilitaryOperation as MilitaryOperation
 from .military import MilitaryOperationRepository as MilitaryOperationRepository
+from .military import MilitaryTrainingRoute as MilitaryTrainingRoute
+from .military import (
+    MilitaryTrainingRouteRepository as MilitaryTrainingRouteRepository,
+)
 from .fss import FlightServiceStation as FlightServiceStation
 from .fss import FlightServiceStationRepository as FlightServiceStationRepository
 from .locations import LocationIdentifier as LocationIdentifier
@@ -72,6 +76,22 @@ from .records import (
     HoldingPatternSpeedAltitudeRecord as HoldingPatternSpeedAltitudeRecord,
 )
 from .records import MilitaryOperationRecord as MilitaryOperationRecord
+from .records import MilitaryTrainingRouteRecord as MilitaryTrainingRouteRecord
+from .records import (
+    MilitaryTrainingRouteAgencyRecord as MilitaryTrainingRouteAgencyRecord,
+)
+from .records import (
+    MilitaryTrainingRoutePointRecord as MilitaryTrainingRoutePointRecord,
+)
+from .records import (
+    MilitaryTrainingRouteProcedureRecord as MilitaryTrainingRouteProcedureRecord,
+)
+from .records import (
+    MilitaryTrainingRouteTerrainRecord as MilitaryTrainingRouteTerrainRecord,
+)
+from .records import (
+    MilitaryTrainingRouteWidthRecord as MilitaryTrainingRouteWidthRecord,
+)
 from .cycles import CycleManager as CycleManager
 from .cycles import notify_if_update_available
 
@@ -125,6 +145,14 @@ __all__ = [
     "MilitaryOperation",
     "MilitaryOperationRecord",
     "MilitaryOperationRepository",
+    "MilitaryTrainingRoute",
+    "MilitaryTrainingRouteAgencyRecord",
+    "MilitaryTrainingRoutePointRecord",
+    "MilitaryTrainingRouteProcedureRecord",
+    "MilitaryTrainingRouteRecord",
+    "MilitaryTrainingRouteRepository",
+    "MilitaryTrainingRouteTerrainRecord",
+    "MilitaryTrainingRouteWidthRecord",
     "LocationIdentifier",
     "LocationIdentifierRecord",
     "LocationIdentifierRepository",

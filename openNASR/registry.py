@@ -47,7 +47,15 @@ from .holding import (
 )
 from .ils import DmeRecord, GlideSlopeRecord, IlsRecord, MarkerRecord
 from .locations import LocationIdentifierRecord
-from .military import MilitaryOperationRecord
+from .military import (
+    MilitaryOperationRecord,
+    MilitaryTrainingRouteAgencyRecord,
+    MilitaryTrainingRoutePointRecord,
+    MilitaryTrainingRouteProcedureRecord,
+    MilitaryTrainingRouteRecord,
+    MilitaryTrainingRouteTerrainRecord,
+    MilitaryTrainingRouteWidthRecord,
+)
 from .nav import NavaidRecord
 from .records import FaaRecord
 from .rwy import RunwayEndRecord, RunwayRecord
@@ -226,6 +234,12 @@ RICH_RECORD_TYPES: Mapping[str, type[FaaRecord]] = {
     "PJA_BASE": ParachuteJumpAreaRecord,
     "PJA_CON": ParachuteJumpAreaContactRecord,
     "MIL_OPS": MilitaryOperationRecord,
+    "MTR_BASE": MilitaryTrainingRouteRecord,
+    "MTR_AGY": MilitaryTrainingRouteAgencyRecord,
+    "MTR_PT": MilitaryTrainingRoutePointRecord,
+    "MTR_SOP": MilitaryTrainingRouteProcedureRecord,
+    "MTR_TERR": MilitaryTrainingRouteTerrainRecord,
+    "MTR_WDTH": MilitaryTrainingRouteWidthRecord,
     "HPF_BASE": HoldingPatternRecord,
     "HPF_CHRT": HoldingPatternChartRecord,
     "HPF_RMK": HoldingPatternRemarkRecord,

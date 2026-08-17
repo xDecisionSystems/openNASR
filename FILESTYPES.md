@@ -226,12 +226,12 @@ airway-segment fields and their altitude constraints, so it maps directly to
 | FAA CSV | Module | Proposed record class | Domain/API placement | Status |
 | --- | --- | --- | --- | --- |
 | `MIL_OPS` | `military.py` | `MilitaryOperationRecord` | `Airport.military_operations` | Keys verified; implementation pending |
-| `MTR_BASE` | `military.py` | `MilitaryTrainingRouteRecord` | `MilitaryTrainingRoute`; `nasr.military_training_routes` | Keys verified; implementation pending |
-| `MTR_AGY` | `military.py` | `MilitaryTrainingRouteAgencyRecord` | `MilitaryTrainingRoute.agencies` | Keys verified; implementation pending |
-| `MTR_PT` | `military.py` | `MilitaryTrainingRoutePointRecord` | `MilitaryTrainingRoute.points` | Keys verified (use `ROUTE_PT_ID`, not `ROUTE_PT_SEQ`, per FAA); implementation pending |
-| `MTR_SOP` | `military.py` | `MilitaryTrainingRouteProcedureRecord` | `MilitaryTrainingRoute.procedures` | Keys verified; implementation pending |
-| `MTR_TERR` | `military.py` | `MilitaryTrainingRouteTerrainRecord` | `MilitaryTrainingRoute.terrain` | Keys verified; implementation pending |
-| `MTR_WDTH` | `military.py` | `MilitaryTrainingRouteWidthRecord` | `MilitaryTrainingRoute.widths` | Keys verified; implementation pending |
+| `MTR_BASE` | `military.py` | `MilitaryTrainingRouteRecord` | `MilitaryTrainingRoute`; `nasr.military_training_routes` | Existing |
+| `MTR_AGY` | `military.py` | `MilitaryTrainingRouteAgencyRecord` | `MilitaryTrainingRoute.agencies` | Existing |
+| `MTR_PT` | `military.py` | `MilitaryTrainingRoutePointRecord` | `MilitaryTrainingRoute.points` | Existing |
+| `MTR_SOP` | `military.py` | `MilitaryTrainingRouteProcedureRecord` | `MilitaryTrainingRoute.procedures` | Existing |
+| `MTR_TERR` | `military.py` | `MilitaryTrainingRouteTerrainRecord` | `MilitaryTrainingRoute.terrain` | Existing |
+| `MTR_WDTH` | `military.py` | `MilitaryTrainingRouteWidthRecord` | `MilitaryTrainingRoute.widths` | Existing |
 
 ## Navaid files
 
