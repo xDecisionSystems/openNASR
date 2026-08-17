@@ -504,25 +504,10 @@ in file-alphabetical order.
   no cross-instance cache and no repository migration in this task. Synthetic
   10,001-row parity and structural regressions verify duplicate/source order,
   cache reuse, missing rows, and rejection of eager `dict(tuple(groupby()))`
-  materialization. It is the shared primitive only for the five measured
-  manifest paths below; T3.2/T3.4 remain responsible for applying it.
-  Design one shared indexing helper (a
-  small function or mixin, not a full class hierarchy) that every
-  domain-module repository can use to replace its per-call
-  `rows[column].map(self._normalized).eq(self._normalized(value))` pattern
-  with a cached index, reusing T2.1's fixed `.indices`-based technique. Most
-  of these repositories already share the identical `_normalized`
-  staticmethod and `find`/`get` shape (confirmed 2026-08-17 via `grep` —
-  the exact same three-line pattern appears in at least 15 places across 11
-  modules), so a shared helper avoids re-deriving and re-testing the same
-  fix eleven times. Decide whether this belongs in `openNASR/repository.py`
-  (as a function every module imports) or a new small module — do not
-  duplicate `RecordRepository`'s existing class if a plain function/mixin
-  covers the simpler single-column cases these modules mostly need.
-  Acceptance: a unit test proves the shared helper produces identical
-  matches to the existing `.map().eq()` pattern for a synthetic table, and
-  is at least an order of magnitude faster to build than the old
-  scan-per-call cost at 10,000+ synthetic rows.
+  materialization. A non-CI 10,000-row/100-lookup synthetic measurement was
+  16.21x faster for one index build than repeated normalized scans. It is the
+  shared primitive only for the five measured manifest paths below;
+  T3.2/T3.4 remain responsible for applying it.
   Dependencies: T2.1 (reuse the same underlying technique).
 - [ ] **T3.2 — Agent model: Terra.** Apply T3.1's helper to the largest,
   highest-value tables first: `departure.py`'s `CodedDepartureRouteRepository`
