@@ -78,7 +78,8 @@ def run(
             nasr, shape, plot_high_airways=True, plot_low_airways=True
         )
     except Exception as raised:
-        cases["airspace_zob"] = lambda: (_raise(raised))
+        airspace_error = raised
+        cases["airspace_zob"] = lambda: (_raise(airspace_error))
     cases["airport_atl"] = lambda: plot_airport_procedures(nasr, "ATL")
     cases["flightplan_direct"] = lambda: plot_flight_plan(nasr, "KBWI KDCA")
     cases["flightplan_procedure"] = lambda: plot_flight_plan(
