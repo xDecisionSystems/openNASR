@@ -35,6 +35,17 @@ def _ids(frame, column: str, *, seed: int, count: int) -> list[str]:
     return random.Random(seed).sample(unique, min(count, len(unique)))
 
 
+def _keys(
+    frame, columns: tuple[str, ...], *, seed: int, count: int
+) -> list[tuple[str, ...]]:
+    rows = frame[list(columns)].fillna("").astype(str)
+    keys = list(
+        dict.fromkeys(tuple(row) for row in rows.itertuples(index=False, name=None))
+    )
+    complete = [key for key in keys if all(value.strip() for value in key)]
+    return random.Random(seed).sample(complete, min(count, len(complete)))
+
+
 def _measure(function, identifiers: list[str]) -> dict[str, object]:
     cold = []
     warm = []
@@ -78,6 +89,81 @@ def run(
     airports = _ids(nasr["APT_BASE"], "ARPT_ID", seed=seed + 1, count=count)
     navaids = _ids(nasr["NAV_BASE"], "NAV_ID", seed=seed + 2, count=count)
     coded = _ids(nasr["CDR"], "RCode", seed=seed + 3, count=count)
+    composite = {
+        "location_identifiers_get": (
+            nasr.location_identifiers.get,
+            _keys(
+                nasr["LID"],
+                (
+                    "COUNTRY_CODE", "LOC_ID", "REGION_CODE", "STATE", "CITY",
+                    "LID_GROUP", "FAC_TYPE",
+                ),
+                seed=seed + 4,
+                count=count,
+            ),
+        ),
+        "frequencies_get": (
+            nasr.frequencies.get,
+            _keys(
+                nasr["FRQ"],
+                (
+                    "FACILITY", "SERVICED_FACILITY", "SERVICED_SITE_TYPE",
+                    "SERVICED_STATE", "SERVICED_COUNTRY", "FREQ",
+                    "SECTORIZATION", "FREQ_USE",
+                ),
+                seed=seed + 5,
+                count=count,
+            ),
+        ),
+        "preferred_routes_get": (
+            nasr.preferred_routes.get,
+            _keys(
+                nasr["PFR_BASE"],
+                ("ORIGIN_ID", "DSTN_ID", "PFR_TYPE_CODE", "ROUTE_NO"),
+                seed=seed + 6,
+                count=count,
+            ),
+        ),
+        "airways_get": (
+            nasr.airways.get,
+            _keys(
+                nasr["AWY_BASE"],
+                ("REGULATORY", "AWY_LOCATION", "AWY_ID"),
+                seed=seed + 7,
+                count=count,
+            ),
+        ),
+        "holding_patterns_get": (
+            nasr.holding_patterns.get,
+            _keys(
+                nasr["HPF_BASE"],
+                ("HP_NAME", "HP_NO", "STATE_CODE", "COUNTRY_CODE"),
+                seed=seed + 8,
+                count=count,
+            ),
+        ),
+        "military_training_routes_get": (
+            nasr.military_training_routes.get,
+            _keys(
+                nasr["MTR_BASE"],
+                ("ROUTE_TYPE_CODE", "ROUTE_ID"),
+                seed=seed + 9,
+                count=count,
+            ),
+        ),
+        "atc_facilities_get": (
+            nasr.atc_facilities.get,
+            _keys(
+                nasr["ATC_BASE"],
+                (
+                    "SITE_NO", "SITE_TYPE_CODE", "FACILITY_TYPE", "STATE_CODE",
+                    "FACILITY_ID", "CITY", "COUNTRY_CODE",
+                ),
+                seed=seed + 10,
+                count=count,
+            ),
+        ),
+    }
     return {
         "cycle": selected.isoformat(),
         "storage": storage,
@@ -103,6 +189,10 @@ def run(
             "modern_airport_get": _measure(nasr.airport, airports),
             "modern_navaids_get": _measure(nasr.navaids.get, navaids),
             "coded_departure_find": _measure(nasr.coded_departure_routes.find, coded),
+            **{
+                name: _measure(function, identifiers)
+                for name, (function, identifiers) in composite.items()
+            },
         },
     }
 

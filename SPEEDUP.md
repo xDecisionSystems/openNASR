@@ -619,6 +619,14 @@ in file-alphabetical order.
   repository/constructor T3.2-T3.4 touched.
   Dependencies: T3.2, T3.3, T3.4, L1.3.
 
+L3.5 tooling preparation: `benchmarks/repository_benchmark.py` now samples
+seeded complete composite keys and reports separate cold/warm summaries for
+all bounded Phase 3 paths (CDR, LID, FRQ, PFR, airway, holding, military, and
+ATC), in addition to the legacy constructors and NASR predicates. It does not
+add timing thresholds to pytest. Final post-fix numbers and the checkbox stay
+open until T3.3a lands, after which the same command is rerun against the
+canonical cycle.
+
 **Gate 3:** Sol re-runs L1.3's benchmark and confirms every covered
 repository/constructor meets the performance policy below, with no test
 regression across the full suite (not just `tests/test_flightplan.py` — this
