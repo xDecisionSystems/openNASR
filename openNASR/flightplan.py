@@ -267,11 +267,60 @@ def _route_rows_points(
     return tuple(points)
 
 
+def _select_procedure_body(
+    tables: Mapping[str, DataFrame],
+    rows: DataFrame,
+    *,
+    connection_token: str | None,
+    reverse: bool,
+    resolver: _WaypointResolver | None,
+    entity_type: str,
+    identifier: str,
+) -> tuple[_Waypoint, ...]:
+    """Select a published procedure body using its filed route connection."""
+
+    if "ROUTE_NAME" not in rows:
+        return _route_rows_points(tables, rows, resolver=resolver, reverse=reverse)
+    names = tuple(dict.fromkeys(rows["ROUTE_NAME"].map(_text)))
+    candidates = tuple(
+        _route_rows_points(
+            tables,
+            rows[rows["ROUTE_NAME"].map(_text).eq(name)],
+            resolver=resolver,
+            reverse=reverse,
+        )
+        for name in names
+    )
+    if len(candidates) == 1:
+        return candidates[0]
+    if connection_token is not None:
+        matches = tuple(
+            candidate
+            for candidate in candidates
+            if candidate
+            and (
+                candidate[0].identifier if reverse else candidate[-1].identifier
+            )
+            == connection_token
+        )
+        if len(matches) == 1:
+            return matches[0]
+    raise AmbiguousRecordError(
+        entity_type=entity_type,
+        identifier=identifier,
+        candidates=tuple(
+            tuple(point.identifier for point in path) for path in candidates
+        ),
+    )
+
+
 def _procedure_path(
     tables: Mapping[str, DataFrame],
     token: str,
     *,
     resolver: _WaypointResolver | None = None,
+    preceding_token: str | None = None,
+    following_token: str | None = None,
 ) -> tuple[_Waypoint, ...] | None:
     """Expand one FAA departure or arrival procedure/transition token.
 
@@ -344,7 +393,20 @@ def _procedure_path(
                 .eq(_text(record["DP_COMPUTER_CODE"]))
             )
         ]
-        return _route_rows_points(tables, rows, resolver=resolver)
+        body = (
+            rows[rows["ROUTE_PORTION_TYPE"].map(_text).eq("BODY")]
+            if "ROUTE_PORTION_TYPE" in rows
+            else rows
+        )
+        return _select_procedure_body(
+            tables,
+            body,
+            connection_token=following_token,
+            reverse=False,
+            resolver=resolver,
+            entity_type="DepartureProcedure",
+            identifier=token,
+        )
     if departure_transition_matches:
         assert departures is not None
         assert departure_routes is not None
@@ -378,7 +440,15 @@ def _procedure_path(
         transition_points = _route_rows_points(
             tables, transition, resolver=resolver
         )
-        body_points = _route_rows_points(tables, body, resolver=resolver)
+        body_points = _select_procedure_body(
+            tables,
+            body,
+            connection_token=following_token,
+            reverse=False,
+            resolver=resolver,
+            entity_type="DepartureProcedure",
+            identifier=token,
+        )
         return transition_points + body_points
     if transition_matches or base_matches:
         assert star_routes is not None
@@ -411,9 +481,19 @@ def _procedure_path(
             if transition_matches
             else star_routes.iloc[0:0]
         )
-        return _route_rows_points(
+        transition_points = _route_rows_points(
             tables, transition, resolver=resolver, reverse=True
-        ) + _route_rows_points(tables, body, resolver=resolver, reverse=True)
+        )
+        body_points = _select_procedure_body(
+            tables,
+            body,
+            connection_token=preceding_token,
+            reverse=True,
+            resolver=resolver,
+            entity_type="StarProcedure",
+            identifier=token,
+        )
+        return transition_points + body_points
     return None
 
 
@@ -516,11 +596,27 @@ def flight_plan_path(
             index += 1
             continue
         airway = _AIRWAY.fullmatch(token)
+        preceding_token = (
+            tokens[index - 1].value
+            if index > 0 and tokens[index - 1].value != _DIRECT
+            else None
+        )
+        following_token = (
+            tokens[index + 1].value
+            if index + 1 < len(tokens) and tokens[index + 1].value != _DIRECT
+            else None
+        )
         # A bare procedure computer code (for example ``GNDLF3``) can also
         # satisfy the airway lexical pattern.  Resolve procedures first so a
         # published DP/STAR is not incorrectly sent to AWY_BASE lookup.
         procedure = (
-            _procedure_path(nasr, token, resolver=resolver)
+            _procedure_path(
+                nasr,
+                token,
+                resolver=resolver,
+                preceding_token=preceding_token,
+                following_token=following_token,
+            )
             if "." in token or airway is not None
             else None
         )

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from openNASR.exceptions import RecordNotFoundError
+from openNASR.exceptions import AmbiguousRecordError, RecordNotFoundError
 from openNASR.flightplan import (
     _RouteToken,
     _WaypointResolver,
@@ -545,6 +545,39 @@ def test_dotted_pair_does_not_hide_filed_fix_before_airway(tables):
         (33.0, -81.0),
         (35.0, -80.0),
     )
+
+
+def test_star_body_uses_preceding_route_token_and_preserves_ambiguity(tables):
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "CHOICE3", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": "CHOICE3",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "ROUTE_NAME": route_name,
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": point_sequence,
+                "POINT": point,
+            }
+            for route_name, entry in (
+                ("ALPHA ARRIVAL", "ALPHA"),
+                ("BRAVO ARRIVAL", "BRAVO"),
+            )
+            for point_sequence, point in (("10", "KBBB"), ("20", entry))
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA ALPHA CHOICE3 KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),  # Filed STAR connection selects ALPHA ARRIVAL.
+        (35.0, -80.0),
+    )
+    with pytest.raises(AmbiguousRecordError, match="StarProcedure"):
+        flight_plan_path(tables, "KAAA CHOICE3 KBBB")
 
 
 def test_flight_plan_path_accepts_double_dot_direct_routing(tables):
