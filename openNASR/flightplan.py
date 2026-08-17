@@ -17,6 +17,7 @@ from .exceptions import (
     AmbiguousRecordError,
     OpenNASRError,
     RecordNotFoundError,
+    RouteConnectivityError,
     UnsupportedRouteContentError,
 )
 
@@ -42,6 +43,14 @@ class _RouteToken:
 
     value: str
     position: int
+
+
+@dataclass(frozen=True)
+class _ProcedureAirwayJoin:
+    """One source-backed DP prefix and its adjacent airway join."""
+
+    prefix: tuple[_Waypoint, ...]
+    identifier: str
 
 
 def _attach_route_diagnostic(
@@ -654,6 +663,153 @@ def _procedure_path(
     return None
 
 
+def _is_departure_procedure(tables: Mapping[str, DataFrame], token: str) -> bool:
+    """Whether ``token`` selects a departure record or transition."""
+
+    departures = tables.get("DP_BASE")
+    routes = tables.get("DP_RTE")
+    return bool(
+        (
+            departures is not None
+            and departures["DP_COMPUTER_CODE"].map(_text).eq(token).any()
+        )
+        or (
+            routes is not None
+            and "TRANSITION_COMPUTER_CODE" in routes
+            and routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token).any()
+        )
+    )
+
+
+def _next_route_token_index(
+    tokens: tuple[_RouteToken, ...], index: int
+) -> int | None:
+    """Return the next non-direct token index after ``index``."""
+
+    for candidate_index in range(index + 1, len(tokens)):
+        if tokens[candidate_index].value != _DIRECT:
+            return candidate_index
+    return None
+
+
+def _previous_route_token_index(
+    tokens: tuple[_RouteToken, ...], index: int
+) -> int | None:
+    """Return the previous non-direct token index before ``index``."""
+
+    for candidate_index in range(index - 1, -1, -1):
+        if tokens[candidate_index].value != _DIRECT:
+            return candidate_index
+    return None
+
+
+def _departure_airway_join(
+    tables: Mapping[str, DataFrame],
+    tokens: tuple[_RouteToken, ...],
+    procedure_index: int,
+    procedure: tuple[_Waypoint, ...],
+    *,
+    resolver: _WaypointResolver,
+    airway_index: _AirwayIndex | None,
+) -> _ProcedureAirwayJoin | None:
+    """Find the one explicitly filed join from a DP to its next airway.
+
+    This deliberately considers only an immediately following (allowing DCT)
+    published airway and its next filed endpoint. It never uses coordinate
+    proximity or later route text to make a connection.
+    """
+
+    procedure_token = tokens[procedure_index].value
+    airway_index_in_route = _next_route_token_index(tokens, procedure_index)
+    if (
+        airway_index_in_route is None
+        or not _is_departure_procedure(tables, procedure_token)
+    ):
+        return None
+    airway_token = tokens[airway_index_in_route].value
+    if not _is_published_airway(tables, airway_token, airway_index=airway_index):
+        return None
+    endpoint_index = _next_route_token_index(tokens, airway_index_in_route)
+    if endpoint_index is None:
+        return None
+    following_token = tokens[endpoint_index].value
+    if _AIRWAY.fullmatch(following_token) is not None:
+        return None
+    if _procedure_path(tables, following_token, resolver=resolver) is not None:
+        return None
+
+    # Confirm this is a real filed endpoint before classifying failed joins as
+    # connectivity instead of a normal missing-waypoint lookup.
+    _waypoint(
+        tables,
+        following_token,
+        preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
+        resolver=resolver,
+    )
+    try:
+        _airway_vertices(
+            tables,
+            airway_token,
+            procedure[-1].identifier,
+            following_token,
+            airway_index=airway_index,
+        )
+    except RecordNotFoundError:
+        pass
+    else:
+        # A complete DP already forms a faithful published join; truncation is
+        # solely the narrow remedy for an otherwise incompatible suffix.
+        return None
+    explicitly_named = set(procedure_token.split("."))
+    named_points = tuple(
+        point for point in procedure if point.identifier in explicitly_named
+    )
+    if not named_points:
+        return None
+    joins: dict[str, _ProcedureAirwayJoin] = {}
+    for point_index, point in enumerate(procedure):
+        if point not in named_points:
+            continue
+        try:
+            _airway_vertices(
+                tables,
+                airway_token,
+                point.identifier,
+                following_token,
+                airway_index=airway_index,
+            )
+        except RecordNotFoundError:
+            continue
+        joins.setdefault(
+            point.identifier,
+            _ProcedureAirwayJoin(procedure[: point_index + 1], point.identifier),
+        )
+    if len(joins) == 1:
+        return next(iter(joins.values()))
+    candidate_joins = tuple(joins)
+    if len(candidate_joins) > 1:
+        raise AmbiguousRecordError(
+            entity_type="Procedure-airway join",
+            identifier=f"{procedure_token} -> {airway_token}",
+            candidates=candidate_joins,
+        )
+    named_identifiers = tuple(dict.fromkeys(point.identifier for point in named_points))
+    raise RouteConnectivityError(
+        entity_type="Procedure-airway join",
+        identifier=f"{procedure_token} -> {airway_token}",
+        from_identifier=procedure[-1].identifier if procedure else None,
+        to_identifier=following_token,
+        cycle=None,
+        procedure_identifier=procedure_token,
+        airway_identifier=airway_token,
+        filed_join_identifier=(
+            named_identifiers[0] if len(named_identifiers) == 1 else None
+        ),
+        following_identifier=following_token,
+        candidate_joins=named_identifiers,
+    )
+
+
 def _is_published_dotted_procedure(tables: Mapping[str, DataFrame], token: str) -> bool:
     """Whether a dotted token is a published procedure token.
 
@@ -805,7 +961,15 @@ def _flight_plan_path(
             else None
         )
         if procedure is not None:
-            for point in procedure:
+            join = _departure_airway_join(
+                nasr,
+                tokens,
+                index,
+                procedure,
+                resolver=resolver,
+                airway_index=airway_index,
+            )
+            for point in join.prefix if join is not None else procedure:
                 coordinate = point.latitude, point.longitude
                 if not output or output[-1] != coordinate:
                     output.append(coordinate)
@@ -814,27 +978,43 @@ def _flight_plan_path(
         if airway is not None and _is_published_airway(
             nasr, token, airway_index=airway_index
         ):
+            previous_index = _previous_route_token_index(tokens, index)
+            following_index = _next_route_token_index(tokens, index)
             if (
                 not output
-                or index + 1 >= len(tokens)
-                or tokens[index + 1].value == _DIRECT
+                or previous_index is None
+                or following_index is None
             ):
                 raise ValueError(f"Airway {token!r} must have waypoints on both sides")
             previous_procedure = _procedure_path(
-                nasr, tokens[index - 1].value, resolver=resolver
+                nasr, tokens[previous_index].value, resolver=resolver
             )
             following_procedure = _procedure_path(
-                nasr, tokens[index + 1].value, resolver=resolver
+                nasr, tokens[following_index].value, resolver=resolver
+            )
+            previous_join = (
+                _departure_airway_join(
+                    nasr,
+                    tokens,
+                    previous_index,
+                    previous_procedure,
+                    resolver=resolver,
+                    airway_index=airway_index,
+                )
+                if previous_procedure is not None
+                else None
             )
             previous = (
-                previous_procedure[-1].identifier
+                previous_join.identifier
+                if previous_join is not None
+                else previous_procedure[-1].identifier
                 if previous_procedure is not None
-                else tokens[index - 1].value
+                else tokens[previous_index].value
             )
             following = (
                 following_procedure[0].identifier
                 if following_procedure is not None
-                else tokens[index + 1].value
+                else tokens[following_index].value
             )
             vertices = _airway_vertices(
                 nasr,

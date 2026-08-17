@@ -141,6 +141,41 @@ class UnsupportedRouteContentError(OpenNASRError):
         super().__init__(message)
 
 
+class RouteConnectivityError(OpenNASRError):
+    """Raised when published route records cannot form a faithful path."""
+
+    def __init__(
+        self,
+        *,
+        entity_type: str,
+        identifier: str,
+        from_identifier: str | None,
+        to_identifier: str | None,
+        cycle: Any | None,
+        procedure_identifier: str | None = None,
+        airway_identifier: str | None = None,
+        filed_join_identifier: str | None = None,
+        following_identifier: str | None = None,
+        candidate_joins: Sequence[str] = (),
+    ) -> None:
+        self.entity_type = entity_type
+        self.identifier = identifier
+        self.from_identifier = from_identifier
+        self.to_identifier = to_identifier
+        self.cycle = cycle
+        self.procedure_identifier = procedure_identifier
+        self.airway_identifier = airway_identifier
+        self.filed_join_identifier = filed_join_identifier
+        self.following_identifier = following_identifier
+        self.candidate_joins = tuple(candidate_joins)
+        message = f"{entity_type} {identifier!r} has no published path"
+        if from_identifier is not None or to_identifier is not None:
+            message += f" from {from_identifier!r} to {to_identifier!r}"
+        if cycle is not None:
+            message += f" for cycle {cycle}"
+        super().__init__(message)
+
+
 class AmbiguousRecordError(OpenNASRError):
     """Raised when a lookup matches more than one record.
 
@@ -187,6 +222,7 @@ __all__ = [
     "FieldConversionError",
     "OpenNASRError",
     "RecordNotFoundError",
+    "RouteConnectivityError",
     "SchemaMismatchError",
     "TableNotFoundError",
     "UnsupportedRouteContentError",

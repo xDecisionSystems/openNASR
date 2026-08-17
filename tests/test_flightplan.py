@@ -8,6 +8,7 @@ from openNASR import (
 from openNASR.exceptions import (
     AmbiguousRecordError,
     RecordNotFoundError,
+    RouteConnectivityError,
     UnsupportedRouteContentError,
 )
 from openNASR.flightplan import (
@@ -977,6 +978,116 @@ def test_dotted_pair_does_not_hide_filed_fix_before_airway(tables):
         (33.0, -81.0),
         (35.0, -80.0),
     )
+
+
+def _dp_airway_join_tables(tables):
+    tables["FIX_BASE"] = pd.DataFrame(
+        [
+            {"FIX_ID": "MCRAY", "LAT_DECIMAL": "37", "LONG_DECIMAL": "-78"},
+            {"FIX_ID": "HAYGR", "LAT_DECIMAL": "36", "LONG_DECIMAL": "-79"},
+            {"FIX_ID": "MID", "LAT_DECIMAL": "35", "LONG_DECIMAL": "-80"},
+            {"FIX_ID": "LEJOY", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-81"},
+        ]
+    )
+    tables["DP_BASE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "MCRAY",
+                "ARTCC": "ZDC",
+                "DP_COMPUTER_CODE": "MCRAY2.MCRAY",
+            }
+        ]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "MCRAY",
+                "ARTCC": "ZDC",
+                "DP_COMPUTER_CODE": "MCRAY2.MCRAY",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": sequence,
+                "POINT": point,
+            }
+            for sequence, point in (("10", "MCRAY"), ("20", "HAYGR"))
+        ]
+    )
+    tables["AWY_BASE"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "D",
+                "AWY_ID": "178",
+                "AWY_DESIGNATION": "RN",
+            }
+        ]
+    )
+    tables["AWY_SEG_ALT"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "D",
+                "AWY_ID": "178",
+                "POINT_SEQ": "10",
+                "FROM_POINT": "MCRAY",
+                "TO_POINT": "MID",
+            },
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "D",
+                "AWY_ID": "178",
+                "POINT_SEQ": "20",
+                "FROM_POINT": "MID",
+                "TO_POINT": "LEJOY",
+            },
+        ]
+    )
+    return tables
+
+
+def test_departure_to_adjacent_airway_uses_unique_explicit_filed_join(tables):
+    tables = _dp_airway_join_tables(tables)
+
+    assert flight_plan_path(tables, "KAAA MCRAY2.MCRAY DCT Q178 LEJOY KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),  # Explicit MCRAY join; HAYGR is not emitted.
+        (35.0, -80.0),
+        (34.0, -81.0),
+        (35.0, -80.0),
+    )
+    assert flight_plan_path(tables, "KAAA MCRAY2.MCRAY KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),  # Standalone DP remains complete.
+        (35.0, -80.0),
+    )
+
+
+def test_departure_to_airway_without_explicit_connectivity_is_typed(tables):
+    tables = _dp_airway_join_tables(tables)
+    tables["AWY_SEG_ALT"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "D",
+                "AWY_ID": "178",
+                "POINT_SEQ": "10",
+                "FROM_POINT": "MID",
+                "TO_POINT": "LEJOY",
+            }
+        ]
+    )
+
+    with pytest.raises(RouteConnectivityError) as caught:
+        flight_plan_path(tables, "KAAA MCRAY2.MCRAY Q178 LEJOY KBBB")
+
+    error = caught.value
+    assert error.entity_type == "Procedure-airway join"
+    assert error.procedure_identifier == "MCRAY2.MCRAY"
+    assert error.airway_identifier == "Q178"
+    assert error.filed_join_identifier == "MCRAY"
+    assert error.following_identifier == "LEJOY"
+    assert error.candidate_joins == ("MCRAY",)
 
 
 def test_tokenizer_retains_exact_dotted_departure_computer_code(tables):
