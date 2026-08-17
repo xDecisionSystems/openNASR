@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 
 from pandas import DataFrame
 
@@ -37,6 +38,17 @@ class StarProcedure:
         self.record = record
         self.airports = airports
         self.routes = routes
+
+    def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
+        """Plot only this STAR's resolved route legs.
+
+        Additional keyword arguments are passed to
+        :func:`openNASR.plotting.plot_star`.
+        """
+
+        from .plotting import plot_star
+
+        return plot_star(nasr, self, **kwargs)
 
 
 class StarProcedureRepository:

@@ -18,6 +18,16 @@ and versions follow Semantic Versioning.
 - Read the Docs now includes one reference page for each of the 63 operational
   FAA CSV tables, documenting all 1,151 columns with descriptions, formats,
   units, nullability, and representative cycle values.
+- Major domain pages now provide collapsed field catalogs for all 53 named
+  `FaaRecord` subclasses, making each complex record's complete FAA source
+  fields visible without overwhelming the generated class API.
+
+### Added
+
+- Modern airport, STAR, airway, and ARTCC domain objects now provide `plot()`
+  convenience methods backed by the shared plotting helpers. Public
+  `plot_star()`, `plot_airway()`, and `plot_artcc()` helpers support the same
+  axes, projection, legend, and reusable-index options.
 
 ## [1.5.0] - 2026-08-17
 

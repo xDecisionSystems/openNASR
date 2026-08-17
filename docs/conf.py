@@ -2,6 +2,11 @@
 
 from importlib.metadata import version as distribution_version
 import os
+from pathlib import Path
+import sys
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_ext"))
 
 
 project = "openNASR"
@@ -14,7 +19,11 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
+    "faa_dropdown",
 ]
+
+html_static_path = ["_static"]
+html_css_files = ["record-fields.css"]
 
 autoclass_content = "both"
 autodoc_class_signature = "separated"

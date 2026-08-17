@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import Any
 
 from pandas import DataFrame
 
@@ -77,6 +78,17 @@ class Airway:
     def __init__(self, record: AirwayRecord, segments: tuple[AirwaySegmentRecord, ...]):
         self.record = record
         self.segments = segments
+
+    def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
+        """Plot only this airway's resolved segments.
+
+        Additional keyword arguments are passed to
+        :func:`openNASR.plotting.plot_airway`.
+        """
+
+        from .plotting import plot_airway
+
+        return plot_airway(nasr, self, **kwargs)
 
 
 class AirwayRepository:

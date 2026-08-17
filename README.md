@@ -382,6 +382,25 @@ plots to the route center.
 All plotting helpers include a legend by default. Pass `plot_legend=False` to
 hide it.
 
+Modern domain objects also provide convenience methods that delegate to the
+same plotting helpers:
+
+```python
+airport = nasr.airports.get("BWI")
+star = nasr.stars.get(("TRISH.TRISH2", "ZDC"))
+airway = nasr.airways.get(("Y", "D", "V1"))
+artcc = nasr.artccs.get("ZDC")
+
+airport.plot(nasr)
+star.plot(nasr)
+airway.plot(nasr)
+artcc.plot(nasr)  # high-altitude boundary; use level="low" for low altitude
+```
+
+`star.plot()` and `airway.plot()` include only the selected object's uniquely
+resolved route segments. Every method accepts the corresponding helper's
+axes, projection, legend, and reusable `PlottingIndex` options.
+
 ## Special-use, sport, and military airspace
 
 ```python

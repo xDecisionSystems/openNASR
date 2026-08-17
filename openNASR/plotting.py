@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from numpy import ndarray
 from pandas import DataFrame, Series
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiLineString, Point
 from shapely.geometry.base import BaseGeometry
 
 from .cfcn import ll2xy
@@ -309,6 +309,23 @@ class PlottingIndex:
             for points in grouped.values()
             if len(points) >= 2 and points[0] != points[1]
         )
+
+    def record_segments(
+        self,
+        records: Iterable[Mapping[str, object]],
+        source_column: str,
+        destination_column: str,
+    ) -> tuple[LineString, ...]:
+        """Resolve ordered route records through cached fix/navaid coordinates."""
+
+        endpoints = self.navigation_endpoints()
+        segments = []
+        for record in records:
+            starts = endpoints.get(_text(record.get(source_column)), ())
+            ends = endpoints.get(_text(record.get(destination_column)), ())
+            if len(starts) == 1 and len(ends) == 1 and starts[0] != ends[0]:
+                segments.append(LineString((starts[0], ends[0])))
+        return tuple(segments)
 
     def flight_plan_path(self, flight_plan: str) -> tuple[tuple[float, float], ...]:
         if self._routes is None:
@@ -717,6 +734,174 @@ def _draw_projected_layers(
             plotted = True
 
 
+def _plot_route_object(
+    segments: tuple[LineString, ...],
+    *,
+    axes: Any | None,
+    project_to_nm: bool,
+    projection_center: tuple[float, float] | None,
+    plot_legend: bool,
+    color: str,
+    label: str,
+    title: str,
+) -> tuple[Any, Any]:
+    """Draw one route-like domain object from already-resolved segments."""
+
+    from matplotlib import pyplot as plt
+
+    active_projection_center = None
+    if project_to_nm:
+        if projection_center is not None:
+            if len(projection_center) != 2:
+                raise ValueError(
+                    "projection_center must be a (latitude, longitude) pair"
+                )
+            active_projection_center = (
+                float(projection_center[0]),
+                float(projection_center[1]),
+            )
+        elif segments:
+            geometry = MultiLineString([tuple(segment.coords) for segment in segments])
+            active_projection_center = _projection_center(geometry, None)
+        else:
+            raise ValueError(
+                "cannot infer projection center without a resolved route segment"
+            )
+    if axes is None:
+        figure, axes = plt.subplots()
+    else:
+        figure = axes.figure
+    _draw_projected_layers(
+        axes,
+        ((segments, color, 1, label),),
+        projection_center=active_projection_center,
+    )
+    if plot_legend and axes.get_legend_handles_labels()[0]:
+        axes.legend()
+    axes.set_title(title)
+    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
+    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
+    axes.set_aspect("equal", adjustable="datalim")
+    return figure, axes
+
+
+def plot_airway(
+    nasr: Mapping[str, DataFrame],
+    airway: object,
+    *,
+    axes: Any | None = None,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
+    plot_legend: bool = True,
+    index: PlottingIndex | None = None,
+) -> tuple[Any, Any]:
+    """Plot the resolved segments belonging to one :class:`Airway` object."""
+
+    record = getattr(airway, "record", None)
+    records = getattr(airway, "segments", None)
+    if not isinstance(record, Mapping) or records is None:
+        raise TypeError("airway must be an Airway object with record and segments")
+    plotting_index = _plotting_index(nasr, index)
+    segments = plotting_index.record_segments(records, "FROM_POINT", "TO_POINT")
+    identifier = _text(record.get("AWY_ID")) or "Airway"
+    return _plot_route_object(
+        segments,
+        axes=axes,
+        project_to_nm=project_to_nm,
+        projection_center=projection_center,
+        plot_legend=plot_legend,
+        color="tab:orange",
+        label=identifier,
+        title=f"{identifier} airway",
+    )
+
+
+def plot_star(
+    nasr: Mapping[str, DataFrame],
+    star: object,
+    *,
+    axes: Any | None = None,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
+    plot_legend: bool = True,
+    index: PlottingIndex | None = None,
+) -> tuple[Any, Any]:
+    """Plot the resolved route legs belonging to one :class:`StarProcedure`."""
+
+    record = getattr(star, "record", None)
+    records = getattr(star, "routes", None)
+    if not isinstance(record, Mapping) or records is None:
+        raise TypeError("star must be a StarProcedure object with record and routes")
+    plotting_index = _plotting_index(nasr, index)
+    segments = plotting_index.record_segments(records, "POINT", "NEXT_POINT")
+    identifier = (
+        _text(record.get("ARRIVAL_NAME"))
+        or _text(record.get("STAR_COMPUTER_CODE"))
+        or "STAR"
+    )
+    return _plot_route_object(
+        segments,
+        axes=axes,
+        project_to_nm=project_to_nm,
+        projection_center=projection_center,
+        plot_legend=plot_legend,
+        color="tab:green",
+        label=identifier,
+        title=f"{identifier} arrival",
+    )
+
+
+def plot_artcc(
+    nasr: Mapping[str, DataFrame],
+    artcc: object,
+    *,
+    level: str = "high",
+    axes: Any | None = None,
+    plot_high_airways: bool = True,
+    plot_low_airways: bool = True,
+    plot_airports: bool = True,
+    plot_fixes: bool = True,
+    plot_airnavs: bool = True,
+    plot_legend: bool = True,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
+    index: PlottingIndex | None = None,
+) -> tuple[Any, Any]:
+    """Plot one altitude boundary from an :class:`Artcc` object.
+
+    ``level`` is ``"high"`` by default and may be set to ``"low"``. The
+    selected boundary is passed to :func:`plot_airspace`, which supplies all
+    normal layer, projection, axes, legend, and index behavior.
+    """
+
+    normalized_level = _text(level).lower()
+    if normalized_level not in {"high", "low"}:
+        raise ValueError("level must be 'high' or 'low'")
+    boundaries = getattr(artcc, "boundaries", None)
+    if not isinstance(boundaries, Mapping):
+        raise TypeError("artcc must be an Artcc object with boundaries")
+    boundary = boundaries.get(normalized_level)
+    if boundary is None:
+        raise ValueError(f"ARTCC has no {normalized_level!r} boundary")
+    figure, axes = plot_airspace(
+        nasr,
+        boundary,
+        axes=axes,
+        plot_high_airways=plot_high_airways,
+        plot_low_airways=plot_low_airways,
+        plot_airports=plot_airports,
+        plot_fixes=plot_fixes,
+        plot_airnavs=plot_airnavs,
+        plot_legend=plot_legend,
+        project_to_nm=project_to_nm,
+        projection_center=projection_center,
+        index=index,
+    )
+    location_id = _text(getattr(artcc, "location_id", None)) or "ARTCC"
+    axes.set_title(f"{location_id} {normalized_level}-altitude ARTCC")
+    return figure, axes
+
+
 def plot_airport_procedures(
     nasr: Mapping[str, DataFrame],
     airport: object,
@@ -823,7 +1008,10 @@ def plot_flight_plan(
 
 __all__ = [
     "PlottingIndex",
+    "plot_airway",
+    "plot_artcc",
     "plot_airport_procedures",
     "plot_airspace",
     "plot_flight_plan",
+    "plot_star",
 ]

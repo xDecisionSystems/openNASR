@@ -4,6 +4,7 @@ ARTCC boundaries."""
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 
 from pandas import DataFrame
 
@@ -264,6 +265,18 @@ class Artcc:
     @property
     def low(self) -> ArtccBoundary | None:
         return self.boundaries.get("low")
+
+    def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
+        """Plot this ARTCC's high- or low-altitude boundary and map layers.
+
+        Additional keyword arguments are passed to
+        :func:`openNASR.plotting.plot_artcc`. The high-altitude boundary is
+        selected by default; pass ``level="low"`` for the low boundary.
+        """
+
+        from .plotting import plot_artcc
+
+        return plot_artcc(nasr, self, **kwargs)
 
 
 class ArtccRepository:

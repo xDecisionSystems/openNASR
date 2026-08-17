@@ -2,13 +2,21 @@ import pandas as pd
 import pytest
 from shapely.geometry import Polygon
 
+import openNASR
 import openNASR.plotting as plotting
+from openNASR.airport import AirportRecord
+from openNASR.airspace import Artcc, ArtccRecord
+from openNASR.airway import Airway, AirwayRecord, AirwaySegmentRecord
+from openNASR.arrivals import StarProcedure, StarProcedureRecord, StarRouteRecord
 from openNASR import PlottingIndex as PublicPlottingIndex
 from openNASR.plotting import (
     PlottingIndex,
+    plot_airway,
+    plot_artcc,
     plot_airport_procedures,
     plot_airspace,
     plot_flight_plan,
+    plot_star,
 )
 
 
@@ -291,9 +299,89 @@ def test_plotting_index_is_public_and_plot_functions_accept_keyword_index():
     import inspect
 
     assert PublicPlottingIndex is PlottingIndex
-    for function in (plot_airspace, plot_airport_procedures, plot_flight_plan):
+    assert openNASR.plot_airway is plot_airway
+    assert openNASR.plot_artcc is plot_artcc
+    assert openNASR.plot_star is plot_star
+    for function in (
+        plot_airspace,
+        plot_airway,
+        plot_artcc,
+        plot_airport_procedures,
+        plot_flight_plan,
+        plot_star,
+    ):
         parameter = inspect.signature(function).parameters["index"]
         assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_domain_plot_methods_delegate_to_shared_plotting_behavior():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = _indexed_tables()
+    index = PlottingIndex(tables)
+
+    airport = AirportRecord({"ARPT_ID": "AAA"})
+    airport_figure, airport_axes = airport.plot(tables, plot_legend=False, index=index)
+    assert airport_figure is airport_axes.figure
+    assert len(airport_axes.lines) == 3
+    assert airport_axes.get_title() == "AAA procedures"
+
+    airway = Airway(
+        AirwayRecord({"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "V1"}),
+        (
+            AirwaySegmentRecord({"FROM_POINT": "ONE", "TO_POINT": "TWO"}),
+            AirwaySegmentRecord({"FROM_POINT": "DUP", "TO_POINT": "TWO"}),
+        ),
+    )
+    airway_figure, airway_axes = airway.plot(tables, plot_legend=False, index=index)
+    assert airway_figure is airway_axes.figure
+    assert len(airway_axes.lines) == 1
+    assert tuple(airway_axes.lines[0].get_xdata()) == (20.0, 21.0)
+    assert airway_axes.get_title() == "V1 airway"
+
+    star = StarProcedure(
+        StarProcedureRecord({"ARRIVAL_NAME": "ARRIVAL", "STAR_COMPUTER_CODE": "ARR1"}),
+        (),
+        (
+            StarRouteRecord({"POINT": "NAV", "NEXT_POINT": "TWO"}),
+            StarRouteRecord({"POINT": "DUP", "NEXT_POINT": "TWO"}),
+        ),
+    )
+    star_figure, star_axes = star.plot(
+        tables, project_to_nm=True, plot_legend=False, index=index
+    )
+    assert star_figure is star_axes.figure
+    assert len(star_axes.lines) == 1
+    assert star_axes.get_xlabel() == "East (NM)"
+    assert star_axes.get_title() == "ARRIVAL arrival"
+
+    artcc = Artcc(
+        ArtccRecord({"LOCATION_ID": "ZXX"}),
+        {"high": Polygon([(19, 9), (22, 9), (22, 12), (19, 12)])},
+    )
+    artcc_figure, artcc_axes = artcc.plot(
+        tables,
+        plot_high_airways=False,
+        plot_low_airways=False,
+        plot_airports=False,
+        plot_fixes=False,
+        plot_airnavs=False,
+        plot_legend=False,
+        index=index,
+    )
+    assert artcc_figure is artcc_axes.figure
+    assert len(artcc_axes.lines) == 1
+    assert artcc_axes.get_title() == "ZXX high-altitude ARTCC"
+
+
+def test_domain_plot_helpers_validate_object_and_boundary_selection():
+    with pytest.raises(TypeError, match="Airway"):
+        plot_airway({}, object())
+    with pytest.raises(TypeError, match="StarProcedure"):
+        plot_star({}, object())
+    with pytest.raises(ValueError, match="level"):
+        plot_artcc({}, Artcc(ArtccRecord({}), {}), level="surface")
+    with pytest.raises(ValueError, match="no 'low' boundary"):
+        plot_artcc({}, Artcc(ArtccRecord({}), {}), level="low")
 
 
 def test_plotting_index_lookups_match_source_ordered_vectorized_filters():

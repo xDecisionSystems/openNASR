@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from pandas import DataFrame
 
 from .basictypes import Raw
 from types import SimpleNamespace
@@ -142,6 +144,17 @@ class AirportRecord(FaaRecord):
             if value is None
             else float_value(str(value), context=self._field_context("ELEV"))
         )
+
+    def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
+        """Plot this airport's runways and associated procedures.
+
+        Additional keyword arguments are passed to
+        :func:`openNASR.plotting.plot_airport_procedures`.
+        """
+
+        from .plotting import plot_airport_procedures
+
+        return plot_airport_procedures(nasr, self, **kwargs)
 
 
 class AirportBase(Raw):

@@ -47,8 +47,11 @@ from .flightplan import flight_plan_path as flight_plan_path
 from .exceptions import UnsupportedRouteContentError as UnsupportedRouteContentError
 from .exceptions import RouteConnectivityError as RouteConnectivityError
 from .plotting import plot_airspace as plot_airspace
+from .plotting import plot_airway as plot_airway
+from .plotting import plot_artcc as plot_artcc
 from .plotting import plot_airport_procedures as plot_airport_procedures
 from .plotting import plot_flight_plan as plot_flight_plan
+from .plotting import plot_star as plot_star
 from .plotting import PlottingIndex as PlottingIndex
 from .records import ArtccRecord as ArtccRecord
 from .records import ClassAirspaceRecord as ClassAirspaceRecord
@@ -182,8 +185,11 @@ __all__ = [
     "ParachuteJumpAreaRecord",
     "ParachuteJumpAreaRepository",
     "plot_airspace",
+    "plot_airway",
+    "plot_artcc",
     "plot_airport_procedures",
     "plot_flight_plan",
+    "plot_star",
     "PlottingIndex",
     "QueryError",
     "QueryFieldNotFoundError",
