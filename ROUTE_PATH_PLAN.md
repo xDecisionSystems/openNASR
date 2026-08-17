@@ -103,7 +103,7 @@ Each in-flight task has exactly one owning agent.
   `2026-05-14`/`38 successes / 62 failures` accordingly, including Gate 1-3
   and Release Gates.
   Dependencies: none (blocks re-running Gate 1, not T1.1's implementation).
-- [ ] **T0.2 — Agent model: Sol.** Categorize each of T0.1's failures as: parser error,
+- [x] **T0.2 — Agent model: Sol. Done (2026-08-17).** Categorize each of T0.1's failures as: parser error,
   procedure-resolution error, airway-resolution error, waypoint ambiguity,
   missing NASR data, or malformed input. Retain at least one representative
   route per category as a named fixture (not just a CSV row reference) for
@@ -116,6 +116,13 @@ Each in-flight task has exactly one owning agent.
   Acceptance: a table (in this file or a linked note) listing each of the
   60-100 sampled routes' category, with the representative fixture routes
   named explicitly.
+  Reproduced the canonical 38-success/62-failure result against the cached
+  `2026-05-14` archive. Root-cause totals are 40 procedure-resolution, 7
+  airway-resolution, 4 waypoint-ambiguity, 2 parser, and 9 missing-NASR
+  failures; no canonical row is malformed. The complete 100-row table,
+  classification rules, and named representative routes (including a
+  clearly labeled synthetic malformed-route control) are in
+  [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md).
 - [ ] **T0.3 — Agent model: Luna.** Add a non-flaky regression sample: a fixed, curated
   list of route strings (not a random sample) covering each category from
   T0.2, checked into `tests/` as a small fixture file or Python list. Must
@@ -149,7 +156,7 @@ Each in-flight task has exactly one owning agent.
   airports, fixes, navaids, airways, DPs, STARs, and transitions.
   Dependencies: Phase 1-3 tasks (so the documented contract matches actual
   behavior, not aspirational behavior).
-- [ ] **T0.8 — Agent model: Sol.** Define the typed result/error policy precisely:
+- [x] **T0.8 — Agent model: Sol. Done (2026-08-17).** Define the typed result/error policy precisely:
   which existing `openNASR.exceptions` class is raised for each of unknown
   domestic record, ambiguous record, unsupported external/oceanic content,
   malformed route text, and broken published connectivity. Verified
@@ -157,6 +164,12 @@ Each in-flight task has exactly one owning agent.
   `AmbiguousRecordError` from `openNASR.exceptions` throughout
   `flightplan.py`; confirm this is sufficient or specify any new typed
   exception needed (e.g. for unsupported oceanic content, Phase 6).
+  Policy: retain `RecordNotFoundError` for an unknown domestic record and
+  `AmbiguousRecordError` for ambiguity. Add sibling public
+  `UnsupportedRouteContentError`, `MalformedRouteError`, and
+  `RouteConnectivityError` types when the corresponding production tasks
+  land; their required attributes and precedence are specified in
+  [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#typed-resulterror-policy).
 - [ ] **T0.9 — Agent model: Terra.** Preserve source coordinates and source ordering in
   every fix in this plan. Do not infer missing legs, manufacture
   geometries, or claim a returned path is a legal or cleared route — this
@@ -631,3 +644,5 @@ denominator is accurate.
 | 2026-08-17 | Restructure the entire plan into numbered tasks (`T0.x`-`T6.x`) with an assigned agent role, explicit dependencies, and a per-task acceptance test, reusing the Sol/Terra/Luna roster and coordination-rules convention from `DUCKDB_PLAN.md`; fact-check the previously-unreviewed Phase 3/5/6 bullets against real code and data during the restructure rather than only reformatting the existing prose. | The plan's four already-verified findings (bare-procedure misclassification, greedy dot-merge, `VOT` disambiguation, resolver vectorization) were implementable by a cold subagent, but most of the original bullets were outcome statements ("resolve a bare departure name") with no task boundary, acceptance criterion, or file-ownership guidance — two subagents assigned different Phase 2 bullets would likely collide on the same functions in `flightplan.py` with no sequencing rule to prevent it. |
 | 2026-08-17 | Fix `_airway_vertices`'s `AWY_DESIGNATION` comparison (T3.1): stop comparing the token's regex-extracted letter prefix against `AWY_DESIGNATION`; rely on `AWY_ID` matching plus the existing `REGULATORY`/`AWY_LOCATION` disambiguation instead. | Verified against the real `2024-06-13` cycle that `AWY_DESIGNATION` values (`A, AT, B, BF, G, J, PA, PR, R, RN, V`) are not the token's leading letters — every real `Q`/`T`-prefixed `AWY_ID` (e.g. `Q822`, a genuine RNAV airway) has `AWY_DESIGNATION` of `AT` or `RN`, never `"Q"` or `"T"` — so the current `or`-joined check silently rejects every `Q`/`T`-prefixed airway regardless of whether its waypoints are correct, reproduced directly against `Q822`'s own segment data. `AWY_ID` alone is not fully unique (53 of 1,483 values in this cycle are duplicated across regions), so the existing downstream `REGULATORY`/`AWY_LOCATION` filter must be confirmed to still disambiguate correctly, not simply dropped alongside the wrong comparison. |
 | 2026-08-17 | Add T0.1a: publish the exact sampling/hashing script behind T0.1's baseline, and confirm the `2026-05-14` NASR cycle archive is actually obtainable before treating the baseline as re-runnable. | Re-verifying T0.1 found its `random.Random(20260514).sample(...)` call and both SHA-256 digests are stated as facts but not as a runnable procedure — the `sample()` population argument, selection order, and serialization/encoding used to produce the index/route hashes are unrecorded, so no one can currently reproduce them to confirm a re-run used the same sample. Separately, `openNASR/data/zip/` in this checkout only has archives through `2024-06-13`; `2026-05-14` sits on the correct 28-day cycle lattice from that date (so it is plausibly a real, later cycle) but is not present locally, so Gate 1 cannot currently be re-run here without first obtaining it. |
+| 2026-08-17 | Classify a sampled row by the earliest faithfully diagnosed root cause, not the surfaced exception text or later content in the route. | The canonical sample contains 39 bare published DPs that surface as missing airway paths, while some routes contain later foreign/oceanic content that execution never reaches; root-cause classification keeps phase-gate comparisons actionable and stable. |
+| 2026-08-17 | Keep the existing lookup exceptions and add distinct public types for unsupported route content, malformed route text, and broken published connectivity. | A foreign/oceanic token is outside the domestic data contract rather than an unknown domestic record; malformed caller input is distinct from both lookup and data-connectivity failures; and an existing published record whose endpoints cannot form a path is not accurately described as a missing record. All remain catchable through `OpenNASRError`. |
