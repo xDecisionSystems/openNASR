@@ -19,6 +19,11 @@ from .fss import FlightServiceStationRepository
 from .locations import LocationIdentifierRepository
 from .airway import AirwayRepository
 from .holding import HoldingPatternRepository
+from .indexing import (
+    NormalizedIndexCache,
+    cached_normalized_column_index,
+    normalized_index_rows,
+)
 from .communications import CommunicationOutletRepository, FrequencyRepository
 from .routes import (
     CodedDepartureRouteRepository,
@@ -97,6 +102,7 @@ class NASR(dict):
         self.__diagnostic = diagnostic
         self.__storage = storage
         self.__schema_fingerprint: str | None = None
+        self.__legacy_indexes: NormalizedIndexCache = {}
         self.setupFiles(requested_cycle, cache_dir, storage=storage)
         self.class_airspaces = ClassAirspaceRepository(self)
         self.artccs = ArtccRepository(self)
@@ -590,13 +596,22 @@ class NASR(dict):
         )
 
     def isFix(self, fix: str):
-        normalized_fix = str(fix).strip().upper()
-        return (
-            normalized_fix
-            in (
-                self["FIX_BASE"]["FIX_ID"].map(lambda value: str(value).strip().upper())
-            ).to_list()
+        return not self._legacy_normalized_rows("FIX_BASE", "FIX_ID", fix).empty
+
+    @staticmethod
+    def _legacy_normalized(value: object) -> str:
+        return str(value).strip().upper()
+
+    def _legacy_normalized_rows(
+        self, table: str, column: str, value: object
+    ) -> DataFrame:
+        """Return one legacy lookup group from this NASR snapshot's cache."""
+
+        frame = self[table]
+        index = cached_normalized_column_index(
+            self.__legacy_indexes, frame, column, self._legacy_normalized
         )
+        return normalized_index_rows(frame, index, value, self._legacy_normalized)
 
     def isNavaid(self, nav: str):
         normalized_nav = str(nav).strip().upper()

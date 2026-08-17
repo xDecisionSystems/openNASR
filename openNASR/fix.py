@@ -55,15 +55,10 @@ class FixRecord(FaaRecord):
 class FIX(Raw):
     def __init__(self, fix, NASR):
         if NASR.isFix(fix):
-            self._addBASE(fix, NASR["FIX_BASE"])
+            self._addBASE(fix, NASR)
         else:
             raise RecordNotFoundError(entity_type="Fix", identifier=fix)
 
-    def _addBASE(self, fix, FIX_BASE):
-        normalized_fix = str(fix).strip().upper()
-        matches = FIX_BASE["FIX_ID"].map(lambda value: str(value).strip().upper()) == (
-            normalized_fix
-        )
-        super().__init__(
-            SimpleNamespace(**FIX_BASE[matches].to_dict(orient="records")[0])
-        )
+    def _addBASE(self, fix, nasr):
+        rows = nasr._legacy_normalized_rows("FIX_BASE", "FIX_ID", fix)
+        super().__init__(SimpleNamespace(**rows.to_dict(orient="records")[0]))

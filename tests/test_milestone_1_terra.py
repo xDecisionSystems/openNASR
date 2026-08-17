@@ -82,9 +82,15 @@ def test_legacy_fix_constructor_resolves_identifier_case_insensitively(
 ):
     nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
 
+    assert nasr.isFix(" aabee ")
+    cache = nasr._NASR__legacy_indexes
+    key = (id(nasr["FIX_BASE"]), "FIX_ID")
+    cached_index = cache[key]
     fix = FIX("aabee", nasr)
 
     assert fix.FIX_ID == "AABEE"
+    assert isinstance(fix.getRaw(), SimpleNamespace)
+    assert nasr._NASR__legacy_indexes[key] is cached_index
 
 
 def test_legacy_navaid_constructor_resolves_identifier_case_insensitively(
