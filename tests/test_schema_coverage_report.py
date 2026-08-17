@@ -13,8 +13,12 @@ def test_coverage_report_counts_all_supported_fixture_files():
         assert schema_report["operational_csv_files"] == 63
         assert schema_report["schema_description_files"] == 24
         assert schema_report["matched_table_spec_count"] == 63
-        assert schema_report["rich_record_table_count"] == 33
+        assert schema_report["rich_record_table_count"] == 41
         assert schema_report["rich_record_tables"] == [
+            "APT_BASE",
+            "APT_RWY",
+            "APT_RWY_END",
+            "ARB_BASE",
             "ATC_ATIS",
             "ATC_BASE",
             "ATC_RMK",
@@ -36,6 +40,10 @@ def test_coverage_report_counts_all_supported_fixture_files():
             "HPF_CHRT",
             "HPF_RMK",
             "HPF_SPD_ALT",
+            "ILS_BASE",
+            "ILS_DME",
+            "ILS_GS",
+            "ILS_MKR",
             "LID",
             "MIL_OPS",
             "NAV_BASE",
@@ -67,6 +75,10 @@ def test_coverage_report_cli_writes_only_to_requested_scratch_path(
     document = json.loads(output.read_text(encoding="utf-8"))
     assert document["schemas"]["pre_2026_09"]["matched_table_spec_count"] == 63
     assert document["schemas"]["pre_2026_09"]["rich_record_tables"] == [
+        "APT_BASE",
+        "APT_RWY",
+        "APT_RWY_END",
+        "ARB_BASE",
         "ATC_ATIS",
         "ATC_BASE",
         "ATC_RMK",
@@ -88,6 +100,10 @@ def test_coverage_report_cli_writes_only_to_requested_scratch_path(
         "HPF_CHRT",
         "HPF_RMK",
         "HPF_SPD_ALT",
+        "ILS_BASE",
+        "ILS_DME",
+        "ILS_GS",
+        "ILS_MKR",
         "LID",
         "MIL_OPS",
         "NAV_BASE",

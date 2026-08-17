@@ -156,6 +156,7 @@ _COMPATIBILITY_RECORD_MODULES = {
     "FixRecord": "fix",
     "LocationIdentifierRecord": "locations",
     "ClassAirspaceRecord": "airspace",
+    "ArtccRecord": "airspace",
     "MilitaryOperationRecord": "military",
     "NavaidRecord": "nav",
     "AirportRecord": "airport",
