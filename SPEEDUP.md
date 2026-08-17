@@ -583,8 +583,7 @@ in file-alphabetical order.
   2026-05-14 sample measured 12.14 ms warm for A216 (579.85 ms cold build)
   and 4.18 ms warm for the holding sample (583.49 ms cold build), without
   broadening the relationship optimization to communications or airspace.
-- [x] **T3.4 — Agent model: Terra. Implementation complete; Gate 3
-  performance acceptance open.** Fix the legacy uncached scans: `NASR.isFix`/
+- [x] **T3.4 — Agent model: Terra. Done (2026-08-17).** Fix the legacy uncached scans: `NASR.isFix`/
   `isAirport`/`isNavaid` (`openNASR/nasr.py`) and `basictypes.py`'s
   `getAirportRecord`/`getAirportRecords` (backing `Airport`, `RWY`,
   `RWYEnd`, `ILSBase`, `ILSDME`, `ILSGS`, `ILSMKR`), plus `fix.py`'s
@@ -600,8 +599,9 @@ in file-alphabetical order.
   repeated-construction cost.
   Commits `88d30d8` and `11e18dc` complete the FIX, airport, navaid, and
   predicate lookup caches. On a successful real-cycle airport (`XS29`), the
-  final rerun measured `Airport` at 19.483ms warm (1.41x), so the code task is
-  complete but its public-constructor performance acceptance remains unmet.
+  first rerun measured `Airport` at 19.483ms warm (1.41x). Commit `3b39fc5`
+  then cached the remaining airport assembly rows; the final successful
+  `XS29` probe measured 0.928ms warm (29.63x), satisfying acceptance.
   Dependencies: T2.1 (reuse the same technique).
 - [x] **L3.5 — Agent model: Luna. Done (2026-08-17).** Add regression tests reproducing at
   least the `CDR`/`LID`/`FRQ` and legacy-constructor costs found in Phase 0,
@@ -683,6 +683,38 @@ call, which meets neither alternative in the amended policy. The next review
 must profile that constructor's post-lookup geometry/record assembly and make
 a bounded fix or an explicit scope decision; it must not expand Phase 3 to
 unranked domain modules.
+
+### Final Gate 3 approval after `3b39fc5`
+
+**Decision: approved (2026-08-17), superseding both not-approved reviews
+above while retaining them as audit history.** The final fix caches the
+remaining source-row assembly used by the legacy airport constructor. On the
+same successful `XS29` probe and unchanged `2026-05-14` CSV/preloaded-table
+policy, one cold call plus 20 warm calls measured **0.928ms warm**, a
+**29.63x** improvement over the ~27.5ms baseline. The other exact legacy
+rows remained within policy:
+
+| Legacy path | Final warm | Ratio / policy result |
+| --- | ---: | --- |
+| `Airport("XS29")` | 0.928ms | 29.63x, pass by ratio |
+| `isAirport("XS29")` | 0.915ms | pass by ≤5ms |
+| `FIX("AABEE")` | 1.529ms | 21.43x, pass by ratio |
+| `isFix("AABEE")` | 0.267ms | 59.98x, pass by ratio |
+| `NAVAID("ABR")` | 3.714ms | pass by ≤5ms |
+| `isNavaid("ABR")` | 0.714ms | pass by ≤5ms |
+
+The expanded seeded benchmark completed and reported a 1.088ms legacy
+Airport warm median. Its known reporting limitation remains: six of ten
+sampled airports raise the pre-existing runway-geometry `TypeError`, so that
+aggregate mixes successful calls and caught failures; the successful exact
+probe above is the formal gate evidence. This limitation does not conceal a
+test regression: the integrated full suite passed with **379 passed, 1
+skipped**, Ruff passed for `openNASR`/`tests`/`benchmarks`/`tools`, and mypy
+reported no issues in all 41 `openNASR` source files.
+
+Together with the prior nine-entry manifest table (all passing after T3.3a),
+this closes Gate 3. The bounded manifest remains unchanged; no unranked domain
+module is authorized by this approval.
 
 **Gate 3 performance policy amendment (2026-08-17):** a manifest path passes
 when its warm median is either at least 10x faster than baseline **or at most
