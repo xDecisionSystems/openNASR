@@ -160,6 +160,13 @@ def run_fixtures(
         for path in fixtures.iterdir()
         if path.is_dir() and (path / "CSV_Data").is_dir()
     )
+    if not generations:
+        raise SystemExit(
+            f"No fixture generations found under {fixtures}. Pass the parent "
+            "directory that contains generation subdirectories (each holding "
+            "its own CSV_Data/), for example "
+            "tests/fixtures/duckdb_parity, not a generation directory itself."
+        )
     reports = []
     for generation in generations:
         source = generation / "CSV_Data" / generation.name
@@ -267,7 +274,15 @@ def main() -> None:
     fixtures = subparsers.add_parser(
         "run-fixtures", help="benchmark committed fixtures"
     )
-    fixtures.add_argument("--fixtures", type=Path, required=True)
+    fixtures.add_argument(
+        "--fixtures",
+        type=Path,
+        required=True,
+        help=(
+            "parent directory containing generation subdirectories (each "
+            "with its own CSV_Data/), e.g. tests/fixtures/duckdb_parity"
+        ),
+    )
     fixtures.add_argument("--cold-repetitions", type=int, default=9)
     fixtures.add_argument("--warm-repetitions", type=int, default=5)
     fixtures.add_argument("--warm-iterations", type=int, default=200)

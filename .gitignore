@@ -2,6 +2,15 @@
 *.zip
 openNASR/data/
 
+# DuckDB derivative artifacts (nasr.duckdb, its .json sidecar, and the
+# .nasr.duckdb.lock/.previous/.tmp build-time files docs/DUCKDB_PLAN.md
+# directs to live beside a cached cycle, never in the repository)
+*.duckdb
+*.duckdb.json
+.*.duckdb.lock
+.*.duckdb.previous
+.*.duckdb.*.tmp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
