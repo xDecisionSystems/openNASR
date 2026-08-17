@@ -1,5 +1,13 @@
 # DuckDB Storage and Query Acceleration Plan
 
+## Goal
+
+Make repeated openNASR use substantially faster—locally and as the data layer
+for a future web service—by converting each validated FAA NASR cycle into an
+immutable, queryable DuckDB representation. The implementation must preserve
+the library's current CSV/Pandas API, exact historical-date behavior, and raw
+FAA source fidelity while making DuckDB an optional acceleration path.
+
 ## Objective
 
 Add an optional, local DuckDB backend that makes repeated use of an imported
