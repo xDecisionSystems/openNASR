@@ -723,22 +723,20 @@ def _procedure_path(
     return None
 
 
-def _is_departure_procedure(tables: Mapping[str, DataFrame], token: str) -> bool:
+def _is_departure_procedure(
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    procedure_index: _ProcedureIndex | None = None,
+) -> bool:
     """Whether ``token`` selects a departure record or transition."""
 
-    departures = tables.get("DP_BASE")
-    routes = tables.get("DP_RTE")
+    procedure_index = procedure_index or _ProcedureIndex(tables)
+    departure_matches = procedure_index.departure_base(token)
+    transition_matches = procedure_index.departure_transition(token)
     return bool(
-        (
-            departures is not None
-            and "DP_COMPUTER_CODE" in departures
-            and departures["DP_COMPUTER_CODE"].map(_text).eq(token).any()
-        )
-        or (
-            routes is not None
-            and "TRANSITION_COMPUTER_CODE" in routes
-            and routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token).any()
-        )
+        (departure_matches is not None and not departure_matches.empty)
+        or (transition_matches is not None and not transition_matches.empty)
     )
 
 
@@ -767,11 +765,12 @@ def _previous_route_token_index(
 def _departure_airway_join(
     tables: Mapping[str, DataFrame],
     tokens: tuple[_RouteToken, ...],
-    procedure_index: int,
+    procedure_token_index: int,
     procedure: tuple[_Waypoint, ...],
     *,
     resolver: _WaypointResolver,
     airway_index: _AirwayIndex | None,
+    procedure_index: _ProcedureIndex | None = None,
 ) -> _ProcedureAirwayJoin | None:
     """Find the one explicitly filed join from a DP to its next airway.
 
@@ -780,11 +779,13 @@ def _departure_airway_join(
     proximity or later route text to make a connection.
     """
 
-    procedure_token = tokens[procedure_index].value
-    airway_index_in_route = _next_route_token_index(tokens, procedure_index)
+    procedure_token = tokens[procedure_token_index].value
+    airway_index_in_route = _next_route_token_index(tokens, procedure_token_index)
     if (
         airway_index_in_route is None
-        or not _is_departure_procedure(tables, procedure_token)
+        or not _is_departure_procedure(
+            tables, procedure_token, procedure_index=procedure_index
+        )
     ):
         return None
     airway_token = tokens[airway_index_in_route].value
@@ -796,7 +797,15 @@ def _departure_airway_join(
     following_token = tokens[endpoint_index].value
     if _AIRWAY.fullmatch(following_token) is not None:
         return None
-    if _procedure_path(tables, following_token, resolver=resolver) is not None:
+    if (
+        _procedure_path(
+            tables,
+            following_token,
+            resolver=resolver,
+            procedure_index=procedure_index,
+        )
+        is not None
+    ):
         return None
 
     # Confirm this is a real filed endpoint before classifying failed joins as
@@ -913,6 +922,7 @@ def _tokenize_flight_plan(
     flight_plan: str,
     *,
     resolver: _WaypointResolver,
+    procedure_index: _ProcedureIndex | None = None,
 ) -> tuple[_RouteToken, ...]:
     """Normalize space- or dot-delimited FAA route text into route tokens.
 
@@ -924,6 +934,7 @@ def _tokenize_flight_plan(
     is speed/altitude information, not geometry.
     """
 
+    procedure_index = procedure_index or _ProcedureIndex(tables)
     normalized: list[_RouteToken] = []
     for field_match in re.finditer(r"\S+", flight_plan.upper()):
         field = field_match.group().split("/", 1)[0]
@@ -948,8 +959,15 @@ def _tokenize_flight_plan(
             )
             if (
                 combined is not None
-                and _is_published_dotted_procedure(tables, combined)
-                and _procedure_path(tables, combined, resolver=resolver) is not None
+                and _is_published_dotted_procedure(
+                    tables, combined, procedure_index=procedure_index
+                )
+                and _procedure_path(
+                    tables,
+                    combined,
+                    resolver=resolver,
+                    procedure_index=procedure_index,
+                )
             ):
                 normalized.append(_RouteToken(combined, position))
                 component_offset += len(component) + 1 + len(components[index + 1])
@@ -967,6 +985,7 @@ def _flight_plan_path(
     *,
     resolver: _WaypointResolver,
     airway_index: _AirwayIndex | None = None,
+    procedure_index: _ProcedureIndex | None = None,
 ) -> tuple[tuple[float, float], ...]:
     """Return the ``(latitude, longitude)`` path for FAA route-field text.
 
@@ -984,7 +1003,13 @@ def _flight_plan_path(
 
     if not isinstance(flight_plan, str) or not flight_plan.strip():
         raise ValueError("flight_plan must be non-empty FAA route-field text")
-    tokens = _tokenize_flight_plan(nasr, flight_plan, resolver=resolver)
+    procedure_index = procedure_index or _ProcedureIndex(nasr)
+    tokens = _tokenize_flight_plan(
+        nasr,
+        flight_plan,
+        resolver=resolver,
+        procedure_index=procedure_index,
+    )
     if not tokens or any(not token.value for token in tokens):
         raise ValueError("flight_plan must contain route tokens")
 
@@ -1020,6 +1045,7 @@ def _flight_plan_path(
                 nasr,
                 token,
                 resolver=resolver,
+                procedure_index=procedure_index,
                 preceding_token=preceding_token,
                 following_token=following_token,
             )
@@ -1034,6 +1060,7 @@ def _flight_plan_path(
                 procedure,
                 resolver=resolver,
                 airway_index=airway_index,
+                procedure_index=procedure_index,
             )
             for point in join.prefix if join is not None else procedure:
                 coordinate = point.latitude, point.longitude
@@ -1053,10 +1080,16 @@ def _flight_plan_path(
             ):
                 raise ValueError(f"Airway {token!r} must have waypoints on both sides")
             previous_procedure = _procedure_path(
-                nasr, tokens[previous_index].value, resolver=resolver
+                nasr,
+                tokens[previous_index].value,
+                resolver=resolver,
+                procedure_index=procedure_index,
             )
             following_procedure = _procedure_path(
-                nasr, tokens[following_index].value, resolver=resolver
+                nasr,
+                tokens[following_index].value,
+                resolver=resolver,
+                procedure_index=procedure_index,
             )
             previous_join = (
                 _departure_airway_join(
@@ -1066,6 +1099,7 @@ def _flight_plan_path(
                     previous_procedure,
                     resolver=resolver,
                     airway_index=airway_index,
+                    procedure_index=procedure_index,
                 )
                 if previous_procedure is not None
                 else None
@@ -1131,6 +1165,7 @@ class RouteResolver:
         self._nasr = dict(nasr)
         self._waypoints = _WaypointResolver(self._nasr)
         self._airways = _AirwayIndex(self._nasr)
+        self._procedures = _ProcedureIndex(self._nasr)
 
     def path(self, flight_plan: str) -> tuple[tuple[float, float], ...]:
         """Return the source-coordinate path for one FAA route field."""
@@ -1156,6 +1191,7 @@ class RouteResolver:
                 flight_plan,
                 resolver=self._waypoints,
                 airway_index=self._airways,
+                procedure_index=self._procedures,
             )
         except OpenNASRError as error:
             _attach_route_diagnostic(error, flight_plan=flight_plan, cycle=self._cycle)

@@ -152,14 +152,22 @@ def test_flight_plan_path_expands_airways_and_resolves_airports(tables):
 
 def test_route_resolver_reuses_one_waypoint_index(tables, monkeypatch):
     calls = 0
+    procedure_calls = 0
     original_init = _WaypointResolver.__init__
+    original_procedure_init = _ProcedureIndex.__init__
 
     def tracked_init(self, route_tables):
         nonlocal calls
         calls += 1
         original_init(self, route_tables)
 
+    def tracked_procedure_init(self, route_tables):
+        nonlocal procedure_calls
+        procedure_calls += 1
+        original_procedure_init(self, route_tables)
+
     monkeypatch.setattr(_WaypointResolver, "__init__", tracked_init)
+    monkeypatch.setattr(_ProcedureIndex, "__init__", tracked_procedure_init)
 
     assert PublicRouteResolver is RouteResolver
     resolver = PublicRouteResolver(tables)
@@ -168,8 +176,10 @@ def test_route_resolver_reuses_one_waypoint_index(tables, monkeypatch):
     assert resolver.path("KAAA ALPHA KBBB") == expected
     assert resolver.path("KAAA ALPHA KBBB") == expected
     assert calls == 1
+    assert procedure_calls == 1
     assert flight_plan_path(tables, "KAAA ALPHA KBBB") == expected
     assert calls == 2
+    assert procedure_calls == 2
 
 
 def test_route_resolver_uses_waypoint_snapshot(tables):
