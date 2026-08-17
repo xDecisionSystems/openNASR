@@ -162,6 +162,134 @@ def _airway_vertices(
     return unique[0]
 
 
+def _route_rows_points(
+    tables: Mapping[str, DataFrame], rows: DataFrame, *, reverse: bool = False
+) -> tuple[_Waypoint, ...]:
+    """Resolve ordered FAA procedure-route rows into coordinate waypoints."""
+
+    records = rows.to_dict(orient="records")
+    records.sort(
+        key=lambda row: (
+            int(str(row.get("BODY_SEQ", "0") or "0")),
+            int(str(row.get("POINT_SEQ", "0") or "0")),
+        )
+    )
+    if reverse:
+        records.reverse()
+    points: list[_Waypoint] = []
+    for row in records:
+        identifier = _text(row.get("POINT", ""))
+        if not identifier:
+            continue
+        point = _waypoint(
+            tables,
+            identifier,
+            preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
+        )
+        if not points or points[-1] != point:
+            points.append(point)
+    return tuple(points)
+
+
+def _procedure_path(
+    tables: Mapping[str, DataFrame], token: str
+) -> tuple[_Waypoint, ...] | None:
+    """Expand one FAA departure or arrival procedure/transition token.
+
+    Departure computer codes (for example ``ORCO8.TRM``) identify a
+    ``DP_BASE`` record directly. Arrival route strings normally carry a STAR
+    transition computer code (for example ``IOW.LLROY3``), which identifies a
+    branch in ``STAR_RTE``. STAR rows are recorded outbound from the terminal
+    route's end, so they are traversed in reverse for an inbound flight plan.
+    """
+
+    departures = tables.get("DP_BASE")
+    departure_routes = tables.get("DP_RTE")
+    stars = tables.get("STAR_BASE")
+    star_routes = tables.get("STAR_RTE")
+    departure_matches = (
+        departures[departures["DP_COMPUTER_CODE"].map(_text).eq(token)].to_dict(
+            orient="records"
+        )
+        if departures is not None and departure_routes is not None
+        else []
+    )
+    transition_matches = (
+        star_routes[
+            star_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token)
+        ].to_dict(orient="records")
+        if star_routes is not None
+        else []
+    )
+    base_matches = (
+        stars[stars["STAR_COMPUTER_CODE"].map(_text).eq(token)].to_dict(
+            orient="records"
+        )
+        if stars is not None and star_routes is not None
+        else []
+    )
+
+    matches = bool(departure_matches) + bool(transition_matches or base_matches)
+    if matches > 1:
+        raise AmbiguousRecordError(
+            entity_type="Flight-plan procedure", identifier=token
+        )
+    if departure_matches:
+        assert departure_routes is not None
+        if len(departure_matches) != 1:
+            raise AmbiguousRecordError(
+                entity_type="DepartureProcedure",
+                identifier=token,
+                candidates=departure_matches,
+            )
+        record = departure_matches[0]
+        rows = departure_routes[
+            (departure_routes["DP_NAME"].map(_text).eq(_text(record["DP_NAME"])))
+            & (departure_routes["ARTCC"].map(_text).eq(_text(record["ARTCC"])))
+            & (
+                departure_routes["DP_COMPUTER_CODE"]
+                .map(_text)
+                .eq(_text(record["DP_COMPUTER_CODE"]))
+            )
+        ]
+        return _route_rows_points(tables, rows)
+    if transition_matches or base_matches:
+        assert star_routes is not None
+        if transition_matches:
+            keys = {
+                (_text(row["STAR_COMPUTER_CODE"]), _text(row["ARTCC"]))
+                for row in transition_matches
+            }
+        else:
+            keys = {
+                (_text(row["STAR_COMPUTER_CODE"]), _text(row["ARTCC"]))
+                for row in base_matches
+            }
+        if len(keys) != 1:
+            raise AmbiguousRecordError(
+                entity_type="StarProcedure", identifier=token, candidates=tuple(keys)
+            )
+        code, artcc = next(iter(keys))
+        body = star_routes[
+            (star_routes["STAR_COMPUTER_CODE"].map(_text).eq(code))
+            & (star_routes["ARTCC"].map(_text).eq(artcc))
+            & (star_routes["ROUTE_PORTION_TYPE"].map(_text).eq("BODY"))
+        ]
+        transition = (
+            star_routes[
+                (star_routes["STAR_COMPUTER_CODE"].map(_text).eq(code))
+                & (star_routes["ARTCC"].map(_text).eq(artcc))
+                & (star_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token))
+            ]
+            if transition_matches
+            else star_routes.iloc[0:0]
+        )
+        return _route_rows_points(
+            tables, transition, reverse=True
+        ) + _route_rows_points(tables, body, reverse=True)
+    return None
+
+
 def flight_plan_path(
     nasr: Mapping[str, DataFrame], flight_plan: str
 ) -> tuple[tuple[float, float], ...]:
@@ -190,6 +318,14 @@ def flight_plan_path(
     while index < len(tokens):
         token = tokens[index]
         if token == _DIRECT:
+            index += 1
+            continue
+        procedure = _procedure_path(nasr, token) if "." in token else None
+        if procedure is not None:
+            for point in procedure:
+                coordinate = point.latitude, point.longitude
+                if not output or output[-1] != coordinate:
+                    output.append(coordinate)
             index += 1
             continue
         airway = _AIRWAY.fullmatch(token)
