@@ -792,6 +792,15 @@ T3.4 and its release evidence.
   cycle and record the new mean/median for both route categories.
   Dependencies: T4.3, L1.1.
 
+L4.4 tooling preparation: `benchmarks/run_benchmarks.py` reports separate
+mean/median/p95/min/max warm timings for direct/airway-only and
+procedure-containing routes, with load and `RouteResolver` index construction
+reported independently; `--output PATH` preserves those categories in JSON.
+Stable tests cover route-shape classification and report fields without
+timing thresholds. The canonical post-T4.3 numbers remain intentionally
+unrecorded here until the benchmark is rerun in the dependency-complete
+environment against the pinned cycle.
+
 **Gate 4:** Sol re-runs L1.1's benchmark against the canonical cycle and
 records the before/after mean/median for procedure-containing and
 direct/airway-only routes; approves only if the procedure-route mean drops
