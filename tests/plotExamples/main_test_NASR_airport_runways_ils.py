@@ -2,7 +2,7 @@
 
 Run from the repository root after installing the plotting extra:
 
-    python tests/main_test_NASR_airport_runways_ils.py --airport ATL
+    python tests/plotExamples/main_test_NASR_airport_runways_ils.py --airport ATL
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("airport_runways_ils.png"),
+        default=Path(__file__).parent / "plots" / "airport_runways_ils.png",
         help="PNG path to write (default: %(default)s)",
     )
     parser.add_argument("--show", action="store_true", help="Open the plot window")

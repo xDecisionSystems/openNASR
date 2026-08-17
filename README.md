@@ -419,9 +419,9 @@ python tests/main_test_NASR_airport.py
 python tests/main_test_NASR_airspace.py
 python tests/main_test_NASR_fix.py
 python tests/main_test_NASR_navaid.py
-python tests/main_test_NASR_atlanta_procedures.py
-python tests/main_test_NASR_zob_airways.py
-python tests/main_test_NASR_airport_runways_ils.py --airport ATL
+python tests/plotExamples/main_test_NASR_atlanta_procedures.py
+python tests/plotExamples/main_test_NASR_zob_airways.py
+python tests/plotExamples/main_test_NASR_airport_runways_ils.py --airport ATL
 ```
 
 Contributions should avoid committing FAA archives, extracted cycle data,

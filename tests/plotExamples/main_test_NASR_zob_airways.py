@@ -2,7 +2,7 @@
 
 Run from the repository root after installing the plotting extra:
 
-    python tests/main_test_NASR_zob_airways.py
+    python tests/plotExamples/main_test_NASR_zob_airways.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("zob_high_low_airways.png"),
+        default=Path(__file__).parent / "plots" / "zob_high_low_airways.png",
         help="PNG path to write (default: %(default)s)",
     )
     parser.add_argument("--show", action="store_true", help="Open the plot window")

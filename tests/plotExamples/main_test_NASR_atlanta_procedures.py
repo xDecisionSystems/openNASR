@@ -2,7 +2,7 @@
 
 Run from the repository root after installing the plotting extra:
 
-    python tests/main_test_NASR_atlanta_procedures.py
+    python tests/plotExamples/main_test_NASR_atlanta_procedures.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("atlanta_airport_procedures.png"),
+        default=Path(__file__).parent / "plots" / "atlanta_airport_procedures.png",
         help="PNG path to write (default: %(default)s)",
     )
     parser.add_argument("--show", action="store_true", help="Open the plot window")
