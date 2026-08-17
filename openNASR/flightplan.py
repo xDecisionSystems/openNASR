@@ -305,6 +305,13 @@ def _select_procedure_body(
         )
         if len(matches) == 1:
             return matches[0]
+    common: list[_Waypoint] = []
+    for points in zip(*candidates):
+        if len(set(points)) != 1:
+            break
+        common.append(points[0])
+    if common:
+        return tuple(common)
     raise AmbiguousRecordError(
         entity_type=entity_type,
         identifier=identifier,
@@ -551,8 +558,8 @@ def _tokenize_flight_plan(
             )
             if (
                 combined is not None
-                and _procedure_path(tables, combined, resolver=resolver) is not None
                 and _is_published_procedure_transition(tables, combined)
+                and _procedure_path(tables, combined, resolver=resolver) is not None
             ):
                 normalized.append(_RouteToken(combined, position))
                 component_offset += len(component) + 1 + len(components[index + 1])
@@ -596,15 +603,21 @@ def flight_plan_path(
             index += 1
             continue
         airway = _AIRWAY.fullmatch(token)
-        preceding_token = (
-            tokens[index - 1].value
-            if index > 0 and tokens[index - 1].value != _DIRECT
-            else None
+        preceding_token = next(
+            (
+                candidate.value
+                for candidate in reversed(tokens[:index])
+                if candidate.value != _DIRECT
+            ),
+            None,
         )
-        following_token = (
-            tokens[index + 1].value
-            if index + 1 < len(tokens) and tokens[index + 1].value != _DIRECT
-            else None
+        following_token = next(
+            (
+                candidate.value
+                for candidate in tokens[index + 1 :]
+                if candidate.value != _DIRECT
+            ),
+            None,
         )
         # A bare procedure computer code (for example ``GNDLF3``) can also
         # satisfy the airway lexical pattern.  Resolve procedures first so a
@@ -634,15 +647,11 @@ def flight_plan_path(
                 or tokens[index + 1].value == _DIRECT
             ):
                 raise ValueError(f"Airway {token!r} must have waypoints on both sides")
-            previous_procedure = (
-                _procedure_path(nasr, tokens[index - 1].value, resolver=resolver)
-                if "." in tokens[index - 1].value
-                else None
+            previous_procedure = _procedure_path(
+                nasr, tokens[index - 1].value, resolver=resolver
             )
-            following_procedure = (
-                _procedure_path(nasr, tokens[index + 1].value, resolver=resolver)
-                if "." in tokens[index + 1].value
-                else None
+            following_procedure = _procedure_path(
+                nasr, tokens[index + 1].value, resolver=resolver
             )
             previous = (
                 previous_procedure[-1].identifier

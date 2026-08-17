@@ -580,6 +580,48 @@ def test_star_body_uses_preceding_route_token_and_preserves_ambiguity(tables):
         flight_plan_path(tables, "KAAA CHOICE3 KBBB")
 
 
+def test_procedure_body_keeps_only_the_unambiguous_common_portion(tables):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "MERGE", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-79"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "SHARED3", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": "SHARED3",
+                "ARTCC": "ZJX",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "ROUTE_NAME": route_name,
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": sequence,
+                "POINT": point,
+            }
+            for route_name, branch in (
+                ("ALPHA BRANCH", "ALPHA"),
+                ("BRAVO BRANCH", "BRAVO"),
+            )
+            for sequence, point in (("10", "KBBB"), ("20", branch), ("30", "MERGE"))
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA SHARED3 KBBB") == (
+        (38.0, -77.0),
+        (34.0, -79.0),  # The only common inbound body point.
+        (35.0, -80.0),
+    )
+
+
 def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
     tables["FIX_BASE"] = pd.concat(
         [
