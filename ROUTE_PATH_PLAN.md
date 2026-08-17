@@ -15,12 +15,21 @@ oceanic routes, and coordinate fixes are deliberately recorded as separate
 coverage work rather than silently guessed from domestic data.
 
 Most production work in this plan is against `openNASR/flightplan.py`
-(currently 504 lines: `_Waypoint`, `_WaypointResolver`, `_waypoint`,
-`_airway_vertices`, `_route_rows_points`, `_procedure_path`,
-`_tokenize_flight_plan`, `flight_plan_path`) and its test file
-`tests/test_flightplan.py`. If Phase 4 exposes `RouteResolver` as a package
-API, `openNASR/__init__.py` must also export it; benchmark tooling and API
-documentation may change their respective files.
+(931 lines as of 2026-08-17, after T1.1/T2.4/T3.1/T3.5/T4.1-T4.3/T6.1
+landed: `_Waypoint`, `_RouteToken`, `_WaypointResolver`, `_waypoint`,
+`_AirwayIndex`, `_airway_vertices`, `_is_published_airway`,
+`_route_rows_points`, `_select_procedure_body`, `_procedure_path`,
+`_is_published_dotted_procedure`, `_tokenize_flight_plan`,
+`_recognized_unsupported_content`, `_flight_plan_path`, `RouteResolver`,
+`flight_plan_path`) and its test file `tests/test_flightplan.py`. Re-check
+this list and line count before citing new line numbers in a task — the
+file has grown substantially since earlier tasks were written and will keep
+changing. `RouteResolver` is a public package API, exported from
+`openNASR/__init__.py` alongside `flight_plan_path` and
+`UnsupportedRouteContentError`; `openNASR/exceptions.py`,
+`docs/API.md`/`README.md`, and `tools/flightplan_benchmark.py`/
+`tools/route_benchmark.py`/`tools/route_path_validation.py` have also
+changed and may continue to change as this plan progresses.
 
 ## Agent roster and roles
 
@@ -65,44 +74,36 @@ Each in-flight task has exactly one owning agent.
   `random.Random(20260514).sample(...)` from the 46,580 non-empty rows of
   `tests/exampleRoutes.csv`, using NASR cycle `2026-05-14`, CSV storage, and
   one shared read-only waypoint resolver. Its source-file SHA-256 is
-  `9c52331afa6c8ac5fe661050370bc2fa7ecd87412e241fc55c4f6daf65e6f03c`
-  (verified 2026-08-17: matches `tests/exampleRoutes.csv` in this checkout
-  exactly). Selected-index SHA-256 is
+  `9c52331afa6c8ac5fe661050370bc2fa7ecd87412e241fc55c4f6daf65e6f03c`,
+  selected-index SHA-256 is
   `e4a8cbf7b5428f7dc01fc5b89d4264fc2b25e5c85010f3f19ffd2775944773b2`,
   selected-route SHA-256 is
   `71e060c887646a17681bd8541c8b8f8f0916bfb5cf370290b2aec321e9961750`,
-  and the result is 38 successes / 62 failures.
-  **Gap found on re-verification (2026-08-17): the exact hash construction
-  is not recorded.** Re-attempting these two hashes requires knowing the
-  precise `sample()` population argument (rows vs. row indices), the
-  selection order used before hashing (as sampled vs. sorted), the string
-  encoding, and the join/serialization format — none of which are written
-  down, so a future Sol cannot currently confirm a re-run used the same
-  sample as this one. **T0.1a below closes this gap; do not re-run Gate 1
-  until it lands.** Also unverified: `openNASR/data/zip/` in this checkout
-  only has archives through `2024-06-13`
-  (verified 2026-08-17 — `2026-05-14` is on the correct 28-day cycle
-  lattice from `2024-06-13`, so it is plausibly a real, later FAA cycle,
-  but it is not present locally and must be obtained (download or import)
-  before this baseline can be re-run in this repository).
-  The dominant observed category is bare procedure names reaching airway
-  resolution — see T1.1. The separate 60-row, `2024-06-13` reproduction
-  remains diagnostic evidence only; do not compare phase-gate counts across
-  different cycle dates.
-- [ ] **T0.1a — Agent model: Sol.** Close the gap found in T0.1: publish
-  the exact, runnable sampling/hashing script (as a code block in this
-  document or a small script under `tools/`) that reproduces T0.1's three
-  SHA-256 digests byte-for-byte, including the precise `random.sample(...)`
-  call, selection/serialization order, and encoding. Confirm the
-  `2026-05-14` NASR cycle archive is available (document where it was
-  obtained, e.g. the FAA subscription page or an existing local cache
-  outside this checkout) before treating T0.1 as re-runnable by another
-  agent. If the archive cannot be located, replace the canonical baseline
-  with an equivalent sample against a cycle that is actually available in
-  this repository (e.g. `2024-06-13`) and update every reference to
-  `2026-05-14`/`38 successes / 62 failures` accordingly, including Gate 1-3
-  and Release Gates.
-  Dependencies: none (blocks re-running Gate 1, not T1.1's implementation).
+  and the result is 38 successes / 62 failures. The dominant observed
+  category is bare procedure names reaching airway resolution — see T1.1.
+  The separate 60-row, `2024-06-13` reproduction remains diagnostic evidence
+  only; do not compare phase-gate counts across different cycle dates.
+- [x] **T0.1a — Agent model: Sol. Done (2026-08-17).** Independently
+  re-verified all three claims in T0.1. The exact, runnable methodology —
+  `random.Random(20260514).sample(range(46580), 100)`, sorted indices
+  joined with `","`, route strings joined with `"\n"` — is now published
+  in [`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md);
+  independently re-ran it against `tests/exampleRoutes.csv` in this
+  checkout and confirmed all three SHA-256 digests match byte-for-byte.
+  The `2026-05-14` archive is confirmed to exist and to be usable: it is
+  not in this repository checkout's `openNASR/data/zip/` (which only goes
+  through `2024-06-13`), but it **is** present in
+  `CycleManager`'s default platform cache
+  (`~/.cache/openNASR/archives/28DaySubscription_Effective_2026-05-14.zip`
+  on this machine — obtained via `CycleManager.download()`/the live FAA
+  subscription page, not shipped in the repository). A future agent
+  re-running Gate 1 needs that archive available in *their* cache (or
+  their own `CycleManager` download), not necessarily this exact path —
+  document that expectation, don't assume the repo checkout alone is
+  sufficient. Confirmed directly: `_WaypointResolver` construction against
+  this real cycle measured ~0.24s post-T4.1, consistent with the Gate 4
+  approval note below.
+  Dependencies: none.
 - [x] **T0.2 — Agent model: Sol. Done (2026-08-17).** Categorize each of T0.1's failures as: parser error,
   procedure-resolution error, airway-resolution error, waypoint ambiguity,
   missing NASR data, or malformed input. Retain at least one representative
@@ -240,8 +241,8 @@ Each in-flight task has exactly one owning agent.
 
 **Gate 1:** Sol confirms T1.1's fix resolves the dominant real-world failure
 category (re-run the T0.1 sample or an equivalent subset) and records the
-gate with the before/after success count. Requires T0.1a (the sample must
-be re-runnable to produce a comparable before/after count).
+gate with the before/after success count. T0.1a confirmed the sample is
+re-runnable.
 
 ## Phase 2 — Departures and Arrivals
 
@@ -265,34 +266,80 @@ be re-runnable to produce a comparable before/after count).
   `test_flight_plan_path_expands_departure_and_arrival_procedures`
   (`tests/test_flightplan.py:118`) before assuming new work is needed here
   beyond T2.4's fix.
-- [ ] **T2.4 — Agent model: Terra.** Fix the greedy-dot-merge bug verified 2026-08-17:
-  `_tokenize_flight_plan` (`flightplan.py:393-406`) merges any dotted pair
-  into one token whenever `_procedure_path(combined, ...)` returns
-  non-`None` — but it does not verify the *second* component is actually a
-  published transition/runway identifier for that procedure. Reproduction:
-  route `KIAD.MCRAY2.MCRAY.Q178.LEJOY.DEMME5.KPIT/0037` on the `2024-06-13`
-  cycle. `MCRAY2` is a real DP name; `MCRAY` is a plain enroute fix filed
-  redundantly after it, not a transition. `_procedure_path("MCRAY2.MCRAY")`
-  silently falls back to the DP's default routing (ending at `HAYGR`, not
-  `MCRAY`), so the airway lookup that follows for `Q178` uses the wrong
-  `from` waypoint with no error raised — verified directly:
-  `_tokenize_flight_plan` returns `('KIAD', 'MCRAY2.MCRAY', 'Q178',
-  'LEJOY.DEMME5', 'KPIT')` and `_procedure_path('MCRAY2.MCRAY', ...)`
-  returns a path whose last point is `HAYGR`.
-  Fix: `_procedure_path` (or a new check in `_tokenize_flight_plan` before
-  it merges the pair) must verify the candidate after the dot is an actual
-  published `TRANSITION_COMPUTER_CODE` (or runway/common-portion
-  identifier) for the matched `DP_COMPUTER_CODE`/`STAR_COMPUTER_CODE`, not
-  merely that *some* route exists for the procedure name. When the
-  candidate is not a valid transition, the tokenizer must fall back to
-  treating the two components as separate tokens: the bare procedure name
-  (resolved by T2.1/T2.2's fix), then a plain waypoint.
-  Acceptance: for the reproduction route, the airway lookup for `Q178` uses
-  `MCRAY` as its `from` waypoint, not `HAYGR`; a new test fails on current
-  code and passes after the fix.
+- [x] **T2.4 — Agent model: Terra. Partially done; see T2.4a for what
+  remains open (2026-08-17).** The original diagnosis of this task was
+  factually wrong about the `2024-06-13` cycle's data and has been
+  corrected below; the bug it led to finding was real, just different from
+  what was originally described.
+  **What was actually wrong, verified 2026-08-17 by direct re-check against
+  real `DP_BASE`/`DP_RTE` data:** `MCRAY2` is *not* a standalone DP code in
+  this cycle — the DP's real, complete `DP_COMPUTER_CODE` is the compound
+  string `"MCRAY2.MCRAY"` itself (confirmed: `DP_BASE`'s only `MCRAY`-named
+  row has `DP_COMPUTER_CODE="MCRAY2.MCRAY"`, and no row has
+  `DP_COMPUTER_CODE="MCRAY2"` alone). The original diagnosis assumed
+  `MCRAY2` was a bare DP and `.MCRAY` a coincidentally-merged plain fix;
+  that assumption does not hold in this cycle's real data.
+  The genuine bug was in `_tokenize_flight_plan`'s now-removed
+  `exact_dp_allowed` gate (former `flightplan.py:729-731`): it only allowed
+  a dotted pair to merge as an exact `DP_COMPUTER_CODE` when no further
+  dotted components followed in the same unspaced field. Real FAA route
+  text routinely dot-chains a DP straight into a following airway/fix with
+  no space (`MCRAY2.MCRAY.Q178.LEJOY.DEMME5`), so this position-based gate
+  incorrectly blocked the merge even though
+  `_is_published_dotted_procedure`'s own internal check (`not
+  computer_codes.eq(first_component).any()`) already correctly distinguishes
+  "real compound code, no standalone first component" from "ambiguous,
+  standalone first component also exists" (the case the docstring's stated
+  intent, and the existing
+  `test_dotted_pair_does_not_hide_filed_fix_before_airway` fixture, actually
+  need). The external gate was redundant with, and in this case
+  contradicted, the function's own correct logic.
+  **Fixed 2026-08-17:** removed the `exact_dp_allowed` parameter and its
+  caller-side computation entirely; `_is_published_dotted_procedure` now
+  always performs its own first-component check. Verified: a synthetic
+  compound-DP-code route with trailing dotted components
+  (`KAAA.EXACT3.PART.BRAVO.KBBB`, mirroring the real `MCRAY2.MCRAY.Q178...`
+  shape) now resolves correctly; regression test
+  `test_exact_dotted_departure_code_merges_with_trailing_dotted_components`
+  fails on the pre-fix code and passes after. All 40 existing
+  `tests/test_flightplan.py` tests, including
+  `test_dotted_pair_does_not_hide_filed_fix_before_airway` (the genuinely
+  ambiguous case, where `MCRAY2` alone *is* real) and
+  `test_tokenizer_retains_exact_dotted_departure_computer_code`, still pass
+  unchanged.
   Dependencies: T1.1, T2.1, T2.2 (shares dispatch/tokenizer code with all
   three; land after them to avoid re-resolving merge conflicts in the same
   functions).
+- [ ] **T2.4a — Agent model: Sol, then Terra.** Resolve what T2.4's original
+  reproduction route still exposes on the real `2024-06-13` cycle, now that
+  T2.4's actual bug is fixed: `KIAD.MCRAY2.MCRAY.Q178.LEJOY.DEMME5.KPIT/0037`
+  now resolves the `MCRAY2.MCRAY` DP correctly, but the DP's own published
+  body route genuinely continues past `MCRAY` to end at `HAYGR`
+  (`DP_RTE` for `MCRAY2.MCRAY`: `BODY_SEQ=1, POINT_SEQ=10, POINT=MCRAY`
+  then `BODY_SEQ=1, POINT_SEQ=20, POINT=HAYGR` — verified directly against
+  the real cycle). The following `Q178` airway's only real connection point
+  in this cycle is `MCRAY`, not `HAYGR`, so the airway lookup still fails
+  (`RecordNotFoundError` with `from='HAYGR'`). This is not obviously a code
+  defect: the filed route text may be requesting an early exit from the
+  published DP body at `MCRAY` (a real FAA filing pattern — routes
+  sometimes join an airway partway through a procedure's full published
+  extent), which `_procedure_path`/`_select_procedure_body` do not
+  currently support (they always return a procedure's complete published
+  body, not a truncated "stop at X" variant). Sol must first decide the
+  policy — does openNASR (a) always return the complete published
+  procedure body regardless of what follows in the filed route text (and
+  treat this specific route as a case Phase 6/T0.8's "broken published
+  connectivity" error category should name explicitly, not silently
+  mis-join), or (b) truncate a procedure body at a point that also appears
+  later in the route text, when doing so does not change source ordering or
+  fabricate a geometry — before Terra implements either. Document the
+  decision in the Decision log; it changes the typed-error/truncation
+  contract for every future procedure-to-airway join, not just this route.
+  Acceptance: the reproduction route (or an equivalent fixture, if the
+  `2024-06-13` cycle's data changes across future FAA amendments) resolves
+  according to the chosen policy, with a test that documents which policy
+  was chosen and why.
+  Dependencies: T2.4.
 - [ ] **T2.5 — Agent model: Terra.** Use neighboring route tokens to choose the
   applicable procedure transition or runway/common portion. If more than
   one published candidate remains, raise a typed ambiguity
@@ -693,7 +740,7 @@ denominator is accurate.
 | 2026-08-17 | Give `RouteResolver` snapshot semantics and use a relative benchmark target. | `NASR` and pandas DataFrames are mutable, so implicit cache invalidation would be ambiguous and costly. Absolute timing thresholds also vary by hardware; a recorded environment plus before/after ratio gives a reproducible performance gate. |
 | 2026-08-17 | Restructure the entire plan into numbered tasks (`T0.x`-`T6.x`) with an assigned agent role, explicit dependencies, and a per-task acceptance test, reusing the Sol/Terra/Luna roster and coordination-rules convention from `DUCKDB_PLAN.md`; fact-check the previously-unreviewed Phase 3/5/6 bullets against real code and data during the restructure rather than only reformatting the existing prose. | The plan's four already-verified findings (bare-procedure misclassification, greedy dot-merge, `VOT` disambiguation, resolver vectorization) were implementable by a cold subagent, but most of the original bullets were outcome statements ("resolve a bare departure name") with no task boundary, acceptance criterion, or file-ownership guidance — two subagents assigned different Phase 2 bullets would likely collide on the same functions in `flightplan.py` with no sequencing rule to prevent it. |
 | 2026-08-17 | Fix `_airway_vertices`'s `AWY_DESIGNATION` comparison (T3.1): stop comparing the token's regex-extracted letter prefix against `AWY_DESIGNATION`; rely on `AWY_ID` matching plus the existing `REGULATORY`/`AWY_LOCATION` disambiguation instead. | Verified against the real `2024-06-13` cycle that `AWY_DESIGNATION` values (`A, AT, B, BF, G, J, PA, PR, R, RN, V`) are not the token's leading letters — every real `Q`/`T`-prefixed `AWY_ID` (e.g. `Q822`, a genuine RNAV airway) has `AWY_DESIGNATION` of `AT` or `RN`, never `"Q"` or `"T"` — so the current `or`-joined check silently rejects every `Q`/`T`-prefixed airway regardless of whether its waypoints are correct, reproduced directly against `Q822`'s own segment data. `AWY_ID` alone is not fully unique (53 of 1,483 values in this cycle are duplicated across regions), so the existing downstream `REGULATORY`/`AWY_LOCATION` filter must be confirmed to still disambiguate correctly, not simply dropped alongside the wrong comparison. |
-| 2026-08-17 | Add T0.1a: publish the exact sampling/hashing script behind T0.1's baseline, and confirm the `2026-05-14` NASR cycle archive is actually obtainable before treating the baseline as re-runnable. | Re-verifying T0.1 found its `random.Random(20260514).sample(...)` call and both SHA-256 digests are stated as facts but not as a runnable procedure — the `sample()` population argument, selection order, and serialization/encoding used to produce the index/route hashes are unrecorded, so no one can currently reproduce them to confirm a re-run used the same sample. Separately, `openNASR/data/zip/` in this checkout only has archives through `2024-06-13`; `2026-05-14` sits on the correct 28-day cycle lattice from that date (so it is plausibly a real, later cycle) but is not present locally, so Gate 1 cannot currently be re-run here without first obtaining it. |
+| 2026-08-17 | Add and then close T0.1a: the exact sampling/hashing methodology behind T0.1's baseline is now published in `docs/route_path_baseline_2026-05-14.md`, and the `2026-05-14` NASR cycle archive is confirmed real and obtainable. | Re-verifying T0.1 initially found the `random.Random(20260514).sample(...)` call and both SHA-256 digests stated as facts but not as a runnable procedure, and that the archive wasn't in this checkout's `openNASR/data/zip/`. Both were resolved: the published methodology (`random.Random(20260514).sample(range(46580), 100)`, sorted-index/`","`-join and route/`"\n"`-join) was independently re-run and reproduces all three digests exactly; the archive was located in `CycleManager`'s default platform cache (obtained via live FAA download, not shipped in the repository), and a direct resolver-construction measurement against it (~0.24s) matched the Gate 4 approval note. |
 | 2026-08-17 | Classify a sampled row by the earliest faithfully diagnosed root cause, not the surfaced exception text or later content in the route. | The canonical sample contains 39 bare published DPs that surface as missing airway paths, while some routes contain later foreign/oceanic content that execution never reaches; root-cause classification keeps phase-gate comparisons actionable and stable. |
 | 2026-08-17 | Keep the existing lookup exceptions and add distinct public types for unsupported route content, malformed route text, and broken published connectivity. | A foreign/oceanic token is outside the domestic data contract rather than an unknown domestic record; malformed caller input is distinct from both lookup and data-connectivity failures; and an existing published record whose endpoints cannot form a path is not accurately described as a missing record. All remain catchable through `OpenNASRError`. |
 | 2026-08-17 | Set the Phase 1-5 domestic coverage gate at 76/84 (90%), require no regression among the 36 current no-exception domestic rows, and report 16 out-of-contract rows separately. | A fixed content-based denominator makes phase counts comparable. Thirteen sampled rows require foreign/oceanic/external routing and three require coordinate or radial-distance handling reserved for separate coverage; excluding them prevents Phase 1-5 domestic work from being judged against data NASR does not provide, while continuing to expose their outcomes in the 100-row report. |
@@ -702,3 +749,5 @@ denominator is accurate.
 | 2026-08-17 | Gate 3 approved at production commits `ecf8bfc` and `6faacb4`: 81/100 overall and 77/84 domestic, with airway errors down 17→0 and waypoint ambiguities down 5→0 from Gate 2. | Real-cycle Q/T/Y probes resolve by published `AWY_ID`, the ICT reproduction selects its VORTAC over its VOT, the focused 30-test matrix passes, 21 additional Gate 2 failures now return paths, and no Gate 2 success regresses. The one additional missing-data outcome is later unsupported-content exposure, not a regression. |
 | 2026-08-17 | T4.7 approved, but Gate 4 not approved at production commits `79864a5`, `2e7229c`, and `51f530e`: real-cycle resolver construction improves 8.01×, below T4.1's required 10×. | Route conversion adds no raw SQL surface, and CSV/DuckDB route-table order and representative results match. One-shot conversion improves 8.19× and a warm session is much faster, but neither substitutes for the explicit first-construction threshold; the gate remains closed pending further resolver optimization and a rerun. |
 | 2026-08-17 | Gate 4 approved at production commit `8264d80`: real-cycle resolver construction improves 10.67× and one-shot conversion 10.98× under the unchanged benchmark policy. | Non-copying NumPy array iteration removes enough boxed pandas overhead to exceed T4.1's explicit 10× threshold while preserving indexed candidates and session semantics. The focused 44-test suite, Ruff, mypy, and T4.7 SQL/order audit pass; this supersedes but retains the initial failed measurement as audit history. |
+| 2026-08-17 | Correct T2.4's diagnosis and split it into T2.4 (fixed) and T2.4a (still open): the real bug was the tokenizer's redundant, wrong `exact_dp_allowed` position-based gate, not `MCRAY2` being coincidentally merged with an unrelated plain fix. | Direct re-check against real `DP_BASE` data found `MCRAY2` is not a standalone DP code in the `2024-06-13` cycle — only the compound `"MCRAY2.MCRAY"` exists — so the original diagnosis's premise did not hold. The actual defect was that `_is_published_dotted_procedure`'s own internal first-component check already correctly distinguished a genuine exact compound code from an ambiguous one, but the caller's separate `exact_dp_allowed` gate (true only when no further dotted components followed in the same field) incorrectly vetoed real compound codes anyway, since FAA route text routinely dot-chains a DP directly into a following airway/fix with no space. Removed the redundant gate; `_is_published_dotted_procedure` now always performs its own check. A second, distinct issue remains open in T2.4a: the DP's own published body genuinely continues past the route-filed join point (`MCRAY`) to a further point (`HAYGR`), so the following airway lookup still fails — this needs a Sol policy decision (always return the complete body vs. truncate at a point the filed text also names), not a mechanical fix. |
+| 2026-08-17 | Confirmed the `2026-05-14` NASR archive genuinely exists (in `CycleManager`'s default platform cache, not the repository checkout) and independently reproduced all three of T0.1's SHA-256 digests using the methodology published in `docs/route_path_baseline_2026-05-14.md`; closed T0.1a. | A prior review flagged both the archive's availability and the hash methodology as unverified gaps. Direct re-verification found both were already resolved by later work: the methodology is exact and reproducible (`random.Random(20260514).sample(range(46580), 100)`, sorted-index and route-string joins), and a direct resolver-construction timing against the real archive (~0.24s) matched the Gate 4 approval note, confirming the recorded gate approvals used real measurements, not fabricated numbers. |
