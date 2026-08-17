@@ -9,6 +9,8 @@ from pandas import DataFrame
 from shapely.geometry import LineString, Point
 from shapely.geometry.base import BaseGeometry
 
+from .flightplan import flight_plan_path
+
 
 def _geometry(boundary: object) -> BaseGeometry:
     """Return a Shapely geometry from a geometry or NASR boundary object."""
@@ -310,4 +312,31 @@ def plot_airport_procedures(
     return figure, axes
 
 
-__all__ = ["plot_airport_procedures", "plot_airspace"]
+def plot_flight_plan(
+    nasr: Mapping[str, DataFrame], flight_plan: str, *, axes: Any | None = None
+) -> tuple[Any, Any]:
+    """Plot the route-field path from a submitted FAA flight plan.
+
+    ``flight_plan`` uses the same FAA route-field syntax accepted by
+    :func:`openNASR.flightplan.flight_plan_path`. The line is plotted with
+    longitude on x and latitude on y. The returned route is source data only;
+    it is not an operationally validated flight plan or clearance.
+    """
+
+    from matplotlib import pyplot as plt
+
+    path = flight_plan_path(nasr, flight_plan)
+    if axes is None:
+        figure, axes = plt.subplots()
+    else:
+        figure = axes.figure
+    latitudes, longitudes = zip(*path)
+    axes.plot(longitudes, latitudes, color="tab:blue", marker="o", linewidth=1.5)
+    axes.set_title("FAA flight plan")
+    axes.set_xlabel("Longitude")
+    axes.set_ylabel("Latitude")
+    axes.set_aspect("equal", adjustable="datalim")
+    return figure, axes
+
+
+__all__ = ["plot_airport_procedures", "plot_airspace", "plot_flight_plan"]

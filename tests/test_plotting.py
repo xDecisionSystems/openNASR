@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from shapely.geometry import Polygon
 
-from openNASR.plotting import plot_airport_procedures, plot_airspace
+from openNASR.plotting import plot_airport_procedures, plot_airspace, plot_flight_plan
 
 
 def test_plot_airspace_draws_contained_airports_and_intersecting_airways():
@@ -112,6 +112,36 @@ def test_plot_airspace_visibility_switches_filter_airway_levels_and_points():
 def test_plot_airspace_rejects_objects_without_geometry():
     with pytest.raises(TypeError, match="Shapely geometry"):
         plot_airspace({}, object())
+
+
+def test_plot_flight_plan_draws_the_resolved_route():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_BASE": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "ICAO_ID": "KAAA",
+                    "LAT_DECIMAL": "1",
+                    "LONG_DECIMAL": "2",
+                },
+                {
+                    "ARPT_ID": "BBB",
+                    "ICAO_ID": "KBBB",
+                    "LAT_DECIMAL": "3",
+                    "LONG_DECIMAL": "4",
+                },
+            ]
+        ),
+        "FIX_BASE": pd.DataFrame(),
+        "NAV_BASE": pd.DataFrame(),
+    }
+
+    figure, axes = plot_flight_plan(tables, "KAAA DCT KBBB")
+
+    assert figure is axes.figure
+    assert list(axes.lines[0].get_xdata()) == [2.0, 4.0]
+    assert list(axes.lines[0].get_ydata()) == [1.0, 3.0]
 
 
 def test_plot_airport_procedures_draws_runways_departures_and_arrivals():
