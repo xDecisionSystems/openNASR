@@ -11,7 +11,7 @@ import argparse
 from math import cos, radians, sin
 from pathlib import Path
 
-from _duckdb import load_duckdb_nasr
+from duckdb_example_setup import load_duckdb_nasr
 from openNASR.cfcn import ll2xy, xy2ll
 
 

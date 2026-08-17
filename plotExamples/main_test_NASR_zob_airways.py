@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from _duckdb import load_duckdb_nasr
+from duckdb_example_setup import load_duckdb_nasr
 
 
 # Set to False to render in longitude/latitude instead of east/north NM.
