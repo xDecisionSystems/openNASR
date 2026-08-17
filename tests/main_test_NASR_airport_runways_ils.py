@@ -162,7 +162,7 @@ def main() -> None:
             x_values,
             y_values,
             color="tab:blue",
-            alpha=0.25,
+            alpha=0.1,
             label=None if plotted_ils else "ILS localizer wedges (700 ft at threshold)",
         )
         axes.plot(center_x, center_y, color="tab:blue", linewidth=1)
