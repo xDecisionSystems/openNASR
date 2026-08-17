@@ -196,9 +196,7 @@ def test_remove_can_select_the_duckdb_derivative_without_source_removal(tmp_path
     metadata = database.with_name("nasr.duckdb.json")
     extracted = database.parent
 
-    result = manager.remove(
-        "2026-08-06", archive=False, extracted=False, duckdb=True
-    )
+    result = manager.remove("2026-08-06", archive=False, extracted=False, duckdb=True)
 
     assert result.removed_duckdb is True
     assert result.removed_anything is True

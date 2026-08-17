@@ -96,6 +96,16 @@ from .records import (
 )
 from .cycles import CycleManager as CycleManager
 from .cycles import notify_if_update_available
+from .query import InvalidQueryCursorError as InvalidQueryCursorError
+from .query import QueryError as QueryError
+from .query import QueryFieldNotFoundError as QueryFieldNotFoundError
+from .query import QueryFilter as QueryFilter
+from .query import QueryOperator as QueryOperator
+from .query import QueryPage as QueryPage
+from .query import QueryResultTooLargeError as QueryResultTooLargeError
+from .query import QueryTableNotFoundError as QueryTableNotFoundError
+from .query import QueryValidationError as QueryValidationError
+from .query import UnsupportedQueryOperatorError as UnsupportedQueryOperatorError
 
 __all__ = [
     "ARB",
@@ -161,6 +171,7 @@ __all__ = [
     "LocationIdentifierRepository",
     "NASR",
     "NAVAID",
+    "InvalidQueryCursorError",
     "ParachuteJumpArea",
     "ParachuteJumpAreaContactRecord",
     "ParachuteJumpAreaRecord",
@@ -168,6 +179,14 @@ __all__ = [
     "plot_airspace",
     "plot_airport_procedures",
     "plot_flight_plan",
+    "QueryError",
+    "QueryFieldNotFoundError",
+    "QueryFilter",
+    "QueryOperator",
+    "QueryPage",
+    "QueryResultTooLargeError",
+    "QueryTableNotFoundError",
+    "QueryValidationError",
     "Radar",
     "RadarRecord",
     "RadarRepository",
@@ -175,6 +194,7 @@ __all__ = [
     "WeatherLocationRecord",
     "WeatherLocationRepository",
     "WeatherServiceRecord",
+    "UnsupportedQueryOperatorError",
 ]
 
 notify_if_update_available()

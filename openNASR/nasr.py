@@ -84,8 +84,7 @@ class NASR(dict):
     ):
         if storage not in {"csv", "duckdb"}:
             raise ConfigurationError(
-                "NASR storage must be either 'csv' or 'duckdb'; "
-                f"received {storage!r}."
+                f"NASR storage must be either 'csv' or 'duckdb'; received {storage!r}."
             )
         if preloadAll:
             raise NotImplementedError("preloadAll is not yet supported")
@@ -97,6 +96,7 @@ class NASR(dict):
         requested_cycle = cycle if cycle is not None else useDate
         self.__diagnostic = diagnostic
         self.__storage = storage
+        self.__schema_fingerprint: str | None = None
         self.setupFiles(requested_cycle, cache_dir, storage=storage)
         self.class_airspaces = ClassAirspaceRepository(self)
         self.artccs = ArtccRepository(self)
@@ -186,6 +186,7 @@ class NASR(dict):
                 ),
             )
             self.__tables = DuckDbTableRepository(database, metadata=metadata)
+            self.__schema_fingerprint = metadata.source_schema_fingerprint
 
         # Schema identification and the "every discovered table is modeled"
         # check are whole-cycle questions independent of which table is
@@ -284,6 +285,93 @@ class NASR(dict):
 
         return self.__storage
 
+    @property
+    def effective_date(self) -> str:
+        """Return the exact immutable NASR cycle selected by this instance."""
+
+        return self.__useDate
+
+    @property
+    def schema_fingerprint(self) -> str:
+        """Return the source-table/header fingerprint for this exact cycle."""
+
+        if self.__schema_fingerprint is None:
+            self.__schema_fingerprint = self._source_schema_fingerprint(
+                self.__useDateCSVFolder
+            )
+        return self.__schema_fingerprint
+
+    @property
+    def _query_table_names(self) -> tuple[str, ...]:
+        """Return operational tables exposed through the bounded query API."""
+
+        available = self.__tables.available_tables
+        if self.__schema_catalog is None:
+            return tuple(name for name in available if not name.endswith(SCHEMA_SUFFIX))
+        _, _, registry = self.__schema_catalog
+        supported = registry.supported_tables()
+        return tuple(name for name in available if name in supported)
+
+    @property
+    def _query_table_store(self) -> TableStore:
+        """Return the private table-store seam used by ``openNASR.query``."""
+
+        return self.__tables
+
+    def _query_columns(self, name: str) -> tuple[str, ...]:
+        """Inspect validated queryable columns without loading DuckDB rows."""
+
+        inspect = getattr(self.__tables, "_columns", None)
+        if callable(inspect):
+            columns = inspect(name)
+        else:
+            path = self.__useDateCSVFolder / f"{name}.csv"
+            try:
+                columns = tuple(
+                    str(column)
+                    for column in read_csv(
+                        path, nrows=0, **SOURCE_TEXT_READ_OPTIONS
+                    ).columns
+                )
+            except UnicodeDecodeError:
+                columns = tuple(
+                    str(column)
+                    for column in read_csv(
+                        path,
+                        nrows=0,
+                        encoding="latin-1",
+                        **SOURCE_TEXT_READ_OPTIONS,
+                    ).columns
+                )
+        self._validate_query_columns(name, columns)
+        return columns
+
+    def _query_csv_frame(self, name: str) -> DataFrame:
+        """Read a CSV fallback frame as raw source text for query parity."""
+
+        path = self.__useDateCSVFolder / f"{name}.csv"
+        try:
+            return read_csv(path, **SOURCE_TEXT_READ_OPTIONS)
+        except UnicodeDecodeError:
+            return read_csv(path, encoding="latin-1", **SOURCE_TEXT_READ_OPTIONS)
+
+    def _validate_query_columns(self, name: str, columns: tuple[str, ...]) -> None:
+        """Apply the existing catalog check without materializing DuckDB rows."""
+
+        if self.__schema_catalog is None:
+            return
+        catalog, schema_id, registry = self.__schema_catalog
+        if name not in registry.supported_tables():
+            return
+        report = catalog.validate(name, DataFrame(columns=columns), schema_id)
+        if not self.__diagnostic:
+            table_spec = registry.table(name)
+            report.require_compatible(
+                cycle=self.__useDate,
+                table_spec=table_spec,
+                record_class=table_spec.record_type,
+            )
+
     def _load_table(self, name: str) -> DataFrame:
         """Load one table and, if the cycle has a known schema, validate it.
 
@@ -330,6 +418,33 @@ class NASR(dict):
         already_loaded = self.__tables.is_loaded(name)
         frame = self.__tables.load(name) if already_loaded else self._load_table(name)
         return frame.copy(deep=True) if copy else frame
+
+    def query_table(
+        self,
+        table: str,
+        *,
+        filters=(),
+        fields=None,
+        page_size: int = 100,
+        cursor: str | None = None,
+    ):
+        """Query one immutable NASR table through the bounded read-only API.
+
+        See :mod:`openNASR.query` for the typed filter, page, and error
+        contract.  This method deliberately has no SQL argument or escape
+        hatch; it delegates only validated table/field/filter requests.
+        """
+
+        from .query import query_table
+
+        return query_table(
+            self,
+            table,
+            filters=filters,
+            fields=fields,
+            page_size=page_size,
+            cursor=cursor,
+        )
 
     def is_loaded(self, name: str) -> bool:
         return self.__tables.is_loaded(name)

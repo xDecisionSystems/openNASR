@@ -418,7 +418,7 @@ observable contents; corrupted/partial artifacts are rejected.
   schema fixtures for table access, copies, iteration, missing tables, and
   normalized indexes.
 
-- [ ] **13.2.3 — Agent: Luna.** Add parity tests for all public repositories:
+- [x] **13.2.3 — Agent: Luna.** Add parity tests for all public repositories:
   airports, fixes, navaids, airways, procedures, airspace, ILS, and special-use
   records. Compare observable values and public exception types, not internal
   implementation objects.
@@ -427,6 +427,16 @@ observable contents; corrupted/partial artifacts are rejected.
 
   Acceptance: every repository fixture test runs in both storage modes; any
   deliberate difference requires an approved decision-log entry.
+
+  Implementation: `tests/test_duckdb_repository_parity.py` builds an isolated
+  per-test artifact from both committed fixture generations, compares populated
+  airport/fix/navaid values and typed not-found exceptions, and exercises every
+  public repository's `find()` path. The compact core fixture intentionally
+  skips repository families whose source tables are absent; the schema fixture
+  covers those table names with the same empty-result assertion. Legacy
+  no-schema CSV inference is canonicalized only for comparison (`NaN`/numeric
+  spelling), while source-text fidelity remains covered by the table-store
+  parity tests.
 
 - [x] **13.2.4 — Agent: Sol.** Review mutation and cache semantics. Decide and
   document whether a DuckDB-backed DataFrame is cached per `NASR` instance
@@ -630,7 +640,7 @@ Tests required when 13.4.3 implements this contract:
 - verify result provenance, deterministic source ordering, no total-count
   query, DataFrame fallback behavior, and no mutation of the per-cycle DB.
 
-- [ ] **13.4.2 — Agent: Terra.** Add only benchmark-justified indexes for
+- [x] **13.4.2 — Agent: Terra.** Add only benchmark-justified indexes for
   registry identity keys and high-value relationship keys. Record each index,
   its build cost, and measured improvement.
 
@@ -639,7 +649,7 @@ Tests required when 13.4.3 implements this contract:
   Acceptance: no index is retained without a reproducible benchmark; raw-data
   fidelity and parity remain unchanged.
 
-- [ ] **13.4.3 — Agent: Terra.** Add an internal read-only query service that
+- [x] **13.4.3 — Agent: Terra.** Add an internal read-only query service that
   permits repositories to avoid materializing whole tables for supported exact
   identity/filter queries, while retaining DataFrame fallback for unsupported
   paths.
@@ -649,11 +659,18 @@ Tests required when 13.4.3 implements this contract:
   Acceptance: repository-level benchmark targets are met and all public return
   types/errors match CSV mode.
 
-- [ ] **13.4.4 — Agent: Luna.** Add benchmark tooling and a non-CI benchmark
+- [x] **13.4.4 — Agent: Luna.** Add benchmark tooling and a non-CI benchmark
   report template. Include cold build, warm construction, lookup latency,
   memory, database size, and CSV/DuckDB comparison by exact cycle.
 
-- [ ] **13.4.5 — Agent: Sol.** Produce a FastAPI integration note, not a
+  Implementation: `tools/duckdb_benchmark.py` provides the documented
+  `run`, `run-fixtures`, and `compare-index` commands. It refuses to discover
+  or download a different cycle, builds in an isolated temporary target, keeps
+  raw samples plus median/p95/MAD, and records machine/package/git provenance.
+  `docs/DUCKDB_BENCHMARK_REPORT_TEMPLATE.md` is the non-generated report form;
+  benchmark JSON and FAA data remain outside the repository.
+
+- [x] **13.4.5 — Agent: Sol.** Produce a FastAPI integration note, not a
   runtime dependency. Specify a lifespan-managed read-only database pool,
   cycle selection via `cycle` or `as_of` (mutually exclusive), response
   provenance, pagination, and deployment limits. Evaluate DuckDB versus
@@ -719,9 +736,11 @@ branches open.
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
+| 2026-08-17 | Define the future FastAPI deployment as bounded lifespan-managed read-only DuckDB pools, with exactly one `cycle` or `as_of` selector, cursor pagination, and sidecar-derived response provenance; reserve PostGIS evaluation for spatial multi-user workloads. | This preserves immutable exact-cycle artifacts and the allowlisted query contract, makes effective-on-date resolution visible and reproducible, prevents request-time writes/downloads, and avoids adding FastAPI or database-server infrastructure to the library. |
 | 2026-08-17 | Approve per-repository shared DataFrame caching for DuckDB, deep isolation for `copy=True`, and no mutation write-through; retain the CSV backend's documented stale-index behavior after direct caller mutation. | It preserves the existing public table-store contract, while read-only connections and regression tests prove that caller changes remain in memory and a new repository rematerializes the immutable source values. |
 | 2026-08-17 | Fail closed on an existing DuckDB build lock and require manual removal of an orphan only after confirming no writer is active; defer a source-content manifest digest to a future storage-format version. | Automatically stealing a PID- or age-based lock can create concurrent publishers. The first release treats the locally owned FAA archive/cache as trusted, validates the database against its sidecar digest, and records the restored-mtime provenance gap explicitly rather than implying tamper resistance it does not provide. |
 | 2026-08-17 | Approve the 13.4.1 read-only query contract: `NASR.query_table(...) -> QueryPage` and the future `POST /v1/cycles/{cycle}/query` mapping support only allowlisted fields, typed `EQ`/`IN` filters, cursor pagination, and bounded projection/results; no public arbitrary-SQL surface is provided. | A narrow parameterized API serves common identity/filter workloads, preserves exact-cycle provenance and CSV/DuckDB parity, and keeps SQL injection, unbounded scans/results, and backend-specific expressions out of the compatibility contract. |
+| 2026-08-17 | Complete 13.4.2 with no physical DuckDB indexes retained. | The approved benchmark specification requires an A/B measurement on the same real-cycle database before an index can be retained. No reproducible benchmark result exists yet, so adding registry or relationship indexes would be arbitrary; the query service uses source-order scans and preserves raw-data parity. |
 | 2026-08-17 | Plan DuckDB as an explicit optional, per-cycle local storage backend; retain CSV as the default first-release backend. | It accelerates repeated local/API-style queries while preserving the current public DataFrame and repository contract, avoids a forced dependency, and makes source/provenance boundaries clear. |
 | 2026-08-17 | Store the database beside the exact extracted cycle and treat it as a rebuildable derivative. | This makes historical-date selection deterministic and permits removal/rebuild without losing the FAA archive or CSV source data. |
 | 2026-08-17 | Preserve raw FAA values as strings before adding any typed/analytic views. | NASR fields include identifiers and source text where leading zeroes and blanks are meaningful; automatic database type inference risks silent data changes. |

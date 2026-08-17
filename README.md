@@ -35,6 +35,8 @@ access is more convenient.
 - Plot airport runways and ILS information with Matplotlib.
 
 See the [API reference](docs/API.md) for public classes and methods.
+See the [FastAPI and DuckDB integration note](docs/FASTAPI_DUCKDB.md) for a
+future read-only web-service deployment design.
 See [MIGRATION.md](MIGRATION.md) when updating code from legacy constructors.
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development and verification instructions.

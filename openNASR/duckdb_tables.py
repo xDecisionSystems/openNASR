@@ -71,9 +71,7 @@ class DuckDbTableRepository(Mapping[str, DataFrame]):
         self._available_tables = tuple(sorted(metadata.tables))
         self._cache: dict[str, DataFrame] = {}
         self._indexes: dict[tuple[str, str], dict[str, tuple[int, ...]]] = {}
-        self._normalized_indexes: dict[
-            tuple[str, str], dict[str, tuple[int, ...]]
-        ] = {}
+        self._normalized_indexes: dict[tuple[str, str], dict[str, tuple[int, ...]]] = {}
         self._connection = open_duckdb_read_only(self.database_path)
         try:
             self._validate_table_set()
@@ -185,6 +183,79 @@ class DuckDbTableRepository(Mapping[str, DataFrame]):
             raise DuckDbBuildError(
                 "DuckDB artifact table set does not match its metadata sidecar."
             )
+
+    def _columns(self, name: str) -> tuple[str, ...]:
+        """Return validated source columns without materializing table rows.
+
+        This deliberately private helper is used by the narrow query service.
+        It is not a general SQL interface: callers receive only the catalog
+        names that already exist in the completed, read-only artifact.
+        """
+
+        normalized = normalize_table_name(name)
+        if normalized not in self._available_tables:
+            raise TableNotFoundError(f"NASR table {normalized!r} was not found")
+        try:
+            rows = self._connection.execute(
+                f"DESCRIBE {_quote_identifier(normalized)}"
+            ).fetchall()
+        except Exception as error:
+            raise DuckDbBuildError(
+                f"Unable to inspect NASR table {normalized!r} in DuckDB."
+            ) from error
+        return tuple(str(row[0]) for row in rows)
+
+    def _query_rows(
+        self,
+        name: str,
+        fields: tuple[str, ...],
+        filters: tuple[tuple[str, str, tuple[str, ...]], ...],
+        *,
+        start_row: int,
+        limit: int,
+    ) -> list[tuple[int, tuple[object, ...]]]:
+        """Fetch an allowlisted, parameterized source-order query page.
+
+        ``query.py`` validates all public inputs before reaching this helper.
+        Identifiers come from the completed database catalog and values are
+        supplied exclusively as DuckDB bound parameters.  Keeping this method
+        private prevents it from becoming a public arbitrary-SQL surface.
+        """
+
+        normalized = normalize_table_name(name)
+        if normalized not in self._available_tables:
+            raise TableNotFoundError(f"NASR table {normalized!r} was not found")
+        if start_row < 0 or limit < 1:
+            raise DuckDbBuildError("DuckDB query pagination bounds are invalid.")
+
+        clauses = ["rowid >= ?"]
+        parameters: list[object] = [start_row]
+        for field, operator, values in filters:
+            identifier = _quote_identifier(field)
+            if operator == "eq":
+                clauses.append(f"{identifier} = ?")
+                parameters.append(values[0])
+            elif operator == "in":
+                placeholders = ", ".join("?" for _ in values)
+                clauses.append(f"{identifier} IN ({placeholders})")
+                parameters.extend(values)
+            else:  # Defensive: public validation should make this unreachable.
+                raise DuckDbBuildError("DuckDB query operator is invalid.")
+
+        selection = ", ".join(_quote_identifier(field) for field in fields)
+        statement = (
+            'SELECT rowid AS "__open_nasr_row_ordinal", '
+            f"{selection} FROM {_quote_identifier(normalized)} "
+            f"WHERE {' AND '.join(clauses)} ORDER BY rowid LIMIT ?"
+        )
+        parameters.append(limit)
+        try:
+            rows = self._connection.execute(statement, parameters).fetchall()
+        except Exception as error:
+            raise DuckDbBuildError(
+                f"Unable to query NASR table {normalized!r} from DuckDB."
+            ) from error
+        return [(int(row[0]), tuple(row[1:])) for row in rows]
 
 
 def _quote_identifier(name: str) -> str:

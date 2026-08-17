@@ -373,15 +373,11 @@ class CycleManager:
         """Normalize a cycle while rejecting non-canonical ISO strings."""
 
         if isinstance(value, datetime):
-            raise ValueError(
-                "NASR cycle must be a date or canonical YYYY-MM-DD string"
-            )
+            raise ValueError("NASR cycle must be a date or canonical YYYY-MM-DD string")
         if isinstance(value, date):
             return value
         if not isinstance(value, str):
-            raise ValueError(
-                "NASR cycle must be a date or canonical YYYY-MM-DD string"
-            )
+            raise ValueError("NASR cycle must be a date or canonical YYYY-MM-DD string")
         try:
             result = date.fromisoformat(value)
         except ValueError as error:
@@ -488,9 +484,7 @@ class CycleManager:
                 for member in archive.infolist():
                     path = PurePosixPath(member.filename)
                     if path.is_absolute() or ".." in path.parts:
-                        raise ArchiveError(
-                            f"Unsafe archive member: {member.filename}"
-                        )
+                        raise ArchiveError(f"Unsafe archive member: {member.filename}")
                 archive.extractall(temporary)
             locate_csv_source(temporary)
             temporary.replace(extracted)

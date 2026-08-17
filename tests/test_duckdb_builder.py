@@ -212,8 +212,8 @@ def test_builder_quotes_untrusted_table_identifiers(tmp_path: Path):
             "unchanged",
         )
         quoted = hostile_name.replace('"', '""')
-        assert connection.execute(
-            f'SELECT VALUE FROM "{quoted}"'
-        ).fetchone() == ("quoted identifier",)
+        assert connection.execute(f'SELECT VALUE FROM "{quoted}"').fetchone() == (
+            "quoted identifier",
+        )
     finally:
         connection.close()
