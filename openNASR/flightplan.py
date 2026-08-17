@@ -13,11 +13,20 @@ import re
 
 from pandas import DataFrame
 
-from .exceptions import AmbiguousRecordError, RecordNotFoundError
+from .exceptions import (
+    AmbiguousRecordError,
+    OpenNASRError,
+    RecordNotFoundError,
+    UnsupportedRouteContentError,
+)
 
 
 _DIRECT = "DCT"
 _AIRWAY = re.compile(r"(?P<designation>[A-Z]+)(?P<identifier>[0-9][A-Z0-9]*)$")
+_OCEANIC_COORDINATE = re.compile(r"\d{4}[NS]/\d{5}[EW]")
+_EXTERNAL_AIRWAY = re.compile(r"(?:U[A-Z]?\d+[A-Z0-9]*|RTE\d+)$")
+_RADIAL_DISTANCE = re.compile(r"[A-Z]{3}\d{6}$")
+_FOREIGN_ICAO_PREFIX = re.compile(r"(?:C[FGKLMNPSY]|E[A-Z]|MM|TJ)[A-Z]{2}$")
 
 
 @dataclass(frozen=True)
@@ -33,6 +42,57 @@ class _RouteToken:
 
     value: str
     position: int
+
+
+def _attach_route_diagnostic(
+    error: OpenNASRError,
+    *,
+    flight_plan: str,
+    cycle: object | None,
+) -> None:
+    """Attach stable, compact route context without changing legacy messages."""
+
+    identifier = getattr(error, "identifier", None)
+    token = getattr(error, "token", None)
+    if token is None and identifier is not None:
+        token = str(identifier)
+    if token is not None and not hasattr(error, "position"):
+        match = re.search(re.escape(token), flight_plan, flags=re.IGNORECASE)
+        error.position = match.start() if match is not None else None
+    error.token = token
+    error.cycle = cycle
+    error.route = flight_plan
+    error.route_text = flight_plan
+    error.failure_type = type(error).__name__
+
+
+def _recognized_unsupported_content(
+    flight_plan: str, resolver: _WaypointResolver
+) -> tuple[str, int, str] | None:
+    """Return the first recognized non-domestic component, without parsing it."""
+
+    candidates: list[tuple[int, str, str]] = []
+    for match in _OCEANIC_COORDINATE.finditer(flight_plan.upper()):
+        candidates.append((match.start(), match.group(), "oceanic_coordinate"))
+    for match in re.finditer(r"[A-Z0-9]+", flight_plan.upper()):
+        token = match.group()
+        if _EXTERNAL_AIRWAY.fullmatch(token):
+            candidates.append((match.start(), token, "external_route"))
+        elif _RADIAL_DISTANCE.fullmatch(token):
+            candidates.append((match.start(), token, "radial_distance"))
+        elif _FOREIGN_ICAO_PREFIX.fullmatch(token):
+            try:
+                resolver.resolve(token)
+            except RecordNotFoundError:
+                candidates.append((match.start(), token, "foreign_airport"))
+            except AmbiguousRecordError:
+                # A domestic NASR match is not foreign merely because its
+                # spelling also resembles an ICAO airport identifier.
+                pass
+    if not candidates:
+        return None
+    position, token, content_type = min(candidates)
+    return token, position, content_type
 
 
 class _WaypointResolver:
@@ -828,6 +888,7 @@ class RouteResolver:
     """
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        self._cycle = getattr(nasr, "effective_date", None)
         self._nasr = dict(nasr)
         self._waypoints = _WaypointResolver(self._nasr)
         self._airways = _AirwayIndex(self._nasr)
@@ -835,12 +896,33 @@ class RouteResolver:
     def path(self, flight_plan: str) -> tuple[tuple[float, float], ...]:
         """Return the source-coordinate path for one FAA route field."""
 
-        return _flight_plan_path(
-            self._nasr,
-            flight_plan,
-            resolver=self._waypoints,
-            airway_index=self._airways,
+        unsupported = (
+            _recognized_unsupported_content(flight_plan, self._waypoints)
+            if isinstance(flight_plan, str) and flight_plan.strip()
+            else None
         )
+        if unsupported is not None:
+            token, position, content_type = unsupported
+            error = UnsupportedRouteContentError(
+                token=token,
+                position=position,
+                content_type=content_type,
+                cycle=self._cycle,
+            )
+            _attach_route_diagnostic(
+                error, flight_plan=flight_plan, cycle=self._cycle
+            )
+            raise error
+        try:
+            return _flight_plan_path(
+                self._nasr,
+                flight_plan,
+                resolver=self._waypoints,
+                airway_index=self._airways,
+            )
+        except OpenNASRError as error:
+            _attach_route_diagnostic(error, flight_plan=flight_plan, cycle=self._cycle)
+            raise
 
 
 def flight_plan_path(

@@ -1,8 +1,15 @@
 import pandas as pd
 import pytest
 
-from openNASR import RouteResolver as PublicRouteResolver
-from openNASR.exceptions import AmbiguousRecordError, RecordNotFoundError
+from openNASR import (
+    RouteResolver as PublicRouteResolver,
+    UnsupportedRouteContentError as PublicUnsupportedRouteContentError,
+)
+from openNASR.exceptions import (
+    AmbiguousRecordError,
+    RecordNotFoundError,
+    UnsupportedRouteContentError,
+)
 from openNASR.flightplan import (
     RouteResolver,
     _RouteToken,
@@ -343,6 +350,62 @@ def test_flight_plan_path_reports_genuine_airway_ambiguity(tables):
 def test_flight_plan_path_rejects_unknown_waypoints(tables):
     with pytest.raises(RecordNotFoundError, match="Flight-plan waypoint"):
         flight_plan_path(tables, "KAAA UNKNOWN")
+
+
+def test_flight_plan_errors_include_compact_route_diagnostics(tables):
+    route = "KAAA UNKNOWN KBBB"
+
+    with pytest.raises(RecordNotFoundError) as caught:
+        RouteResolver(tables).path(route)
+
+    error = caught.value
+    assert error.token == "UNKNOWN"
+    assert error.position == 5
+    assert error.cycle is None
+    assert error.route == route
+    assert error.route_text == route
+    assert error.failure_type == "RecordNotFoundError"
+
+
+@pytest.mark.parametrize(
+    ("token", "content_type"),
+    [
+        ("EGLL", "foreign_airport"),
+        ("UL207", "external_route"),
+        ("4500N/05000W", "oceanic_coordinate"),
+        ("GFS138045", "radial_distance"),
+    ],
+)
+def test_flight_plan_rejects_recognized_unsupported_route_content(
+    tables, token, content_type
+):
+    route = f"KAAA {token} KBBB"
+
+    with pytest.raises(UnsupportedRouteContentError) as caught:
+        RouteResolver(tables).path(route)
+
+    error = caught.value
+    assert error.token == token
+    assert error.position == 5
+    assert error.content_type == content_type
+    assert error.cycle is None
+    assert error.route == route
+    assert error.failure_type == "UnsupportedRouteContentError"
+
+
+def test_unsupported_route_content_retains_selected_cycle(tables):
+    class CycleTables(dict):
+        effective_date = "2026-08-13"
+
+    route = "KAAA EGLL KBBB"
+    with pytest.raises(PublicUnsupportedRouteContentError) as caught:
+        RouteResolver(CycleTables(tables)).path(route)
+
+    error = caught.value
+    assert error.cycle == "2026-08-13"
+    assert error.token == "EGLL"
+    assert error.position == 5
+    assert error.route_text == route
 
 
 def test_alphanumeric_waypoints_do_not_use_airway_dispatch(tables):

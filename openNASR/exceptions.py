@@ -12,6 +12,15 @@ from typing import Any
 class OpenNASRError(Exception):
     """Base class for errors raised by openNASR."""
 
+    # Route resolution populates these only for route-related failures. They
+    # live on the public base so callers can inspect diagnostics uniformly.
+    token: str | None
+    position: int | None
+    cycle: Any | None
+    route: str | None
+    route_text: str | None
+    failure_type: str | None
+
 
 class ConfigurationError(OpenNASRError):
     """Raised when openNASR configuration is incomplete or invalid."""
@@ -108,6 +117,30 @@ class RecordNotFoundError(OpenNASRError):
         return message
 
 
+class UnsupportedRouteContentError(OpenNASRError):
+    """Raised for recognized route content outside domestic NASR coverage."""
+
+    def __init__(
+        self,
+        *,
+        token: str,
+        position: int,
+        content_type: str,
+        cycle: Any | None,
+    ) -> None:
+        self.token = token
+        self.position = position
+        self.content_type = content_type
+        self.cycle = cycle
+        message = (
+            f"Unsupported {content_type.replace('_', ' ')} route content "
+            f"{token!r} at position {position}"
+        )
+        if cycle is not None:
+            message += f" for cycle {cycle}"
+        super().__init__(message)
+
+
 class AmbiguousRecordError(OpenNASRError):
     """Raised when a lookup matches more than one record.
 
@@ -156,4 +189,5 @@ __all__ = [
     "RecordNotFoundError",
     "SchemaMismatchError",
     "TableNotFoundError",
+    "UnsupportedRouteContentError",
 ]

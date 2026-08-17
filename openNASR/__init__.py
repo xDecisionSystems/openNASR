@@ -44,6 +44,7 @@ from .holding import HoldingPatternRepository as HoldingPatternRepository
 from .nav import NAVAID as NAVAID
 from .flightplan import RouteResolver as RouteResolver
 from .flightplan import flight_plan_path as flight_plan_path
+from .exceptions import UnsupportedRouteContentError as UnsupportedRouteContentError
 from .plotting import plot_airspace as plot_airspace
 from .plotting import plot_airport_procedures as plot_airport_procedures
 from .plotting import plot_flight_plan as plot_flight_plan
@@ -140,6 +141,7 @@ __all__ = [
     "FrequencyRecord",
     "FrequencyRepository",
     "flight_plan_path",
+    "UnsupportedRouteContentError",
     "FlightServiceStation",
     "FlightServiceStationRecord",
     "FlightServiceStationRemarkRecord",
