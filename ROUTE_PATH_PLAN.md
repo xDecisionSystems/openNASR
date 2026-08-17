@@ -19,16 +19,33 @@ coverage work rather than silently guessed from domestic data.
 - [ ] Record a reproducible baseline using 100 randomly selected rows from
   `tests/exampleRoutes.csv`, a fixed seed, and an explicitly selected cycle.
   The 2026-05-14 baseline is 38 successful paths and 62 failures.
+- [x] **Independently reproduced (2026-08-17):** a separate 60-route,
+  seed-42 sample against the `2024-06-13` cycle scored 21 successes / 39
+  failures (~35%), consistent with the recorded baseline. The dominant
+  failure category by a wide margin (roughly two-thirds of failures in this
+  sample) was a bare procedure name reaching the airway-resolution branch
+  and failing there — see the new Phase 1/Phase 2 bullets. This confirms
+  procedure-resolution/parser-classification errors, not missing NASR data
+  or genuinely international content, are the largest lever for the
+  domestic success rate; prioritize Phase 1/2 fixes accordingly.
 - [ ] Categorize each failure as a parser error, procedure-resolution error,
   airway-resolution error, waypoint ambiguity, missing NASR data, or malformed
   input. Retain at least one representative route for every category.
+  **A misclassified-bare-procedure failure currently surfaces as an
+  airway-resolution error (`RecordNotFoundError` naming "Airway path"); when
+  building the categorized sample, verify each such failure's route text
+  against the procedure tables before accepting the error type at face
+  value, since the message alone is misleading for this category.**
 - [ ] Add a non-flaky regression sample covering each supported route form.
 - [ ] Set and document a domestic-only success target after the sample is
   classified. Exclude rows requiring non-NASR international/oceanic data from
   the domestic coverage denominator, but report them separately.
 - [ ] Benchmark cold and warm conversion separately. A warm benchmark must
   measure path generation only after the NASR tables and resolver indexes are
-  ready.
+  ready. **This bullet is not optional polish: measured today, a single call
+  costs ~2.7s dominated by a from-scratch resolver rebuild (see Phase 4), so
+  a 100-route baseline sample alone costs minutes and the full
+  46,580-row file is impractical until that is fixed.**
 
 ## Product Contract
 
@@ -49,6 +66,27 @@ coverage work rather than silently guessed from domestic data.
 - [ ] Replace the broad lexical airway decision with a data-backed decision:
   a token is an airway only when it has a matching `AWY_BASE` record in the
   selected NASR cycle.
+- [x] **Verified against `openNASR/flightplan.py` (2026-08-17):** the current
+  `flight_plan_path` dispatch already does this for the airway *branch*
+  (`_AIRWAY.fullmatch(token)` gated behind `"AWY_BASE" in nasr`), but the
+  dispatch order still lets the regex win over procedure resolution for a
+  bare token. Confirmed against 60 real `tests/exampleRoutes.csv` rows on
+  the `2024-06-13` cycle: the dominant failure (roughly two-thirds of all
+  failures) is a bare STAR/DP name such as `GNDLF3`, `SCAMR4`, `JASPA7`, or
+  `RETYR8` reaching the airway branch and failing as
+  `Airway path record 'GNDLF3' was not found`, because
+  `flight_plan_path` only calls `_procedure_path` when `"." in token` (line
+  442) — a bare procedure never gets the chance. See the new Phase 1 bullet
+  below and the `2026-08-17` Decision log entry.
+- [ ] **Check bare tokens against the procedure tables before the airway
+  regex, not only dotted tokens.** `_tokenize_flight_plan` already probes
+  `_procedure_path` for dotted pairs to decide whether to merge them; extend
+  the same probe to every bare token that matches the airway regex, so a
+  bare `DP_COMPUTER_CODE`/`STAR_COMPUTER_CODE` match takes priority over an
+  `AWY_BASE` lookup. Add a regression fixture reproducing `GNDLF3` (a real
+  arrival transition name that also happens to match the airway
+  letters-then-digit pattern) resolving as a procedure, not an airway
+  lookup failure.
 - [ ] Parse dotted route fields into a lossless token stream. Preserve the
   distinction between `.` component separators and `..` direct segments.
 - [ ] Strip only the trailing speed/altitude suffix from the route field;
@@ -63,8 +101,25 @@ coverage work rather than silently guessed from domestic data.
 - [ ] Resolve a bare departure name such as `RUGGD3` or `BAYLR6` when it
   follows the departure airport. It must not be interpreted as an airway.
 - [ ] Resolve a bare arrival name when it precedes the destination airport.
+  **This is the single largest observed failure category (Phase 1), not an
+  already-working case** — prioritize accordingly relative to the dotted
+  forms below.
 - [ ] Resolve `PROCEDURE.TRANSITION` forms such as `ORCO8.TRM` and
   `TORGY4.SSWAN` using the FAA procedure tables.
+- [ ] **Do not let the tokenizer's greedy dot-merge silently accept a wrong
+  procedure interpretation.** Verified against real data: `MCRAY2.MCRAY`
+  (filed as `KIAD.MCRAY2.MCRAY.Q178.LEJOY...`) is not
+  `PROCEDURE.TRANSITION` — `MCRAY2` is the DP name and `MCRAY` is a plain
+  enroute fix filed redundantly after it, not a transition identifier. The
+  current tokenizer merges the pair anyway because `_procedure_path`
+  silently returns a non-`None` result for it (falling back to the DP's
+  default routing, which does not end at `MCRAY`), so the airway lookup
+  that follows uses the wrong `from` waypoint (`HAYGR` instead of `MCRAY`)
+  with no error raised. Resolving `PROCEDURE.CANDIDATE` must verify the
+  candidate is actually a published transition/runway identifier for that
+  procedure (not just that *some* procedure route exists), and fall back to
+  treating the two components as separate tokens — procedure name, then
+  plain waypoint — when it is not.
 - [ ] Use neighboring route tokens to choose the applicable procedure
   transition or runway/common portion. If more than one published candidate
   remains, raise a typed ambiguity instead of selecting arbitrarily.
@@ -72,7 +127,10 @@ coverage work rather than silently guessed from domestic data.
   and STAR; deduplicate only adjacent identical coordinates at joins.
 - [ ] Test a current-cycle valid route for each of: bare DP, dotted DP,
   bare STAR, dotted STAR, DP-to-airway, airway-to-STAR, and procedure-only
-  airport pairs.
+  airport pairs. **Also add the two real-route regressions found above:**
+  a bare mid-route STAR name (`GOLLM.GNDLF3.KATL`) and a DP name
+  immediately followed by a plain enroute fix, not a transition
+  (`MCRAY2.MCRAY.Q178...`).
 
 ## Phase 3 — Airways and Contextual Waypoints
 
@@ -83,16 +141,53 @@ coverage work rather than silently guessed from domestic data.
 - [ ] Use context to disambiguate duplicate identifiers such as `ABQ`, `SEA`,
   `STL`, and `PVD`: procedure/airway connection fields take priority, then
   fix/navaid, with airports preferred at route endpoints.
+- [ ] **Prefer a non-`VOT` navaid when a `NAV_ID` collides within `NAV_BASE`
+  itself.** Verified against real data: `ICT` matches two distinct
+  `NAV_BASE` rows (`NAV_TYPE=VORTAC` and `NAV_TYPE=VOT`) at different
+  coordinates, so `KBBG..EOS..ICT..KHUT` currently raises
+  `AmbiguousRecordError` even though only one of the two is ever a valid
+  filed waypoint. A VOT ("VOR test facility") is a ground calibration
+  signal, never a route fix; when a same-table `NAV_ID` collision includes
+  exactly one non-`VOT` candidate, prefer it instead of raising ambiguity.
+  This is a same-*table* collision, distinct from the existing
+  cross-table (`APT_BASE`/`FIX_BASE`/`NAV_BASE`) disambiguation the
+  resolver already performs.
 - [ ] Validate that an airway endpoint exists on the selected airway and that
   every expanded intermediate identifier resolves to one unambiguous source
   coordinate.
 - [ ] Add regression tests for forward/reverse routes, repeated airway
   designations, airway transition joins, and intentionally ambiguous names.
+  **Include the `ICT`-style same-table `VOT`-versus-operational-navaid
+  case as its own fixture**, not only cross-table duplicates.
 
 ## Phase 4 — Performance and Reuse
 
+**Measured severity (2026-08-17, real `2024-06-13` cycle, ~68k `FIX_BASE` +
+~20k `APT_BASE` + ~1.8k `NAV_BASE` rows):** a single `flight_plan_path` call
+took **~2.7 seconds** end to end (table load ~0.4s, everything else
+essentially all resolver construction — a standalone `_WaypointResolver`
+build measured ~2.8s on its own, matching within timing noise).
+`flight_plan_path` builds one from scratch on every call
+(`openNASR/flightplan.py` line 429) by converting all three tables to Python
+dicts row-by-row (`.to_dict(orient="records")`) rather than reusing anything
+across calls. At that per-call cost, the full 46,580-row
+`tests/exampleRoutes.csv` would take on the order of **35 hours**
+sequentially — this makes Phase 5's "run the deterministic sample after each
+phase" and any full-file validation mode practically unusable until this
+phase lands, so **this phase should not be scheduled strictly after Phases
+1-3 finish**; at minimum, the once-per-dataset resolver cache should land
+early enough that Phase 5's baseline/regression sampling isn't itself
+bottlenecked on it. `_airway_vertices` has the same anti-pattern on
+`AWY_BASE` (a full `.to_dict(orient="records")` scan of ~1,537 rows per
+airway token instead of vectorized pandas filtering); both need to move off
+row-by-row Python iteration, not only the waypoint resolver named below.
 - [ ] Build the airport/fix/navaid candidate index once per immutable NASR
   dataset instead of rebuilding it for every `flight_plan_path` call.
+- [ ] **Apply the same fix to `_airway_vertices`'s `AWY_BASE` lookup**, which
+  currently iterates every row via `.to_dict(orient="records")` per airway
+  token rather than filtering the DataFrame directly; this table is smaller
+  than the waypoint tables but is re-scanned once per airway token in a
+  route, not once per call.
 - [ ] Keep public results and errors identical with and without the cache;
   add mutation/isolation tests for CSV and DuckDB storage.
 - [ ] Add an optional route resolver/session object for batch conversion while
@@ -160,3 +255,8 @@ coverage work rather than silently guessed from domestic data.
 | 2026-08-17 | Separate domestic NASR correctness from international/oceanic coverage. | The example data includes both categories, but NASR alone cannot authoritatively resolve foreign records. |
 | 2026-08-17 | Measure warm resolution independently of NASR loading and index construction. | Batch callers need route-conversion performance, while cold loading is a distinct storage/cache concern. |
 | 2026-08-17 | Include procedure expansion in correctness and performance evaluation. | Departures and arrivals exercise different tables, transition selection, and path expansion than direct or airway-only routes; excluding them would give a misleading conversion benchmark. |
+| 2026-08-17 | Reviewed the plan against the actual `openNASR/flightplan.py` implementation and a real 60-route sample on the `2024-06-13` cycle before editing it; found and recorded four concrete gaps rather than only rephrasing the existing bullets. | The plan already existed as a proposal; verifying it against real code and real data (not just prose review) surfaced specific, reproducible bugs the original bullets described in principle but not in enough detail to implement directly, and one severity finding (Phase 4's performance cost) that changes phase sequencing advice. |
+| 2026-08-17 | Prioritize bare (non-dotted) procedure misclassification as an airway over other Phase 1/2 work. | It is the dominant real-world failure mode (roughly two-thirds of the reproduced sample's failures, e.g. `GOLLM.GNDLF3.KATL`): `flight_plan_path` only probes `_procedure_path` when a token contains a dot, so a bare STAR/DP name always reaches the airway regex first and fails with a misleading "Airway path... not found" error instead of resolving as a procedure. |
+| 2026-08-17 | Require `PROCEDURE.CANDIDATE` resolution to verify the candidate is a published transition/runway identifier, not merely that some route exists for the procedure name. | Verified against real data that the tokenizer's greedy dot-merge accepts `MCRAY2.MCRAY` as one procedure token even though `MCRAY` is a plain enroute fix filed after the DP, not a transition; `_procedure_path` silently falls back to the DP's default routing and the airway lookup that follows then uses the wrong endpoint with no error raised. |
+| 2026-08-17 | Prefer a non-`VOT` navaid when a bare `NAV_ID` collides within `NAV_BASE` itself, instead of always raising ambiguity. | Verified against real data (`ICT`: one `VORTAC` row, one `VOT` row, different coordinates) that a VOR-test-facility component can share an identifier with the real operational navaid; a VOT is never a valid filed route fix, so this collision has one correct answer, unlike a genuine cross-table or cross-airport ambiguity. |
+| 2026-08-17 | Do not schedule Phase 4's resolver-caching work strictly after Phases 1-3 finish. | Measured a single `flight_plan_path` call at ~2.7s on a real cycle, almost entirely spent rebuilding `_WaypointResolver` from three full tables (~90k rows) on every call; at that cost a 100-route baseline sample takes minutes and the full 46,580-row example file is impractical (~35h extrapolated), which would bottleneck Phase 5's own "run the sample after each phase" requirement before Phase 4 ever starts. |
