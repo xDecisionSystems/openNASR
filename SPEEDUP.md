@@ -2,9 +2,10 @@
 
 ## Goal
 
-Remove the remaining unindexed, per-call, full-table scan/`.map()`/
-`.to_dict(orient="records")` cost from every openNASR code path that resolves
-NASR table rows repeatedly, using the same technique already proven correct
+Remove confirmed unindexed, per-call, full-table lookup cost from openNASR
+paths that resolve rows repeatedly. A use of `.to_dict()` is **not** by
+itself a defect: optimize only profiler-confirmed lookup hot paths, using the
+same technique already proven correct
 in `ROUTE_PATH_PLAN.md`'s Phase 4 (`_WaypointResolver`, `_AirwayIndex`):
 build a vectorized index once per immutable table set, reuse it across calls,
 and never regress raw-value fidelity, public return types, or source
@@ -78,7 +79,7 @@ Reuses the Sol/Terra/Luna convention from `DUCKDB_PLAN.md`/
 | Agent model | Role | Responsibility |
 | --- | --- | --- |
 | **Sol** | Research/review | Audit which call sites are genuinely slow, design each index's shape, set benchmark methodology, approve gates. Sol does not implement production fixes. |
-| **Terra** | Implementation | Production implementation in `openNASR/flightplan.py` and `openNASR/plotting.py`. |
+| **Terra** | Implementation | Production implementation in `repository.py`, scoped domain repositories, `flightplan.py`, and `plotting.py`. Terra owns one production-file set at a time. |
 | **Luna** | Tests/tooling | Fixtures, regression tests, benchmark tooling (routes and `plotExamples/`-equivalent plotting calls), documentation. |
 
 ## Coordination rules
@@ -108,6 +109,16 @@ Reuses the Sol/Terra/Luna convention from `DUCKDB_PLAN.md`/
 - **Gate authority:** Sol signs off each phase gate (`**Gate N:**`) with a
   dated Decision-log row. The next phase should not start until the prior
   gate is recorded.
+- **Every task heading names its assigned model.** Use only `Agent model:
+  Sol`, `Agent model: Terra`, or `Agent model: Luna`; do not infer a model
+  from the phase title. Sol may review in parallel with Terra; Luna may
+  prepare tests or benchmarks in parallel only when it does not modify a
+  production file Terra owns.
+- **Require a profiler gate before expanding Phase 3.** A module advances
+  from the audit list to a Terra implementation task only after the benchmark
+  harness records a material repeated-lookup cost on a representative cycle.
+  This avoids behavior-risky rewrites of low-frequency compatibility code
+  merely because it contains pandas filtering.
 
 ## Phase 0 — Audit: which lookups are actually slow
 
@@ -246,7 +257,7 @@ stayed in `tools/` — it is a correctness validator, not a benchmark. Every
 task below that references `tools/route_benchmark.py` or a new
 `tools/plotting_benchmark.py` should read `benchmarks/` instead.
 
-- [x] **L1.1 — Agent model: Luna. Substantially done (2026-08-17), as a new
+- [ ] **L1.1 — Agent model: Luna. Partially done (2026-08-17), as a new
   script rather than an extension of `route_benchmark.py`.** Rather than add
   a mode to `benchmarks/route_benchmark.py` (which reports raw JSON for a
   fixed synthetic 6-route matrix, a different and still-useful purpose —
@@ -271,7 +282,7 @@ task below that references `tools/route_benchmark.py` or a new
   follow-up work under this same task rather than a new one.
   Dependencies: none.
 - [ ] **L1.2 — Agent model: Luna.** Add a `plotExamples/`-equivalent
-  benchmark to a new `tools/plotting_benchmark.py` (a new tool, not an
+  benchmark to `benchmarks/plotting_benchmark.py` (a new tool, not an
   extension of the route tool — plotting has a different call shape: one-shot
   figure construction, not per-route resolution). It must exercise, without
   writing PNGs or importing `matplotlib.pyplot` in a display-requiring way
@@ -290,7 +301,7 @@ task below that references `tools/route_benchmark.py` or a new
     is a complete picture of what a plotting workflow actually pays).
   Report each case's cold (first call) and repeated-call timings separately,
   using the same already-loaded-tables/reported-environment policy as
-  `tools/route_benchmark.py`. Support `--cycle`/`--cache-dir` matching every
+  `benchmarks/route_benchmark.py`. Support `--cycle`/`--cache-dir` matching every
   `plotExamples/*.py` script's existing CLI convention, and default to CSV
   storage with an option for DuckDB (`plotExamples/duckdb_example_setup.py`
   currently hardcodes DuckDB; the benchmark should support both so a
@@ -364,14 +375,11 @@ missing optimization in a known-slow legacy path. A user hitting the
   than eagerly building one `DataFrame` per group up front) is both correct
   and still fast.
   Acceptance: a unit test builds an index over a synthetic table with a
-  fully-unique identifier column (reproducing the `FIX_BASE` shape that
-  triggered the bug) and confirms both correctness (same rows returned for
-  a known identifier) and that construction completes in well under 1s for
-  at least 10,000 synthetic rows — a hardware-independent regression
-  threshold chosen because the *shape* of the bug (quadratic-ish blowup
-  from per-group DataFrame construction) makes even a modest row count a
-  reliable trigger, unlike a relative-improvement-only threshold which
-  could mask a partial fix.
+  fully-unique identifier column (reproducing the `FIX_BASE` shape), confirms
+  the same rows are returned for a known identifier, and structurally blocks
+  the old `dict(tuple(frame.groupby(...)))` materialization pattern. Record
+  real-cycle speedup in `benchmarks/repository_benchmark.py`; do not use an
+  absolute wall-clock assertion in pytest because it is hardware-sensitive.
   Dependencies: none.
 - [ ] **T2.2 — Agent model: Terra.** Audit every other `groupby` call in the
   package for the same anti-pattern (materializing one `DataFrame` per
@@ -408,10 +416,29 @@ missing optimization in a known-slow legacy path. A user hitting the
   Dependencies: T2.1, T2.2.
 
 **Gate 2:** Sol confirms T2.1's fix drops `nasr.airport(...)`'s and
-`nasr.fixes.get(...)`'s first-call cost from ~41s/~14.9s to a small,
-hardware-independent absolute number (target: comfortably under 1s each),
+`nasr.fixes.get(...)`'s first-call cost from ~41s/~14.9s to a small recorded
+number (target: comfortably under 1s each on the benchmark host),
 that T2.2's audit found and fixed every other instance of the same
 anti-pattern, and that the full test suite passes with no behavior change.
+
+## Execution order and bounded parallelism
+
+The phase numbering is dependency order, not permission for a broad rewrite.
+Execute these bounded batches and stop at every gate:
+
+| Batch | Agent model | Work | Parallelism rule |
+| --- | --- | --- | --- |
+| A | Luna + Terra + Sol | Finish L1.1; add L1.2/L1.3 harnesses; design/review T2.1 | Luna may change benchmark files while Terra owns only `repository.py`; Sol reviews evidence. |
+| B | Terra, then Luna, then Sol | T2.1/T2.2, L2.3, S2.4/Gate 2 | Sequential on `repository.py`; do not start domain migrations before Gate 2. |
+| C | Terra + Luna + Sol | T3.1 helper, then only profiled domain batches, L3.5/Gate 3 | Split Terra work only by disjoint module sets and commit one module batch at a time. |
+| D | Terra + Luna + Sol | T4.1-T4.3, L4.4/Gate 4 | `flightplan.py` has one Terra owner; Luna may prepare benchmark cases only. |
+| E | Terra + Luna + Sol | T5.1-T5.2, L5.3-L5.4/Gate 5 | `plotting.py` has one Terra owner; preserve plotted coordinate data. |
+| F | Luna + Sol | L6.1-L6.2 and S6.3/Gate 6 | Documentation/reporting starts only after performance gates are measured. |
+
+Before Batch C, Sol must turn Phase 0's long domain list into a short ranked
+manifest: module, public lookup, real-cycle cold/warm measurement, key
+columns, and exact regression tests. Entries without a material measured cost
+remain documented audit findings, not Terra implementation tasks.
 
 ## Phase 3 — Index the domain-module repositories (`atc.py`, `communications.py`, `holding.py`, `fss.py`, `locations.py`, `military.py`, `weather.py`, `arrivals.py`, `departure.py`, `airway.py`, `airspace.py`, and legacy `airport.py`/`fix.py`/`nav.py`)
 
