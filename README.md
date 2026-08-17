@@ -137,8 +137,10 @@ Use `NASR(cycle="2024-06-13", storage="duckdb")` to open an already-built
 artifact. DuckDB mode never silently selects a neighboring cycle, downloads a
 cycle, or rebuilds a missing artifact. The CSV-backed default remains
 `storage="csv"`. Building a database requires additional disk space roughly
-equal to the materialized tables; rebuilding replaces only that cycle's
-derivative. Remove it selectively with
+equal to the materialized tables. Rebuilding keeps the prior completed
+artifact until the replacement pair is published, so allow headroom for both
+database copies (roughly twice the final database size). It replaces only that
+cycle's derivative. Remove it selectively with
 `CycleManager().remove("2024-06-13", archive=False, extracted=False, duckdb=True)`.
 Removing the DuckDB artifact does not remove the archive or extracted CSVs.
 

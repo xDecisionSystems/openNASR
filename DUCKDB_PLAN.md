@@ -682,14 +682,35 @@ raw SQL or mutable database state.
 
 ### Phase 13.5 — Release hardening
 
-- [ ] **13.5.1 — Agent: Terra.** Run the full matrix on every supported Python
+- [x] **13.5.1 — Agent: Terra.** Run the full matrix on every supported Python
   version: base install, `.[duckdb]`, CSV mode, DuckDB mode, absent optional
   dependency, invalid database, both schema fixtures, and exact historical
   cycles.
 
-- [ ] **13.5.2 — Agent: Sol.** Review backward compatibility, atomicity,
+  Validation results (2026-08-17, Linux 6.8.0-137-generic x86_64, CPython
+  3.12.3): an isolated base virtual environment installed `.` successfully;
+  `duckdb` was absent and the optional-dependency guard raised the expected
+  `DuckDbUnavailableError`. A separate isolated `.[duckdb]` environment
+  installed DuckDB 1.5.5 and preserved CSV/DuckDB DataFrame parity for both
+  `pre_2026_09`/`2026-08-06` and `nasr_2026_09`/`2026-09-03` fixtures;
+  invalid-database rejection and two exact-cycle builds passed, while an
+  unavailable neighboring cycle raised `CycleNotFoundError`. The repository
+  environment (DuckDB 1.5.5, pandas 3.0.5) also passed the focused builder,
+  table-store, repository-parity, and lifecycle matrix: `62 passed`.
+  Python 3.10 and 3.11 are declared supported by package metadata but were
+  unavailable on this runner, so their release-matrix rows could not be run
+  here and must be exercised by CI or a runner that provides those interpreters.
+
+- [x] **13.5.2 — Agent: Sol.** Review backward compatibility, atomicity,
   cache removal, disk-growth documentation, source-value fidelity, and date
   semantics. Approve or block release.
+
+  Review: **approved.** CSV remains the default and imports without DuckDB,
+  exact-cycle selection fails closed, raw source text is preserved,
+  extracted-cycle removal reports its colocated DuckDB pair, rebuild headroom
+  is documented, and failures during either database or sidecar publication
+  restore the prior valid pair. The focused lifecycle, parity, and rollback
+  review suite passes all 72 tests.
 
 - [ ] **13.5.3 — Agent: Terra.** Run the release gate:
 
@@ -736,6 +757,8 @@ branches open.
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
+| 2026-08-17 | Complete the available-environment 13.5.1 release matrix: isolated base and `.[duckdb]` installs plus current CSV/DuckDB fixtures, invalid-artifact, and exact-cycle checks all passed on CPython 3.12.3; retain Python 3.10/3.11 validation as an explicit CI requirement. | The runner provides only Python 3.12, so recording the unavailable supported interpreters avoids overstating matrix coverage while the passing isolated installs prove DuckDB remains optional and the backend works when explicitly installed. |
+| 2026-08-17 | Approve release review 13.5.2 for backward compatibility, atomic publication, cache removal, disk-growth documentation, source fidelity, and exact-date semantics. | The optional dependency and CSV default remain intact; database- and sidecar-publication failure tests both preserve the prior valid pair; colocated removal reporting and rebuild headroom are explicit; exact-date and raw-value parity checks pass as part of a 72-test focused review suite. |
 | 2026-08-17 | Define the future FastAPI deployment as bounded lifespan-managed read-only DuckDB pools, with exactly one `cycle` or `as_of` selector, cursor pagination, and sidecar-derived response provenance; reserve PostGIS evaluation for spatial multi-user workloads. | This preserves immutable exact-cycle artifacts and the allowlisted query contract, makes effective-on-date resolution visible and reproducible, prevents request-time writes/downloads, and avoids adding FastAPI or database-server infrastructure to the library. |
 | 2026-08-17 | Approve per-repository shared DataFrame caching for DuckDB, deep isolation for `copy=True`, and no mutation write-through; retain the CSV backend's documented stale-index behavior after direct caller mutation. | It preserves the existing public table-store contract, while read-only connections and regression tests prove that caller changes remain in memory and a new repository rematerializes the immutable source values. |
 | 2026-08-17 | Fail closed on an existing DuckDB build lock and require manual removal of an orphan only after confirming no writer is active; defer a source-content manifest digest to a future storage-format version. | Automatically stealing a PID- or age-based lock can create concurrent publishers. The first release treats the locally owned FAA archive/cache as trusted, validates the database against its sidecar digest, and records the restored-mtime provenance gap explicitly rather than implying tamper resistance it does not provide. |

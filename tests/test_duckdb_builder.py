@@ -17,6 +17,7 @@ from openNASR.duckdb_builder import (
     duckdb_metadata_path,
     open_duckdb_read_only,
 )
+import openNASR.duckdb_builder as duckdb_builder
 from openNASR.duckdb_metadata import (
     DuckDbCycleMetadata,
     DuckDbMetadataDateMismatchError,
@@ -158,6 +159,47 @@ def test_builder_keeps_previous_completed_artifact_when_new_build_fails(tmp_path
             "2026-08-06",
             read_options={"na_filter": True},
         )
+
+    assert database.read_bytes() == original_database
+    assert first.metadata_path.read_bytes() == original_sidecar
+
+
+def test_builder_restores_previous_pair_if_sidecar_publication_fails(
+    tmp_path: Path, monkeypatch
+):
+    database = tmp_path / "nasr.duckdb"
+    first = build_duckdb(_source("pre_2026_09"), database, "2026-08-06")
+    original_database = database.read_bytes()
+    original_sidecar = first.metadata_path.read_bytes()
+
+    def fail_sidecar(*_args, **_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(duckdb_builder, "write_metadata_atomic", fail_sidecar)
+    with pytest.raises(DuckDbBuildError, match="Unable to build"):
+        build_duckdb(_source("pre_2026_09"), database, "2026-08-06")
+
+    assert database.read_bytes() == original_database
+    assert first.metadata_path.read_bytes() == original_sidecar
+
+
+def test_builder_restores_previous_pair_if_database_publication_fails(
+    tmp_path: Path, monkeypatch
+):
+    database = tmp_path / "nasr.duckdb"
+    first = build_duckdb(_source("pre_2026_09"), database, "2026-08-06")
+    original_database = database.read_bytes()
+    original_sidecar = first.metadata_path.read_bytes()
+    original_replace = Path.replace
+
+    def fail_temporary_publish(self: Path, target: str | Path):
+        if Path(target) == database and self.suffix == ".tmp":
+            raise OSError("disk full")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_temporary_publish)
+    with pytest.raises(DuckDbBuildError, match="Unable to build"):
+        build_duckdb(_source("pre_2026_09"), database, "2026-08-06")
 
     assert database.read_bytes() == original_database
     assert first.metadata_path.read_bytes() == original_sidecar

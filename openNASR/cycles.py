@@ -576,6 +576,12 @@ class CycleManager:
         data_path = self.cycles_dir / effective_date.isoformat()
         removed_extracted = False
         if extracted and data_path.is_dir():
+            if not removed_duckdb:
+                database_path = self.duckdb_path(effective_date)
+                removed_duckdb = (
+                    database_path.is_file()
+                    or duckdb_metadata_path(database_path).is_file()
+                )
             rmtree(data_path)
             removed_extracted = True
         return RemovalResult(

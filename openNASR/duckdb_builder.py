@@ -79,6 +79,7 @@ def build_duckdb(
     with _build_lock(destination):
         _clean_stale_temporary_files(destination)
         temporary = _temporary_database_path(destination)
+        previous = destination.with_name(f".{destination.name}.previous")
         try:
             metadata = _build_temporary_database(
                 csv_paths,
@@ -88,11 +89,21 @@ def build_duckdb(
                 read_options=options,
             )
             _validate_database(temporary, metadata)
-            # Publish the DB first. Readers must validate the metadata's DB
-            # digest, so the short pair-transition window is rejected rather
-            # than exposing mismatched provenance as a valid artifact.
-            temporary.replace(destination)
-            write_metadata_atomic(duckdb_metadata_path(destination), metadata)
+            # Preserve the completed pair until its replacement sidecar is
+            # durable. Readers reject the short digest-mismatch transition;
+            # if sidecar publication fails, restore the previous database.
+            previous.unlink(missing_ok=True)
+            if destination.exists():
+                destination.replace(previous)
+            try:
+                temporary.replace(destination)
+                write_metadata_atomic(duckdb_metadata_path(destination), metadata)
+            except Exception:
+                destination.unlink(missing_ok=True)
+                if previous.exists():
+                    previous.replace(destination)
+                raise
+            previous.unlink(missing_ok=True)
             return DuckDbBuildResult(
                 database_path=destination,
                 metadata_path=duckdb_metadata_path(destination),

@@ -205,6 +205,18 @@ def test_remove_can_select_the_duckdb_derivative_without_source_removal(tmp_path
     assert extracted.is_dir()
 
 
+def test_remove_extracted_cycle_reports_its_colocated_duckdb_derivative(tmp_path):
+    manager = CycleManager(tmp_path / "cache")
+    manager.import_archive(_duckdb_cycle_archive(tmp_path))
+    manager.build_duckdb("2026-08-06")
+
+    result = manager.remove("2026-08-06", archive=False, extracted=True)
+
+    assert result.removed_extracted is True
+    assert result.removed_duckdb is True
+    assert not manager.duckdb_path("2026-08-06").exists()
+
+
 def test_archive_dates_are_validated_and_ordered_by_parsed_dates(tmp_path):
     manager = CycleManager(tmp_path)
     manager.archives_dir.mkdir()
