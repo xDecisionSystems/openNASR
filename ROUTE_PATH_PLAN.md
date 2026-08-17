@@ -317,17 +317,18 @@ be re-runnable to produce a comparable before/after count).
 procedure-resolution and parser-classification failure categories have
 measurably shrunk; records the gate with the new counts.
 
-**Gate 2 review — NOT APPROVED (2026-08-17, production `4960111`).** The
-T2.7-focused matrix passes (24 tests), and the canonical sample improves from
-38/100 to 56/100 overall and from 36/84 to 54/84 on the fixed domestic
-denominator. Eighteen former failures now return paths with zero regressions
-among former no-exception rows. Procedure-resolution errors shrink from 40
-to 8, but parser errors grow from 2 to 4 because valid `FIX_BASE` identifiers
-`KM18K` and `KG66K`, newly reached after procedure expansion, are still
-lexically dispatched as airways (the original `E91` and `KO60C` collisions
-also remain). This does not satisfy the gate's requirement that both named
-categories shrink. Full counts and review evidence are in
-[`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#gate-2-review-2026-08-17).
+**Gate 2 — APPROVED (2026-08-17, production `3fd11e7`).** The T2.7-focused
+matrix passes (25 tests), and the canonical sample improves from 38/100 to
+60/100 overall and from 36/84 to 58/84 on the fixed domestic denominator.
+Twenty-two former failures now return paths with zero regressions among
+former no-exception rows. Procedure-resolution errors shrink from 40 to 8
+and parser errors from 2 to 0. Airway failures grow from 7 to 17 because
+successful procedure expansion exposes later airway defects, including the
+known T3.1 `Q`/`Y` designation bug; those outcomes remain failures and are
+not credited to Phase 2. This approval supersedes the failed `4960111`
+review while preserving it as audit evidence in the linked note and Decision
+log. Full counts are in
+[`docs/route_path_baseline_2026-05-14.md`](docs/route_path_baseline_2026-05-14.md#gate-2-approval-rerun-2026-08-17).
 
 ## Phase 3 — Airways and Contextual Waypoints
 
@@ -668,3 +669,4 @@ denominator is accurate.
 | 2026-08-17 | Keep the existing lookup exceptions and add distinct public types for unsupported route content, malformed route text, and broken published connectivity. | A foreign/oceanic token is outside the domestic data contract rather than an unknown domestic record; malformed caller input is distinct from both lookup and data-connectivity failures; and an existing published record whose endpoints cannot form a path is not accurately described as a missing record. All remain catchable through `OpenNASRError`. |
 | 2026-08-17 | Set the Phase 1-5 domestic coverage gate at 76/84 (90%), require no regression among the 36 current no-exception domestic rows, and report 16 out-of-contract rows separately. | A fixed content-based denominator makes phase counts comparable. Thirteen sampled rows require foreign/oceanic/external routing and three require coordinate or radial-distance handling reserved for separate coverage; excluding them prevents Phase 1-5 domestic work from being judged against data NASR does not provide, while continuing to expose their outcomes in the 100-row report. |
 | 2026-08-17 | Gate 2 not approved at production commit `4960111`: 56/100 overall and 54/84 domestic, with procedure errors down 40→8 but parser errors up 2→4. | Phase 2's focused 24-test matrix passes, 18 canonical failures now return paths, and no former no-exception row regresses. However, the written gate requires both procedure and parser categories to shrink; newly reached valid fixes `KM18K` and `KG66K` join the still-failing `E91`/`KO60C` lexical airway collisions, so the parser criterion is not met. |
+| 2026-08-17 | Gate 2 approved at production commit `3fd11e7`: 60/100 overall and 58/84 domestic, with procedure errors down 40→8 and parser errors down 2→0. | Data-backed airway dispatch resolves the failed review's valid alphanumeric waypoint collisions. The focused 25-test matrix passes, 22 baseline failures now return paths, and no former no-exception route regresses. The increased airway category (7→17) is expected later-defect exposure and remains assigned to Phase 3 rather than being counted as success. |

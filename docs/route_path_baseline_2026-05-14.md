@@ -266,3 +266,33 @@ remain and two more valid `FIX_BASE.FIX_ID` values reached after procedure
 expansion (`KM18K`, `KG66K`) are lexically treated as airways. Gate 2 therefore
 remains closed pending contextual waypoint-before-airway dispatch for these
 valid NASR fixes and a confirming canonical rerun.
+
+## Gate 2 approval rerun (2026-08-17)
+
+**Decision: approved, superseding the earlier review above.** Production
+commit `3fd11e7` (`fix: dispatch airways from published records`) makes airway
+dispatch data-backed, so lexically airway-shaped NASR waypoints remain
+waypoints unless the selected cycle contains the corresponding published
+airway record. The focused Phase 2/T2.7 command passed all 25 tests.
+
+The unchanged canonical sample, `2026-05-14` CSV cycle, and shared-resolver
+policy produced 60/100 no-exception results, including 58/84 in the fixed
+domestic denominator. Compared with T0.2, 22 former failures now return paths
+and no former no-exception row regressed.
+
+| Category | T0.2 baseline | Approved rerun | Change |
+| --- | ---: | ---: | ---: |
+| success | 38 | 60 | +22 |
+| procedure-resolution error | 40 | 8 | -32 |
+| airway-resolution error | 7 | 17 | +10 |
+| waypoint ambiguity | 4 | 5 | +1 |
+| parser error | 2 | 0 | -2 |
+| missing NASR data | 9 | 10 | +1 |
+| malformed input | 0 | 0 | 0 |
+
+Both categories named by Gate 2 now shrink measurably. The 17 airway failures
+are later defects reached after procedure expansion; they include the known
+`Q`/`Y` `AWY_DESIGNATION` mismatch assigned to T3.1. Likewise, newly reached
+ambiguity and missing-data outcomes remain visible rather than being credited
+as Phase 2 successes. Gate 2 approval means Phase 2 no longer blocks Phase 3;
+it does not waive those later-phase failures or the 76/84 release target.
