@@ -712,7 +712,7 @@ raw SQL or mutable database state.
   restore the prior valid pair. The focused lifecycle, parity, and rollback
   review suite passes all 72 tests.
 
-- [ ] **13.5.3 — Agent: Terra.** Run the release gate:
+- [x] **13.5.3 — Agent: Terra.** Run the release gate:
 
   ```bash
   python -m pytest
@@ -725,6 +725,12 @@ raw SQL or mutable database state.
 
   Acceptance: all commands pass from a clean checkout. Verify both built
   artifacts exclude test fixtures, FAA data, local caches, and `.duckdb` files.
+
+  Gate result (2026-08-17): `325 passed, 1 skipped`; Ruff format/check and
+  mypy passed. An isolated build output directory produced a valid sdist and
+  wheel; `twine check` passed for both, and an artifact-content inspection
+  found no test fixtures, FAA data, local caches, virtual environments, or
+  DuckDB database files.
 
 ## Suggested parallel schedule
 
@@ -757,6 +763,7 @@ branches open.
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
+| 2026-08-17 | Approve the DuckDB implementation release gate after rollback hardening. | The final committed tree passed 325 tests (one intentional skip), Ruff format/check, mypy, isolated sdist/wheel build, and twine validation; package-content inspection found no fixtures, FAA data, local caches, virtual environments, or DuckDB artifacts. |
 | 2026-08-17 | Complete the available-environment 13.5.1 release matrix: isolated base and `.[duckdb]` installs plus current CSV/DuckDB fixtures, invalid-artifact, and exact-cycle checks all passed on CPython 3.12.3; retain Python 3.10/3.11 validation as an explicit CI requirement. | The runner provides only Python 3.12, so recording the unavailable supported interpreters avoids overstating matrix coverage while the passing isolated installs prove DuckDB remains optional and the backend works when explicitly installed. |
 | 2026-08-17 | Approve release review 13.5.2 for backward compatibility, atomic publication, cache removal, disk-growth documentation, source fidelity, and exact-date semantics. | The optional dependency and CSV default remain intact; database- and sidecar-publication failure tests both preserve the prior valid pair; colocated removal reporting and rebuild headroom are explicit; exact-date and raw-value parity checks pass as part of a 72-test focused review suite. |
 | 2026-08-17 | Define the future FastAPI deployment as bounded lifespan-managed read-only DuckDB pools, with exactly one `cycle` or `as_of` selector, cursor pagination, and sidecar-derived response provenance; reserve PostGIS evaluation for spatial multi-user workloads. | This preserves immutable exact-cycle artifacts and the allowlisted query contract, makes effective-on-date resolution visible and reproducible, prevents request-time writes/downloads, and avoids adding FastAPI or database-server infrastructure to the library. |
