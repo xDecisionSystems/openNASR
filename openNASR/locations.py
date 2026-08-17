@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
+from .indexing import NormalizedIndexCache, normalized_indexed_rows
 from .records import FaaRecord
 
 
@@ -35,6 +36,7 @@ class LocationIdentifierRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -53,10 +55,9 @@ class LocationIdentifierRepository:
         return identifier
 
     def _matching(self, frame: DataFrame, key: tuple[object, ...]) -> DataFrame:
-        rows = frame
-        for column, value in zip(LOCATION_IDENTIFIER_KEY, key):
-            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
-        return rows
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(LOCATION_IDENTIFIER_KEY, key), self._normalized
+        )
 
     def find(self, identifier: object | None = None) -> tuple[LocationIdentifier, ...]:
         rows = self._nasr["LID"]

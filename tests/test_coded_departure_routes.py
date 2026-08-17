@@ -13,3 +13,4 @@ def test_coded_departure_route_repository_returns_typed_record():
     assert route.record.route_code == "AB1"
     assert route.record.origin == "AAA"
     assert route.record.destination == "BBB"
+    assert len(repository._indexes) == 1

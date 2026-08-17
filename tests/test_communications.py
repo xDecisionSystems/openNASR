@@ -72,3 +72,4 @@ def test_communication_outlet_and_frequency_repositories_expose_rich_records():
         "EMERGENCY",
     )
     assert len(frequencies.find(serviced_facility=("a1", "a", "fl", "us"))) == 1
+    assert len(frequencies._indexes) == 8

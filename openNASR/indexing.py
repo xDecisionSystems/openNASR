@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, Iterable, MutableMapping
 
-from numpy import ndarray
+from numpy import intersect1d, ndarray
 from pandas import DataFrame
 
 
@@ -45,9 +45,32 @@ def normalized_index_rows(
     return frame.iloc[positions] if positions is not None else frame.iloc[0:0]
 
 
+def normalized_indexed_rows(
+    cache: NormalizedIndexCache,
+    frame: DataFrame,
+    criteria: Iterable[tuple[str, object]],
+    normalize: Callable[[object], str],
+) -> DataFrame:
+    """Return source-ordered rows satisfying normalized column criteria."""
+
+    positions: ndarray | None = None
+    for column, value in criteria:
+        indexed = cached_normalized_column_index(cache, frame, column, normalize)
+        matches = indexed.get(normalize(value))
+        if matches is None:
+            return frame.iloc[0:0]
+        positions = (
+            matches
+            if positions is None
+            else intersect1d(positions, matches, assume_unique=True)
+        )
+    return frame if positions is None else frame.iloc[positions]
+
+
 __all__ = [
     "NormalizedIndexCache",
     "NormalizedPositionIndex",
     "cached_normalized_column_index",
+    "normalized_indexed_rows",
     "normalized_index_rows",
 ]

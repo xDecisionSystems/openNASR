@@ -24,3 +24,4 @@ def test_preferred_route_orders_segments_and_attaches_format():
     route = repository.get(("aaa", "bbb", "tec", "1"))
     assert len(route.formats) == 1
     assert [segment["SEGMENT_SEQ"] for segment in route.segments] == ["1", "2"]
+    assert len(repository._indexes) == 12

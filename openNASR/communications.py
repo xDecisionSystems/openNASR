@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
+from .indexing import NormalizedIndexCache, normalized_indexed_rows
 from .nav import NavaidRecord
 from .records import FaaRecord, nullable_text
 from .relationships import related_record
@@ -183,6 +184,7 @@ class FrequencyRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -204,10 +206,9 @@ class FrequencyRepository:
         *,
         columns: tuple[str, ...] = FREQUENCY_KEY,
     ) -> DataFrame:
-        rows = frame
-        for column, value in zip(columns, key):
-            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
-        return rows
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(columns, key), self._normalized
+        )
 
     def find(
         self,
@@ -216,8 +217,9 @@ class FrequencyRepository:
         serviced_facility: tuple[object, object, object, object] | None = None,
     ) -> tuple[Frequency, ...]:
         rows = self._nasr["FRQ"]
+        criteria: tuple[tuple[str, object], ...] = ()
         if identifier is not None:
-            rows = self._matching(rows, self._key(identifier))
+            criteria += tuple(zip(FREQUENCY_KEY, self._key(identifier)))
         if serviced_facility is not None:
             if not isinstance(serviced_facility, tuple) or len(
                 serviced_facility
@@ -226,8 +228,13 @@ class FrequencyRepository:
                     "Serviced-facility filters require "
                     f"({', '.join(SERVICED_FACILITY_KEY)})"
                 )
-            rows = self._matching(
-                rows, serviced_facility, columns=SERVICED_FACILITY_KEY
+            criteria += tuple(zip(SERVICED_FACILITY_KEY, serviced_facility))
+        if criteria:
+            rows = normalized_indexed_rows(
+                self._indexes,
+                rows,
+                criteria,
+                self._normalized,
             )
         return tuple(
             Frequency(FrequencyRecord(row)) for row in rows.to_dict(orient="records")

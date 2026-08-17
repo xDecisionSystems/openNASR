@@ -7,6 +7,12 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
+from .indexing import (
+    NormalizedIndexCache,
+    cached_normalized_column_index,
+    normalized_indexed_rows,
+    normalized_index_rows,
+)
 from .records import FaaRecord, nullable_text
 
 
@@ -70,6 +76,7 @@ class CodedDepartureRouteRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -78,9 +85,10 @@ class CodedDepartureRouteRepository:
     def find(self, identifier: str | None = None) -> tuple[CodedDepartureRoute, ...]:
         rows = self._nasr["CDR"]
         if identifier is not None:
-            rows = rows[
-                rows["RCode"].map(self._normalized).eq(self._normalized(identifier))
-            ]
+            index = cached_normalized_column_index(
+                self._indexes, rows, "RCode", self._normalized
+            )
+            rows = normalized_index_rows(rows, index, identifier, self._normalized)
         return tuple(
             CodedDepartureRoute(CodedDepartureRouteRecord(row))
             for row in rows.to_dict(orient="records")
@@ -192,16 +200,22 @@ class PreferredRouteRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normal(value: object) -> str:
         return str(value).strip().upper()
 
-    def _rows(self, frame: DataFrame, key: tuple[object, ...]) -> DataFrame:
-        rows = frame
-        for column, value in zip(PREFERRED_ROUTE_KEY, key):
-            rows = rows[rows[column].map(self._normal).eq(self._normal(value))]
-        return rows
+    def _rows(
+        self,
+        frame: DataFrame,
+        key: tuple[object, ...],
+        *,
+        columns: tuple[str, ...] = PREFERRED_ROUTE_KEY,
+    ) -> DataFrame:
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(columns, key), self._normal
+        )
 
     def find(
         self, identifier: tuple[object, ...] | None = None
@@ -219,11 +233,11 @@ class PreferredRouteRepository:
         result: list[PreferredRoute] = []
         for row in rows.to_dict(orient="records"):
             key = tuple(row[column] for column in PREFERRED_ROUTE_KEY)
-            formats = self._nasr["PFR_RMT_FMT"]
-            for column, value in zip(("Orig", "Dest", "Type", "Seq"), key):
-                formats = formats[
-                    formats[column].map(self._normal).eq(self._normal(value))
-                ]
+            formats = self._rows(
+                self._nasr["PFR_RMT_FMT"],
+                key,
+                columns=("Orig", "Dest", "Type", "Seq"),
+            )
             segments = self._rows(self._nasr["PFR_SEG"], key).to_dict(orient="records")
             segments.sort(key=lambda item: int(item["SEGMENT_SEQ"]))
             result.append(

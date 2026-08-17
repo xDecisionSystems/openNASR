@@ -7,7 +7,11 @@ import inspect
 from numpy import ndarray
 import pandas as pd
 
-from openNASR.indexing import cached_normalized_column_index, normalized_index_rows
+from openNASR.indexing import (
+    cached_normalized_column_index,
+    normalized_indexed_rows,
+    normalized_index_rows,
+)
 
 
 def _normalized(value: object) -> str:
@@ -44,3 +48,24 @@ def test_cached_normalized_index_uses_positions_not_eager_group_dataframes():
 
     assert ".groupby(normalized).indices" in source
     assert "dict(tuple(" not in source
+
+
+def test_normalized_indexed_rows_matches_composite_scan_in_source_order():
+    frame = pd.DataFrame(
+        [
+            {"COUNTRY": "US", "IDENTIFIER": "A", "ORDER": 0},
+            {"COUNTRY": "CA", "IDENTIFIER": "A", "ORDER": 1},
+            {"COUNTRY": "US", "IDENTIFIER": "B", "ORDER": 2},
+            {"COUNTRY": "US", "IDENTIFIER": "A", "ORDER": 3},
+        ]
+    )
+    criteria = (("COUNTRY", " us "), ("IDENTIFIER", " a "))
+    expected = frame[
+        frame["COUNTRY"].map(_normalized).eq("US")
+        & frame["IDENTIFIER"].map(_normalized).eq("A")
+    ]
+
+    actual = normalized_indexed_rows({}, frame, criteria, _normalized)
+
+    assert actual.equals(expected)
+    assert actual["ORDER"].tolist() == [0, 3]

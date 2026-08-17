@@ -20,5 +20,6 @@ def test_location_identifier_uses_full_composite_key():
     )
 
     assert repository.get(key).record["LOC_ID"] == "ORL"
+    assert len(repository._indexes) == len(columns)
     with pytest.raises(ValueError, match="Location-identifier identifiers"):
         repository.get(("ORL",))

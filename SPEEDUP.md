@@ -533,17 +533,18 @@ in file-alphabetical order.
   shared primitive only for the five measured manifest paths below;
   T3.2/T3.4 remain responsible for applying it.
   Dependencies: T2.1 (reuse the same underlying technique).
-- [ ] **T3.2 — Agent model: Terra.** Apply T3.1's helper to the largest,
-  highest-value tables first: `departure.py`'s `CodedDepartureRouteRepository`
-  (`CDR`, 41,212 rows, ~10.4ms/call measured), `locations.py`'s
-  `LocationIdentifierRepository` (`LID`, 31,046 rows), `communications.py`'s
-  `FrequencyRepository` (`FRQ`, 40,767 rows), and `departure.py`'s
-  `PreferredRouteRepository`/`PreferredRouteSegmentRecord`-backing tables
-  (`PFR_SEG`/`PFR_BASE`, 74,182/13,309 rows — the largest table in the
-  package).
-  Acceptance: each repository's `find`/`get` full test suite passes
-  unchanged; a benchmark run confirms at least an order-of-magnitude
-  reduction in repeated-call cost for each.
+- [x] **T3.2 — Agent model: Terra. Done (2026-08-17).** Applied T3.1's
+  position-index helper to the manifest-approved high-value paths only:
+  `CodedDepartureRouteRepository` (`CDR`),
+  `LocationIdentifierRepository` (`LID`), `FrequencyRepository` (`FRQ`),
+  and `PreferredRouteRepository`'s base/format/segment tables (`PFR_*`).
+  Composite keys intersect source positions before one ordered `.iloc`
+  materialization. Focused regression and CSV/DuckDB parity tests pass. A
+  non-CI 2026-05-14 CSV measurement (first call, then 20 warmed repetitions)
+  recorded warm medians of 0.70 ms (CDR), 1.14 ms (LID), 1.68 ms (FRQ), and
+  3.22 ms (PFR), all more than an order of magnitude below the 10.606–29.794
+  ms manifest baseline; cold measurements include one index build per
+  queried column (133.848–228.763 ms) and are not compared cross-host.
   Dependencies: T3.1.
 - [ ] **T3.3 — Agent model: Terra.** Apply T3.1's helper to the remaining
   domain-module repositories: `atc.py`, `holding.py`, `fss.py`,
