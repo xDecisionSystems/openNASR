@@ -44,6 +44,7 @@ def test_atc_facility_collects_matching_child_records_in_remark_order():
     assert facility.atis_services[0]["TEXT"] == "Arrival information"
     assert [remark["TEXT"] for remark in facility.remarks] == ["First", "Second"]
     assert facility.services[0]["SERVICE"] == "Approach"
+    assert len(repository._indexes) == 28
 
 
 def test_atc_facility_requires_full_key_and_reports_missing_records():
@@ -81,5 +82,6 @@ def test_radar_uses_its_standalone_composite_key():
     )
 
     assert repository.get(key).record["RADAR_NAME"] == "Example"
+    assert len(repository._indexes) == 6
     with pytest.raises(ValueError, match="Radar identifiers"):
         repository.get(("ABC",))

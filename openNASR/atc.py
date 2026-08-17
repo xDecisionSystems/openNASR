@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
+from .indexing import NormalizedIndexCache, normalized_indexed_rows
 from .records import FaaRecord
 
 
@@ -71,6 +72,7 @@ class AtcFacilityRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -84,10 +86,9 @@ class AtcFacilityRepository:
         return identifier
 
     def _matching(self, frame: DataFrame, key: tuple[object, ...]) -> DataFrame:
-        rows = frame
-        for column, value in zip(ATC_KEY, key):
-            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
-        return rows
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(ATC_KEY, key), self._normalized
+        )
 
     @staticmethod
     def _remark_order(row: dict[str, object]) -> tuple[int, str, str]:
@@ -147,6 +148,7 @@ class RadarRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -160,10 +162,9 @@ class RadarRepository:
         return identifier
 
     def _matching(self, frame: DataFrame, key: tuple[object, ...]) -> DataFrame:
-        rows = frame
-        for column, value in zip(RADAR_KEY, key):
-            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
-        return rows
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(RADAR_KEY, key), self._normalized
+        )
 
     def find(self, identifier: object | None = None) -> tuple[Radar, ...]:
         rows = self._nasr["RDR"]
