@@ -1635,9 +1635,7 @@ def test_procedure_index_matches_direct_composite_route_filters(monkeypatch):
         raise AssertionError("composite ProcedureIndex lookup normalized a column")
 
     monkeypatch.setattr(pd.Series, "map", fail_map)
-    transition = index.departure_route_transition(
-        "DEP", "ZXX", "DEP1", "DEP1.TRANS"
-    )
+    transition = index.departure_route_transition("DEP", "ZXX", "DEP1", "DEP1.TRANS")
     assert transition is not None
     assert transition.index.tolist() == [2, 3]
 

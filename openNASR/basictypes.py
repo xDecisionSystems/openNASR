@@ -1,48 +1,6 @@
 from types import SimpleNamespace
 from .cfcn import ll2xy
 
-# class Point(object):
-#     @property
-#     def lat(self):
-#         return self.base.LAT_DECIMAL
-
-#     @property
-#     def lon(self):
-#         return self.base.LONG_DECIMAL
-
-
-def getAirportRecords(airport, nasrDF, airportIDCol):
-    return [
-        SimpleNamespace(**cRecord)
-        for cRecord in nasrDF[nasrDF[airportIDCol] == airport].to_dict(orient="records")
-    ]
-
-
-def getAirportRecord(airport, nasrDF, airportIDCol):
-    return SimpleNamespace(
-        **nasrDF[nasrDF[airportIDCol] == airport].to_dict(orient="records")[0]
-    )
-
-
-class Point:
-    def __init__(self, sm):
-        self._raw = sm
-
-    def getRaw(self):
-        return self._raw
-
-    @property
-    def lat(self):
-        return self._raw.LAT_DECIMAL
-
-    @property
-    def lon(self):
-        return self._raw.LONG_DECIMAL
-
-    @property
-    def lonlat(self):
-        return [self._raw.LONG_DECIMAL, self._raw.LAT_DECIMAL]
-
 
 class Raw:
     def __init__(self, sm):
@@ -62,15 +20,6 @@ class Raw:
     @property
     def lonlat(self):
         return [self._raw.LONG_DECIMAL, self._raw.LAT_DECIMAL]
-
-    @property
-    def elev(self):
-        if hasattr(self._raw, "SITE_ELEVATION"):
-            return self._raw.SITE_ELEVATION
-        elif hasattr(self._raw, "RWY_END_ELEV"):
-            return self._raw.RWY_END_ELEV
-        else:
-            return None
 
     @property
     def elevation(self):
@@ -109,23 +58,10 @@ class Raw:
 
 
 class RawDict(dict):
-    def __init__(
-        self,
-        classType,
-        airport,
-        nasrDF,
-        airportIDCol,
-        useRWYID=False,
-        *,
-        cached_records=None,
-    ):
+    def __init__(self, classType, useRWYID=False, *, cached_records=None):
         self._map = {}
         self._raw = {}
-        records = (
-            getAirportRecords(airport, nasrDF, airportIDCol)
-            if cached_records is None
-            else [SimpleNamespace(**record) for record in cached_records]
-        )
+        records = [SimpleNamespace(**record) for record in cached_records or ()]
         for cRec in records:
             if useRWYID:
                 record_id = str(cRec.RWY_ID)

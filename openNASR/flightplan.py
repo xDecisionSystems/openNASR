@@ -682,30 +682,31 @@ def _select_procedure_body(
     )
 
 
-def _procedure_path(
-    tables: Mapping[str, DataFrame],
-    token: str,
-    *,
-    resolver: _WaypointResolver | None = None,
-    procedure_index: _ProcedureIndex | None = None,
-    preceding_token: str | None = None,
-    following_token: str | None = None,
-) -> tuple[_Waypoint, ...] | None:
-    """Expand one FAA departure or arrival procedure/transition token.
+@dataclass(frozen=True)
+class _ProcedureTokenMatches:
+    """The four independent match categories one procedure token can hit."""
 
-    Departure route strings may identify a ``DP_BASE`` record directly or a
-    ``DP_RTE`` transition code (for example ``ORCO8.TRM``). Arrival route
-    strings normally carry a STAR transition computer code (for example
-    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. STAR rows are
-    recorded outbound from the terminal route's end, so they are traversed in
-    reverse for an inbound flight plan.
+    departure_matches: list[dict[str, object]]
+    departure_transition_matches: list[dict[str, object]]
+    transition_matches: list[dict[str, object]]
+    base_matches: list[dict[str, object]]
+
+
+def _classify_procedure_token(
+    tables: Mapping[str, DataFrame], token: str, procedure_index: _ProcedureIndex
+) -> _ProcedureTokenMatches:
+    """Return every departure/STAR match category for one procedure token.
+
+    Raises :class:`AmbiguousRecordError` when more than one category
+    matches. Each branch preserves the legacy direct-filter ``KeyError`` for
+    incomplete synthetic tables by indexing the same missing column the old
+    unindexed filter would have touched.
     """
 
     departures = tables.get("DP_BASE")
     departure_routes = tables.get("DP_RTE")
     stars = tables.get("STAR_BASE")
     star_routes = tables.get("STAR_RTE")
-    procedure_index = procedure_index or _ProcedureIndex(tables)
     departure_rows = procedure_index.departure_base(token)
     if departures is not None and departure_routes is not None:
         if departure_rows is None:
@@ -747,6 +748,41 @@ def _procedure_path(
         raise AmbiguousRecordError(
             entity_type="Flight-plan procedure", identifier=token
         )
+    return _ProcedureTokenMatches(
+        departure_matches=departure_matches,
+        departure_transition_matches=departure_transition_matches,
+        transition_matches=transition_matches,
+        base_matches=base_matches,
+    )
+
+
+def _procedure_path(
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    resolver: _WaypointResolver | None = None,
+    procedure_index: _ProcedureIndex | None = None,
+    preceding_token: str | None = None,
+    following_token: str | None = None,
+) -> tuple[_Waypoint, ...] | None:
+    """Expand one FAA departure or arrival procedure/transition token.
+
+    Departure route strings may identify a ``DP_BASE`` record directly or a
+    ``DP_RTE`` transition code (for example ``ORCO8.TRM``). Arrival route
+    strings normally carry a STAR transition computer code (for example
+    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. STAR rows are
+    recorded outbound from the terminal route's end, so they are traversed in
+    reverse for an inbound flight plan.
+    """
+
+    departure_routes = tables.get("DP_RTE")
+    star_routes = tables.get("STAR_RTE")
+    procedure_index = procedure_index or _ProcedureIndex(tables)
+    matches = _classify_procedure_token(tables, token, procedure_index)
+    departure_matches = matches.departure_matches
+    departure_transition_matches = matches.departure_transition_matches
+    transition_matches = matches.transition_matches
+    base_matches = matches.base_matches
     if departure_matches:
         assert departure_routes is not None
         if len(departure_matches) != 1:
@@ -782,7 +818,6 @@ def _procedure_path(
             identifier=token,
         )
     if departure_transition_matches:
-        assert departures is not None
         assert departure_routes is not None
         departure_keys = {
             (
@@ -889,9 +924,7 @@ def _is_departure_procedure(
     )
 
 
-def _next_route_token_index(
-    tokens: tuple[_RouteToken, ...], index: int
-) -> int | None:
+def _next_route_token_index(tokens: tuple[_RouteToken, ...], index: int) -> int | None:
     """Return the next non-direct token index after ``index``."""
 
     for candidate_index in range(index + 1, len(tokens)):
@@ -930,11 +963,8 @@ def _departure_airway_join(
 
     procedure_token = tokens[procedure_token_index].value
     airway_index_in_route = _next_route_token_index(tokens, procedure_token_index)
-    if (
-        airway_index_in_route is None
-        or not _is_departure_procedure(
-            tables, procedure_token, procedure_index=procedure_index
-        )
+    if airway_index_in_route is None or not _is_departure_procedure(
+        tables, procedure_token, procedure_index=procedure_index
     ):
         return None
     airway_token = tokens[airway_index_in_route].value
@@ -1128,6 +1158,68 @@ def _tokenize_flight_plan(
     return tuple(normalized)
 
 
+def _procedure_step_coordinates(
+    nasr: Mapping[str, DataFrame],
+    tokens: tuple[_RouteToken, ...],
+    index: int,
+    token: str,
+    *,
+    resolver: _WaypointResolver,
+    airway_index: _AirwayIndex | None,
+    procedure_index: _ProcedureIndex,
+) -> tuple[tuple[float, float], ...] | None:
+    """Return one procedure token's coordinates, or ``None`` if it is not one.
+
+    A bare procedure computer code (for example ``GNDLF3``) can also satisfy
+    the airway lexical pattern.  Callers must try this before falling back to
+    airway lookup so a published DP/STAR is not incorrectly sent to
+    ``AWY_BASE``.
+    """
+
+    airway = _AIRWAY.fullmatch(token)
+    if "." not in token and airway is None:
+        return None
+    preceding_token = next(
+        (
+            candidate.value
+            for candidate in reversed(tokens[:index])
+            if candidate.value != _DIRECT
+        ),
+        None,
+    )
+    following_token = next(
+        (
+            candidate.value
+            for candidate in tokens[index + 1 :]
+            if candidate.value != _DIRECT
+        ),
+        None,
+    )
+    procedure = _procedure_path(
+        nasr,
+        token,
+        resolver=resolver,
+        procedure_index=procedure_index,
+        preceding_token=preceding_token,
+        following_token=following_token,
+    )
+    if procedure is None:
+        return None
+    join = _departure_airway_join(
+        nasr,
+        tokens,
+        index,
+        procedure,
+        resolver=resolver,
+        airway_index=airway_index,
+        procedure_index=procedure_index,
+    )
+    return tuple(
+        (point.latitude, point.longitude)
+        for point in (join.prefix if join is not None else procedure)
+    )
+
+
 def _flight_plan_path(
     nasr: Mapping[str, DataFrame],
     flight_plan: str,
@@ -1169,64 +1261,28 @@ def _flight_plan_path(
         if token == _DIRECT:
             index += 1
             continue
-        airway = _AIRWAY.fullmatch(token)
-        preceding_token = next(
-            (
-                candidate.value
-                for candidate in reversed(tokens[:index])
-                if candidate.value != _DIRECT
-            ),
-            None,
+        procedure_coordinates = _procedure_step_coordinates(
+            nasr,
+            tokens,
+            index,
+            token,
+            resolver=resolver,
+            airway_index=airway_index,
+            procedure_index=procedure_index,
         )
-        following_token = next(
-            (
-                candidate.value
-                for candidate in tokens[index + 1 :]
-                if candidate.value != _DIRECT
-            ),
-            None,
-        )
-        # A bare procedure computer code (for example ``GNDLF3``) can also
-        # satisfy the airway lexical pattern.  Resolve procedures first so a
-        # published DP/STAR is not incorrectly sent to AWY_BASE lookup.
-        procedure = (
-            _procedure_path(
-                nasr,
-                token,
-                resolver=resolver,
-                procedure_index=procedure_index,
-                preceding_token=preceding_token,
-                following_token=following_token,
-            )
-            if "." in token or airway is not None
-            else None
-        )
-        if procedure is not None:
-            join = _departure_airway_join(
-                nasr,
-                tokens,
-                index,
-                procedure,
-                resolver=resolver,
-                airway_index=airway_index,
-                procedure_index=procedure_index,
-            )
-            for point in join.prefix if join is not None else procedure:
-                coordinate = point.latitude, point.longitude
+        if procedure_coordinates is not None:
+            for coordinate in procedure_coordinates:
                 if not output or output[-1] != coordinate:
                     output.append(coordinate)
             index += 1
             continue
+        airway = _AIRWAY.fullmatch(token)
         if airway is not None and _is_published_airway(
             nasr, token, airway_index=airway_index
         ):
             previous_index = _previous_route_token_index(tokens, index)
             following_index = _next_route_token_index(tokens, index)
-            if (
-                not output
-                or previous_index is None
-                or following_index is None
-            ):
+            if not output or previous_index is None or following_index is None:
                 raise ValueError(f"Airway {token!r} must have waypoints on both sides")
             previous_procedure = _procedure_path(
                 nasr,

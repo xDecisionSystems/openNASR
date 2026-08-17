@@ -82,12 +82,6 @@ class DuckDbCycleMetadata:
                 "DuckDB metadata does not mark the build as complete."
             )
 
-    @property
-    def effective_cycle(self) -> date:
-        """Return the metadata effective date after strict constructor validation."""
-
-        return date.fromisoformat(self.effective_date)
-
     def to_dict(self) -> dict[str, Any]:
         """Return a stable JSON-compatible representation of the sidecar."""
 

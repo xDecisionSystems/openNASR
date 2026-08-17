@@ -2,8 +2,12 @@
 
 Run with ``python -m benchmarks.plotting_benchmark --cycle YYYY-MM-DD``.
 Figures are constructed with Matplotlib's ``Agg`` backend and immediately
-closed; no PNGs are written.  Table loading and cold/repeated call timings
-are reported separately for CSV or DuckDB storage.
+closed; no PNGs are written.  Table loading, plotting-index construction,
+and cold/repeated call timings are reported separately for CSV or DuckDB
+storage. Each case owns one fresh index reused by its cold and repeated
+measurements (and by all ten airports in the batch case). ``cold`` is the
+first plot after that case's index shell is constructed; lazy component builds
+are included in the cold timing. ``index_seconds`` captures shell creation.
 """
 
 from __future__ import annotations
@@ -22,7 +26,12 @@ from shapely.ops import unary_union
 
 from openNASR.cycles import CycleManager
 from openNASR.nasr import NASR
-from openNASR.plotting import plot_airport_procedures, plot_airspace, plot_flight_plan
+from openNASR.plotting import (
+    PlottingIndex,
+    plot_airport_procedures,
+    plot_airspace,
+    plot_flight_plan,
+)
 
 
 def _summary(values: list[float]) -> dict[str, float]:
@@ -53,9 +62,7 @@ def run(
 ) -> dict[str, object]:
     manager = CycleManager(cache_dir)
     selected = (
-        manager.latest().effective_date
-        if cycle is None
-        else date.fromisoformat(cycle)
+        manager.latest().effective_date if cycle is None else date.fromisoformat(cycle)
     )
     started = time.perf_counter()
     nasr = NASR(
@@ -64,6 +71,19 @@ def run(
     for table in nasr:
         nasr[table]
     load_seconds = time.perf_counter() - started
+    # Build one snapshot for the complete benchmark.  In particular, the
+    # repeated airport case must measure reuse of the plotting lookup index,
+    # rather than rebuilding all procedure/navigation indexes ten times.
+    index_seconds = 0.0
+
+    def new_plotting_index() -> PlottingIndex:
+        """Create one lazy index owned by one benchmark case."""
+
+        nonlocal index_seconds
+        index_started = time.perf_counter()
+        plotting_index = PlottingIndex(nasr)
+        index_seconds += time.perf_counter() - index_started
+        return plotting_index
 
     cases = {}
     try:
@@ -74,21 +94,38 @@ def run(
             if boundary is not None
         )
         shape = unary_union(boundaries)
-        cases["airspace_zob"] = lambda: plot_airspace(
-            nasr, shape, plot_high_airways=True, plot_low_airways=True
+        plotting_index = new_plotting_index()
+        cases["airspace_zob"] = lambda plotting_index=plotting_index: plot_airspace(
+            nasr,
+            shape,
+            plot_high_airways=True,
+            plot_low_airways=True,
+            index=plotting_index,
         )
     except Exception as raised:
         airspace_error = raised
-        cases["airspace_zob"] = lambda: (_raise(airspace_error))
-    cases["airport_atl"] = lambda: plot_airport_procedures(nasr, "ATL")
-    cases["flightplan_direct"] = lambda: plot_flight_plan(nasr, "KBWI KDCA")
-    cases["flightplan_procedure"] = lambda: plot_flight_plan(
-        nasr, "KATL.HAALO3.SARGE..DARED..CORKY..KVPS/0048"
+        cases["airspace_zob"] = lambda: _raise(airspace_error)
+    plotting_index = new_plotting_index()
+    cases["airport_atl"] = lambda plotting_index=plotting_index: (
+        plot_airport_procedures(nasr, "ATL", index=plotting_index)
     )
-    airport_ids = (
-        "ATL", "BWI", "DCA", "ORD", "JFK", "LAX", "MIA", "SEA", "SFO", "DEN"
+    plotting_index = new_plotting_index()
+    cases["flightplan_direct"] = lambda plotting_index=plotting_index: plot_flight_plan(
+        nasr, "KBWI KDCA", index=plotting_index
     )
-    cases["airport_procedures_repeated"] = lambda: _plot_airports(nasr, airport_ids)
+    plotting_index = new_plotting_index()
+    cases["flightplan_procedure"] = lambda plotting_index=plotting_index: (
+        plot_flight_plan(
+            nasr,
+            "KATL.HAALO3.SARGE..DARED..CORKY..KVPS/0048",
+            index=plotting_index,
+        )
+    )
+    airport_ids = ("ATL", "BWI", "DCA", "ORD", "JFK", "LAX", "MIA", "SEA", "SFO", "DEN")
+    plotting_index = new_plotting_index()
+    cases["airport_procedures_repeated"] = lambda plotting_index=plotting_index: (
+        _plot_airports(nasr, airport_ids, plotting_index)
+    )
 
     results = {}
     for name, function in cases.items():
@@ -104,15 +141,20 @@ def run(
         "cycle": selected.isoformat(),
         "storage": storage,
         "load_seconds": load_seconds,
+        "index_seconds": index_seconds,
+        "cold_definition": (
+            "first plot after a fresh per-case index shell; lazy component "
+            "builds are included"
+        ),
         "cases": results,
     }
 
 
-def _plot_airports(nasr, airport_ids):
+def _plot_airports(nasr, airport_ids, index):
     figure = None
     axes = None
     for airport_id in airport_ids:
-        figure, axes = plot_airport_procedures(nasr, airport_id, axes=axes)
+        figure, axes = plot_airport_procedures(nasr, airport_id, axes=axes, index=index)
     return figure, axes
 
 

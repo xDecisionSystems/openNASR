@@ -49,6 +49,7 @@ from .exceptions import RouteConnectivityError as RouteConnectivityError
 from .plotting import plot_airspace as plot_airspace
 from .plotting import plot_airport_procedures as plot_airport_procedures
 from .plotting import plot_flight_plan as plot_flight_plan
+from .plotting import PlottingIndex as PlottingIndex
 from .records import ArtccRecord as ArtccRecord
 from .records import ClassAirspaceRecord as ClassAirspaceRecord
 from .records import MaaRecord as MaaRecord
@@ -184,6 +185,7 @@ __all__ = [
     "plot_airspace",
     "plot_airport_procedures",
     "plot_flight_plan",
+    "PlottingIndex",
     "QueryError",
     "QueryFieldNotFoundError",
     "QueryFilter",

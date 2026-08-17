@@ -231,9 +231,7 @@ def test_record_repository_reuses_its_identifier_column_index_across_lookups():
 
 def test_record_repository_uses_positions_for_high_cardinality_identifier_index():
     """Fully unique identifiers must not materialize one DataFrame per group."""
-    frame = pd.DataFrame(
-        {"FIX_ID": [f"FIX{number:05d}" for number in range(1_000)]}
-    )
+    frame = pd.DataFrame({"FIX_ID": [f"FIX{number:05d}" for number in range(1_000)]})
     repository = RecordRepository(
         frame,
         entity_type="Fix",

@@ -33,12 +33,6 @@ class MarkerRecord(FaaRecord):
 
 
 class ILSitem(Raw):
-    def category(self):
-        if hasattr(self._raw, "CATEGORY"):
-            return self._raw.CATEGORY
-        else:
-            return None
-
     @property
     def trueBearing(self):
         magBearing = self.magBearing
@@ -112,10 +106,6 @@ class ILSBase(RawDict):
         for cID in self.ids:
             self[cID].plot(ax, lonc, latc, pltILSBnd=pltILSBnd)
 
-    def setDecl(self, decl):
-        for cID in self.ids:
-            self[cID].decl = decl
-
 
 # ---------------------------------------
 # ---------------------------------------
@@ -137,14 +127,9 @@ class GSitem(Raw):
         else:
             return None
 
-    def plot(self, ax, latc, lonc, rwyTrueAngle=None):
+    def plot(self, ax, latc, lonc):
         x0, y0 = self.xy(latc, lonc)
         ax.scatter(x0, y0, color="blue", marker="x")
-
-        # ang = self.trueAngle
-        # dx=-cos(ang*pi/180)
-        # dy=-sin(ang*pi/180)
-        # ax.quiver(x0,y0, dx, dy, scale=4,color='red')
 
 
 class ILSGS(RawDict):

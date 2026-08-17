@@ -21,13 +21,6 @@ class RWYEnditem(Raw):
             return None
 
     @property
-    def glidepath(self):
-        if hasattr(self._raw, "VISUAL_GLIDE_PATH_ANGLE"):
-            return self._raw.VISUAL_GLIDE_PATH_ANGLE
-        else:
-            return None
-
-    @property
     def id(self):
         return self._raw.RWY_END_ID
 
@@ -54,10 +47,6 @@ class RWYEnd(RawDict):
 
 class RWYitem(Raw):
     @property
-    def rwyType(self):
-        return self._raw.SITE_TYPE_CODE
-
-    @property
     def trueBearing(self):
         return self._raw.TRUE_ALIGNMENT
 
@@ -80,8 +69,3 @@ class RWYitem(Raw):
 
 class RWY(RawDict):
     pass
-    # def __init__(self,airport,nasrDF,airportIDCol):
-    #     super().__init__(airport,nasrDF,airportIDCol, useRWYID=True)
-    #     self._map_ends=dict()
-    #         for cRWY in cRWYinfo[1]:
-    #             self._map_ends[cRWY]=cRWYinfo[0]

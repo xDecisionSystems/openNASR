@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from .basictypes import Raw, getAirportRecord
+from .basictypes import Raw
 from types import SimpleNamespace
 from .ils import (
     DMEitem,
@@ -145,13 +145,8 @@ class AirportRecord(FaaRecord):
 
 
 class AirportBase(Raw):
-    def __init__(self, airport, nasrDF, airportIDCol, *, cached_row=None):
-        record = (
-            getAirportRecord(airport, nasrDF, airportIDCol)
-            if cached_row is None
-            else SimpleNamespace(**cached_row)
-        )
-        super().__init__(record)
+    def __init__(self, cached_row):
+        super().__init__(SimpleNamespace(**cached_row))
 
     @property
     def elevation(self):
@@ -173,17 +168,9 @@ class Airport:
             base_records = nasr._legacy_normalized_records(
                 "APT_BASE", airportIDCol, airport
             )
-            self.base = AirportBase(
-                airport,
-                nasr["APT_BASE"],
-                airportIDCol,
-                cached_row=base_records[0],
-            )
+            self.base = AirportBase(base_records[0])
             self.rwy = RWY(
                 RWYitem,
-                airport,
-                nasr["APT_RWY"],
-                airportIDCol,
                 useRWYID=True,
                 cached_records=nasr._legacy_normalized_records(
                     "APT_RWY", airportIDCol, airport
@@ -191,27 +178,18 @@ class Airport:
             )
             self.ils = ILSBase(
                 ILSitem,
-                airport,
-                nasr["ILS_BASE"],
-                airportIDCol,
                 cached_records=nasr._legacy_normalized_records(
                     "ILS_BASE", airportIDCol, airport
                 ),
             )
             self.dme = ILSDME(
                 DMEitem,
-                airport,
-                nasr["ILS_DME"],
-                airportIDCol,
                 cached_records=nasr._legacy_normalized_records(
                     "ILS_DME", airportIDCol, airport
                 ),
             )
             self.gs = ILSGS(
                 GSitem,
-                airport,
-                nasr["ILS_GS"],
-                airportIDCol,
                 cached_records=nasr._legacy_normalized_records(
                     "ILS_GS", airportIDCol, airport
                 ),
@@ -219,24 +197,14 @@ class Airport:
             missing_marker_table = object()
             marker_table = nasr.get("ILS_MKR", missing_marker_table)
             if marker_table is missing_marker_table:
-                marker_table = nasr["ILS_BASE"].iloc[0:0]
                 marker_records = ()
             else:
                 marker_records = nasr._legacy_normalized_records(
                     "ILS_MKR", airportIDCol, airport
                 )
-            self.mkr = ILSMKR(
-                MKRitem,
-                airport,
-                marker_table,
-                airportIDCol,
-                cached_records=marker_records,
-            )
+            self.mkr = ILSMKR(MKRitem, cached_records=marker_records)
             self.rwyend = RWYEnd(
                 RWYEnditem,
-                airport,
-                nasr["APT_RWY_END"],
-                airportIDCol,
                 cached_records=nasr._legacy_normalized_records(
                     "APT_RWY_END", airportIDCol, airport
                 ),
@@ -297,11 +265,6 @@ class Airport:
                 x1, y1 = self.rwyend[rwyEnds[1]].xy(self.lat, self.lon)
                 xp, yp = self.rwy[cRWY].RWYbndXY
                 self.ax.fill(xp, yp, alpha=0.5, fc="black", edgecolor="black")
-
-    def removePlt(self, lineRef):
-        line = lineRef.pop(0)
-        line.remove()
-        self.fig.canvas.flush_events()
 
 
 def makeRWYpoly(xy_start, xy_end, width):

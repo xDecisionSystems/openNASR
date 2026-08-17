@@ -136,9 +136,9 @@ class NASR(dict):
         self.fixes = FixRepository(self)
         self.navaids = NavaidRepository(self)
 
-    def setupFiles(self, useDate, cache_dir=None, *, storage: str = "csv"):
-        manager = CycleManager(cache_dir)
-        self.__cache_dir = manager.cache_dir
+    @staticmethod
+    def _resolve_cycle(manager: CycleManager, useDate):
+        """Return the requested (or latest) cycle with its data extracted."""
 
         if useDate is None:
             cycle = manager.latest()
@@ -158,78 +158,108 @@ class NASR(dict):
                 )
             cycle = found
 
-        self.__useDate = cycle.effective_date.isoformat()
-
         if cycle.data_path is None:
             if cycle.archive_path is None:
                 raise CycleNotFoundError(
                     f"No archive or extracted data found for NASR cycle "
-                    f"{self.__useDate} in {manager.cache_dir}."
+                    f"{cycle.effective_date.isoformat()} in {manager.cache_dir}."
                 )
             cycle = manager.extract_archive(cycle.archive_path)
-
         assert cycle.data_path is not None
+        return cycle
+
+    def _build_table_store(
+        self,
+        manager: CycleManager,
+        cycle,
+        storage: str,
+        schema_files: list[str],
+    ) -> tuple[TableStore, str | None]:
+        """Return the loaded table store and, for DuckDB, its schema fingerprint."""
+
+        if storage == "csv":
+            read_options = (
+                {"dtype": str, "keep_default_na": False, "na_filter": False}
+                if schema_files
+                else {}
+            )
+            table_repository = TableRepository(
+                self.__useDateCSVFolder, read_options=read_options
+            )
+            return table_repository, None
+
+        database = manager.duckdb_path(cycle.effective_date)
+        if not database.is_file():
+            raise DuckDbBuildError(
+                "DuckDB storage was requested, but no completed artifact "
+                f"exists for NASR cycle {self.__useDate}: {database}. "
+                "Build it first with CycleManager.build_duckdb(...)."
+            )
+        metadata = read_metadata(
+            duckdb_metadata_path(database),
+            effective_date=cycle.effective_date,
+            source_schema_fingerprint=self._source_schema_fingerprint(
+                self.__useDateCSVFolder
+            ),
+        )
+        return (
+            DuckDbTableRepository(database, metadata=metadata),
+            metadata.source_schema_fingerprint,
+        )
+
+    def _validate_schema_catalog(
+        self, available_tables: tuple[str, ...], schema_files: list[str]
+    ) -> tuple[SchemaCatalog, str, TableRegistry] | None:
+        """Identify the schema and require every operational table be modeled.
+
+        This whole-cycle check is independent of which table is requested
+        first, so it runs once here, eagerly, exactly as the legacy
+        eager-construction behavior did. Per-table structural validation
+        (`SchemaCatalog.validate`/`ValidationReport.require_compatible`) is
+        comparatively expensive (it inspects a loaded DataFrame's columns)
+        and is deferred to `_load_table`, so a schema mismatch on one table
+        never blocks constructing `NASR` or using a different, unrelated
+        table that passes validation.
+        """
+
+        if not schema_files:
+            return None
+        catalog = SchemaCatalog()
+        schema_id = catalog.identify_schema(self.__useDateCSVFolder)
+        registry = TableRegistry(catalog=catalog)
+        operational_names = [
+            name for name in available_tables if not name.endswith(SCHEMA_SUFFIX)
+        ]
+        registry.require_modeled(
+            operational_names,
+            cycle=self.__useDate,
+            diagnostic=self.__diagnostic,
+        )
+        return catalog, schema_id, registry
+
+    def setupFiles(self, useDate, cache_dir=None, *, storage: str = "csv"):
+        manager = CycleManager(cache_dir)
+        self.__cache_dir = manager.cache_dir
+
+        cycle = self._resolve_cycle(manager, useDate)
+        self.__useDate = cycle.effective_date.isoformat()
         self.__useDateCSVFolder = self._resolve_csv_source(cycle.data_path)
+
         available_tables = discover_tables(self.__useDateCSVFolder)
         schema_files = [
             name for name in available_tables if name.endswith(SCHEMA_SUFFIX)
         ]
-        read_options = (
-            {"dtype": str, "keep_default_na": False, "na_filter": False}
-            if schema_files
-            else {}
-        )
-        self.__tables: TableStore
-        if storage == "csv":
-            self.__tables = TableRepository(
-                self.__useDateCSVFolder, read_options=read_options
-            )
-        else:
-            database = manager.duckdb_path(cycle.effective_date)
-            if not database.is_file():
-                raise DuckDbBuildError(
-                    "DuckDB storage was requested, but no completed artifact "
-                    f"exists for NASR cycle {self.__useDate}: {database}. "
-                    "Build it first with CycleManager.build_duckdb(...)."
-                )
-            metadata = read_metadata(
-                duckdb_metadata_path(database),
-                effective_date=cycle.effective_date,
-                source_schema_fingerprint=self._source_schema_fingerprint(
-                    self.__useDateCSVFolder
-                ),
-            )
-            self.__tables = DuckDbTableRepository(database, metadata=metadata)
-            self.__schema_fingerprint = metadata.source_schema_fingerprint
 
-        # Schema identification and the "every discovered table is modeled"
-        # check are whole-cycle questions independent of which table is
-        # requested first, so they run once here, eagerly, exactly as the
-        # legacy eager-construction behavior did. Per-table structural
-        # validation (`SchemaCatalog.validate`/`ValidationReport
-        # .require_compatible`) is comparatively expensive (it inspects a
-        # loaded DataFrame's columns) and is deferred to `_load_table`, so a
-        # schema mismatch on one table never blocks constructing `NASR` or
-        # using a different, unrelated table that passes validation.
-        if schema_files:
-            catalog = SchemaCatalog()
-            schema_id = catalog.identify_schema(self.__useDateCSVFolder)
-            registry = TableRegistry(catalog=catalog)
-            operational_names = [
-                name for name in available_tables if not name.endswith(SCHEMA_SUFFIX)
-            ]
-            registry.require_modeled(
-                operational_names,
-                cycle=self.__useDate,
-                diagnostic=self.__diagnostic,
-            )
-            self.__schema_catalog: tuple[SchemaCatalog, str, TableRegistry] | None = (
-                catalog,
-                schema_id,
-                registry,
-            )
-        else:
-            self.__schema_catalog = None
+        self.__tables: TableStore
+        self.__tables, duckdb_fingerprint = self._build_table_store(
+            manager, cycle, storage, schema_files
+        )
+        if duckdb_fingerprint is not None:
+            self.__schema_fingerprint = duckdb_fingerprint
+
+        self.__schema_catalog: tuple[SchemaCatalog, str, TableRegistry] | None = (
+            self._validate_schema_catalog(available_tables, schema_files)
+        )
 
     @staticmethod
     def _source_schema_fingerprint(source: Path) -> str:

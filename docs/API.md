@@ -40,6 +40,40 @@ structure. Unknown domestic records raise `RecordNotFoundError`, ambiguous
 records raise `AmbiguousRecordError`, and a published procedure/airway pair
 with no valid source-backed join raises `RouteConnectivityError`.
 
+## Plotting and reusable lookup indexes
+
+The optional plotting helpers return Matplotlib `(figure, axes)` pairs:
+
+```python
+from openNASR import PlottingIndex, plot_airport_procedures, plot_airspace
+
+plotting_index = PlottingIndex(nasr)
+figure, axes = plot_airport_procedures(
+    nasr, "ATL", index=plotting_index, plot_legend=False
+)
+```
+
+`PlottingIndex` is a public, snapshot-scoped lookup session. It covers the
+navigation, airway, airport, procedure, and runway tables used by
+`plot_airspace`, `plot_airport_procedures`, and `plot_flight_plan`. Derived
+feature indexes and the route resolver are lazy, so a caller pays only for
+the layers it uses. Pass the same keyword-only `index=` to repeated plotting
+calls to reuse those lookups—for example, to plot a batch of airports—rather
+than constructing a session for every figure.
+
+The index belongs to the exact NASR table mapping passed to its constructor;
+passing it with another mapping raises `ValueError`. Each cached lookup is
+built lazily, the first time it is needed, from whatever the mapping contains
+at that moment—construction itself copies nothing. Treat the tables as
+immutable for the lifetime of the session and construct a new
+`PlottingIndex(nasr)` after changing a table, switching cycles, or switching
+storage backends; mutating a table in place partway through a session's
+lifetime can leave already-cached lookups reflecting the old data while
+not-yet-accessed lookups pick up the new data. This preserves source-row
+order, raw coordinate values, and the existing duplicate/ambiguous endpoint
+behavior. The index is an optional optimization: omitting `index=` preserves
+the plotting helper API and creates a session for that call.
+
 ## Repository facade
 
 `NASR` provides plural repositories and singular convenience lookups:

@@ -677,6 +677,11 @@ and the focused CSV/DuckDB/flight-plan suite passes all 44 tests. Full
 environment, policy, initial-failure history, and rerun evidence are in the
 [linked benchmark note](docs/route_path_baseline_2026-05-14.md#gate-4-approval-rerun).
 
+The consolidated Phase 2–5 table-lookup, route, and plotting report is
+[`docs/speedup_benchmark_2026-05-14.md`](docs/speedup_benchmark_2026-05-14.md).
+It repeats the route results only as a cross-plan summary and keeps the full
+route correctness evidence in `docs/route_path_baseline_2026-05-14.md`.
+
 ## Phase 5 — Batch Validation and Diagnostics
 
 - [x] **T5.1 — Agent model: Luna.** Add a maintained validation command or test utility

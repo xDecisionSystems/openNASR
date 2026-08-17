@@ -130,6 +130,70 @@ class _NormalizedFilter:
         }
 
 
+def _build_bounded_page(
+    nasr: "NASR",
+    canonical_table: str,
+    selected_fields: tuple[str, ...],
+    candidates: list[tuple[int, tuple[object, ...]]],
+    *,
+    has_more: bool,
+    request_fingerprint: str,
+) -> tuple[list[dict[str, str]], str | None]:
+    """Accumulate rows up to the payload cap, encoding a cursor if truncated.
+
+    ``has_more`` starts as whether the source query returned an extra
+    lookahead row; it may also flip true here if the payload cap forces an
+    early stop before every candidate is consumed.
+    """
+
+    raw_rows: list[dict[str, str]] = []
+    last_row: int | None = None
+    for candidate_position, (row_position, values) in enumerate(candidates):
+        row = {
+            field: _source_text(value)
+            for field, value in zip(selected_fields, values, strict=True)
+        }
+        prospective_has_more = has_more or candidate_position < len(candidates) - 1
+        prospective_cursor = (
+            _encode_cursor(
+                effective_date=nasr.effective_date,
+                schema_fingerprint=nasr.schema_fingerprint,
+                request_fingerprint=request_fingerprint,
+                next_row=row_position + 1,
+            )
+            if prospective_has_more
+            else None
+        )
+        if (
+            _page_payload_size(
+                canonical_table,
+                selected_fields,
+                raw_rows + [row],
+                nasr,
+                next_cursor=prospective_cursor,
+            )
+            > MAX_PAGE_PAYLOAD_BYTES
+        ):
+            if not raw_rows:
+                raise QueryResultTooLargeError(
+                    "A single query row exceeds the maximum page payload."
+                )
+            has_more = True
+            break
+        raw_rows.append(row)
+        last_row = row_position
+
+    next_cursor = None
+    if has_more and last_row is not None:
+        next_cursor = _encode_cursor(
+            effective_date=nasr.effective_date,
+            schema_fingerprint=nasr.schema_fingerprint,
+            request_fingerprint=request_fingerprint,
+            next_row=last_row + 1,
+        )
+    return raw_rows, next_cursor
+
+
 def query_table(
     nasr: "NASR",
     table: str,
@@ -177,51 +241,14 @@ def query_table(
     has_more = len(candidates) > page_size
     candidates = candidates[:page_size]
 
-    raw_rows: list[dict[str, str]] = []
-    last_row: int | None = None
-    for candidate_position, (row_position, values) in enumerate(candidates):
-        row = {
-            field: _source_text(value)
-            for field, value in zip(selected_fields, values, strict=True)
-        }
-        prospective_has_more = has_more or candidate_position < len(candidates) - 1
-        prospective_cursor = (
-            _encode_cursor(
-                effective_date=nasr.effective_date,
-                schema_fingerprint=nasr.schema_fingerprint,
-                request_fingerprint=request_fingerprint,
-                next_row=row_position + 1,
-            )
-            if prospective_has_more
-            else None
-        )
-        if (
-            _page_payload_size(
-                canonical_table,
-                selected_fields,
-                raw_rows + [row],
-                nasr,
-                next_cursor=prospective_cursor,
-            )
-            > MAX_PAGE_PAYLOAD_BYTES
-        ):
-            if not raw_rows:
-                raise QueryResultTooLargeError(
-                    "A single query row exceeds the maximum page payload."
-                )
-            has_more = True
-            break
-        raw_rows.append(row)
-        last_row = row_position
-
-    next_cursor = None
-    if has_more and last_row is not None:
-        next_cursor = _encode_cursor(
-            effective_date=nasr.effective_date,
-            schema_fingerprint=nasr.schema_fingerprint,
-            request_fingerprint=request_fingerprint,
-            next_row=last_row + 1,
-        )
+    raw_rows, next_cursor = _build_bounded_page(
+        nasr,
+        canonical_table,
+        selected_fields,
+        candidates,
+        has_more=has_more,
+        request_fingerprint=request_fingerprint,
+    )
 
     return QueryPage(
         table=canonical_table,

@@ -70,7 +70,7 @@ class ARTCC:
         self.lon = lon
         self.boundaries = {}
 
-    def addboundary(self, boundaryType, altitude, lons, lats):
+    def addboundary(self, altitude, lons, lats):
         key = altitude.lower()
         boundary = Boundary(lons, lats)
         self.boundaries[key] = boundary
@@ -118,9 +118,7 @@ class ARB:
                 & (arb_seg["TYPE"] == cLocType)
             ]
             cARTCC = getattr(self, cLocID)
-            cARTCC.addboundary(
-                cLocType, cLocAlt, tmpDF["LONG_DECIMAL"], tmpDF["LAT_DECIMAL"]
-            )
+            cARTCC.addboundary(cLocAlt, tmpDF["LONG_DECIMAL"], tmpDF["LAT_DECIMAL"])
 
     def getARTCC(self, artcc):
         if artcc in self.centers:

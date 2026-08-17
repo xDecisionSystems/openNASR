@@ -27,9 +27,7 @@ def _summary(values: list[float]) -> dict[str, float]:
 
 def _ids(frame, column: str, *, seed: int, count: int) -> list[str]:
     values = [
-        str(value).strip()
-        for value in frame[column].tolist()
-        if str(value).strip()
+        str(value).strip() for value in frame[column].tolist() if str(value).strip()
     ]
     unique = list(dict.fromkeys(values))
     return random.Random(seed).sample(unique, min(count, len(unique)))
@@ -74,9 +72,7 @@ def run(
 ):
     manager = CycleManager(cache_dir)
     selected = (
-        manager.latest().effective_date
-        if cycle is None
-        else date.fromisoformat(cycle)
+        manager.latest().effective_date if cycle is None else date.fromisoformat(cycle)
     )
     started = time.perf_counter()
     nasr = NASR(
@@ -95,8 +91,13 @@ def run(
             _keys(
                 nasr["LID"],
                 (
-                    "COUNTRY_CODE", "LOC_ID", "REGION_CODE", "STATE", "CITY",
-                    "LID_GROUP", "FAC_TYPE",
+                    "COUNTRY_CODE",
+                    "LOC_ID",
+                    "REGION_CODE",
+                    "STATE",
+                    "CITY",
+                    "LID_GROUP",
+                    "FAC_TYPE",
                 ),
                 seed=seed + 4,
                 count=count,
@@ -107,9 +108,14 @@ def run(
             _keys(
                 nasr["FRQ"],
                 (
-                    "FACILITY", "SERVICED_FACILITY", "SERVICED_SITE_TYPE",
-                    "SERVICED_STATE", "SERVICED_COUNTRY", "FREQ",
-                    "SECTORIZATION", "FREQ_USE",
+                    "FACILITY",
+                    "SERVICED_FACILITY",
+                    "SERVICED_SITE_TYPE",
+                    "SERVICED_STATE",
+                    "SERVICED_COUNTRY",
+                    "FREQ",
+                    "SECTORIZATION",
+                    "FREQ_USE",
                 ),
                 seed=seed + 5,
                 count=count,
@@ -156,8 +162,13 @@ def run(
             _keys(
                 nasr["ATC_BASE"],
                 (
-                    "SITE_NO", "SITE_TYPE_CODE", "FACILITY_TYPE", "STATE_CODE",
-                    "FACILITY_ID", "CITY", "COUNTRY_CODE",
+                    "SITE_NO",
+                    "SITE_TYPE_CODE",
+                    "FACILITY_TYPE",
+                    "STATE_CODE",
+                    "FACILITY_ID",
+                    "CITY",
+                    "COUNTRY_CODE",
                 ),
                 seed=seed + 10,
                 count=count,
