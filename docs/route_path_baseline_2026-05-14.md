@@ -228,3 +228,41 @@ speed/altitude delimiter does not count, even if the current function returns
 without raising. Curated exact-order fixtures remain the fidelity check; the
 percentage is a coverage gate, not proof that every returned route is an
 operationally valid flight path.
+
+## Gate 2 review (2026-08-17)
+
+**Decision: not approved.** The final review used production commit `4960111`
+(`fix: retain exact dotted departure codes`), including T2.7 test commit
+`42bf911` and its lint-only follow-up `d200241`. The focused command
+`.venv/bin/pytest -q tests/test_flightplan.py
+tests/test_route_regression_fixture.py` passed all 24 tests.
+
+The canonical rerun again used the `2026-05-14` CSV cycle and one shared
+`_WaypointResolver`. Raw coverage improved from 38/100 to 56/100, and the
+fixed domestic denominator improved from 36/84 to 54/84. Eighteen former
+failures now return paths and no former no-exception row regressed.
+
+Root-cause categories moved as follows. Category growth after a preceding
+procedure is fixed can mean the run reached a later defect; it does not imply
+the newly visible defect was introduced by Phase 2.
+
+| Category | T0.2 baseline | Gate 2 rerun | Change |
+| --- | ---: | ---: | ---: |
+| success | 38 | 56 | +18 |
+| procedure-resolution error | 40 | 8 | -32 |
+| airway-resolution error | 7 | 17 | +10 |
+| waypoint ambiguity | 4 | 5 | +1 |
+| parser error | 2 | 4 | +2 |
+| missing NASR data | 9 | 10 | +1 |
+| malformed input | 0 | 0 | 0 |
+
+Phase 2 behavior is materially improved and its synthetic/cycle-shaped matrix
+passes: bare and dotted DPs/STARs, DP-to-airway, airway-to-STAR,
+procedure-only, the `GNDLF3` bare STAR, the `MCRAY2` plain-fix boundary, and a
+mixed DP/direct/airway/navaid/STAR route are covered. The gate nevertheless
+requires both procedure-resolution and parser-classification categories to
+shrink. Procedure errors shrank sharply, but the original parser collisions
+remain and two more valid `FIX_BASE.FIX_ID` values reached after procedure
+expansion (`KM18K`, `KG66K`) are lexically treated as airways. Gate 2 therefore
+remains closed pending contextual waypoint-before-airway dispatch for these
+valid NASR fixes and a confirming canonical rerun.
