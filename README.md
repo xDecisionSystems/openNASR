@@ -322,6 +322,8 @@ gnomonic projection. By default its center is the airspace centroid; provide
 
 Use `plot_airport_procedures(nasr, "BWI")` to draw an airport's runways,
 departure procedures, and standard terminal arrival routes.
+Pass `project_to_nm=True` to use east/north nautical miles centered on that
+airport, or provide `projection_center=(latitude, longitude)`.
 
 ## Special-use, sport, and military airspace
 

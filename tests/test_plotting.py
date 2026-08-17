@@ -253,3 +253,35 @@ def test_plot_airport_procedures_draws_runways_departures_and_arrivals():
     _, axes = plot_airport_procedures(tables, "AAA")
 
     assert len(axes.lines) == 3
+
+
+def test_plot_airport_procedures_projects_to_nm_about_the_airport():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_BASE": pd.DataFrame(
+            [{"ARPT_ID": "AAA", "LAT_DECIMAL": "40", "LONG_DECIMAL": "-75"}]
+        ),
+        "APT_RWY_END": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "40",
+                    "LONG_DECIMAL": "-75",
+                },
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "40.01",
+                    "LONG_DECIMAL": "-75",
+                },
+            ]
+        ),
+    }
+
+    _, axes = plot_airport_procedures(tables, "AAA", project_to_nm=True)
+
+    assert axes.get_xlabel() == "East (NM)"
+    assert axes.get_ylabel() == "North (NM)"
+    assert axes.lines[0].get_xdata()[0] == pytest.approx(0.0)
+    assert axes.lines[0].get_ydata()[0] == pytest.approx(0.0)

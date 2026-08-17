@@ -116,6 +116,29 @@ def _airport_identifier(airport: object) -> str:
     )
 
 
+def _airport_projection_center(
+    nasr: Mapping[str, DataFrame], airport_id: str
+) -> tuple[float, float]:
+    """Return the FAA latitude/longitude of an airport plotting center."""
+
+    airports = nasr.get("APT_BASE")
+    if airports is None or "ARPT_ID" not in airports.columns:
+        raise ValueError("projected airport plots require APT_BASE airport coordinates")
+    centers = []
+    for row in airports.to_dict(orient="records"):
+        if _text(row.get("ARPT_ID")) != airport_id:
+            continue
+        try:
+            centers.append((float(row["LAT_DECIMAL"]), float(row["LONG_DECIMAL"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+    if len(centers) != 1:
+        raise ValueError(
+            f"projected airport plots require one coordinate for {airport_id!r}"
+        )
+    return centers[0]
+
+
 def _procedure_segments(
     nasr: Mapping[str, DataFrame],
     airport_id: str,
@@ -386,13 +409,22 @@ def plot_airspace(
 
 
 def plot_airport_procedures(
-    nasr: Mapping[str, DataFrame], airport: object, *, axes: Any | None = None
+    nasr: Mapping[str, DataFrame],
+    airport: object,
+    *,
+    axes: Any | None = None,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
 ) -> tuple[Any, Any]:
     """Plot an airport's runways and its associated arrival/departure legs.
 
     ``airport`` may be an FAA identifier, an airport object with ``faa_id``, or
     a mapping with ``ARPT_ID``. Departure and STAR legs are included only when
     both endpoint identifiers resolve uniquely to a fix or navaid.
+
+    Set ``project_to_nm=True`` to use the local gnomonic projection in nautical
+    miles. It defaults to the airport's FAA coordinate; alternatively pass a
+    ``(latitude, longitude)`` ``projection_center``.
     """
 
     from matplotlib import pyplot as plt
@@ -400,12 +432,20 @@ def plot_airport_procedures(
     airport_id = _airport_identifier(airport)
     if not airport_id:
         raise ValueError("airport must provide a non-empty FAA identifier")
+    active_projection_center = (
+        projection_center or _airport_projection_center(nasr, airport_id)
+        if project_to_nm
+        else None
+    )
     if axes is None:
         figure, axes = plt.subplots()
     else:
         figure = axes.figure
     for segment in _runway_segments(nasr, airport_id):
         x_values, y_values = segment.xy
+        x_values, y_values = _project_coordinates(
+            x_values, y_values, center=active_projection_center
+        )
         axes.plot(x_values, y_values, color="black", linewidth=3)
     for segment in _procedure_segments(
         nasr,
@@ -415,6 +455,9 @@ def plot_airport_procedures(
         ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
     ):
         x_values, y_values = segment.xy
+        x_values, y_values = _project_coordinates(
+            x_values, y_values, center=active_projection_center
+        )
         axes.plot(x_values, y_values, color="tab:blue", linewidth=1)
     for segment in _procedure_segments(
         nasr,
@@ -424,10 +467,13 @@ def plot_airport_procedures(
         ("STAR_COMPUTER_CODE", "ARTCC"),
     ):
         x_values, y_values = segment.xy
+        x_values, y_values = _project_coordinates(
+            x_values, y_values, center=active_projection_center
+        )
         axes.plot(x_values, y_values, color="tab:green", linewidth=1)
     axes.set_title(f"{airport_id} procedures")
-    axes.set_xlabel("Longitude")
-    axes.set_ylabel("Latitude")
+    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
+    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 
