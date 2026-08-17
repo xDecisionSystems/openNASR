@@ -454,6 +454,10 @@ nautical miles.
 - Procedure interfaces are not yet part of the public package API. The
   ``flight_plan_path`` helper resolves route fields only; it does not validate
   a flight plan for operational use.
+- For repeated route conversions, construct ``RouteResolver(nasr)`` once and
+  call ``.path(route)``. A resolver snapshots its supplied NASR mapping at
+  construction; after changing a table or switching CSV/DuckDB cycles,
+  construct a fresh resolver rather than expecting cache invalidation.
 - Only locally stored subscription cycles are available.
 
 ## Development
