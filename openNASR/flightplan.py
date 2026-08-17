@@ -52,16 +52,18 @@ class _WaypointResolver:
             coordinate_rows = frame[
                 frame["LAT_DECIMAL"].notna() & frame["LONG_DECIMAL"].notna()
             ]
-            identifiers = tuple(coordinate_rows[column] for column in columns)
+            identifiers = tuple(
+                coordinate_rows[column].to_numpy(copy=False) for column in columns
+            )
             nav_types = (
-                coordinate_rows["NAV_TYPE"]
+                coordinate_rows["NAV_TYPE"].to_numpy(copy=False)
                 if "NAV_TYPE" in coordinate_rows
                 else ("",) * len(coordinate_rows)
             )
             for values in zip(
                 *identifiers,
-                coordinate_rows["LAT_DECIMAL"],
-                coordinate_rows["LONG_DECIMAL"],
+                coordinate_rows["LAT_DECIMAL"].to_numpy(copy=False),
+                coordinate_rows["LONG_DECIMAL"].to_numpy(copy=False),
                 nav_types,
             ):
                 *raw_identifiers, latitude, longitude, nav_type = values

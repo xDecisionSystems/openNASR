@@ -427,7 +427,11 @@ def test_waypoint_resolver_uses_column_iteration(tables, monkeypatch):
     def fail_record_materialization(*args, **kwargs):
         raise AssertionError("resolver must not materialize DataFrame records")
 
+    def fail_series_iteration(*args, **kwargs):
+        raise AssertionError("resolver must not iterate boxed pandas Series values")
+
     monkeypatch.setattr(pd.DataFrame, "to_dict", fail_record_materialization)
+    monkeypatch.setattr(pd.Series, "__iter__", fail_series_iteration)
 
     resolver = _WaypointResolver(tables)
 
