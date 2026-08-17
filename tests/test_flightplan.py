@@ -156,14 +156,16 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
         ignore_index=True,
     )
     tables["DP_BASE"] = pd.DataFrame(
-        [{"DP_NAME": "ALPHA", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "ALPHA1.ALPHA"}]
+        [{"DP_NAME": "ALPHA", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "ALPHA1"}]
     )
     tables["DP_RTE"] = pd.DataFrame(
         [
             {
                 "DP_NAME": "ALPHA",
                 "ARTCC": "ZJX",
-                "DP_COMPUTER_CODE": "ALPHA1.ALPHA",
+                "DP_COMPUTER_CODE": "ALPHA1",
+                "ROUTE_PORTION_TYPE": "TRANSITION",
+                "TRANSITION_COMPUTER_CODE": "ALPHA1.ALPHA",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
                 "POINT": "ALPHA",
@@ -171,7 +173,9 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
             {
                 "DP_NAME": "ALPHA",
                 "ARTCC": "ZJX",
-                "DP_COMPUTER_CODE": "ALPHA1.ALPHA",
+                "DP_COMPUTER_CODE": "ALPHA1",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "20",
                 "POINT": "BRAVO",
@@ -423,6 +427,123 @@ def test_flight_plan_path_resolves_bare_arrival_before_destination(tables):
         (37.0, -78.0),  # Arrival procedure connection.
         (36.0, -79.0),
         (35.0, -80.0),  # Arrival exit and following destination token.
+    )
+
+
+def test_dotted_pair_does_not_hide_filed_fix_before_airway(tables):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "HAYGR", "LAT_DECIMAL": "37", "LONG_DECIMAL": "-78"},
+                    {"FIX_ID": "MCRAY", "LAT_DECIMAL": "36", "LONG_DECIMAL": "-79"},
+                    {"FIX_ID": "MID", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-80"},
+                    {"FIX_ID": "LEJOY", "LAT_DECIMAL": "33", "LONG_DECIMAL": "-81"},
+                    {"FIX_ID": "BAD", "LAT_DECIMAL": "32", "LONG_DECIMAL": "-82"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["DP_BASE"] = pd.DataFrame(
+        [
+            {"DP_NAME": "MCRAY", "ARTCC": "ZDC", "DP_COMPUTER_CODE": "MCRAY2"},
+            {
+                "DP_NAME": "MCRAY",
+                "ARTCC": "ZDC",
+                "DP_COMPUTER_CODE": "MCRAY2.MCRAY",
+            },
+        ]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "MCRAY",
+                "ARTCC": "ZDC",
+                "DP_COMPUTER_CODE": code,
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "KAAA",
+            }
+            for code in ("MCRAY2", "MCRAY2.MCRAY")
+        ]
+        + [
+            {
+                "DP_NAME": "MCRAY",
+                "ARTCC": "ZDC",
+                "DP_COMPUTER_CODE": code,
+                "ROUTE_PORTION_TYPE": "BODY",
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "HAYGR",
+            }
+            for code in ("MCRAY2", "MCRAY2.MCRAY")
+        ]
+    )
+    tables["AWY_BASE"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "A",
+                "AWY_ID": "178",
+                "AWY_DESIGNATION": "Q",
+            },
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "B",
+                "AWY_ID": "178",
+                "AWY_DESIGNATION": "Q",
+            },
+        ]
+    )
+    tables["AWY_SEG_ALT"] = pd.DataFrame(
+        [
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "A",
+                "AWY_ID": "178",
+                "POINT_SEQ": "1",
+                "FROM_POINT": "HAYGR",
+                "TO_POINT": "BAD",
+            },
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "A",
+                "AWY_ID": "178",
+                "POINT_SEQ": "2",
+                "FROM_POINT": "BAD",
+                "TO_POINT": "LEJOY",
+            },
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "B",
+                "AWY_ID": "178",
+                "POINT_SEQ": "3",
+                "FROM_POINT": "MCRAY",
+                "TO_POINT": "MID",
+            },
+            {
+                "REGULATORY": "Y",
+                "AWY_LOCATION": "B",
+                "AWY_ID": "178",
+                "POINT_SEQ": "4",
+                "FROM_POINT": "MID",
+                "TO_POINT": "LEJOY",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA.MCRAY2.MCRAY.Q178.LEJOY.KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),  # Bare DP exit.
+        (36.0, -79.0),  # Filed MCRAY fix, the Q178 connection.
+        (34.0, -80.0),  # Q178 starts from MCRAY, not HAYGR.
+        (33.0, -81.0),
+        (35.0, -80.0),
     )
 
 

@@ -275,11 +275,12 @@ def _procedure_path(
 ) -> tuple[_Waypoint, ...] | None:
     """Expand one FAA departure or arrival procedure/transition token.
 
-    Departure computer codes (for example ``ORCO8.TRM``) identify a
-    ``DP_BASE`` record directly. Arrival route strings normally carry a STAR
-    transition computer code (for example ``IOW.LLROY3``), which identifies a
-    branch in ``STAR_RTE``. STAR rows are recorded outbound from the terminal
-    route's end, so they are traversed in reverse for an inbound flight plan.
+    Departure route strings may identify a ``DP_BASE`` record directly or a
+    ``DP_RTE`` transition code (for example ``ORCO8.TRM``). Arrival route
+    strings normally carry a STAR transition computer code (for example
+    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. STAR rows are
+    recorded outbound from the terminal route's end, so they are traversed in
+    reverse for an inbound flight plan.
     """
 
     departures = tables.get("DP_BASE")
@@ -291,6 +292,14 @@ def _procedure_path(
             orient="records"
         )
         if departures is not None and departure_routes is not None
+        else []
+    )
+    departure_transition_matches = (
+        departure_routes[
+            departure_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token)
+        ].to_dict(orient="records")
+        if departure_routes is not None
+        and "TRANSITION_COMPUTER_CODE" in departure_routes
         else []
     )
     transition_matches = (
@@ -308,7 +317,11 @@ def _procedure_path(
         else []
     )
 
-    matches = bool(departure_matches) + bool(transition_matches or base_matches)
+    matches = (
+        bool(departure_matches)
+        + bool(departure_transition_matches)
+        + bool(transition_matches or base_matches)
+    )
     if matches > 1:
         raise AmbiguousRecordError(
             entity_type="Flight-plan procedure", identifier=token
@@ -332,6 +345,41 @@ def _procedure_path(
             )
         ]
         return _route_rows_points(tables, rows, resolver=resolver)
+    if departure_transition_matches:
+        assert departures is not None
+        assert departure_routes is not None
+        departure_keys = {
+            (
+                _text(row["DP_NAME"]),
+                _text(row["ARTCC"]),
+                _text(row["DP_COMPUTER_CODE"]),
+            )
+            for row in departure_transition_matches
+        }
+        if len(departure_keys) != 1:
+            raise AmbiguousRecordError(
+                entity_type="DepartureProcedure",
+                identifier=token,
+                candidates=tuple(departure_keys),
+            )
+        name, artcc, code = next(iter(departure_keys))
+        body = departure_routes[
+            (departure_routes["DP_NAME"].map(_text).eq(name))
+            & (departure_routes["ARTCC"].map(_text).eq(artcc))
+            & (departure_routes["DP_COMPUTER_CODE"].map(_text).eq(code))
+            & (departure_routes["ROUTE_PORTION_TYPE"].map(_text).eq("BODY"))
+        ]
+        transition = departure_routes[
+            (departure_routes["DP_NAME"].map(_text).eq(name))
+            & (departure_routes["ARTCC"].map(_text).eq(artcc))
+            & (departure_routes["DP_COMPUTER_CODE"].map(_text).eq(code))
+            & (departure_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token))
+        ]
+        transition_points = _route_rows_points(
+            tables, transition, resolver=resolver
+        )
+        body_points = _route_rows_points(tables, body, resolver=resolver)
+        return transition_points + body_points
     if transition_matches or base_matches:
         assert star_routes is not None
         if transition_matches:
@@ -369,6 +417,20 @@ def _procedure_path(
     return None
 
 
+def _is_published_procedure_transition(
+    tables: Mapping[str, DataFrame], token: str
+) -> bool:
+    """Whether a dotted token is a published DP or STAR transition code."""
+
+    for table in ("DP_RTE", "STAR_RTE"):
+        routes = tables.get(table)
+        if routes is None or "TRANSITION_COMPUTER_CODE" not in routes:
+            continue
+        if routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token).any():
+            return True
+    return False
+
+
 def _tokenize_flight_plan(
     tables: Mapping[str, DataFrame],
     flight_plan: str,
@@ -379,9 +441,10 @@ def _tokenize_flight_plan(
 
     FAA route strings use a single dot as a component separator and ``..``
     for direct routing. A procedure/transition itself also contains one dot,
-    so adjacent components are greedily retained as one token only when they
-    identify a procedure in the selected NASR cycle. A trailing ``/`` field
-    (for example ``KMSP/0354``) is speed/altitude information, not geometry.
+    so adjacent components are retained as one token only when they identify
+    a published procedure transition in the selected NASR cycle. A trailing
+    ``/`` field (for example ``KMSP/0354``) is speed/altitude information,
+    not geometry.
     """
 
     normalized: list[_RouteToken] = []
@@ -409,6 +472,7 @@ def _tokenize_flight_plan(
             if (
                 combined is not None
                 and _procedure_path(tables, combined, resolver=resolver) is not None
+                and _is_published_procedure_transition(tables, combined)
             ):
                 normalized.append(_RouteToken(combined, position))
                 component_offset += len(component) + 1 + len(components[index + 1])
