@@ -701,6 +701,17 @@ raw SQL or mutable database state.
   unavailable on this runner, so their release-matrix rows could not be run
   here and must be exercised by CI or a runner that provides those interpreters.
 
+  **Correction (2026-08-17, post-implementation review):** the "absent
+  optional dependency" cell above exercised only an import-time smoke check
+  in the isolated base environment, not the actual `pytest` suite without
+  `duckdb` installed. Running the full suite that way found 16 real
+  failures/errors (every DuckDB-dependent test unconditionally called
+  `build_duckdb`, which needs the dependency) and a masked-error defect:
+  `build_duckdb`'s catch-all wrapped `DuckDbUnavailableError` into a generic
+  `DuckDbBuildError`, so `CycleManager.build_duckdb`/`opennasr build-duckdb`
+  never actually surfaced the typed error this task's own acceptance
+  criterion names. Both are fixed; see the corresponding Decision log entry.
+
 - [x] **13.5.2 — Agent: Sol.** Review backward compatibility, atomicity,
   cache removal, disk-growth documentation, source-value fidelity, and date
   semantics. Approve or block release.
@@ -779,3 +790,4 @@ branches open.
 | 2026-08-17 | Define the table-store contract as cached DataFrame loading, mapping adapters, available/loaded state, and exact/normalized row-position indexes; keep schema validation in `NASR` above the backend boundary. | All domain repositories consume the `NASR` mapping rather than `TableRepository` directly. Preserving that seam avoids storage branches throughout domain code while retaining lazy validation, exceptions, row order, and shared-versus-copy mutation behavior. |
 | 2026-08-17 | Gate DuckDB performance on an exact real cycle using process-cold and warm measurements; use committed fixtures for parity rather than latency, require a 2x geometric-mean first-access speedup, and retain physical indexes only after an A/B win. | Tiny fixture timings are dominated by overhead, operating-system cache eviction is not portable, and unmeasured indexes can increase build time and disk use without helping representative repository workloads. |
 | 2026-08-17 | Store only text-preserving pandas CSV frames in a versioned DuckDB artifact, with a metadata sidecar carrying source schema and database digests. | A typed import could change zero-padded or blank FAA values; a digest-bound sidecar lets readers reject an incomplete or mismatched database/metadata transition rather than treating it as a completed artifact. |
+| 2026-08-17 | Post-implementation review found and fixed two defects and one usability gap in the completed 13.0-13.5 work: (1) `build_duckdb`'s generic `except Exception` caught and re-wrapped `DuckDbUnavailableError` into an opaque `DuckDbBuildError`, so `CycleManager.build_duckdb(...)`/the `build-duckdb` CLI command never actually surfaced the typed optional-dependency error the non-negotiable rules require — fixed by re-raising `DuckDbUnavailableError` before the catch-all, matching the existing `DuckDbBuildError` pass-through. (2) Every DuckDB-dependent test file/function unconditionally called `build_duckdb`, so `pytest` without the optional dependency installed produced 16 failures/errors rather than skips — the 13.5.1 "absent optional dependency" matrix cell was validated only via an isolated base-install smoke test that never ran the actual test suite without `duckdb`, so this gap was never caught. Fixed with `pytest.importorskip("duckdb")` at module scope in the five fully DuckDB-dependent test files and per-test in `test_cycles.py`'s four `build_duckdb`-calling tests, which are otherwise duckdb-independent. (3) `tools/duckdb_benchmark.py run-fixtures --fixtures <path>` silently produced an empty, exit-0 report when given a generation directory instead of its parent (the shape every documented example already uses correctly) — fixed to raise with a corrective message, and added the missing `--fixtures` help text. Also added `.gitignore` entries for `*.duckdb`/`*.duckdb.json` and the `.{name}.duckdb.{lock,previous,*.tmp}` build-time files, since none existed despite the explicit "do not commit... databases" rule. | None of these were caught by the recorded 13.0-13.5 validation because it always ran with `duckdb` installed and never diffed the benchmark tool's actual output against its documented usage; re-verified full suite (325 passed/1 skipped with `duckdb`, 282 passed/10 skipped without it, 0 failures either way), mypy, ruff, build, and twine after the fixes. |
