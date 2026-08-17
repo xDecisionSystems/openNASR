@@ -1539,6 +1539,88 @@ def _procedure_matrix_tables():
     return tables
 
 
+def test_procedure_index_matches_direct_composite_route_filters(monkeypatch):
+    tables = _procedure_matrix_tables()
+    index = _ProcedureIndex(tables)
+
+    checks = (
+        (
+            index.departure_route("DEP", "ZXX", "DEP1"),
+            "DP_RTE",
+            (("DP_NAME", "DEP"), ("ARTCC", "ZXX"), ("DP_COMPUTER_CODE", "DEP1")),
+        ),
+        (
+            index.departure_body("DEP", "ZXX", "DEP1"),
+            "DP_RTE",
+            (
+                ("DP_NAME", "DEP"),
+                ("ARTCC", "ZXX"),
+                ("DP_COMPUTER_CODE", "DEP1"),
+                ("ROUTE_PORTION_TYPE", "BODY"),
+            ),
+        ),
+        (
+            index.departure_route_transition("DEP", "ZXX", "DEP1", "DEP1.TRANS"),
+            "DP_RTE",
+            (
+                ("DP_NAME", "DEP"),
+                ("ARTCC", "ZXX"),
+                ("DP_COMPUTER_CODE", "DEP1"),
+                ("TRANSITION_COMPUTER_CODE", "DEP1.TRANS"),
+            ),
+        ),
+        (
+            index.star_body("ARR1", "ZXX"),
+            "STAR_RTE",
+            (
+                ("STAR_COMPUTER_CODE", "ARR1"),
+                ("ARTCC", "ZXX"),
+                ("ROUTE_PORTION_TYPE", "BODY"),
+            ),
+        ),
+        (
+            index.star_route_transition("ARR1", "ZXX", "TRANS.ARR1"),
+            "STAR_RTE",
+            (
+                ("STAR_COMPUTER_CODE", "ARR1"),
+                ("ARTCC", "ZXX"),
+                ("TRANSITION_COMPUTER_CODE", "TRANS.ARR1"),
+            ),
+        ),
+    )
+    for actual, table, criteria in checks:
+        assert actual is not None
+        direct = tables[table]
+        for column, value in criteria:
+            direct = direct[direct[column].map(_text).eq(value)]
+        pd.testing.assert_frame_equal(actual, direct)
+
+    assert index._departure_bodies[("DEP", "ZXX", "DEP1", "BODY")].tolist() == [0, 1]
+
+    def fail_map(*_args, **_kwargs):
+        raise AssertionError("composite ProcedureIndex lookup normalized a column")
+
+    monkeypatch.setattr(pd.Series, "map", fail_map)
+    transition = index.departure_route_transition(
+        "DEP", "ZXX", "DEP1", "DEP1.TRANS"
+    )
+    assert transition is not None
+    assert transition.index.tolist() == [2, 3]
+
+
+def test_procedure_index_retains_missing_composite_column_error():
+    tables = _procedure_matrix_tables()
+    tables["DP_RTE"] = tables["DP_RTE"].drop(columns="ROUTE_PORTION_TYPE")
+
+    with pytest.raises(KeyError, match="ROUTE_PORTION_TYPE"):
+        _procedure_path(
+            tables,
+            "DEP1.TRANS",
+            resolver=_WaypointResolver(tables),
+            procedure_index=_ProcedureIndex(tables),
+        )
+
+
 def test_procedure_index_preserves_procedure_and_dotted_lookup_results():
     tables = _procedure_matrix_tables()
     resolver = _WaypointResolver(tables)

@@ -325,6 +325,30 @@ class _ProcedureIndex:
         self._star_transitions = self._positions(
             self._star_routes, "TRANSITION_COMPUTER_CODE"
         )
+        self._departure_route_keys = self._composite_positions(
+            self._departure_routes, ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE")
+        )
+        self._departure_bodies = self._composite_positions(
+            self._departure_routes,
+            ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE", "ROUTE_PORTION_TYPE"),
+        )
+        self._departure_route_transitions = self._composite_positions(
+            self._departure_routes,
+            (
+                "DP_NAME",
+                "ARTCC",
+                "DP_COMPUTER_CODE",
+                "TRANSITION_COMPUTER_CODE",
+            ),
+        )
+        self._star_bodies = self._composite_positions(
+            self._star_routes,
+            ("STAR_COMPUTER_CODE", "ARTCC", "ROUTE_PORTION_TYPE"),
+        )
+        self._star_route_transitions = self._composite_positions(
+            self._star_routes,
+            ("STAR_COMPUTER_CODE", "ARTCC", "TRANSITION_COMPUTER_CODE"),
+        )
 
     @staticmethod
     def _positions(frame: DataFrame | None, column: str) -> dict[str, ndarray] | None:
@@ -343,6 +367,26 @@ class _ProcedureIndex:
         matches = positions.get(_text(token))
         return frame.iloc[matches] if matches is not None else frame.iloc[0:0]
 
+    @staticmethod
+    def _composite_positions(
+        frame: DataFrame | None, columns: tuple[str, ...]
+    ) -> dict[tuple[str, ...], ndarray] | None:
+        if frame is None or any(column not in frame for column in columns):
+            return None
+        normalized = [frame[column].map(_text) for column in columns]
+        return frame.groupby(normalized, sort=False).indices
+
+    @staticmethod
+    def _matching_composite(
+        frame: DataFrame | None,
+        positions: dict[tuple[str, ...], ndarray] | None,
+        values: tuple[object, ...],
+    ) -> DataFrame | None:
+        if frame is None or positions is None:
+            return None
+        matches = positions.get(tuple(_text(value) for value in values))
+        return frame.iloc[matches] if matches is not None else frame.iloc[0:0]
+
     def departure_base(self, token: str) -> DataFrame | None:
         return self._matching(self._departures, self._departure_codes, token)
 
@@ -356,6 +400,45 @@ class _ProcedureIndex:
 
     def star_transition(self, token: str) -> DataFrame | None:
         return self._matching(self._star_routes, self._star_transitions, token)
+
+    def departure_route(
+        self, name: object, artcc: object, code: object
+    ) -> DataFrame | None:
+        return self._matching_composite(
+            self._departure_routes, self._departure_route_keys, (name, artcc, code)
+        )
+
+    def departure_body(
+        self, name: object, artcc: object, code: object
+    ) -> DataFrame | None:
+        return self._matching_composite(
+            self._departure_routes,
+            self._departure_bodies,
+            (name, artcc, code, "BODY"),
+        )
+
+    def departure_route_transition(
+        self, name: object, artcc: object, code: object, transition: object
+    ) -> DataFrame | None:
+        return self._matching_composite(
+            self._departure_routes,
+            self._departure_route_transitions,
+            (name, artcc, code, transition),
+        )
+
+    def star_body(self, code: object, artcc: object) -> DataFrame | None:
+        return self._matching_composite(
+            self._star_routes, self._star_bodies, (code, artcc, "BODY")
+        )
+
+    def star_route_transition(
+        self, code: object, artcc: object, transition: object
+    ) -> DataFrame | None:
+        return self._matching_composite(
+            self._star_routes,
+            self._star_route_transitions,
+            (code, artcc, transition),
+        )
 
 
 def _airway_vertices(
@@ -612,20 +695,22 @@ def _procedure_path(
                 candidates=departure_matches,
             )
         record = departure_matches[0]
-        rows = departure_routes[
-            (departure_routes["DP_NAME"].map(_text).eq(_text(record["DP_NAME"])))
-            & (departure_routes["ARTCC"].map(_text).eq(_text(record["ARTCC"])))
-            & (
-                departure_routes["DP_COMPUTER_CODE"]
-                .map(_text)
-                .eq(_text(record["DP_COMPUTER_CODE"]))
-            )
-        ]
+        name, artcc, code = (
+            record["DP_NAME"],
+            record["ARTCC"],
+            record["DP_COMPUTER_CODE"],
+        )
+        rows = procedure_index.departure_route(name, artcc, code)
+        if rows is None:
+            for column in ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"):
+                departure_routes[column]
+        assert rows is not None
         body = (
-            rows[rows["ROUTE_PORTION_TYPE"].map(_text).eq("BODY")]
-            if "ROUTE_PORTION_TYPE" in rows
+            procedure_index.departure_body(name, artcc, code)
+            if "ROUTE_PORTION_TYPE" in departure_routes
             else rows
         )
+        assert body is not None
         return _select_procedure_body(
             tables,
             body,
@@ -653,18 +738,21 @@ def _procedure_path(
                 candidates=tuple(departure_keys),
             )
         name, artcc, code = next(iter(departure_keys))
-        body = departure_routes[
-            (departure_routes["DP_NAME"].map(_text).eq(name))
-            & (departure_routes["ARTCC"].map(_text).eq(artcc))
-            & (departure_routes["DP_COMPUTER_CODE"].map(_text).eq(code))
-            & (departure_routes["ROUTE_PORTION_TYPE"].map(_text).eq("BODY"))
-        ]
-        transition = departure_routes[
-            (departure_routes["DP_NAME"].map(_text).eq(name))
-            & (departure_routes["ARTCC"].map(_text).eq(artcc))
-            & (departure_routes["DP_COMPUTER_CODE"].map(_text).eq(code))
-            & (departure_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token))
-        ]
+        body = procedure_index.departure_body(name, artcc, code)
+        transition = procedure_index.departure_route_transition(
+            name, artcc, code, token
+        )
+        if body is None or transition is None:
+            for column in (
+                "DP_NAME",
+                "ARTCC",
+                "DP_COMPUTER_CODE",
+                "ROUTE_PORTION_TYPE",
+                "TRANSITION_COMPUTER_CODE",
+            ):
+                departure_routes[column]
+        assert body is not None
+        assert transition is not None
         transition_points = _route_rows_points(tables, transition, resolver=resolver)
         body_points = _select_procedure_body(
             tables,
@@ -693,20 +781,20 @@ def _procedure_path(
                 entity_type="StarProcedure", identifier=token, candidates=tuple(keys)
             )
         code, artcc = next(iter(keys))
-        body = star_routes[
-            (star_routes["STAR_COMPUTER_CODE"].map(_text).eq(code))
-            & (star_routes["ARTCC"].map(_text).eq(artcc))
-            & (star_routes["ROUTE_PORTION_TYPE"].map(_text).eq("BODY"))
-        ]
+        body = procedure_index.star_body(code, artcc)
+        if body is None:
+            for column in ("STAR_COMPUTER_CODE", "ARTCC", "ROUTE_PORTION_TYPE"):
+                star_routes[column]
+        assert body is not None
         transition = (
-            star_routes[
-                (star_routes["STAR_COMPUTER_CODE"].map(_text).eq(code))
-                & (star_routes["ARTCC"].map(_text).eq(artcc))
-                & (star_routes["TRANSITION_COMPUTER_CODE"].map(_text).eq(token))
-            ]
+            procedure_index.star_route_transition(code, artcc, token)
             if transition_matches
             else star_routes.iloc[0:0]
         )
+        if transition is None:
+            for column in ("STAR_COMPUTER_CODE", "ARTCC", "TRANSITION_COMPUTER_CODE"):
+                star_routes[column]
+        assert transition is not None
         transition_points = _route_rows_points(
             tables, transition, resolver=resolver, reverse=True
         )
