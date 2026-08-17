@@ -10,6 +10,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from _duckdb import load_duckdb_nasr
+
 
 # Set to False to render in longitude/latitude instead of east/north NM.
 PLOT_IN_NAUTICAL_MILES = True
@@ -26,6 +28,8 @@ def main() -> None:
         help="PNG path to write (default: %(default)s)",
     )
     parser.add_argument("--show", action="store_true", help="Open the plot window")
+    parser.add_argument("--cycle", help="Exact local NASR cycle (YYYY-MM-DD)")
+    parser.add_argument("--cache-dir", type=Path, help="NASR cache directory")
     args = parser.parse_args()
 
     import matplotlib
@@ -34,9 +38,9 @@ def main() -> None:
         matplotlib.use("Agg")
     from matplotlib import pyplot as plt
 
-    from openNASR import NASR, plot_airport_procedures
+    from openNASR import plot_airport_procedures
 
-    nasr = NASR()
+    nasr = load_duckdb_nasr(cycle=args.cycle, cache_dir=args.cache_dir)
     figure, axes = plot_airport_procedures(
         nasr,
         "ATL",

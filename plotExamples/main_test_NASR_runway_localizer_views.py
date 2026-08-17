@@ -12,6 +12,7 @@ import argparse
 from math import cos, radians, sin, tan
 from pathlib import Path
 
+from _duckdb import load_duckdb_nasr
 from openNASR.cfcn import ll2xy
 
 
@@ -48,6 +49,8 @@ def main() -> None:
         help="PNG path to write (default: %(default)s)",
     )
     parser.add_argument("--show", action="store_true", help="Open the plot window")
+    parser.add_argument("--cycle", help="Exact local NASR cycle (YYYY-MM-DD)")
+    parser.add_argument("--cache-dir", type=Path, help="NASR cache directory")
     args = parser.parse_args()
     airport_id, runway_end_id = (
         args.airport.strip().upper(),
@@ -60,9 +63,7 @@ def main() -> None:
         matplotlib.use("Agg")
     from matplotlib import pyplot as plt
 
-    from openNASR import NASR
-
-    nasr = NASR()
+    nasr = load_duckdb_nasr(cycle=args.cycle, cache_dir=args.cache_dir)
     center = _airport_center(nasr, airport_id)
     runway_ends = nasr["APT_RWY_END"]
     runway_ends = runway_ends[
