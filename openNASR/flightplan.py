@@ -233,6 +233,21 @@ def _airway_vertices(
     return unique[0]
 
 
+def _is_published_airway(tables: Mapping[str, DataFrame], airway: str) -> bool:
+    """Whether ``airway`` has a matching published airway base record."""
+
+    match = _AIRWAY.fullmatch(airway)
+    base = tables.get("AWY_BASE")
+    if match is None or base is None:
+        return False
+    return any(
+        _text(record.get("AWY_DESIGNATION", "")) == match["designation"]
+        and _text(record.get("AWY_ID", ""))
+        in {match["identifier"], f"{match['designation']}{match['identifier']}"}
+        for record in base.to_dict(orient="records")
+    )
+
+
 def _route_rows_points(
     tables: Mapping[str, DataFrame],
     rows: DataFrame,
@@ -661,7 +676,7 @@ def flight_plan_path(
                     output.append(coordinate)
             index += 1
             continue
-        if airway is not None and "AWY_BASE" in nasr:
+        if airway is not None and _is_published_airway(nasr, token):
             if (
                 not output
                 or index + 1 >= len(tokens)

@@ -92,6 +92,56 @@ def test_flight_plan_path_rejects_unknown_waypoints(tables):
         flight_plan_path(tables, "KAAA UNKNOWN")
 
 
+def test_alphanumeric_waypoints_do_not_use_airway_dispatch(tables):
+    tables["APT_BASE"] = pd.concat(
+        [
+            tables["APT_BASE"],
+            pd.DataFrame(
+                [
+                    {
+                        "ARPT_ID": "E91",
+                        "ICAO_ID": "KE91",
+                        "LAT_DECIMAL": "40",
+                        "LONG_DECIMAL": "-75",
+                    },
+                    {
+                        "ARPT_ID": "O60",
+                        "ICAO_ID": "KO60C",
+                        "LAT_DECIMAL": "43",
+                        "LONG_DECIMAL": "-78",
+                    },
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [{"FIX_ID": "KM18K", "LAT_DECIMAL": "41", "LONG_DECIMAL": "-76"}]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["NAV_BASE"] = pd.DataFrame(
+        [{"NAV_ID": "KG66K", "LAT_DECIMAL": "42", "LONG_DECIMAL": "-77"}]
+    )
+
+    assert flight_plan_path(tables, "E91 KM18K KG66K KO60C") == (
+        (40.0, -75.0),
+        (41.0, -76.0),
+        (42.0, -77.0),
+        (43.0, -78.0),
+    )
+    assert flight_plan_path(tables, "KAAA ALPHA V1 BRAVO KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+
+
 def test_flight_plan_path_uses_route_position_to_disambiguate_waypoints(tables):
     tables["APT_BASE"] = pd.concat(
         [
