@@ -1,4 +1,40 @@
 {
   "cycle_date": "2026-05-14",
-  "routes": []
+  "routes": [
+    {
+      "id": "DIRECT_DOMESTIC_CONTROL",
+      "route": "2W5..VKX/0010",
+      "category": "success"
+    },
+    {
+      "id": "PARSER_ALPHANUMERIC_AIRPORT",
+      "route": "E91..KDVT/0051",
+      "category": "parser error"
+    },
+    {
+      "id": "PROCEDURE_BARE_DP_BAYLR6",
+      "route": "KDEN.BAYLR6.TEHRU..JASSE.Q90.DNERO.ANJLL4.KLAX/0209",
+      "category": "procedure-resolution error"
+    },
+    {
+      "id": "AIRWAY_Q75_DESIGNATION",
+      "route": "KALB..PWL..BIZEX.Q75.MXE.V378.NUGGY.TRISH4.KBWI/0049",
+      "category": "airway-resolution error"
+    },
+    {
+      "id": "WAYPOINT_ABQ_AMBIGUITY",
+      "route": "KABQ..ABQ.V291.GUP..KRQE/0039",
+      "category": "waypoint ambiguity"
+    },
+    {
+      "id": "UNSUPPORTED_FOREIGN_OCEANIC",
+      "route": "CYUL./.RABIK.Q951.ANTOV..EBONY..JEBBY..4300N/05000W..4200N/04000W..4200N/03000W..4200N/02000W..DETOX..LIS..GUDAV..LASIB.M744.SVL..LEMG",
+      "category": "missing NASR data"
+    },
+    {
+      "id": "MALFORMED_AIRWAY_MISSING_EXIT",
+      "route": "KATL V1",
+      "category": "malformed input"
+    }
+  ]
 }
