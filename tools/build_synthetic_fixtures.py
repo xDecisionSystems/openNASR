@@ -72,8 +72,7 @@ def build_schema_only(schema_id: str) -> None:
         else:
             table_name = Path(filename).stem
             header = [
-                column["name"]
-                for column in manifest["tables"][table_name]["columns"]
+                column["name"] for column in manifest["tables"][table_name]["columns"]
             ]
             rows = []
         write_csv(destination / filename, header, rows)
@@ -280,8 +279,7 @@ def build_core_fixture() -> None:
 
     for table_name, table_rows in rows.items():
         header = [
-            column["name"]
-            for column in manifest["tables"][table_name]["columns"]
+            column["name"] for column in manifest["tables"][table_name]["columns"]
         ]
         for destination in destinations:
             cycle_header = CORE_CYCLE_COLUMNS.get(table_name, header)
@@ -302,8 +300,7 @@ def build_core_fixture() -> None:
         header = list(CORE_CYCLE_COLUMNS.get(table_name, ()))
         if not header:
             header = [
-                column["name"]
-                for column in manifest["tables"][table_name]["columns"]
+                column["name"] for column in manifest["tables"][table_name]["columns"]
             ]
         if table_name == "APT_BASE":
             header.remove("ARPT_ID")
@@ -323,8 +320,7 @@ def build_core_fixture() -> None:
         header = list(CORE_CYCLE_COLUMNS.get(table_name, ()))
         if not header:
             header = [
-                column["name"]
-                for column in manifest["tables"][table_name]["columns"]
+                column["name"] for column in manifest["tables"][table_name]["columns"]
             ]
         projected_rows = [
             {name: value for name, value in row.items() if name in header}

@@ -29,8 +29,7 @@ SOURCES = {
         "effective_date": "2026-08-06",
         "archive_filename": "06_Aug_2026_CSV.zip",
         "source_url": (
-            "https://nfdc.faa.gov/webContent/28DaySub/extra/"
-            "06_Aug_2026_CSV.zip"
+            "https://nfdc.faa.gov/webContent/28DaySub/extra/06_Aug_2026_CSV.zip"
         ),
         "source_page": (
             "https://www.faa.gov/air_traffic/flight_info/aeronav/"
@@ -43,8 +42,7 @@ SOURCES = {
         "effective_date": "2026-09-03",
         "archive_filename": "03_Sep_2026_CSV.zip",
         "source_url": (
-            "https://nfdc.faa.gov/webContent/28DaySub/extra/"
-            "03_Sep_2026_CSV.zip"
+            "https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_CSV.zip"
         ),
         "source_page": (
             "https://www.faa.gov/air_traffic/flight_info/aeronav/"
@@ -103,7 +101,9 @@ def build_manifest(path: Path, source: dict[str, str]) -> dict[str, Any]:
         csv_names = sorted(
             name for name in archive.namelist() if name.lower().endswith(".csv")
         )
-        schema_names = sorted(name for name in csv_names if name.endswith(SCHEMA_SUFFIX))
+        schema_names = sorted(
+            name for name in csv_names if name.endswith(SCHEMA_SUFFIX)
+        )
         operational_names = sorted(set(csv_names) - set(schema_names))
 
         for schema_name in schema_names:
@@ -112,7 +112,8 @@ def build_manifest(path: Path, source: dict[str, str]) -> dict[str, Any]:
                 reader = csv.DictReader(text)
                 if tuple(reader.fieldnames or ()) != SCHEMA_HEADERS:
                     raise ValueError(
-                        f"Unexpected schema headers in {schema_name}: {reader.fieldnames}"
+                        f"Unexpected schema headers in {schema_name}: "
+                        f"{reader.fieldnames}"
                     )
                 for row in reader:
                     table_name = row["CSV File"]
@@ -125,11 +126,14 @@ def build_manifest(path: Path, source: dict[str, str]) -> dict[str, Any]:
                         },
                     )
                     if table["schema_description_file"] != schema_name:
-                        raise ValueError(f"{table_name} described by multiple schema files")
+                        raise ValueError(
+                            f"{table_name} described by multiple schema files"
+                        )
                     nullable_text = row["Nullable"].strip().lower()
                     if nullable_text not in {"yes", "no"}:
                         raise ValueError(
-                            f"Unexpected Nullable value for {table_name}: {row['Nullable']}"
+                            f"Unexpected Nullable value for {table_name}: "
+                            f"{row['Nullable']}"
                         )
                     table["columns"].append(
                         {
@@ -175,14 +179,8 @@ def build_manifest(path: Path, source: dict[str, str]) -> dict[str, Any]:
             "schema_description_file_count": len(schema_names),
         },
         "csv_files": [
-            *(
-                {"name": name, "kind": "operational"}
-                for name in operational_names
-            ),
-            *(
-                {"name": name, "kind": "schema_description"}
-                for name in schema_names
-            ),
+            *({"name": name, "kind": "operational"} for name in operational_names),
+            *({"name": name, "kind": "schema_description"} for name in schema_names),
         ],
         "schema_description_files": schema_names,
         "schema_description_header": list(SCHEMA_HEADERS),
@@ -221,7 +219,9 @@ def compare_manifests(before: dict[str, Any], after: dict[str, Any]) -> dict[str
         }
         old_order = [column["name"] for column in old_columns]
         new_order = [column["name"] for column in new_columns]
-        if not (added_names or removed_names or changed_names or old_order != new_order):
+        if not (
+            added_names or removed_names or changed_names or old_order != new_order
+        ):
             continue
 
         added_column_count += len(added_names)
@@ -235,7 +235,9 @@ def compare_manifests(before: dict[str, Any], after: dict[str, Any]) -> dict[str
             if old_by_name[name]["nullable"] != new_by_name[name]["nullable"]:
                 nullability_change_count += 1
         table_changes[table_name] = {
-            "columns_added": [new_by_name[name] for name in new_order if name in added_names],
+            "columns_added": [
+                new_by_name[name] for name in new_order if name in added_names
+            ],
             "columns_removed": [
                 old_by_name[name] for name in old_order if name in removed_names
             ],
@@ -315,7 +317,9 @@ def validate_test_headers(test_path: Path, manifest: dict[str, Any]) -> None:
     if set(headers) != declared_tables:
         raise ValueError("Test package table inventory differs from September manifest")
     for table_name, actual in headers.items():
-        declared = [column["name"] for column in manifest["tables"][table_name]["columns"]]
+        declared = [
+            column["name"] for column in manifest["tables"][table_name]["columns"]
+        ]
         if actual != declared:
             raise ValueError(f"Test package header mismatch for {table_name}")
 
