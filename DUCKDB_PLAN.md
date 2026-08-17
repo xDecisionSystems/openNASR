@@ -174,7 +174,7 @@ the same commit that creates the file.
 
 ### Phase 13.0 — Discovery and contract (blocking)
 
-- [ ] **13.0.1 — Agent: Sol.** Audit every current `TableRepository` caller,
+- [x] **13.0.1 — Agent: Sol.** Audit every current `TableRepository` caller,
   including repositories, schema validation, direct mapping access, and tests.
   Produce a concise compatibility matrix identifying which methods must be
   preserved by the table-store protocol.
@@ -183,7 +183,7 @@ the same commit that creates the file.
   it covers `__getitem__`, `table(copy=)`, iteration, available tables,
   indexes, schema validation, and DataFrame mutation semantics.
 
-- [ ] **13.0.2 — Agent: Sol.** Create a representative benchmark specification
+- [x] **13.0.2 — Agent: Sol.** Create a representative benchmark specification
   using the real current cycle plus committed small fixtures. Measure CSV
   construction, first table access, repeated table access, airport/fix/navaid
   identity lookup, airway relationship lookup, and cold/warm DuckDB access.
@@ -192,7 +192,157 @@ the same commit that creates the file.
   a pass/fail performance target are documented. Benchmarks do not run in CI
   and do not commit FAA data.
 
-- [ ] **13.0.3 — Agent: Terra.** Add the optional dependency group
+#### 13.0 table-store compatibility audit
+
+The only production object that constructs `TableRepository` is `NASR`.
+`NASR` wraps it and passes its own `Mapping[str, DataFrame]` surface to every
+domain repository. The current airport/fix/navaid, airspace, airway, holding,
+communications, procedure, ATC/radar, weather, FSS, location, and military
+repositories therefore consume `__getitem__` and optional-table `get`, not a
+concrete `TableRepository`. The same is true of `relationships.py`,
+`flightplan.py`, plotting helpers, and the legacy Airport/ARB/FIX/NAVAID
+paths. This is the backend seam: none of those callers may need a storage-mode
+branch.
+
+Direct `TableRepository` callers are `NASR.setupFiles`/`NASR.table`, the
+repository unit tests, and the schema-catalog tests that load a synthetic row.
+The facade and fixture/error-path tests additionally exercise the observable
+mapping, lazy-loading, validation, and mutation behavior. The resulting
+compatibility matrix is:
+
+| Surface or caller | Current observable behavior | Table-store obligation |
+| --- | --- | --- |
+| `available_tables` | Sorted, canonical uppercase tuple discovered without reading table contents; includes operational and schema-description CSVs. | Required protocol property. DuckDB obtains it from validated metadata/catalog state, with the same names and stable ordering. |
+| `load(name)` | Strips and uppercases `name`, lazily creates one DataFrame, caches it per repository instance, returns the identical object thereafter, and raises `TableNotFoundError` for an absent table. CSV retries Latin-1 only after `UnicodeDecodeError`; unrelated parser errors propagate. | Required protocol method. Encoding retry is CSV-specific, but names, exception type, laziness, identity, columns, row order, and cell values are backend-independent. |
+| `table(name, copy=False)` | Aliases the cached frame. `copy=True` returns a deep DataFrame copy. | Required protocol method and public compatibility behavior. |
+| `is_loaded(name)` | Normalized, per-instance cache-membership check; it does not trigger a load. | Required protocol method. |
+| `index(name, column)` | Lazily caches exact string-value to row-position tuples; duplicate values retain source row order. | Required protocol method. It may be implemented from the cached frame; no physical DuckDB index is implied. |
+| `normalized_index(name, column)` | Lazily caches `str(value).strip().upper()` to row-position tuples; duplicates retain source row order. | Required protocol method. It must have identical normalization, positions, duplicate handling, and cache reuse. |
+| `__getitem__` | Equivalent to `load`; this is direct legacy access on `TableRepository` and the basis of `nasr["TABLE"]`. | Required mapping adapter over `load`. |
+| `__iter__`, `__len__`, `keys` | Iterate/count the stable available-table set without loading frames. | `__iter__` and `__len__` are required mapping adapters; `Mapping` derives `keys`. |
+| Membership and `get` | Inherited `TableRepository` mapping operations route through `__getitem__` and can therefore load a valid table. Domain code sees `NASR`, whose explicit `__contains__` normalizes strings without loading and whose `get` returns its default only for absence while preserving `SchemaMismatchError`. | Preserve the `NASR` facade behavior. Direct store-level inherited behavior remains compatible but is not a separate protocol primitive. |
+| `NASR.get(name, default)` and domain optional tables | A genuinely absent table returns the default; `SchemaMismatchError` is never hidden as absence. | Remains a facade/mapping responsibility. A backend must raise the same missing-table and validation exceptions so this distinction survives. |
+| Whole-cycle schema checks | During construction, `NASR` identifies the schema and rejects unmodeled operational tables without loading operational DataFrames. | Remains above the table-store boundary. The DuckDB metadata/catalog must expose enough trusted table/schema information for the same check. |
+| Per-table schema validation | On first access, `NASR._load_table` passes the loaded frame to `SchemaCatalog.validate(...).require_compatible`; later cached access is not revalidated. `APT_BASE.ARPT_ID` has an additional facade check. Direct `TableRepository.load` does not validate. | Remains above the table-store boundary and must run exactly once before a newly loaded frame is exposed through `NASR`. The store must not make invalid data look absent. |
+| Domain repositories and relationship helpers | Receive `Mapping[str, DataFrame]`; use `[]` for required tables, `get` for optional tables, pandas filtering/grouping, source row order, and their own cached normalized/grouped indexes. | No new protocol calls. CSV and DuckDB must present equivalent frames, mapping exceptions, and ordering. Repository-local indexes are distinct from table-store/physical indexes. |
+| Direct mutation | `load`, `table(copy=False)`, and `__getitem__` expose shared per-instance state, so mutation is visible on subsequent accesses in that instance. A deep copy is isolated. Existing row-position indexes can become stale if callers mutate after building them. | Preserve shared-versus-copy behavior through Gate 13.2. Mutation affects only the in-memory frame and must never write through to CSV or immutable DuckDB. Task 13.2.4 decides whether stale-index behavior needs an explicit guard. |
+
+The minimal structural protocol for 13.2.1 is therefore
+`available_tables`, `load`, `table`, `is_loaded`, `index`, and
+`normalized_index`, plus the `Mapping` adapters `__getitem__`, `__iter__`, and
+`__len__`. `table_path`, `cycle_path`, pandas `read_options`, encoding retry,
+DuckDB connections, SQL, and physical database indexes are implementation
+details and are not protocol members. Public imports of
+`openNASR.tables.TableRepository` and its CSV behavior remain unchanged.
+
+#### 13.0 benchmark specification
+
+The benchmark runner added by 13.4.4 must implement the command contract
+below. It is a manual tool, excluded from pytest collection and CI. Output
+must be written outside the repository (or to an ignored caller-selected
+scratch directory), and the runner must refuse to download data or select a
+different cycle.
+
+```bash
+export OPENNASR_BENCHMARK_CACHE=/absolute/path/to/an/existing/cache
+export OPENNASR_BENCHMARK_OUTPUT=/absolute/path/outside/the/repository
+
+# Build/read benchmark on the exact real current cycle. The runner builds any
+# timed database in an isolated temporary copy; it does not replace the user's
+# canonical artifact.
+python -m tools.duckdb_benchmark run \
+  --cache-dir "$OPENNASR_BENCHMARK_CACHE" \
+  --cycle 2026-08-06 \
+  --include-build \
+  --cold-repetitions 9 \
+  --warm-repetitions 5 \
+  --warm-iterations 200 \
+  --output "$OPENNASR_BENCHMARK_OUTPUT/real-2026-08-06.json"
+
+# Reproducible small-data coverage for both supported schema generations.
+python -m tools.duckdb_benchmark run-fixtures \
+  --fixtures tests/fixtures/duckdb_parity \
+  --cold-repetitions 9 \
+  --warm-repetitions 5 \
+  --warm-iterations 200 \
+  --output "$OPENNASR_BENCHMARK_OUTPUT/fixtures.json"
+
+# Compare a no-index baseline with an index candidate built from the same DB.
+python -m tools.duckdb_benchmark compare-index \
+  --baseline "$OPENNASR_BENCHMARK_OUTPUT/real-2026-08-06-no-index.json" \
+  --candidate "$OPENNASR_BENCHMARK_OUTPUT/real-2026-08-06-index.json"
+```
+
+The real dataset is the locally supplied FAA cycle effective `2026-08-06`,
+selected exactly. If it is unavailable, the report is incomplete and cannot
+pass the performance gate; the runner must not substitute `latest`. The small
+datasets are the committed `tests/fixtures/duckdb_parity/` fixtures created by
+13.1.2 for both `pre_2026_09` and `nasr_2026_09`. Until those land, the current
+`core/pre_2026_09` fixture may be used only for runner development, not for a
+final Gate 13.4 report. Fixture results establish correctness and catch gross
+regressions but have no latency threshold because timer overhead dominates
+their tiny tables. FAA archives, extracted cycles, databases, and generated
+JSON/Markdown reports are never committed.
+
+Each backend must run the same preselected keys and workload order. Key
+selection happens outside timed regions and is recorded in the report: choose
+up to nine unique, nonblank keys spread deterministically across the sorted
+source rows. Airport, fix, and navaid use their registry identity columns;
+airway uses a complete `AWY_BASE` composite key known to have at least one
+`AWY_SEG_ALT` child. Include a not-found key for each identity lookup, but
+report hits and misses separately. Assert equal public values, ordering,
+DataFrame dtypes/cells, and exception classes before accepting timings.
+
+| Workload | Timed operation and cache state | Reported measures |
+| --- | --- | --- |
+| Build | Build and validate a new database from the same extracted cycle in a fresh temporary target. | Wall time, CPU time, peak RSS, CSV bytes, DB/sidecar bytes, table/row counts. |
+| Construction | `NASR(cycle=exact_date, storage=...)` in a fresh subprocess; no operational table has been accessed. | CSV and process-cold DuckDB median/p95 wall time and peak RSS. |
+| First table access | `nasr.table("APT_BASE")` once on a newly constructed instance; construction time excluded. | Median/p95 latency, RSS increment, rows/columns/bytes materialized. |
+| Repeated table access | After one untimed prime, call `nasr.table("APT_BASE")` on the same instance and verify object identity; measure batches of 200 calls. Repeat with `copy=True` separately. | Per-call median/p95 and copy cost. |
+| Identity lookup | `airports.get`, `fixes.get`, and `navaids.get` for the preselected hit/miss keys. First lookup uses a new instance; warm lookup repeats on one primed repository. | Per-family hit/miss median/p95, tables materialized, peak RSS. |
+| Relationship lookup | `airways.get(complete_key)` including ordered segment assembly. First lookup uses a new instance; warm lookup repeats on one primed repository. | Hit/miss median/p95, returned child count/order, tables materialized, peak RSS. |
+| DuckDB cold/warm access | “Cold” means a fresh Python process, read-only connection, and empty application DataFrame/index caches. “Warm” means the same process/`NASR` instance after one untimed access. | Connection/construction, first materialization/query, and repeated cached access separately. |
+
+Do not drop operating-system caches or claim filesystem-cold results. Run on
+an otherwise idle machine, alternate CSV/DuckDB sample order, disable GC only
+inside identical timed regions, use `perf_counter_ns`, and retain all samples
+alongside median, p95, minimum, and median absolute deviation. A subprocess is
+the unit of every cold repetition; warm repetitions use a new subprocess but
+multiple iterations within one instance. The report must capture:
+
+- UTC timestamp; OS, kernel, architecture; CPU model/logical count/governor;
+  total RAM; filesystem/mount type and whether storage is rotational;
+- Python, openNASR, pandas, and DuckDB versions; Git commit and dirty state;
+  benchmark arguments and relevant environment variables;
+- exact effective date, source archive name/SHA-256 when available, schema ID
+  and fingerprint, table/file count, per-table and total row count, total CSV
+  bytes, archive bytes, DuckDB bytes, sidecar bytes, and storage-format version;
+- the selected lookup keys, index definitions, index build time/size delta,
+  failure/skip reasons, and raw timing/RSS samples.
+
+Performance is evaluated only after full CSV/DuckDB parity passes. The real
+cycle passes the first-release performance target when all of these hold:
+
+1. Process-cold DuckDB construction median is at most 50% of CSV construction.
+2. Across first `APT_BASE` access plus first airport, fix, navaid, and airway
+   lookups, the geometric-mean speedup is at least 2.0x and at least four of
+   the five workloads improve by at least 1.5x.
+3. No warm/repeated workload regresses beyond the noise allowance:
+   `duckdb_median <= max(1.20 * csv_median, csv_median + 0.25 ms)`, and DuckDB
+   p95 is no more than 1.25x CSV p95 plus 0.25 ms.
+4. Build time, peak RSS, and disk size are reported and reviewed; they are not
+   hidden by the latency pass. A result that swaps a latency win for more than
+   2x CSV peak RSS during the corresponding repository lookup requires a
+   decision-log exception before Gate 13.4 can pass.
+
+An individual physical DuckDB index is retained only if an A/B run on the
+same database and keys improves candidate-query median latency by at least 25%
+and p95 by at least 10%, with no correctness change, while its build time and
+database-size delta are reported. Otherwise the scan remains the approved
+implementation. Results from different machines, cycles, schema fingerprints,
+or dirty commits are not combined into one pass/fail comparison.
+
+- [x] **13.0.3 — Agent: Terra.** Add the optional dependency group
   `duckdb = ["duckdb>=<approved minimum>"]` only after Sol confirms a tested
   compatible version range. Update installation documentation; do not make it
   a base dependency.
@@ -213,7 +363,7 @@ backend code begins until this gate is recorded in the decision log.
   Acceptance: unit tests cover valid metadata, each invalid condition, and
   sidecar atomicity. No raw exception leaks from metadata parsing.
 
-- [ ] **13.1.2 — Agent: Luna.** Add small synthetic multi-table fixtures that
+- [x] **13.1.2 — Agent: Luna.** Add small synthetic multi-table fixtures that
   exercise leading zeroes, empty strings, commas/newlines, non-ASCII text,
   duplicate identifiers, and a 2026.09-style schema fixture.
 
@@ -432,3 +582,6 @@ branches open.
 | 2026-08-17 | Store the database beside the exact extracted cycle and treat it as a rebuildable derivative. | This makes historical-date selection deterministic and permits removal/rebuild without losing the FAA archive or CSV source data. |
 | 2026-08-17 | Preserve raw FAA values as strings before adding any typed/analytic views. | NASR fields include identifiers and source text where leading zeroes and blanks are meaningful; automatic database type inference risks silent data changes. |
 | 2026-08-17 | Add an agent roster table, a per-task branch/merge/gate-authority protocol, and a "New and shared files" ownership map; require gates to be recorded as dated Decision-log rows rather than task checkboxes. | The task-level `Agent: X` labels and phase gates already implied parallel execution but never said how two agents avoid editing the same file at once, who may declare a gate passed, or where new modules (`duckdb_metadata.py`, `duckdb_builder.py`, `storage.py`, `duckdb_tables.py`) actually live — leaving that implicit risks two agents guessing differently and colliding on `nasr.py`/`cycles.py` mid-phase. |
+| 2026-08-17 | Require `duckdb>=1.2.2` only through the explicit `duckdb` optional-dependency extra. | DuckDB 1.2.2 declares Python >=3.7 and has CPython 3.10/3.12 wheels; a clean Python 3.12 install passed both the base-without-DuckDB import and the `.[duckdb]` install/import checks, including an exact-1.2.2 smoke import. |
+| 2026-08-17 | Define the table-store contract as cached DataFrame loading, mapping adapters, available/loaded state, and exact/normalized row-position indexes; keep schema validation in `NASR` above the backend boundary. | All domain repositories consume the `NASR` mapping rather than `TableRepository` directly. Preserving that seam avoids storage branches throughout domain code while retaining lazy validation, exceptions, row order, and shared-versus-copy mutation behavior. |
+| 2026-08-17 | Gate DuckDB performance on an exact real cycle using process-cold and warm measurements; use committed fixtures for parity rather than latency, require a 2x geometric-mean first-access speedup, and retain physical indexes only after an A/B win. | Tiny fixture timings are dominated by overhead, operating-system cache eviction is not portable, and unmeasured indexes can increase build time and disk use without helping representative repository workloads. |

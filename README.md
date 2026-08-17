@@ -59,6 +59,15 @@ python -m pip install -e .
 
 Editable installation is recommended while the package is in development.
 
+### Optional DuckDB support
+
+DuckDB is an optional local-storage acceleration feature. Install it only when
+you need the DuckDB backend; the normal installation does not install DuckDB:
+
+```bash
+python -m pip install -e ".[duckdb]"
+```
+
 ## NASR data setup
 
 FAA NASR data is published on a 28-day cycle. Download a full subscription ZIP

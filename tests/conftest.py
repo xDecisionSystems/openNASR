@@ -16,6 +16,8 @@ FIXTURE_DATES = {
     "core/pre_2026_09": "2026-08-06",
     "schema_only/pre_2026_09": "2026-08-06",
     "schema_only/nasr_2026_09": "2026-09-03",
+    "duckdb_parity/pre_2026_09": "2026-08-06",
+    "duckdb_parity/nasr_2026_09": "2026-09-03",
     "malformed": "2099-01-02",
     "missing_table_cycle": "2099-01-03",
 }

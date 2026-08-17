@@ -29,6 +29,7 @@ dependencies = [
 [project.optional-dependencies]
 plot = ["matplotlib"]
 dev = ["pytest", "ruff", "mypy"]
+duckdb = ["duckdb>=1.2.2"]
 
 [project.urls]
 Homepage = "https://github.com/xDecisionSystems/openNASR"
