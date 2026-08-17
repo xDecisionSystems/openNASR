@@ -12,7 +12,7 @@ from .records import (
     integer,
     nullable_text,
 )
-from .relationships import related_record
+from .relationships import RelationshipIndex, related_record
 
 HOLDING_PATTERN_KEY = ("HP_NAME", "HP_NO", "STATE_CODE", "COUNTRY_CODE")
 
@@ -90,6 +90,7 @@ class HoldingPatternRepository:
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
         self._indexes: NormalizedIndexCache = {}
+        self._relationship_index = RelationshipIndex()
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -155,6 +156,7 @@ class HoldingPatternRepository:
                 ),
                 record_type=FixRecord,
                 relationship="holding-pattern fix",
+                index=self._relationship_index,
             ),
         )
 

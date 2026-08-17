@@ -571,31 +571,18 @@ in file-alphabetical order.
   holding remain open under T3.3a.
   Dependencies: T3.1, T3.2 (land the highest-value tables first so the
   shared helper is proven at scale before the long tail).
-- [ ] **T3.3a — Agent model: Terra.** Add one bounded, snapshot-scoped
-  composite-key row-position index for `relationships.related_record`, and
-  wire it only through `AirwayRepository` and `HoldingPatternRepository` in
-  this phase. Profiling shows this is the remaining hot lookup: ten warm
-  `A216` calls perform 140 relationship resolutions and spend 4.740s
-  cumulative in `related_record`; ten holding calls spend 0.676s there.
-  The current helper repeatedly normalizes all 70,003 `FIX_BASE` rows (and,
-  for every airway segment, `NAV_BASE`) once per relationship.
-
-  The index must key on the complete declared target-column tuple, store
-  source row positions rather than `FaaRecord` instances, and be owned by the
-  repository snapshot. Do not cache returned record objects: `FaaRecord.raw`
-  exposes its backing mapping, so reusing objects would introduce mutation
-  and identity behavior not present today. Preserve `None` for incomplete or
-  absent relationships and the exact `AmbiguousRecordError` for duplicate
-  complete keys. A prototype full-composite position index built the real
-  FIX/NAV indexes in 103.851ms once; resolving all 14 relationships for the
-  seven-segment airway then took 0.598ms median instead of 128.900ms, while
-  the holding relationship took 1.937ms instead of 17.988ms.
-
-  Acceptance: the existing airway-order and holding-fix regressions pass,
-  plus tests for an absent and ambiguous complete relationship. Record cold
-  index build separately; the warm public calls must satisfy Gate 3's policy
-  below without broadening the manifest to the lower-cost
-  communications/airspace callers of `related_record`.
+- [x] **T3.3a — Agent model: Terra. Done (2026-08-17).** Added one bounded,
+  snapshot-scoped `RelationshipIndex` for `relationships.related_record` and
+  wired it only through `AirwayRepository` and `HoldingPatternRepository`.
+  It indexes the complete declared target-column tuple to source row
+  positions; repositories own the index, and each lookup still constructs a
+  fresh `FaaRecord`, preserving raw-mapping mutation and identity behavior.
+  Incomplete/absent keys still return `None`; duplicate complete keys retain
+  `AmbiguousRecordError`. Existing airway-order and holding-fix regressions,
+  plus new absent/ambiguous/parity/position-storage coverage, pass. A non-CI
+  2026-05-14 sample measured 12.14 ms warm for A216 (579.85 ms cold build)
+  and 4.18 ms warm for the holding sample (583.49 ms cold build), without
+  broadening the relationship optimization to communications or airspace.
 - [ ] **T3.4 — Agent model: Terra.** Fix the legacy uncached scans: `NASR.isFix`/
   `isAirport`/`isNavaid` (`openNASR/nasr.py`) and `basictypes.py`'s
   `getAirportRecord`/`getAirportRecords` (backing `Airport`, `RWY`,

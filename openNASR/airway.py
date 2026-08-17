@@ -7,7 +7,7 @@ from .fix import FixRecord
 from .indexing import NormalizedIndexCache, normalized_indexed_rows
 from .nav import NavaidRecord
 from .records import FaaRecord, integer, nullable_text
-from .relationships import related_record
+from .relationships import RelationshipIndex, related_record
 
 AIRWAY_KEY = ("REGULATORY", "AWY_LOCATION", "AWY_ID")
 
@@ -85,6 +85,7 @@ class AirwayRepository:
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
         self._indexes: NormalizedIndexCache = {}
+        self._relationship_index = RelationshipIndex()
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -125,6 +126,7 @@ class AirwayRepository:
             ),
             record_type=FixRecord,
             relationship="airway segment fix",
+            index=self._relationship_index,
         )
         navaid = related_record(
             self._nasr,
@@ -139,6 +141,7 @@ class AirwayRepository:
             ),
             record_type=NavaidRecord,
             relationship="airway segment navaid",
+            index=self._relationship_index,
         )
         return AirwaySegmentRecord(row, fix=fix, navaid=navaid)
 

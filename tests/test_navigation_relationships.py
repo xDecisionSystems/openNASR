@@ -1,7 +1,9 @@
 import pandas as pd
 import pytest
+from numpy import ndarray
 
 from openNASR.airway import AirwayRepository
+from openNASR.exceptions import AmbiguousRecordError
 from openNASR.registry import (
     AIRWAY_FIX_KEY,
     AIRWAY_NAVAID_KEY,
@@ -126,3 +128,62 @@ def test_airway_points_resolve_only_complete_fix_and_navaid_keys():
     assert airway.segments[1].fix is None
     assert airway.segments[1].navaid is not None
     assert airway.segments[1].navaid.name is None
+    relationship_indexes = repository._relationship_index._positions
+    assert len(relationship_indexes) == 2
+    assert all(
+        isinstance(positions, ndarray)
+        for composite in relationship_indexes.values()
+        for positions in composite.values()
+    )
+
+
+def test_airway_relationship_index_preserves_absent_and_ambiguous_complete_keys():
+    segment = {
+        "REGULATORY": "Y",
+        "AWY_LOCATION": "D",
+        "AWY_ID": "1",
+        "POINT_SEQ": "1",
+        "FROM_POINT": "ALPHA",
+        "FROM_PT_TYPE": "FIX",
+        "NAV_CITY": "",
+        "ICAO_REGION_CODE": "K1",
+        "STATE_CODE": "FL",
+        "COUNTRY_CODE": "US",
+    }
+    tables = {
+        "AWY_BASE": pd.DataFrame(
+            [{"REGULATORY": "Y", "AWY_LOCATION": "D", "AWY_ID": "1"}]
+        ),
+        "AWY_SEG_ALT": pd.DataFrame([segment]),
+        "FIX_BASE": pd.DataFrame(
+            [
+                {
+                    "FIX_ID": "OTHER",
+                    "ICAO_REGION_CODE": "K1",
+                    "STATE_CODE": "FL",
+                    "COUNTRY_CODE": "US",
+                }
+            ]
+        ),
+        "NAV_BASE": pd.DataFrame(),
+    }
+    assert AirwayRepository(tables).get(("Y", "D", "1")).segments[0].fix is None
+
+    tables["FIX_BASE"] = pd.DataFrame(
+        [
+            {
+                "FIX_ID": "ALPHA",
+                "ICAO_REGION_CODE": "K1",
+                "STATE_CODE": "FL",
+                "COUNTRY_CODE": "US",
+            },
+            {
+                "FIX_ID": "ALPHA",
+                "ICAO_REGION_CODE": "K1",
+                "STATE_CODE": "FL",
+                "COUNTRY_CODE": "US",
+            },
+        ]
+    )
+    with pytest.raises(AmbiguousRecordError):
+        AirwayRepository(tables).get(("Y", "D", "1"))
