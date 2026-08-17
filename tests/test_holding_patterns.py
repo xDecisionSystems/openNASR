@@ -72,3 +72,4 @@ def test_holding_pattern_uses_full_key_and_orders_remarks():
     assert pattern.speed_altitude_limits[0].altitude == "6000"
     assert pattern.fix is not None
     assert pattern.fix.state == "FL"
+    assert len(repository._indexes) == 16

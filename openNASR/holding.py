@@ -6,6 +6,7 @@ from pandas import DataFrame
 
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
 from .fix import FixRecord
+from .indexing import NormalizedIndexCache, normalized_indexed_rows
 from .records import (
     FaaRecord,
     integer,
@@ -88,6 +89,7 @@ class HoldingPatternRepository:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._nasr = nasr
+        self._indexes: NormalizedIndexCache = {}
 
     @staticmethod
     def _normalized(value: object) -> str:
@@ -108,10 +110,9 @@ class HoldingPatternRepository:
     def _matching(
         self, frame: DataFrame, key: tuple[object, object, object, object]
     ) -> DataFrame:
-        rows = frame
-        for column, value in zip(HOLDING_PATTERN_KEY, key):
-            rows = rows[rows[column].map(self._normalized).eq(self._normalized(value))]
-        return rows
+        return normalized_indexed_rows(
+            self._indexes, frame, zip(HOLDING_PATTERN_KEY, key), self._normalized
+        )
 
     @staticmethod
     def _remark_order(row: dict[str, object]) -> tuple[str, str, int]:
