@@ -2344,12 +2344,20 @@ Tasks:
       rules); do not publish while any Milestone 0-6 acceptance criterion is
       unmet or any P1/P2 defect from "Current repository state" remains
       open.
-- [ ] **Agent: Luna.** **7.14** (Non-blocking for release readiness — track separately, do
+- [x] **Agent: Luna.** **7.14** (Non-blocking for release readiness — track separately, do
       not let it hold up `1.0.0`) Update the Git remote/documentation from
       the moved ADCLab repository to
       `https://github.com/xDecisionSystems/openNASR` once ownership is
       confirmed by the user. This depends on an external, organizational
-      decision outside this codebase's control.
+      decision outside this codebase's control. **Confirmed 2026-08-16**: the
+      local `origin` remote was pointed at the new URL (a push to the old
+      `ADCLab/openNASR` URL had already returned GitHub's "This repository
+      moved" redirect notice, which is what prompted the user's
+      confirmation), and the live references in `README.md` (`git clone`
+      instructions) and `pyproject.toml` (`[project.urls] Homepage`) were
+      updated to match. `PLAN.md` and `RELEASE.md`'s own historical mentions
+      of `ADCLab/openNASR` are left as-is; they document the move itself
+      and predate it, not live links.
 
 Release acceptance criteria:
 
@@ -2725,3 +2733,4 @@ report has no operational table without a rich API.
 | 2026-08-16 | Complete Milestone 5B: add `ArtccRecord`/`ArtccBoundary`/`Artcc`/`ArtccRepository` to `airspace.py`, wrap the existing `arb.py` `Boundary` geometry directly rather than reimplementing it, wire `nasr.artccs`/`nasr.artcc()` into `NASR`, register `ARB_BASE` in `RICH_RECORD_TYPES`, and export all four new names. | This was the one remaining gap between the documented "NASR facade methods" contract (which already listed `nasr.artccs`/`nasr.artcc()`) and reality; the underlying geometry was already correct and tested, so this was a wrapping exercise, not new geometry work — verified with exact Shapely `.equals()` comparisons against the legacy `ARB` path, not just bounding-box equality. |
 | 2026-08-16 | Leave `nasr.artcc()` (the new method) and `nasr.loadARTCC()`'s `self.artcc = ARB(self)` (the legacy attribute assignment) coexisting under the same name, per PLAN.md's explicit instruction not to alter either. | Verified directly that this creates a real, if narrow, behavioral trap: before `loadARTCC()` is called on an instance, `nasr.artcc` resolves to the `NASR.artcc` bound method and `nasr.artcc("ZOB")` works; after `loadARTCC()` is called, the instance attribute shadows the method and `nasr.artcc("ZOB")` would fail (`ARB` objects aren't callable). Both entry points still "coexist" as required, but not simultaneously callable through the same name on one instance. Documented in a dedicated regression test (`test_legacy_load_artcc_still_works_alongside_the_modern_facade`) rather than silently leaving it undiscovered; not fixed because the plan explicitly forbids altering either name during the compatibility period. |
 | 2026-08-16 | Run the full six-command release gate (`pytest`, `ruff format --check`, `ruff check`, `mypy`, `build`, `twine check`) end-to-end in one pass for the first time, rather than continuing to rely on the piecemeal `pytest`/`mypy`/`ruff check` runs used throughout development. | `RELEASE.md` had explicitly listed "the full verification matrix has never been run as a single release-gate pass" as the one remaining blocker once Milestones 4B and 5B closed the engineering gaps. Running it surfaced two real, non-cosmetic fixes (`ruff format` reformatting hand-written code from this session, and two long f-string lines in `tools/generate_schema_manifests.py` that needed manual wrapping) — confirming the gate does real work and isn't a no-op. Also verified beyond the six commands: no `openNASR/data/` path in the built wheel, and a clean-virtualenv install/import succeeds from outside the source tree. |
+| 2026-08-16 | Complete Task 7.14: point the local `origin` remote and the live `README.md`/`pyproject.toml` references at `https://github.com/xDecisionSystems/openNASR`. | GitHub's own push response confirmed the repository move (a "This repository moved" redirect notice on push to the old `ADCLab/openNASR` URL), and the user then explicitly confirmed the update. `PLAN.md`/`RELEASE.md`'s own historical mentions of `ADCLab/openNASR` are left unchanged since they document the move itself, not live links. |

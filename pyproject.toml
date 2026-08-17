@@ -31,7 +31,7 @@ plot = ["matplotlib"]
 dev = ["pytest", "ruff", "mypy"]
 
 [project.urls]
-Homepage = "https://github.com/ADCLab/openNASR"
+Homepage = "https://github.com/xDecisionSystems/openNASR"
 
 [project.scripts]
 opennasr = "openNASR.cli:main"

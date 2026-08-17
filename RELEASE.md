@@ -41,6 +41,15 @@ formatter cannot safely split f-strings on its own. No test assertions or
 production logic changed; `pytest` was re-run after each fix and stayed
 green throughout.
 
+## Repository ownership (2026-08-16)
+
+Ownership has moved and been confirmed: pushing to the old
+`https://github.com/ADCLab/openNASR` remote returned GitHub's "This
+repository moved" redirect notice, pointing at
+`https://github.com/xDecisionSystems/openNASR`. The local `origin` remote
+and the live references in `README.md` and `pyproject.toml` now point at
+the new location (PLAN.md Task 7.14).
+
 ## Remaining before publishing
 
 Nothing engineering-blocking remains. What's left is a release *decision*,
@@ -48,9 +57,6 @@ not a defect:
 
 - Decide and set the actual `1.0.0` version number in `pyproject.toml` and
   `CHANGELOG.md` (currently `0.0.1`), and cut the release.
-- Task 7.14 (updating the Git remote from the moved ADCLab repository) is
-  explicitly non-blocking and depends on an external ownership confirmation
-  — track separately, do not let it hold up `1.0.0`.
 - PLAN.md's Milestones 8-12 (rich-object coverage for `atc`/`weather`/
   `airway`/`routes`/`communications`/`fss`/`holding`/`locations`/`military`/
   `CLS_ARSP`/`MAA_*`/`PJA_*`/`MTR_*`) are explicitly scheduled as `1.x`

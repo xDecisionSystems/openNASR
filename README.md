@@ -50,7 +50,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and verification instruct
 Clone the repository and install it in editable mode:
 
 ```bash
-git clone https://github.com/ADCLab/openNASR.git
+git clone https://github.com/xDecisionSystems/openNASR.git
 cd openNASR
 python -m pip install -e .
 ```
