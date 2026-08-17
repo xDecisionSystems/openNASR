@@ -195,6 +195,19 @@ def _text(value: object) -> str:
     return str(value).strip().upper()
 
 
+def _row_records(rows: DataFrame) -> list[dict[str, object]]:
+    """Convert a (typically small, index-filtered) DataFrame to row dicts.
+
+    Equivalent to ``rows.to_dict(orient="records")`` but several times
+    faster: pandas' ``to_dict`` re-boxes every cell through per-column dtype
+    machinery, which dominates cost even for a handful of rows, whereas a
+    plain object-array pull avoids that per-cell overhead.
+    """
+
+    columns = tuple(rows.columns)
+    return [dict(zip(columns, values)) for values in rows.to_numpy(dtype=object)]
+
+
 def _coordinates(row: Mapping[str, object]) -> tuple[float, float] | None:
     latitude = row.get("LAT_DECIMAL")
     longitude = row.get("LONG_DECIMAL")
@@ -280,13 +293,31 @@ def _waypoint(
 
 
 class _AirwayIndex:
-    """Snapshot the normalized AWY_BASE identifiers used by one route session."""
+    """Snapshot the normalized AWY_BASE/AWY_SEG_ALT lookups used by one route
+    session.
+
+    ``AWY_SEG_ALT`` (the largest airway table) is indexed once by the same
+    ``(REGULATORY, AWY_LOCATION, AWY_ID)`` triplet ``_airway_vertices``
+    filters on, so expanding an airway never re-scans the full segment table.
+    """
 
     def __init__(self, tables: Mapping[str, DataFrame]) -> None:
         self._base = tables.get("AWY_BASE")
         self._identifiers = (
             self._base["AWY_ID"].map(_text) if self._base is not None else None
         )
+        self._segments = tables.get("AWY_SEG_ALT")
+        self._segment_keys = self._segment_positions(self._segments)
+
+    @staticmethod
+    def _segment_positions(
+        segments: DataFrame | None,
+    ) -> dict[tuple[str, str, str], ndarray] | None:
+        columns = ("REGULATORY", "AWY_LOCATION", "AWY_ID")
+        if segments is None or any(column not in segments for column in columns):
+            return None
+        normalized = [segments[column].map(_text) for column in columns]
+        return segments.groupby(normalized, sort=False).indices
 
     def matching(self, airway: str) -> DataFrame | None:
         match = _AIRWAY.fullmatch(airway)
@@ -301,6 +332,18 @@ class _AirwayIndex:
     def is_published(self, airway: str) -> bool:
         matches = self.matching(airway)
         return matches is not None and not matches.empty
+
+    def segments(self, key: tuple[object, object, object]) -> DataFrame | None:
+        """Return ``AWY_SEG_ALT`` rows for one ``(REGULATORY, AWY_LOCATION,
+        AWY_ID)`` key, without re-scanning the full table."""
+
+        if self._segments is None or self._segment_keys is None:
+            return None
+        regulatory, location, identifier = key
+        positions = self._segment_keys.get(
+            (_text(regulatory), _text(location), _text(identifier))
+        )
+        return self._segments.iloc[positions] if positions is not None else None
 
 
 class _ProcedureIndex:
@@ -478,18 +521,25 @@ def _airway_vertices(
     for key in matching_base[["REGULATORY", "AWY_LOCATION", "AWY_ID"]].itertuples(
         index=False, name=None
     ):
-        rows = segments
-        for column, value in zip(("REGULATORY", "AWY_LOCATION", "AWY_ID"), key):
-            rows = rows[rows[column].map(_text).eq(_text(value))]
+        if airway_index is not None:
+            rows = airway_index.segments(key)
+            if rows is None:
+                rows = segments.iloc[0:0]
+        else:
+            rows = segments
+            for column, value in zip(("REGULATORY", "AWY_LOCATION", "AWY_ID"), key):
+                rows = rows[rows[column].map(_text).eq(_text(value))]
         ordered = sorted(
-            rows.to_dict(orient="records"), key=lambda row: int(str(row["POINT_SEQ"]))
+            zip(
+                rows["POINT_SEQ"].to_numpy(copy=False),
+                rows["FROM_POINT"].to_numpy(copy=False),
+                rows["TO_POINT"].to_numpy(copy=False),
+            ),
+            key=lambda row: int(str(row[0])),
         )
         vertices: list[str] = []
-        for segment in ordered:
-            source, destination = (
-                _text(segment["FROM_POINT"]),
-                _text(segment["TO_POINT"]),
-            )
+        for _, raw_source, raw_destination in ordered:
+            source, destination = _text(raw_source), _text(raw_destination)
             if not vertices or vertices[-1] != source:
                 vertices.append(source)
             vertices.append(destination)
@@ -544,18 +594,29 @@ def _route_rows_points(
 ) -> tuple[_Waypoint, ...]:
     """Resolve ordered FAA procedure-route rows into coordinate waypoints."""
 
-    records = rows.to_dict(orient="records")
-    records.sort(
+    body_seq = (
+        rows["BODY_SEQ"].to_numpy(copy=False)
+        if "BODY_SEQ" in rows
+        else (0,) * len(rows)
+    )
+    point_seq = (
+        rows["POINT_SEQ"].to_numpy(copy=False)
+        if "POINT_SEQ" in rows
+        else (0,) * len(rows)
+    )
+    points_column = rows["POINT"].to_numpy(copy=False)
+    records = sorted(
+        zip(body_seq, point_seq, points_column),
         key=lambda row: (
-            int(str(row.get("BODY_SEQ", "0") or "0")),
-            int(str(row.get("POINT_SEQ", "0") or "0")),
-        )
+            int(str(row[0] or "0")),
+            int(str(row[1] or "0")),
+        ),
     )
     if reverse:
         records.reverse()
     points: list[_Waypoint] = []
-    for row in records:
-        identifier = _text(row.get("POINT", ""))
+    for _, _, raw_point in records:
+        identifier = _text(raw_point)
         if not identifier:
             continue
         point = _waypoint(
@@ -651,18 +712,18 @@ def _procedure_path(
             # Retain the old direct-filter KeyError for incomplete synthetic tables.
             departures["DP_COMPUTER_CODE"]
         assert departure_rows is not None
-        departure_matches = departure_rows.to_dict(orient="records")
+        departure_matches = _row_records(departure_rows)
     else:
         departure_matches = []
     departure_transition_rows = procedure_index.departure_transition(token)
     departure_transition_matches = (
-        departure_transition_rows.to_dict(orient="records")
+        _row_records(departure_transition_rows)
         if departure_transition_rows is not None
         else []
     )
     transition_rows = procedure_index.star_transition(token)
     transition_matches = (
-        transition_rows.to_dict(orient="records") if transition_rows is not None else []
+        _row_records(transition_rows) if transition_rows is not None else []
     )
     if star_routes is not None and transition_rows is None:
         # Retain the old direct-filter KeyError for incomplete synthetic tables.
@@ -673,7 +734,7 @@ def _procedure_path(
             # Retain the old direct-filter KeyError for incomplete synthetic tables.
             stars["STAR_COMPUTER_CODE"]
         assert star_rows is not None
-        base_matches = star_rows.to_dict(orient="records")
+        base_matches = _row_records(star_rows)
     else:
         base_matches = []
 

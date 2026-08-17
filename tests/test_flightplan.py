@@ -304,6 +304,40 @@ def test_airway_lookup_uses_column_matching_for_base_records(tables, monkeypatch
     )
 
 
+def test_route_resolver_avoids_full_column_scan_of_airway_segments(tables, monkeypatch):
+    """_AirwayIndex.segments() must serve AWY_SEG_ALT lookups so
+    _airway_vertices never re-filters the whole segment table per matching
+    airway-base row (SPEEDUP.md Gate 4 follow-up: this full-table
+    Series.map() scan was the dominant remaining cost after T4.3)."""
+
+    resolver = PublicRouteResolver(tables)
+
+    # The fixed lookup path (_AirwayIndex.segments) reaches AWY_SEG_ALT only
+    # through .iloc on the pre-built position index; a per-row full-column
+    # re-scan reaches it through plain column selection instead, so tracking
+    # __getitem__ calls after construction distinguishes the two.
+    calls: list[str] = []
+    original_getitem = pd.DataFrame.__getitem__
+
+    def tracked_getitem(self, key):
+        if self is tables["AWY_SEG_ALT"]:
+            calls.append(str(key))
+        return original_getitem(self, key)
+
+    monkeypatch.setattr(pd.DataFrame, "__getitem__", tracked_getitem)
+
+    assert resolver.path("KAAA ALPHA V1 BBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+    assert calls == [], (
+        "AWY_SEG_ALT column selection after construction indicates a "
+        f"full-table re-scan instead of the segment index: {calls}"
+    )
+
+
 def test_flight_plan_path_joins_repeated_airway_tokens(tables):
     tables["FIX_BASE"] = pd.concat(
         [
