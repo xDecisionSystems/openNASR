@@ -735,7 +735,7 @@ T3.4 and its release evidence.
 
 ## Phase 4 — Index the procedure tables (`openNASR/flightplan.py`)
 
-- [ ] **T4.1 — Agent model: Terra.** Add a `_ProcedureIndex` class,
+- [x] **T4.1 — Agent model: Terra. Done (2026-08-17).** Add a `_ProcedureIndex` class,
   structurally parallel to the existing `_AirwayIndex`
   (`openNASR/flightplan.py:272-293`): snapshot `DP_BASE`, `DP_RTE`,
   `STAR_BASE`, `STAR_RTE` once at construction and build vectorized
@@ -754,7 +754,7 @@ T3.4 and its release evidence.
   synthetic table set and confirms each of the three lookups returns the
   same rows a direct `.map(_text).eq(...)` filter would.
   Dependencies: Phase 2 (T2.1's fixed indexing technique).
-- [ ] **T4.2 — Agent model: Terra.** Thread `_ProcedureIndex` through
+- [x] **T4.2 — Agent model: Terra. Done (2026-08-17).** Thread `_ProcedureIndex` through
   `_procedure_path` (`flightplan.py:476-658`) and
   `_is_published_dotted_procedure` (`flightplan.py:661-688`), replacing
   their full-column `.map(_text)` filters with index lookups, the same way
@@ -768,7 +768,7 @@ T3.4 and its release evidence.
   this plan's writing) passes unchanged; no test's expected output,
   exception type, or exception message changes.
   Dependencies: T4.1.
-- [ ] **T4.3 — Agent model: Terra.** Build one `_ProcedureIndex` inside
+- [x] **T4.3 — Agent model: Terra. Done (2026-08-17).** Build one `_ProcedureIndex` inside
   `RouteResolver.__init__` (`flightplan.py:883-887`) alongside the existing
   `_WaypointResolver`/`_AirwayIndex` construction, and pass it through
   `_flight_plan_path`/`_tokenize_flight_plan`'s existing `resolver`/
@@ -792,20 +792,55 @@ T3.4 and its release evidence.
   cycle and record the new mean/median for both route categories.
   Dependencies: T4.3, L1.1.
 
-L4.4 tooling preparation: `benchmarks/run_benchmarks.py` reports separate
+L4.4 tooling is landed, but performance acceptance remains open:
+`benchmarks/run_benchmarks.py` reports separate
 mean/median/p95/min/max warm timings for direct/airway-only and
 procedure-containing routes, with load and `RouteResolver` index construction
 reported independently; `--output PATH` preserves those categories in JSON.
 Stable tests cover route-shape classification and report fields without
 timing thresholds. The canonical post-T4.3 numbers remain intentionally
 unrecorded here until the benchmark is rerun in the dependency-complete
-environment against the pinned cycle.
+environment against the pinned cycle. The Gate 4 run below supplies those
+numbers and shows why no passing ratio assertion can yet be recorded.
 
 **Gate 4:** Sol re-runs L1.1's benchmark against the canonical cycle and
 records the before/after mean/median for procedure-containing and
 direct/airway-only routes; approves only if the procedure-route mean drops
 by at least one order of magnitude and no `tests/test_flightplan.py`
 regression exists.
+
+**Gate 4 — NOT APPROVED (2026-08-17).** The canonical command used the
+`2026-05-14` CSV cycle, seed `20260514`, 100 tracked routes, one shared
+`RouteResolver`, one untimed warm-up, and five timed calls per resolved route.
+It resolved 85/100 routes (27 direct/airway-only, 58 procedure-containing),
+matching the route-correctness release result.
+
+| Route category | Phase 0 mean | Post-T4.3 mean | Improvement | Post-T4.3 median |
+| --- | ---: | ---: | ---: | ---: |
+| direct/airway-only | ~422µs | 114.2µs | ~3.69x | 14.5µs |
+| procedure-containing | ~183ms | 134.42ms | ~1.36x | 123.22ms |
+
+The required procedure result is at most ~18.3ms; 134.42ms is only about a
+26.5% reduction, not a 10x reduction. Procedure routes currently cost
+1177.3x more than direct/airway-only routes on average, so the gate miss is
+not hidden by an overall mean or by resolver construction (264.17ms, measured
+separately from warm paths).
+
+A focused profile confirms a remaining repeated-scan defect rather than
+timing noise. Five warm calls for
+`KDEN.BAYLR6.TEHRU..JASSE.Q90.DNERO.ANJLL4.KLAX/0209` invoked
+`_procedure_path` 35 times and performed 255 `Series.map` operations,
+spending 2.575s cumulatively in pandas mapping and calling `_text` about 2.82
+million times. The new `_ProcedureIndex` therefore does not yet remove all
+full-column normalization performed inside procedure selection/tokenization.
+
+Correctness is clean: the focused flight-plan/regression/benchmark suite
+passed 50 tests, and the integrated full suite passed **383 passed, 1
+skipped**. Gate 4 remains closed on performance only. Follow-up work must be
+bounded to the profiled `_procedure_path`/tokenizer scans, preserve the
+existing `_ProcedureIndex` snapshot and matching semantics, and rerun this
+exact benchmark; it must not broaden into Phase 3 repositories or Phase 5
+plotting work.
 
 ## Phase 5 — Index the plotting lookups (`openNASR/plotting.py`)
 
