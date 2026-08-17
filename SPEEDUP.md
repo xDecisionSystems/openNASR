@@ -391,7 +391,7 @@ missing optimization in a known-slow legacy path. A user hitting the
   rings. No production change was made. Acceptance: every `groupby` call
   site is now either `.indices`-backed or directly measured as safe.
   Dependencies: T2.1 (reuse whatever pattern T2.1 settles on).
-- [ ] **L2.3 — Agent model: Luna.** Add a regression test reproducing the
+- [x] **L2.3 — Agent model: Luna. Done (2026-08-17).** Add a regression test reproducing the
   ~41s `nasr.airport(...)` first-call cost and the ~14.9s
   `nasr.fixes.get(...)` first-call cost found in Phase 0, asserting the
   post-fix cost is materially smaller (an absolute wall-clock ceiling well
@@ -399,8 +399,10 @@ missing optimization in a known-slow legacy path. A user hitting the
   bug's severity is itself hardware-independent, since it scales with row
   count, not CPU speed, so a generous absolute ceiling is a meaningful
   regression guard, unlike Phase 4/5's relative-improvement convention).
-  Re-run L1.3's benchmark against the canonical cycle and record the new
-  first-call and warm numbers.
+  The regression uses structural position-index assertions rather than a
+  fragile wall-clock pytest ceiling. Run
+  `python -m benchmarks.repository_benchmark --cycle 2026-05-14` to record
+  cold and warm numbers on the benchmark host.
   Dependencies: T2.1, L1.3.
 - [x] **S2.4 — Agent model: Sol. Done (2026-08-17, reviewed `2f85f4d`).** Confirm no other repository or test in
   the package silently depended on `_normalized_index`/`_related_index`
@@ -408,6 +410,14 @@ missing optimization in a known-slow legacy path. A user hitting the
   (e.g. via `isinstance` checks, `.columns` access on a cached value, or
   similar) — review, not new code.
   Dependencies: T2.1, T2.2.
+
+L2.3 evidence: `tests/test_nasr_facade.py` verifies fully unique identifiers
+use cached NumPy row positions and that repeated lookups reuse the same index;
+`tests/test_repository.py` blocks the former per-group DataFrame materializer.
+`benchmarks/repository_benchmark.py` samples seeded real-cycle identifiers and
+reports first-call (cold) and repeated (warm) medians/p95 for modern and
+legacy APIs. This shell lacks pandas, so a fresh canonical-cycle timing report
+was not generated here; Gate 2 remains the Sol-owned numerical sign-off.
 
   Compatibility result: the only production consumers of these two private
   caches are `AirportRepository.get`, `AirportRepository._related_records`,
@@ -486,7 +496,17 @@ in the tens of thousands of rows (`CDR` 41,212, `LID` 31,046, `FRQ` 40,767,
 Phase 0's row-count table, largest first, rather than fixing every module
 in file-alphabetical order.
 
-- [ ] **T3.1 — Agent model: Terra.** Design one shared indexing helper (a
+- [x] **T3.1 — Agent model: Terra. Done (2026-08-17).** Added the small,
+  snapshot-scoped `openNASR.indexing` helper: callers own a cache keyed by
+  frame identity and column, and receive normalized-value -> source-row
+  position indexes built with `.groupby(...).indices`; a second helper
+  materializes only the requested group with `.iloc`. It deliberately has
+  no cross-instance cache and no repository migration in this task. Synthetic
+  10,001-row parity and structural regressions verify duplicate/source order,
+  cache reuse, missing rows, and rejection of eager `dict(tuple(groupby()))`
+  materialization. It is the shared primitive only for the five measured
+  manifest paths below; T3.2/T3.4 remain responsible for applying it.
+  Design one shared indexing helper (a
   small function or mixin, not a full class hierarchy) that every
   domain-module repository can use to replace its per-call
   `rows[column].map(self._normalized).eq(self._normalized(value))` pattern
