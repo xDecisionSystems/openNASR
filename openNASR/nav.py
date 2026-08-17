@@ -79,43 +79,44 @@ class NAVAID(Raw):
                         "navType and nav_type must agree when both are supplied"
                     )
                 navType = nav_type
-            self._addBASE(
-                navaid, NASR["NAV_BASE"], inCenter, inState, inCountry, navType
-            )
+            self._addBASE(navaid, NASR, inCenter, inState, inCountry, navType)
         else:
             raise RecordNotFoundError(entity_type="Navaid", identifier=navaid)
 
     def _addBASE(
         self,
         navaid,
-        NAV_BASE,
+        nasr,
         inCenter=None,
         inState=None,
         inCountry=None,
         navType=None,
     ):
-        normalized_navaid = str(navaid).strip().upper()
-        navBool = (
-            NAV_BASE["NAV_ID"].map(lambda value: str(value).strip().upper())
-            == normalized_navaid
-        )
+        if hasattr(nasr, "_legacy_normalized_rows"):
+            NAV_BASE = nasr["NAV_BASE"]
+            navRecs = nasr._legacy_normalized_rows("NAV_BASE", "NAV_ID", navaid)
+        else:
+            NAV_BASE = nasr["NAV_BASE"] if "NAV_BASE" in nasr else nasr
+            navRecs = NAV_BASE[
+                NAV_BASE["NAV_ID"].map(lambda value: str(value).strip().upper())
+                == str(navaid).strip().upper()
+            ]
         filters = {}
         if inCenter is not None:
-            navCenterBool = (NAV_BASE["HIGH_ALT_ARTCC_ID"] == inCenter) | (
-                NAV_BASE["LOW_ALT_ARTCC_ID"] == inCenter
+            navCenterBool = (navRecs["HIGH_ALT_ARTCC_ID"] == inCenter) | (
+                navRecs["LOW_ALT_ARTCC_ID"] == inCenter
             )
-            navBool = navBool & navCenterBool
+            navRecs = navRecs[navCenterBool]
             filters["in_center"] = inCenter
         if inState is not None:
-            navBool = navBool & (NAV_BASE["STATE_CODE"] == inState)
+            navRecs = navRecs[navRecs["STATE_CODE"] == inState]
             filters["in_state"] = inState
         if inCountry is not None:
-            navBool = navBool & (NAV_BASE["COUNTRY_CODE"] == inCountry)
+            navRecs = navRecs[navRecs["COUNTRY_CODE"] == inCountry]
             filters["in_country"] = inCountry
         if navType is not None:
-            navBool = navBool & (NAV_BASE["NAV_TYPE"] == navType)
+            navRecs = navRecs[navRecs["NAV_TYPE"] == navType]
             filters["nav_type"] = navType
-        navRecs = NAV_BASE[navBool]
         if len(navRecs) > 1:
             raise AmbiguousRecordError(
                 entity_type="Navaid",

@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from .basictypes import Raw, getAirportRecord
+from types import SimpleNamespace
 from .ils import (
     DMEitem,
     DmeRecord,
@@ -144,8 +145,13 @@ class AirportRecord(FaaRecord):
 
 
 class AirportBase(Raw):
-    def __init__(self, airport, nasrDF, airportIDCol):
-        super().__init__(getAirportRecord(airport, nasrDF, airportIDCol))
+    def __init__(self, airport, nasrDF, airportIDCol, *, cached_row=None):
+        record = (
+            getAirportRecord(airport, nasrDF, airportIDCol)
+            if cached_row is None
+            else SimpleNamespace(**cached_row)
+        )
+        super().__init__(record)
 
     @property
     def elevation(self):
@@ -164,7 +170,13 @@ class Airport:
     def __init__(self, airport, nasr):
         isAirport, airportIDCol, airport = nasr.isAirport(airport, forceFAA=True)
         if isAirport:
-            self.base = AirportBase(airport, nasr["APT_BASE"], airportIDCol)
+            base_rows = nasr._legacy_normalized_rows("APT_BASE", airportIDCol, airport)
+            self.base = AirportBase(
+                airport,
+                nasr["APT_BASE"],
+                airportIDCol,
+                cached_row=base_rows.to_dict(orient="records")[0],
+            )
             self.rwy = RWY(
                 RWYitem, airport, nasr["APT_RWY"], airportIDCol, useRWYID=True
             )

@@ -493,16 +493,12 @@ class NASR(dict):
         isAirportBool = False
         airportIDCol = None
         ARPT_ID = None
-        normalized_airport = str(airport).strip().upper()
         for useCol in ["ARPT_ID", "ICAO_ID"]:
-            column = self["APT_BASE"][useCol]
-            matches = column.map(lambda value: str(value).strip().upper()) == (
-                normalized_airport
-            )
-            if any(matches):
+            rows = self._legacy_normalized_rows("APT_BASE", useCol, airport)
+            if not rows.empty:
                 isAirportBool = True
                 airportIDCol = useCol
-                ARPT_ID = self["APT_BASE"][matches]["ARPT_ID"].tolist()[0]
+                ARPT_ID = rows["ARPT_ID"].tolist()[0]
                 break
         if forceFAA:
             airportIDCol = "ARPT_ID"
@@ -614,13 +610,7 @@ class NASR(dict):
         return normalized_index_rows(frame, index, value, self._legacy_normalized)
 
     def isNavaid(self, nav: str):
-        normalized_nav = str(nav).strip().upper()
-        return (
-            normalized_nav
-            in (
-                self["NAV_BASE"]["NAV_ID"].map(lambda value: str(value).strip().upper())
-            ).to_list()
-        )
+        return not self._legacy_normalized_rows("NAV_BASE", "NAV_ID", nav).empty
 
     def isStar(self, star: str):
         return (

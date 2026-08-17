@@ -49,6 +49,7 @@ def test_airport_identifiers_canonicalize_to_the_faa_identifier(
     assert exists
     assert matched_column == "ARPT_ID"
     assert faa_identifier == "BWI"
+    assert len(nasr._NASR__legacy_indexes) == (1 if identifier == "BWI" else 2)
 
 
 @pytest.mark.parametrize("identifier", [" bwi ", "bwi", "kbwi", "Bwi"])
@@ -101,6 +102,8 @@ def test_legacy_navaid_constructor_resolves_identifier_case_insensitively(
     navaid = NAVAID("uniq", nasr)
 
     assert navaid.NAV_ID == "UNIQ"
+    assert isinstance(navaid.getRaw(), SimpleNamespace)
+    assert len(nasr._NASR__legacy_indexes) == 1
 
 
 def test_raw_attribute_delegation_is_safe():
