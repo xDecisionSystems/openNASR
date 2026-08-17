@@ -27,6 +27,6 @@ tables into three useful layers:
 3. **Records** retain every original FAA field while adding typed convenience
    properties for commonly used values.
 
-The legacy `Airport`, `FIX`, `NAVAID`, and `ARB` constructors remain available
-for compatibility and are documented on their corresponding type pages. New
+The legacy `Airport`, `FIX`, and `NAVAID` constructors remain available for
+compatibility and are documented on their corresponding type pages. New
 applications should prefer the repository facade.

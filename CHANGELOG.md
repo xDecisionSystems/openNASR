@@ -22,6 +22,13 @@ and versions follow Semantic Versioning.
   `FaaRecord` subclasses, making each complex record's complete FAA source
   fields visible without overwhelming the generated class API.
 
+### Removed
+
+- Removed the redundant `ARB`/uppercase `ARTCC` compatibility API and
+  `NASR.loadARTCC()`. Use `nasr.artccs.get(identifier)` or
+  `nasr.artcc(identifier)` instead. The shared `Boundary` geometry type now
+  lives in `openNASR.airspace` and remains available from the package root.
+
 ### Added
 
 - Modern airport, STAR, airway, and ARTCC domain objects now provide `plot()`

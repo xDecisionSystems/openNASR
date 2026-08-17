@@ -37,4 +37,3 @@ date.
 .. autoclass:: openNASR.cycles.RemovalResult
 .. autoclass:: openNASR.cycles.FaaCycleProvider
 ```
-

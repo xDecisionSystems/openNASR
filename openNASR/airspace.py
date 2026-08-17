@@ -7,14 +7,84 @@ from collections.abc import Mapping
 from typing import Any
 
 from pandas import DataFrame
+from shapely.geometry import MultiPolygon, Polygon
 
 from .airport import AirportRecord
-from .arb import Boundary
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
 from .records import FaaRecord, dms_coordinate, integer, nullable_text
 from .relationships import related_record
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
+
+
+class Boundary:
+    """Shapely boundary assembled from FAA longitude and latitude vertices.
+
+    Explicitly closed rings are preserved as separate polygons. Geographic
+    output is available in both ``lonlat`` and ``latlon`` ordering, and
+    :attr:`getShape` exposes the underlying Shapely geometry.
+    """
+
+    def __init__(self, lons: Any = None, lats: Any = None) -> None:
+        points = [(lon, lat) for lon, lat in zip(lons, lats)]
+        parts = self._rings(points)
+        polygons = [Polygon(part) for part in parts]
+        self.__boundary = polygons[0] if len(polygons) == 1 else MultiPolygon(polygons)
+
+    @staticmethod
+    def _rings(points: list[tuple[float, float]]) -> list[list[tuple[float, float]]]:
+        """Split explicitly closed source rings without joining disjoint parts."""
+
+        rings = []
+        current = []
+        for point in points:
+            current.append(point)
+            if len(current) >= 4 and point == current[0]:
+                rings.append(current)
+                current = []
+        if current:
+            rings.append(current)
+        return rings
+
+    @property
+    def lat(self) -> list[float]:
+        return (
+            self.__boundary.geoms[0].exterior.coords.xy[1].tolist()
+            if isinstance(self.__boundary, MultiPolygon)
+            else self.__boundary.exterior.coords.xy[1].tolist()
+        )
+
+    @property
+    def lon(self) -> list[float]:
+        return (
+            self.__boundary.geoms[0].exterior.coords.xy[0].tolist()
+            if isinstance(self.__boundary, MultiPolygon)
+            else self.__boundary.exterior.coords.xy[0].tolist()
+        )
+
+    @property
+    def latlon(self) -> list[tuple[float, float]]:
+        """Boundary vertices as ``(latitude, longitude)`` pairs."""
+
+        return [(lat, lon) for lat, lon in zip(self.lat, self.lon)]
+
+    @property
+    def lonlat(self) -> list[tuple[float, float]]:
+        """Boundary vertices as ``(longitude, latitude)`` pairs."""
+
+        return [(lon, lat) for lat, lon in zip(self.lat, self.lon)]
+
+    @property
+    def getShape(self) -> Polygon | MultiPolygon:
+        """Return the underlying Shapely polygon or multipolygon."""
+
+        return self.__boundary
+
+    @property
+    def bbox(self) -> tuple[float, float, float, float]:
+        """Return bounds as ``(min_lon, min_lat, max_lon, max_lat)``."""
+
+        return self.__boundary.bounds
 
 
 def _ends_in_a_closed_ring(points: list[tuple[float, float]]) -> bool:
@@ -207,8 +277,7 @@ class ArtccRecord(FaaRecord):
 class ArtccBoundary:
     """Rich view of one ARTCC boundary (a single altitude/type group).
 
-    Wraps :class:`openNASR.arb.Boundary` directly; the ring-splitting and
-    bounds logic already there is correct and is not reimplemented here.
+    Wraps :class:`Boundary`; ring splitting preserves disjoint source rings.
     """
 
     def __init__(self, boundary: Boundary) -> None:
@@ -887,6 +956,7 @@ __all__ = [
     "ArtccBoundary",
     "ArtccRecord",
     "ArtccRepository",
+    "Boundary",
     "ClassAirspace",
     "ClassAirspaceRepository",
     "Maa",

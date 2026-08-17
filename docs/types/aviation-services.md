@@ -20,4 +20,3 @@ location-identifier
 
 These are local record and repository APIs. They read the selected FAA cycle
 and do not contact an external service.
-

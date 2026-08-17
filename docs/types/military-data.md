@@ -13,4 +13,3 @@ military-training-route
 
 Military training route points retain distinct point identifiers and display
 sequences. Airport-linked operations use the complete FAA site key.
-

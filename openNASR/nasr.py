@@ -6,7 +6,6 @@ from warnings import warn
 from zipfile import ZipFile
 from shutil import rmtree
 from pandas import DataFrame, read_csv
-from .arb import ARB
 from .airspace import (
     ArtccRepository,
     ClassAirspaceRepository,
@@ -712,12 +711,6 @@ class NASR(dict):
             .apply(lambda starCode: starCode.split(".")[1])
             .to_list()
         )
-
-    def loadARTCC(self):
-        self.artcc = ARB(self)
-
-    # def loadAirports(self):
-    #     self.airports = AIRPORT(self['ARB_BASE'],self['ARB_SEG'],arbType='ARTCC')
 
 
 # myNASR=NASR()

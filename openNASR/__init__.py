@@ -1,9 +1,9 @@
 from .nasr import NASR as NASR
 from .airport import Airport as Airport
-from .arb import ARB as ARB
 from .airspace import Artcc as Artcc
 from .airspace import ArtccBoundary as ArtccBoundary
 from .airspace import ArtccRepository as ArtccRepository
+from .airspace import Boundary as Boundary
 from .airspace import ClassAirspace as ClassAirspace
 from .airspace import ClassAirspaceRepository as ClassAirspaceRepository
 from .airspace import Maa as Maa
@@ -114,7 +114,6 @@ from .query import QueryValidationError as QueryValidationError
 from .query import UnsupportedQueryOperatorError as UnsupportedQueryOperatorError
 
 __all__ = [
-    "ARB",
     "Airway",
     "AirwayRecord",
     "AirwayRepository",
@@ -123,6 +122,7 @@ __all__ = [
     "ArtccBoundary",
     "ArtccRecord",
     "ArtccRepository",
+    "Boundary",
     "AtcFacility",
     "AtcFacilityRecord",
     "AtcFacilityRepository",

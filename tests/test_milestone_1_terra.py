@@ -165,8 +165,7 @@ def test_airport_and_fix_construction_against_core_fixture(make_nasr_from_fixtur
 
 def test_nasr_cycle_selection_artcc_and_preload_behavior(make_nasr_from_fixture):
     nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
-    nasr.loadARTCC()
-    assert nasr.artcc.getARTCC("ZOB").high.getShape.is_valid
+    assert nasr.artccs.get("ZOB").high.getShape.is_valid
     with pytest.raises(NotImplementedError, match="preloadAll"):
         NASR(preloadAll=True)
 

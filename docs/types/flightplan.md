@@ -33,4 +33,3 @@ data but does not validate an operational flight plan.
 .. autoclass:: openNASR.flightplan.RouteResolver
 .. autofunction:: openNASR.flightplan.flight_plan_path
 ```
-

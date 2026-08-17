@@ -325,20 +325,15 @@ except AmbiguousRecordError as error:
 
 ## ARTCC boundaries
 
-`nasr.artccs.get(location_id)` / `nasr.artcc(location_id)` return a modern
-`Artcc` object with the same `high`/`low` boundary geometry shown below. The
-legacy `ARB` constructor remains available and unchanged:
-
-Load ARTCC boundary records with `ARB`:
+`nasr.artccs.get(location_id)` / `nasr.artcc(location_id)` return an `Artcc`
+object containing the center record and its high- and low-altitude boundary
+geometry:
 
 ```python
-from openNASR import ARB
-
-airspace = ARB(nasr)
-zob = airspace.getARTCC("ZOB")
+zob = nasr.artccs.get("ZOB")
 
 print(zob.name)
-print(zob.boundaryTypes)
+print(zob.boundaries.keys())
 
 high_boundary = zob.high
 print(high_boundary.bbox)

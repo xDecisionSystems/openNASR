@@ -11,8 +11,8 @@ links, see the {doc}`reference/index`.
   opens a previously built exact-date DuckDB artifact and never falls back to
   CSV or another cycle. Tables remain available by FAA name, for example
   `nasr["APT_BASE"]`.
-- `Airport(identifier, nasr)`, `FIX(identifier, nasr)`, `NAVAID(identifier,
-  nasr, ...)`, and `ARB(nasr)` are the legacy compatibility constructors.
+- `Airport(identifier, nasr)`, `FIX(identifier, nasr)`, and `NAVAID(identifier,
+  nasr, ...)` are legacy compatibility constructors.
 - `CycleManager(cache_dir=None, provider=None)` manages cached archive,
   extracted-cycle, and optional per-cycle DuckDB data. Use
   `import_archive(path)`, `get(effective_date)`, `build_duckdb(cycle)`,
@@ -93,8 +93,7 @@ the plotting helper API and creates a session for that call.
   `MilitaryOperation`; `find(airport_id=...)` supports non-unique short
   airport-ID searches.
 - `nasr.artccs.get(location_id)` / `nasr.artcc(...)` return an `Artcc` with
-  `high`/`low` `ArtccBoundary` geometry backed by the same `Boundary` class
-  the legacy `ARB` path uses.
+  `high`/`low` `ArtccBoundary` geometry backed by `Boundary`.
 - `nasr.maas.get(maa_id)` / `nasr.maa(...)` return a `Maa` (the FAA's
   "Miscellaneous Activity Area" family: aerobatic practice, glider, hang
   glider, space launch, ultralight, and unmanned-aircraft areas) with
