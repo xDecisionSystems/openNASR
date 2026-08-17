@@ -55,6 +55,7 @@ def test_plot_airspace_draws_contained_airports_and_intersecting_airways():
         "Airports",
         "High-altitude airways",
     ]
+    assert axes.lines[1].get_linestyle() == "None"
 
 
 def test_plot_airspace_visibility_switches_filter_airway_levels_and_points():

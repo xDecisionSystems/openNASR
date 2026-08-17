@@ -195,6 +195,7 @@ def _plot_points(
                 marker=marker,
                 color=color,
                 markersize=4,
+                linestyle="None",
                 label=None if plotted else label,
             )
             plotted = True
