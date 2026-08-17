@@ -13,11 +13,71 @@ from openNASR.exceptions import (
 )
 from openNASR.flightplan import (
     RouteResolver,
+    _ProcedureIndex,
     _RouteToken,
     _WaypointResolver,
+    _text,
     _tokenize_flight_plan,
     flight_plan_path,
 )
+
+
+def test_procedure_index_matches_direct_normalized_filters():
+    tables = {
+        "DP_BASE": pd.DataFrame(
+            [
+                {"DP_COMPUTER_CODE": "ALPHA1", "ROW": "first"},
+                {"DP_COMPUTER_CODE": "BRAVO2", "ROW": "other"},
+                {"DP_COMPUTER_CODE": " alpha1 ", "ROW": "last"},
+            ]
+        ),
+        "DP_RTE": pd.DataFrame(
+            [
+                {"TRANSITION_COMPUTER_CODE": "DPTRANS", "ROW": "first"},
+                {"TRANSITION_COMPUTER_CODE": "OTHER", "ROW": "other"},
+                {"TRANSITION_COMPUTER_CODE": " dptrans ", "ROW": "last"},
+            ]
+        ),
+        "STAR_BASE": pd.DataFrame(
+            [
+                {"STAR_COMPUTER_CODE": "STAR1", "ROW": "first"},
+                {"STAR_COMPUTER_CODE": "OTHER", "ROW": "other"},
+                {"STAR_COMPUTER_CODE": " star1 ", "ROW": "last"},
+            ]
+        ),
+        "STAR_RTE": pd.DataFrame(
+            [
+                {"TRANSITION_COMPUTER_CODE": "STARTRANS", "ROW": "first"},
+                {"TRANSITION_COMPUTER_CODE": "OTHER", "ROW": "other"},
+                {"TRANSITION_COMPUTER_CODE": " startrans ", "ROW": "last"},
+            ]
+        ),
+    }
+    index = _ProcedureIndex(tables)
+
+    checks = (
+        (index.departure_base(" alpha1 "), "DP_BASE", "DP_COMPUTER_CODE", "ALPHA1"),
+        (
+            index.departure_transition("dptrans"),
+            "DP_RTE",
+            "TRANSITION_COMPUTER_CODE",
+            "DPTRANS",
+        ),
+        (index.star_base("STAR1"), "STAR_BASE", "STAR_COMPUTER_CODE", "STAR1"),
+        (
+            index.star_transition("startrans"),
+            "STAR_RTE",
+            "TRANSITION_COMPUTER_CODE",
+            "STARTRANS",
+        ),
+    )
+    for actual, table, column, token in checks:
+        assert actual is not None
+        direct = tables[table][tables[table][column].map(_text).eq(token)]
+        pd.testing.assert_frame_equal(actual, direct)
+
+    assert index._departure_codes["ALPHA1"].tolist() == [0, 2]
+    assert index.departure_base("MISSING").empty
 
 
 @pytest.fixture

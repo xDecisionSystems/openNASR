@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 import re
 
+from numpy import ndarray
 from pandas import DataFrame
 
 from .exceptions import (
@@ -300,6 +301,61 @@ class _AirwayIndex:
     def is_published(self, airway: str) -> bool:
         matches = self.matching(airway)
         return matches is not None and not matches.empty
+
+
+class _ProcedureIndex:
+    """Snapshot normalized procedure-table lookups for one route session.
+
+    The position arrays retain each source table's ordering without eagerly
+    materializing a DataFrame per procedure code.  The index is deliberately
+    not threaded into procedure resolution until T4.2, so this class has no
+    effect on current matching or error behavior by itself.
+    """
+
+    def __init__(self, tables: Mapping[str, DataFrame]) -> None:
+        self._departures = tables.get("DP_BASE")
+        self._departure_routes = tables.get("DP_RTE")
+        self._stars = tables.get("STAR_BASE")
+        self._star_routes = tables.get("STAR_RTE")
+        self._departure_codes = self._positions(self._departures, "DP_COMPUTER_CODE")
+        self._departure_transitions = self._positions(
+            self._departure_routes, "TRANSITION_COMPUTER_CODE"
+        )
+        self._star_codes = self._positions(self._stars, "STAR_COMPUTER_CODE")
+        self._star_transitions = self._positions(
+            self._star_routes, "TRANSITION_COMPUTER_CODE"
+        )
+
+    @staticmethod
+    def _positions(frame: DataFrame | None, column: str) -> dict[str, ndarray] | None:
+        if frame is None or column not in frame:
+            return None
+        return frame.groupby(frame[column].map(_text), sort=False).indices
+
+    @staticmethod
+    def _matching(
+        frame: DataFrame | None,
+        positions: dict[str, ndarray] | None,
+        token: str,
+    ) -> DataFrame | None:
+        if frame is None or positions is None:
+            return None
+        matches = positions.get(_text(token))
+        return frame.iloc[matches] if matches is not None else frame.iloc[0:0]
+
+    def departure_base(self, token: str) -> DataFrame | None:
+        return self._matching(self._departures, self._departure_codes, token)
+
+    def departure_transition(self, token: str) -> DataFrame | None:
+        return self._matching(
+            self._departure_routes, self._departure_transitions, token
+        )
+
+    def star_base(self, token: str) -> DataFrame | None:
+        return self._matching(self._stars, self._star_codes, token)
+
+    def star_transition(self, token: str) -> DataFrame | None:
+        return self._matching(self._star_routes, self._star_transitions, token)
 
 
 def _airway_vertices(
