@@ -636,6 +636,8 @@ def _select_procedure_body(
     *,
     connection_token: str | None,
     reverse: bool,
+    connection_at_start: bool,
+    common_at_start: bool,
     resolver: _WaypointResolver | None,
     entity_type: str,
     identifier: str,
@@ -661,18 +663,27 @@ def _select_procedure_body(
             candidate
             for candidate in candidates
             if candidate
-            and (candidate[0].identifier if reverse else candidate[-1].identifier)
+            and (
+                candidate[0].identifier
+                if connection_at_start
+                else candidate[-1].identifier
+            )
             == connection_token
         )
         if len(matches) == 1:
             return matches[0]
     common: list[_Waypoint] = []
-    for points in zip(*candidates):
+    ordered_candidates = (
+        candidates
+        if common_at_start
+        else tuple(tuple(reversed(path)) for path in candidates)
+    )
+    for points in zip(*ordered_candidates):
         if len(set(points)) != 1:
             break
         common.append(points[0])
     if common:
-        return tuple(common)
+        return tuple(common) if common_at_start else tuple(reversed(common))
     raise AmbiguousRecordError(
         entity_type=entity_type,
         identifier=identifier,
@@ -770,7 +781,10 @@ def _procedure_path(
     Departure route strings may identify a ``DP_BASE`` record directly or a
     ``DP_RTE`` transition code (for example ``ORCO8.TRM``). Arrival route
     strings normally carry a STAR transition computer code (for example
-    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. STAR rows are
+    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. Full FAA
+    ``DP_RTE`` rows (which include ``NEXT_POINT``) are recorded from their
+    terminal exit back toward the airport, so they are traversed in reverse
+    for an outbound flight plan. STAR rows are
     recorded outbound from the terminal route's end, so they are traversed in
     reverse for an inbound flight plan.
     """
@@ -785,6 +799,10 @@ def _procedure_path(
     base_matches = matches.base_matches
     if departure_matches:
         assert departure_routes is not None
+        # Full FAA DP_RTE rows include NEXT_POINT and are sequenced from the
+        # terminal exit back toward the airport. Retain historical behavior
+        # for sparse, legacy caller-supplied tables that omit that column.
+        reverse_departure = "NEXT_POINT" in departure_routes
         if len(departure_matches) != 1:
             raise AmbiguousRecordError(
                 entity_type="DepartureProcedure",
@@ -812,13 +830,16 @@ def _procedure_path(
             tables,
             body,
             connection_token=following_token,
-            reverse=False,
+            reverse=reverse_departure,
+            connection_at_start=False,
+            common_at_start=False,
             resolver=resolver,
             entity_type="DepartureProcedure",
             identifier=token,
         )
     if departure_transition_matches:
         assert departure_routes is not None
+        reverse_departure = "NEXT_POINT" in departure_routes
         departure_keys = {
             (
                 _text(row["DP_NAME"]),
@@ -849,17 +870,25 @@ def _procedure_path(
                 departure_routes[column]
         assert body is not None
         assert transition is not None
-        transition_points = _route_rows_points(tables, transition, resolver=resolver)
+        transition_points = _route_rows_points(
+            tables, transition, resolver=resolver, reverse=reverse_departure
+        )
         body_points = _select_procedure_body(
             tables,
             body,
             connection_token=following_token,
-            reverse=False,
+            reverse=reverse_departure,
+            connection_at_start=False,
+            common_at_start=False,
             resolver=resolver,
             entity_type="DepartureProcedure",
             identifier=token,
         )
-        return transition_points + body_points
+        return (
+            body_points + transition_points
+            if reverse_departure
+            else transition_points + body_points
+        )
     if transition_matches or base_matches:
         assert star_routes is not None
         if transition_matches:
@@ -899,6 +928,8 @@ def _procedure_path(
             body,
             connection_token=preceding_token,
             reverse=True,
+            connection_at_start=True,
+            common_at_start=True,
             resolver=resolver,
             entity_type="StarProcedure",
             identifier=token,

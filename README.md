@@ -400,11 +400,15 @@ same plotting helpers:
 
 ```python
 airport = nasr.airports.get("BWI")
+runway = airport.runways[0]
+localizer = airport.ils[0]
 star = nasr.stars.get(("TRISH.TRISH2", "ZDC"))
 airway = nasr.airways.get(("Y", "D", "V1"))
 artcc = nasr.artccs.get("ZDC")
 
 airport.plot(nasr)
+runway.plot(nasr)
+localizer.plot(nasr, plot_wedge=True, wedge_distance_nm=20)
 star.plot(nasr)
 airway.plot(nasr)
 artcc.plot(nasr)  # high-altitude boundary; use level="low" for low altitude

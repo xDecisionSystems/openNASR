@@ -25,6 +25,23 @@ for runway_end in airport.runway_ends:
 The legacy `RWY` adapters remain documented for existing callers, but new code
 should use the lossless record tuples on `AirportRecord`.
 
+## Plotting
+
+Each runway record plots the surveyed threshold-to-threshold segment:
+
+```python
+runway = airport.runways[0]
+figure, axes = runway.plot(
+    nasr,
+    projection="nautical_miles",
+    projection_center=(airport.latitude, airport.longitude),
+)
+```
+
+The method accepts the same axes, geographic/nautical-mile/Web Mercator
+projection, legend, and reusable `PlottingIndex` options as other modern
+plotting methods.
+
 ## Generated API
 
 ```{eval-rst}

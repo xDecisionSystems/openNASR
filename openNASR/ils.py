@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from math import cos, isfinite, pi, radians, sin, tan
-from typing import Any
+from typing import Any, Literal
 
 from pandas import DataFrame
 
@@ -65,16 +65,51 @@ def localizer_wedge_xy(
 class IlsRecord(FaaRecord):
     """Lossless airport ILS row with a localizer plotting convenience."""
 
-    def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
+    def plot(
+        self,
+        nasr: Mapping[str, DataFrame],
+        *,
+        axes: Any | None = None,
+        side_axes: Any | None = None,
+        plot_wedge: bool = True,
+        wedge_distance_nm: float = DEFAULT_LOCALIZER_WEDGE_DISTANCE_NM,
+        plot_glide_slope: bool = True,
+        glide_slope_distance_nm: float = 15.0,
+        project_to_nm: bool = False,
+        projection_center: tuple[float, float] | None = None,
+        projection: Literal["geographic", "nautical_miles", "web_mercator"]
+        | None = None,
+        plot_legend: bool = True,
+        index: Any | None = None,
+    ) -> tuple[Any, Any]:
         """Plot this localizer and optionally its standard course wedge.
 
-        Additional keyword arguments are passed to
-        :func:`openNASR.plotting.plot_ils_localizer`.
+        ``plot_wedge=True`` draws the localizer course 700 feet wide at the
+        runway threshold, expanding at a 2.5-degree half-angle.
+        ``wedge_distance_nm`` controls its distance into the approach area and
+        defaults to 20 NM. Supply ``side_axes`` to add the runway elevation
+        profile and FAA-published glide-slope angle; the top view also includes
+        the surveyed glide-slope site when available. Projection, axes, legend,
+        and reusable plotting index options match the other modern methods.
         """
 
         from .plotting import plot_ils_localizer
 
-        return plot_ils_localizer(nasr, self, **kwargs)
+        return plot_ils_localizer(
+            nasr,
+            self,
+            axes=axes,
+            side_axes=side_axes,
+            plot_wedge=plot_wedge,
+            wedge_distance_nm=wedge_distance_nm,
+            plot_glide_slope=plot_glide_slope,
+            glide_slope_distance_nm=glide_slope_distance_nm,
+            project_to_nm=project_to_nm,
+            projection_center=projection_center,
+            projection=projection,
+            plot_legend=plot_legend,
+            index=index,
+        )
 
 
 class DmeRecord(FaaRecord):

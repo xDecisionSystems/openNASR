@@ -50,6 +50,9 @@ and versions follow Semantic Versioning.
 - Added `IlsRecord.plot()` and `plot_ils_localizer()` with an optional standard
   700-foot threshold-width, 2.5-degree half-angle localizer wedge. The wedge
   distance defaults to 20 NM, while the airport overview example uses 1 NM.
+- Added `RunwayRecord.plot()` and `plot_runway()` for one surveyed
+  threshold-to-threshold runway segment. The ILS example now consists of the
+  runway and localizer class plotting calls instead of manual geometry code.
 
 ## [1.5.0] - 2026-08-17
 

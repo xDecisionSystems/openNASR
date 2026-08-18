@@ -10,6 +10,8 @@ from openNASR.airport import AirportRecord
 from openNASR.airspace import Artcc, ArtccRecord
 from openNASR.airway import Airway, AirwayRecord, AirwaySegmentRecord
 from openNASR.arrivals import StarProcedure, StarProcedureRecord, StarRouteRecord
+from openNASR.ils import IlsRecord
+from openNASR.rwy import RunwayRecord
 from openNASR import PlottingIndex as PublicPlottingIndex
 from openNASR.plotting import (
     PlottingIndex,
@@ -532,11 +534,72 @@ def test_plotting_index_lookups_match_source_ordered_vectorized_filters():
         "AAA", "STAR_APT", "STAR_RTE", ("STAR_COMPUTER_CODE", "ARTCC")
     )
     assert tuple(departure[0].coords) == ((20.0, 10.0), (21.0, 11.0))
+    reversed_departure = index.procedure_segments(
+        "AAA",
+        "DP_APT",
+        "DP_RTE",
+        ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
+        reverse=True,
+    )
+    assert tuple(reversed_departure[0].coords) == ((21.0, 11.0), (20.0, 10.0))
     assert tuple(arrival[0].coords) == ((20.0, 10.0), (21.0, 11.0))
     assert tuple(index.runway_segments("AAA")[0].coords) == (
         (20.0, 10.0),
         (21.0, 11.0),
     )
+
+
+def test_plotting_index_connects_airway_across_coordinate_less_border_points():
+    tables = {
+        "FIX_BASE": pd.DataFrame(
+            [
+                {"FIX_ID": "WEST", "LAT_DECIMAL": "42", "LONG_DECIMAL": "-83"},
+                {"FIX_ID": "EAST", "LAT_DECIMAL": "42", "LONG_DECIMAL": "-81"},
+            ]
+        ),
+        "NAV_BASE": pd.DataFrame(),
+        "AWY_BASE": pd.DataFrame(
+            [
+                {
+                    "REGULATORY": "Y",
+                    "AWY_LOCATION": "C",
+                    "AWY_ID": "J554",
+                    "AWY_DESIGNATION": "J",
+                }
+            ]
+        ),
+        "AWY_SEG_ALT": pd.DataFrame(
+            [
+                {
+                    "FROM_POINT": "WEST",
+                    "TO_POINT": "U.S. CANADIAN BORDER-2",
+                    "REGULATORY": "Y",
+                    "AWY_LOCATION": "C",
+                    "AWY_ID": "J554",
+                },
+                {
+                    "FROM_POINT": "U.S. CANADIAN BORDER-2",
+                    "TO_POINT": "U.S. CANADIAN BORDER-3",
+                    "REGULATORY": "Y",
+                    "AWY_LOCATION": "C",
+                    "AWY_ID": "J554",
+                },
+                {
+                    "FROM_POINT": "U.S. CANADIAN BORDER-3",
+                    "TO_POINT": "EAST",
+                    "REGULATORY": "Y",
+                    "AWY_LOCATION": "C",
+                    "AWY_ID": "J554",
+                },
+            ]
+        ),
+    }
+
+    segments = PlottingIndex(tables).airway_segments()
+
+    assert len(segments) == 1
+    assert segments[0][0] == "high"
+    assert tuple(segments[0][1].coords) == ((-83.0, 42.0), (-81.0, 42.0))
 
 
 def test_plotting_index_reuses_one_route_resolver(monkeypatch):
@@ -982,9 +1045,8 @@ def test_plot_ils_localizer_draws_standard_threshold_wedge():
         "MAG_VAR_HEMIS": "E",
     }
 
-    _, axes = plot_ils_localizer(
+    _, axes = IlsRecord(localizer).plot(
         tables,
-        localizer,
         projection="nautical_miles",
         wedge_distance_nm=20,
     )
@@ -1001,6 +1063,36 @@ def test_plot_ils_localizer_draws_standard_threshold_wedge():
         "Localizer",
         "Localizer course",
     ]
+
+
+def test_runway_record_plot_draws_selected_surveyed_runway():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_RWY_END": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "40",
+                    "LONG_DECIMAL": "-75",
+                },
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "40.01",
+                    "LONG_DECIMAL": "-75",
+                },
+            ]
+        )
+    }
+    runway = RunwayRecord({"ARPT_ID": "AAA", "RWY_ID": "01/19"})
+
+    _, axes = runway.plot(tables)
+
+    assert len(axes.lines) == 1
+    assert tuple(axes.lines[0].get_xdata()) == pytest.approx((-75, -75))
+    assert tuple(axes.lines[0].get_ydata()) == pytest.approx((40, 40.01))
+    assert axes.lines[0].get_linewidth() == pytest.approx(4)
 
 
 def test_plot_ils_localizer_can_hide_wedge_and_reject_invalid_distance():
@@ -1031,3 +1123,76 @@ def test_plot_ils_localizer_can_hide_wedge_and_reject_invalid_distance():
     assert not axes.patches
     with pytest.raises(ValueError, match="greater than zero"):
         plot_ils_localizer(tables, localizer, wedge_distance_nm=0)
+
+
+def test_ils_record_plot_draws_top_and_side_glide_slope_views():
+    pytest.importorskip("matplotlib").use("Agg")
+    from matplotlib import pyplot as plt
+
+    tables = {
+        "APT_RWY_END": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "18/36",
+                    "RWY_END_ID": "36",
+                    "LAT_DECIMAL": "40",
+                    "LONG_DECIMAL": "-75",
+                    "RWY_END_ELEV": "100",
+                },
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "18/36",
+                    "RWY_END_ID": "18",
+                    "LAT_DECIMAL": "40.01",
+                    "LONG_DECIMAL": "-75",
+                    "RWY_END_ELEV": "105",
+                },
+            ]
+        ),
+        "ILS_GS": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_END_ID": "36",
+                    "ILS_LOC_ID": "I-AAA",
+                    "LAT_DECIMAL": "39.999",
+                    "LONG_DECIMAL": "-75",
+                    "SITE_ELEVATION": "110",
+                    "G_S_ANGLE": "3",
+                }
+            ]
+        ),
+    }
+    localizer = IlsRecord(
+        {
+            "ARPT_ID": "AAA",
+            "RWY_END_ID": "36",
+            "ILS_LOC_ID": "I-AAA",
+            "LAT_DECIMAL": "40.01",
+            "LONG_DECIMAL": "-75",
+            "APCH_BEAR": "0",
+            "MAG_VAR": "0",
+            "MAG_VAR_HEMIS": "E",
+        }
+    )
+    figure, (top_axes, side_axes) = plt.subplots(1, 2)
+
+    returned_figure, returned_axes = localizer.plot(
+        tables,
+        axes=top_axes,
+        side_axes=side_axes,
+        projection="nautical_miles",
+    )
+
+    assert returned_figure is figure
+    assert returned_axes is top_axes
+    assert len(top_axes.collections) == 2
+    assert len(top_axes.patches) == 1
+    assert len(side_axes.lines) == 3
+    assert [line.get_label() for line in side_axes.lines[:2]] == [
+        "Runway",
+        "3° glide slope",
+    ]
+    assert side_axes.get_xlabel() == "NM from runway threshold"
+    assert side_axes.get_ylabel() == "Elevation (ft MSL)"

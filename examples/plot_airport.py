@@ -12,7 +12,6 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 from openNASR import NASR, PlottingIndex, plot_airport_procedures
-from openNASR.coordinates import ll2xy
 
 
 # Configuration: edit these values before running the script.
@@ -87,25 +86,6 @@ for localizer in airport.ils:
         plot_legend=False,
         index=index,
     )
-
-# Glide-slope records carry their own surveyed coordinates.
-plotted = False
-for record in airport.glide_slopes:
-    try:
-        latitude = float(record["LAT_DECIMAL"])
-        longitude = float(record["LONG_DECIMAL"])
-    except (KeyError, TypeError, ValueError):
-        continue
-    x, y, _, _ = ll2xy(latitude, longitude, llc=center)
-    ils_axes.plot(
-        x,
-        y,
-        marker="^",
-        color="tab:purple",
-        linestyle="None",
-        label=None if plotted else "Glide-slope sites",
-    )
-    plotted = True
 
 runway_axes.set_title("Runways")
 ils_axes.set_title("Runways and ILS component sites")

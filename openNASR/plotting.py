@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import numpy as np
@@ -23,6 +24,21 @@ from .indexing import (
 PlotProjection = Literal["geographic", "nautical_miles", "web_mercator"]
 _WEB_MERCATOR_RADIUS_M = 6_378_137.0
 _WEB_MERCATOR_MAX_LATITUDE = 85.0511287798066
+_FEET_PER_NAUTICAL_MILE = 6076.12
+
+
+@dataclass(frozen=True)
+class _IlsProfile:
+    threshold_latitude: float
+    threshold_longitude: float
+    threshold_elevation_ft: float
+    opposite_latitude: float
+    opposite_longitude: float
+    opposite_elevation_ft: float
+    glide_slope_latitude: float
+    glide_slope_longitude: float
+    glide_slope_elevation_ft: float
+    glide_slope_angle_deg: float
 
 
 def _plot_projection(
@@ -227,13 +243,27 @@ class PlottingIndex:
         ]
         segments = []
         endpoints = self.navigation_endpoints()
+        # Some published airway chains include named international-border
+        # placeholders that have no corresponding FIX/NAV coordinate record in
+        # the U.S. NASR subscription. Preserve the visual continuity of that
+        # published airway by joining the surrounding coordinate-bearing
+        # endpoints, rather than dropping the whole crossing.
+        pending_continuations: dict[tuple[str, str, str], tuple[float, float]] = {}
         for source, destination, regulatory, location, identifier in zip(*values):
             starts = endpoints.get(_text(source), ())
             ends = endpoints.get(_text(destination), ())
-            if len(starts) == 1 and len(ends) == 1 and starts[0] != ends[0]:
-                key = _text(regulatory), _text(location), _text(identifier)
-                level = "high" if designations.get(key, "") in {"J", "Q"} else "low"
-                segments.append((level, LineString((starts[0], ends[0]))))
+            key = _text(regulatory), _text(location), _text(identifier)
+            level = "high" if designations.get(key, "") in {"J", "Q"} else "low"
+            if len(starts) == 1 and len(ends) == 1:
+                pending_continuations.pop(key, None)
+                if starts[0] != ends[0]:
+                    segments.append((level, LineString((starts[0], ends[0]))))
+            elif len(starts) == 1:
+                pending_continuations[key] = starts[0]
+            elif len(ends) == 1:
+                continuation = pending_continuations.pop(key, None)
+                if continuation is not None and continuation != ends[0]:
+                    segments.append((level, LineString((continuation, ends[0]))))
         return tuple(segments)
 
     def _rows(self, table: str, column: str, value: object) -> DataFrame | None:
@@ -299,6 +329,8 @@ class PlottingIndex:
         association_table: str,
         route_table: str,
         key_columns: tuple[str, ...],
+        *,
+        reverse: bool = False,
     ) -> tuple[LineString, ...]:
         associations = self._rows(association_table, "ARPT_ID", airport_id)
         routes = self._nasr.get(route_table)
@@ -328,7 +360,8 @@ class PlottingIndex:
             starts = endpoints.get(_text(source), ())
             ends = endpoints.get(_text(destination), ())
             if len(starts) == 1 and len(ends) == 1 and starts[0] != ends[0]:
-                segments.append(LineString((starts[0], ends[0])))
+                coordinates = (ends[0], starts[0]) if reverse else (starts[0], ends[0])
+                segments.append(LineString(coordinates))
         return tuple(segments)
 
     def runway_segments(self, airport_id: str) -> tuple[LineString, ...]:
@@ -341,6 +374,32 @@ class PlottingIndex:
             for points in grouped.values()
             if len(points) >= 2 and points[0] != points[1]
         )
+
+    def runway_segment(self, airport_id: str, runway_id: str) -> LineString:
+        """Return the surveyed threshold-to-threshold segment for one runway."""
+
+        frame = self._nasr.get("APT_RWY_END")
+        required = {"ARPT_ID", "RWY_ID", "LAT_DECIMAL", "LONG_DECIMAL"}
+        if frame is None or not required.issubset(frame.columns):
+            raise ValueError("runway plots require APT_RWY_END coordinates")
+        positions = self._route_position_index(
+            "APT_RWY_END", ("ARPT_ID", "RWY_ID")
+        ).get((_text(airport_id), _text(runway_id)), ())
+        coordinates = []
+        for position in positions:
+            row = frame.iloc[int(position)]
+            try:
+                coordinates.append(
+                    (float(row["LONG_DECIMAL"]), float(row["LAT_DECIMAL"]))
+                )
+            except (TypeError, ValueError):
+                continue
+        if len(coordinates) < 2 or coordinates[0] == coordinates[1]:
+            raise ValueError(
+                "runway plots require two surveyed runway thresholds for "
+                f"{_text(airport_id)} {_text(runway_id)}"
+            )
+        return LineString((coordinates[0], coordinates[1]))
 
     def runway_end_coordinate(
         self, airport_id: str, runway_end_id: str
@@ -369,6 +428,81 @@ class PlottingIndex:
                 f"{_text(airport_id)} {_text(runway_end_id)}"
             )
         return coordinates[0]
+
+    def ils_profile(
+        self, airport_id: str, runway_end_id: str, localizer_id: str
+    ) -> _IlsProfile:
+        """Return runway and glide-slope values for an ILS side view."""
+
+        runway_ends = self._nasr.get("APT_RWY_END")
+        runway_columns = {
+            "ARPT_ID",
+            "RWY_ID",
+            "RWY_END_ID",
+            "LAT_DECIMAL",
+            "LONG_DECIMAL",
+            "RWY_END_ELEV",
+        }
+        if runway_ends is None or not runway_columns.issubset(runway_ends.columns):
+            raise ValueError("ILS side views require APT_RWY_END survey data")
+        threshold_positions = self._route_position_index(
+            "APT_RWY_END", ("ARPT_ID", "RWY_END_ID")
+        ).get((_text(airport_id), _text(runway_end_id)), ())
+        if len(threshold_positions) != 1:
+            raise ValueError(
+                "ILS side views require exactly one selected runway threshold"
+            )
+        threshold = runway_ends.iloc[int(next(iter(threshold_positions)))]
+        runway_id = _text(threshold["RWY_ID"])
+        runway_positions = self._route_position_index(
+            "APT_RWY_END", ("ARPT_ID", "RWY_ID")
+        ).get((_text(airport_id), runway_id), ())
+        opposite_positions = [
+            position
+            for position in runway_positions
+            if _text(runway_ends.iloc[int(position)]["RWY_END_ID"])
+            != _text(runway_end_id)
+        ]
+        if len(opposite_positions) != 1:
+            raise ValueError("ILS side views require one opposite runway threshold")
+        opposite = runway_ends.iloc[int(opposite_positions[0])]
+
+        glide_slopes = self._nasr.get("ILS_GS")
+        glide_columns = {
+            "ARPT_ID",
+            "RWY_END_ID",
+            "ILS_LOC_ID",
+            "LAT_DECIMAL",
+            "LONG_DECIMAL",
+            "SITE_ELEVATION",
+            "G_S_ANGLE",
+        }
+        if glide_slopes is None or not glide_columns.issubset(glide_slopes.columns):
+            raise ValueError("ILS plots require ILS_GS survey data")
+        glide_positions = self._route_position_index(
+            "ILS_GS", ("ARPT_ID", "RWY_END_ID", "ILS_LOC_ID")
+        ).get((_text(airport_id), _text(runway_end_id), _text(localizer_id)), ())
+        if len(glide_positions) != 1:
+            raise ValueError("ILS plots require exactly one matching glide slope")
+        glide_slope = glide_slopes.iloc[int(next(iter(glide_positions)))]
+
+        try:
+            return _IlsProfile(
+                threshold_latitude=float(threshold["LAT_DECIMAL"]),
+                threshold_longitude=float(threshold["LONG_DECIMAL"]),
+                threshold_elevation_ft=float(threshold["RWY_END_ELEV"]),
+                opposite_latitude=float(opposite["LAT_DECIMAL"]),
+                opposite_longitude=float(opposite["LONG_DECIMAL"]),
+                opposite_elevation_ft=float(opposite["RWY_END_ELEV"]),
+                glide_slope_latitude=float(glide_slope["LAT_DECIMAL"]),
+                glide_slope_longitude=float(glide_slope["LONG_DECIMAL"]),
+                glide_slope_elevation_ft=float(glide_slope["SITE_ELEVATION"]),
+                glide_slope_angle_deg=float(glide_slope["G_S_ANGLE"]),
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "ILS top and side views require numeric runway/glide-slope values"
+            ) from error
 
     def record_segments(
         self,
@@ -462,10 +596,11 @@ def _procedure_segments(
     route_table: str,
     key_columns: tuple[str, ...],
     *,
+    reverse: bool = False,
     index: PlottingIndex | None = None,
 ) -> tuple[LineString, ...]:
     return _plotting_index(nasr, index).procedure_segments(
-        airport_id, association_table, route_table, key_columns
+        airport_id, association_table, route_table, key_columns, reverse=reverse
     )
 
 
@@ -817,6 +952,7 @@ def _airport_procedure_layers(
                     "DP_APT",
                     "DP_RTE",
                     ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
+                    reverse=True,
                     index=plotting_index,
                 ),
                 "tab:blue",
@@ -845,7 +981,7 @@ def _airport_procedure_layers(
 
 def _draw_projected_layers(
     axes: Any,
-    layers: tuple[tuple[tuple[LineString, ...], str, int, str], ...],
+    layers: tuple[tuple[tuple[LineString, ...], str, float, str], ...],
     *,
     projection: PlotProjection,
     projection_center: tuple[float, float] | None,
@@ -883,6 +1019,7 @@ def _plot_route_object(
     color: str,
     label: str,
     title: str,
+    linewidth: float = 1,
 ) -> tuple[Any, Any]:
     """Draw one route-like domain object from already-resolved segments."""
 
@@ -915,7 +1052,7 @@ def _plot_route_object(
         figure = axes.figure
     _draw_projected_layers(
         axes,
-        ((segments, color, 1, label),),
+        ((segments, color, linewidth, label),),
         projection=active_projection,
         projection_center=active_projection_center,
     )
@@ -927,6 +1064,41 @@ def _plot_route_object(
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
+
+
+def plot_runway(
+    nasr: Mapping[str, DataFrame],
+    runway: Mapping[str, object],
+    *,
+    axes: Any | None = None,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
+    plot_legend: bool = True,
+    index: PlottingIndex | None = None,
+) -> tuple[Any, Any]:
+    """Plot one runway between its two surveyed threshold coordinates."""
+
+    if not isinstance(runway, Mapping):
+        raise TypeError("runway must be a RunwayRecord or APT_RWY mapping")
+    airport_id = _text(runway.get("ARPT_ID"))
+    runway_id = _text(runway.get("RWY_ID"))
+    if not airport_id or not runway_id:
+        raise ValueError("runway plots require ARPT_ID and RWY_ID")
+    plotting_index = _plotting_index(nasr, index)
+    segment = plotting_index.runway_segment(airport_id, runway_id)
+    return _plot_route_object(
+        (segment,),
+        axes=axes,
+        project_to_nm=project_to_nm,
+        projection=projection,
+        projection_center=projection_center,
+        plot_legend=plot_legend,
+        color="black",
+        label="Runway",
+        title=f"{airport_id} runway {runway_id}",
+        linewidth=4,
+    )
 
 
 def plot_airway(
@@ -1080,21 +1252,27 @@ def plot_ils_localizer(
     ils: Mapping[str, object],
     *,
     axes: Any | None = None,
+    side_axes: Any | None = None,
     plot_wedge: bool = True,
     wedge_distance_nm: float = DEFAULT_LOCALIZER_WEDGE_DISTANCE_NM,
+    plot_glide_slope: bool = True,
+    glide_slope_distance_nm: float = 15.0,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
-    """Plot an ILS localizer site and its standard approach-course wedge.
+    """Plot top-view ILS geometry and an optional runway/glide-slope side view.
 
     ``ils`` is normally an :class:`~openNASR.ils.IlsRecord`. The wedge is 700
     feet wide at the surveyed runway threshold and expands at a 2.5-degree
     half-angle for ``wedge_distance_nm`` nautical miles into the approach
     area. Set ``plot_wedge=False`` to draw only the localizer transmitter.
-    The default wedge distance is 20 NM.
+    The default wedge distance is 20 NM. When ``side_axes`` is supplied, the
+    runway elevation profile and FAA-published glide-slope angle are drawn on
+    those axes. ``plot_glide_slope`` also controls the surveyed top-view
+    glide-slope site.
     """
 
     if not isinstance(ils, Mapping):
@@ -1115,6 +1293,20 @@ def plot_ils_localizer(
 
     plotting_index = _plotting_index(nasr, index)
     threshold = plotting_index.runway_end_coordinate(airport_id, runway_end_id)
+    profile = None
+    if plot_glide_slope or side_axes is not None:
+        localizer_id = _text(ils.get("ILS_LOC_ID"))
+        if not localizer_id:
+            if side_axes is not None:
+                raise ValueError("ILS side views require ILS_LOC_ID")
+        else:
+            try:
+                profile = plotting_index.ils_profile(
+                    airport_id, runway_end_id, localizer_id
+                )
+            except ValueError:
+                if side_axes is not None:
+                    raise
     active_projection = _plot_projection(project_to_nm, projection)
     if active_projection == "web_mercator" and projection_center is not None:
         raise ValueError("projection_center is not used by web_mercator")
@@ -1144,6 +1336,21 @@ def plot_ils_localizer(
         label="Localizer",
     )
 
+    if plot_glide_slope and profile is not None:
+        glide_x, glide_y = _project_coordinates(
+            profile.glide_slope_longitude,
+            profile.glide_slope_latitude,
+            projection=active_projection,
+            center=active_projection_center,
+        )
+        axes.scatter(
+            glide_x,
+            glide_y,
+            color="tab:red",
+            marker="^",
+            label="Glide slope",
+        )
+
     if plot_wedge:
         wedge_x, wedge_y = localizer_wedge_xy(
             0.0,
@@ -1170,6 +1377,51 @@ def plot_ils_localizer(
             alpha=0.2,
             label="Localizer course",
         )
+
+    if side_axes is not None and profile is not None:
+        side_distance = float(glide_slope_distance_nm)
+        if not np.isfinite(side_distance) or side_distance <= 0:
+            raise ValueError("glide_slope_distance_nm must be greater than zero")
+        local_x, local_y, _, _ = ll2xy(
+            [profile.opposite_latitude, profile.glide_slope_latitude],
+            [profile.opposite_longitude, profile.glide_slope_longitude],
+            llc=threshold,
+        )
+        runway_length = float(np.hypot(local_x[0], local_y[0]))
+        outbound = np.radians((_localizer_true_bearing(ils) + 180.0) % 360.0)
+        glide_distance = float(
+            local_x[1] * np.sin(outbound) + local_y[1] * np.cos(outbound)
+        )
+        approach_elevation = profile.glide_slope_elevation_ft + (
+            side_distance - glide_distance
+        ) * _FEET_PER_NAUTICAL_MILE * np.tan(np.radians(profile.glide_slope_angle_deg))
+        side_axes.plot(
+            (-runway_length, 0.0),
+            (profile.opposite_elevation_ft, profile.threshold_elevation_ft),
+            color="black",
+            linewidth=4,
+            label="Runway",
+        )
+        if plot_glide_slope:
+            side_axes.plot(
+                (glide_distance, side_distance),
+                (profile.glide_slope_elevation_ft, approach_elevation),
+                color="tab:red",
+                linewidth=2,
+                label=f"{profile.glide_slope_angle_deg:g}° glide slope",
+            )
+            side_axes.scatter(
+                glide_distance,
+                profile.glide_slope_elevation_ft,
+                color="tab:red",
+                zorder=3,
+            )
+        side_axes.axvline(0, color="gray", linestyle="--", linewidth=1)
+        side_axes.set_title(f"{airport_id} {runway_end_id}: side view")
+        side_axes.set_xlabel("NM from runway threshold")
+        side_axes.set_ylabel("Elevation (ft MSL)")
+        if plot_legend:
+            side_axes.legend()
 
     if plot_legend:
         axes.legend()
@@ -1328,5 +1580,6 @@ __all__ = [
     "plot_airspace",
     "plot_flight_plan",
     "plot_ils_localizer",
+    "plot_runway",
     "plot_star",
 ]

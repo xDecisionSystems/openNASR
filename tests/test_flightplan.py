@@ -925,6 +925,71 @@ def test_flight_plan_path_resolves_bare_departure_after_origin(tables):
     )
 
 
+def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
+    tables,
+):
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": "EXIT", "LAT_DECIMAL": "36", "LONG_DECIMAL": "-79"},
+                    {"FIX_ID": "MID", "LAT_DECIMAL": "37", "LONG_DECIMAL": "-78"},
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["DP_BASE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "OUTBOUND",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "OUTBOUND1",
+            }
+        ]
+    )
+    # FAA DP_RTE ordering runs from the terminal exit toward the runway.
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "OUTBOUND",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "OUTBOUND1",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": "EXIT",
+                "NEXT_POINT": "MID",
+            },
+            {
+                "DP_NAME": "OUTBOUND",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "OUTBOUND1",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "20",
+                "POINT": "MID",
+                "NEXT_POINT": "KAAA",
+            },
+            {
+                "DP_NAME": "OUTBOUND",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "OUTBOUND1",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "30",
+                "POINT": "KAAA",
+                "NEXT_POINT": "",
+            },
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA OUTBOUND1 EXIT KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+
+
 def test_flight_plan_path_resolves_bare_arrival_before_destination(tables):
     tables["STAR_BASE"] = pd.DataFrame(
         [{"STAR_COMPUTER_CODE": "SCAMR4", "ARTCC": "ZJX"}]

@@ -19,8 +19,8 @@ before running it. The checked-in defaults reproduce the figures from the
 
 - [Plotting an airport](plotting-airport.md) separates runways, ILS component
   sites, arrivals, and departures into readable panels.
-- [Plotting an ILS](plotting-ils.md) shows a runway, localizer course, and glide
-  slope in top and side views.
+- [Plotting an ILS](plotting-ils.md) combines the runway and localizer class
+  plotting methods in one concise example.
 - [Plotting an ARTCC](plotting-artcc.md) draws an ARTCC boundary with airports
   and high- and low-altitude airways.
 - [Converting a flight plan to a path](flight-plan-path.md) resolves FAA route

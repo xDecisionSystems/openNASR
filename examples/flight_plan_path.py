@@ -17,6 +17,7 @@ from openNASR import NASR, PlottingIndex, RouteResolver, plot_flight_plan
 
 # Configuration: edit these values before running the script.
 route = "KLAX.DOTSS2.CLEEE..PKE.J74.TXO.J72.TURKI.JOVEM6.KDFW/0235"
+route = "TURKI.JOVEM6.KDFW"
 cycle = "2026-05-14"
 cache_dir: Path | None = None
 output_path = Path(__file__).with_suffix(".png")

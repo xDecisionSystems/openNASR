@@ -1,9 +1,43 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, Literal
+
+from pandas import DataFrame
+
 from .basictypes import Raw, RawDict
 from .records import FaaRecord
 
 
 class RunwayRecord(FaaRecord):
-    """Lossless typed marker for an airport runway row."""
+    """Lossless airport runway row with a plotting convenience."""
+
+    def plot(
+        self,
+        nasr: Mapping[str, DataFrame],
+        *,
+        axes: Any | None = None,
+        project_to_nm: bool = False,
+        projection_center: tuple[float, float] | None = None,
+        projection: Literal["geographic", "nautical_miles", "web_mercator"]
+        | None = None,
+        plot_legend: bool = True,
+        index: Any | None = None,
+    ) -> tuple[Any, Any]:
+        """Plot this runway between its two surveyed threshold coordinates."""
+
+        from .plotting import plot_runway
+
+        return plot_runway(
+            nasr,
+            self,
+            axes=axes,
+            project_to_nm=project_to_nm,
+            projection_center=projection_center,
+            projection=projection,
+            plot_legend=plot_legend,
+            index=index,
+        )
 
 
 class RunwayEndRecord(FaaRecord):

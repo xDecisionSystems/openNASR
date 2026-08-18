@@ -52,6 +52,7 @@ from .plotting import plot_artcc as plot_artcc
 from .plotting import plot_airport_procedures as plot_airport_procedures
 from .plotting import plot_flight_plan as plot_flight_plan
 from .plotting import plot_ils_localizer as plot_ils_localizer
+from .plotting import plot_runway as plot_runway
 from .plotting import plot_star as plot_star
 from .plotting import PlotProjection as PlotProjection
 from .plotting import PlottingIndex as PlottingIndex
@@ -192,6 +193,7 @@ __all__ = [
     "plot_airport_procedures",
     "plot_flight_plan",
     "plot_ils_localizer",
+    "plot_runway",
     "plot_star",
     "PlotProjection",
     "PlottingIndex",

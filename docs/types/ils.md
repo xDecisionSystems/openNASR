@@ -45,6 +45,15 @@ the approach area and defaults to 20 NM. Set `plot_wedge=False` to show only
 the localizer transmitter. This visualization is for data exploration, not
 operational navigation.
 
+Pass a second Matplotlib axes as `side_axes=` to add the runway elevation
+profile and FAA-published glide-slope angle. When a matching `ILS_GS` record is
+available, the top view also includes its surveyed site:
+
+```python
+figure, (top_axes, side_axes) = plt.subplots(1, 2)
+localizer.plot(nasr, axes=top_axes, side_axes=side_axes)
+```
+
 ## Generated API
 
 ```{eval-rst}
