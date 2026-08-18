@@ -121,6 +121,48 @@ def test_airspace_boundary_repository_supports_every_faa_boundary_type():
     assert repository.get("X0", boundary_type="ARTCC").geometry.is_valid
 
 
+def test_airspace_boundary_prints_named_entities_within_its_geometry(capsys):
+    tables = {
+        "ARB_BASE": DataFrame([{"LOCATION_ID": "TEST", "LOCATION_NAME": "Test"}]),
+        "ARB_SEG": DataFrame(
+            [
+                {
+                    "LOCATION_ID": "TEST",
+                    "TYPE": "FIR",
+                    "ALTITUDE": "UNLIMITED",
+                    "LONG_DECIMAL": longitude,
+                    "LAT_DECIMAL": latitude,
+                }
+                for longitude, latitude in ((0, 0), (2, 0), (2, 2), (0, 0))
+            ]
+        ),
+        "FIX_BASE": DataFrame(
+            [
+                {
+                    "FIX_ID": "INSIDE",
+                    "FIX_NAME": "Inside Fix",
+                    "LONG_DECIMAL": 1,
+                    "LAT_DECIMAL": 1,
+                },
+                {
+                    "FIX_ID": "OUTSIDE",
+                    "FIX_NAME": "Outside Fix",
+                    "LONG_DECIMAL": 3,
+                    "LAT_DECIMAL": 3,
+                },
+            ]
+        ),
+    }
+    boundary = AirspaceBoundaryRepository(tables).get(
+        "TEST", boundary_type="FIR", altitude="UNLIMITED"
+    )
+
+    labels = boundary.print(tables, "fixes")
+
+    assert labels == ("Inside Fix",)
+    assert capsys.readouterr().out == "Inside Fix\n"
+
+
 def test_artcc_repository_raises_record_not_found_for_an_unmatched_identifier(
     make_nasr_from_fixture,
 ):

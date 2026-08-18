@@ -31,6 +31,22 @@ figure, axes = boundary.plot(nasr, projection="geographic")
 firs = nasr.airspace_boundaries.find(boundary_type="FIR")
 ```
 
+## Listing entities within a boundary
+
+Use `.print(nasr, data_type)` to print and return the names of entities inside
+the selected geometry. The selectors `airport`, `fix`, `navaid` (or `airnav`),
+and `airway` accept either singular or plural spelling.
+
+```python
+boundary.print(nasr, "airports")
+boundary.print(nasr, "fixes")
+boundary.print(nasr, "airways")
+```
+
+`Artcc.print()` offers the same selectors; pass `level="low"` to inspect its
+low-altitude boundary. `Maa.print()` supports the same feature when the
+activity area has a published polygon.
+
 `AirspaceBoundary.plot()` draws only the selected boundary by default. This is
 safe for oceanic and antimeridian-crossing geometries; enable airport, fix,
 navaid, or airway layers explicitly when they are meaningful for the selected

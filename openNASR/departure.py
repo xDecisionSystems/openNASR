@@ -70,6 +70,11 @@ class CodedDepartureRoute:
     def __init__(self, record: CodedDepartureRouteRecord) -> None:
         self.record = record
 
+    def __str__(self) -> str:
+        """Return the coded-route type and FAA route code."""
+
+        return f"CodedDepartureRoute: {self.record.route_code or 'unnamed'}"
+
 
 class CodedDepartureRouteRepository:
     """Look up coded departure routes by their unique FAA route code."""
@@ -121,6 +126,12 @@ class DepartureProcedure:
         self.record = record
         self.airports = airports
         self.routes = routes
+
+    def __str__(self) -> str:
+        """Return the departure-procedure type and FAA name."""
+
+        name = self.record.raw.get("DP_NAME")
+        return "DepartureProcedure" if not name else f"DepartureProcedure: {name}"
 
 
 class DepartureProcedureRepository:
@@ -193,6 +204,15 @@ class PreferredRoute:
         self.record = record
         self.formats = formats
         self.segments = segments
+
+    def __str__(self) -> str:
+        """Return the preferred-route type and FAA composite key."""
+
+        key = "/".join(
+            str(self.record.raw.get(column, "")).strip()
+            for column in PREFERRED_ROUTE_KEY
+        ).strip("/")
+        return "PreferredRoute" if not key else f"PreferredRoute: {key}"
 
 
 class PreferredRouteRepository:

@@ -49,3 +49,9 @@ figure, axes = plot_airspace(
 ```{eval-rst}
 .. automodule:: openNASR.cfcn
 ```
+## USGS imagery coordinates
+
+Passing `basemap="usgs_imagery"` automatically selects Web Mercator when no
+projection is specified. The imagery and vector geometry remain internally in
+EPSG:3857 meters, while the displayed axes use nautical miles by default. Pass
+`kilometers=True` to label Web Mercator axes in kilometers instead.

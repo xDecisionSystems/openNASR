@@ -109,6 +109,7 @@ examples/plotting-ils
 examples/plotting-artcc
 examples/plotting-nas
 examples/plotting-fir
+examples/printing-airspace-entities
 examples/flight-plan-path
 ```
 

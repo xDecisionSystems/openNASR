@@ -5,7 +5,9 @@ import pytest
 from numpy import ndarray
 
 from openNASR.exceptions import AmbiguousRecordError, SchemaMismatchError
+from openNASR.fix import FixRecord
 from openNASR.ils import DmeRecord, GlideSlopeRecord, IlsRecord, MarkerRecord
+from openNASR.nav import NavaidRecord
 from openNASR.records import (
     AirportRecord,
     DmeRecord as LegacyDmeRecord,
@@ -77,6 +79,28 @@ def test_airport_record_exposes_typed_nullable_properties():
     assert airport.elevation_ft == 146.0
     assert airport.raw["UNMODELED_FAA_FIELD"] == "preserved verbatim"
     assert AirportRecord({"ARPT_ID": ""}).faa_id is None
+
+
+def test_location_record_strings_include_type_name_and_coordinates():
+    airport = AirportRecord(
+        {
+            "ARPT_NAME": "Baltimore/Washington International",
+            "LAT_DECIMAL": "39.1754",
+            "LONG_DECIMAL": "-76.6684",
+        }
+    )
+    fix = FixRecord(
+        {"FIX_NAME": "PALEO", "LAT_DECIMAL": "40.0", "LONG_DECIMAL": "-76.0"}
+    )
+    navaid = NavaidRecord(
+        {"NAME": "Baltimore", "LAT_DECIMAL": "39.2", "LONG_DECIMAL": "-76.7"}
+    )
+
+    assert str(airport) == (
+        "Airport: Baltimore/Washington International (39.1754, -76.6684)"
+    )
+    assert str(fix) == "Fix: PALEO (40.0, -76.0)"
+    assert str(navaid) == "Navaid: Baltimore (39.2, -76.7)"
 
 
 def test_airport_record_exposes_immutable_typed_runway_collections(fixture_nasr):

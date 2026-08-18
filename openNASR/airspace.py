@@ -7,7 +7,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from pandas import DataFrame
-from shapely.geometry import MultiPolygon, Polygon
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry.base import BaseGeometry
 
 from .airport import AirportRecord
 from .exceptions import AmbiguousRecordError, RecordNotFoundError
@@ -16,6 +17,96 @@ from .relationships import related_record
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
 AIRSPACE_BOUNDARY_TYPES = frozenset({"ARTCC", "FIR", "CTA", "CTA/FIR", "UTA"})
+_AIRSPACE_ENTITY_TYPES = {
+    "airport": ("APT_BASE", "ARPT_NAME", "ARPT_ID"),
+    "fix": ("FIX_BASE", "FIX_NAME", "FIX_ID"),
+    "navaid": ("NAV_BASE", "NAME", "NAV_ID"),
+}
+
+
+def _normalized_entity_type(value: object) -> str:
+    normalized = str(value).strip().lower().replace("_", "")
+    aliases = {
+        "airports": "airport",
+        "fixes": "fix",
+        "airnav": "navaid",
+        "airnavs": "navaid",
+        "navaids": "navaid",
+        "airways": "airway",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _text(value: object) -> str | None:
+    if value is None or value != value:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _point(row: Mapping[str, object]) -> Point | None:
+    try:
+        longitude = float(str(row["LONG_DECIMAL"]).strip())
+        latitude = float(str(row["LAT_DECIMAL"]).strip())
+    except (KeyError, TypeError, ValueError):
+        return None
+    return Point(longitude, latitude)
+
+
+def _print_entities_in_geometry(
+    nasr: Mapping[str, DataFrame], geometry: BaseGeometry, data_type: object
+) -> tuple[str, ...]:
+    """Print and return named FAA entities contained by a boundary geometry."""
+
+    entity_type = _normalized_entity_type(data_type)
+    if entity_type in _AIRSPACE_ENTITY_TYPES:
+        table, name_column, identifier_column = _AIRSPACE_ENTITY_TYPES[entity_type]
+        labels = []
+        for row in nasr[table].to_dict(orient="records"):
+            point = _point(row)
+            if point is None or not geometry.covers(point):
+                continue
+            label = _text(row.get(name_column)) or _text(row.get(identifier_column))
+            if label is not None:
+                labels.append(label)
+    elif entity_type == "airway":
+        labels = []
+        coordinates: dict[str, list[Point]] = {}
+        for table, identifier_column in (
+            ("FIX_BASE", "FIX_ID"),
+            ("NAV_BASE", "NAV_ID"),
+        ):
+            for row in nasr[table].to_dict(orient="records"):
+                identifier = _text(row.get(identifier_column))
+                point = _point(row)
+                if identifier is not None and point is not None:
+                    coordinates.setdefault(identifier, []).append(point)
+        for key, rows in nasr["AWY_SEG_ALT"].groupby(
+            ["REGULATORY", "AWY_LOCATION", "AWY_ID"], sort=False
+        ):
+            ordered_rows = sorted(
+                rows.to_dict(orient="records"),
+                key=lambda row: int(str(row["POINT_SEQ"])),
+            )
+            points = []
+            for row in ordered_rows:
+                candidates = coordinates.get(_text(row.get("FROM_POINT")) or "", [])
+                points.append(candidates[0] if len(candidates) == 1 else None)
+            if any(
+                start is not None
+                and end is not None
+                and geometry.intersects(LineString((start, end)))
+                for start, end in zip(points, points[1:])
+            ):
+                labels.append(_text(key[2]) or "unnamed airway")
+    else:
+        supported = "airport, fix, navaid (or airnav), airway"
+        raise ValueError(f"data_type must be one of: {supported}")
+
+    unique_labels = tuple(dict.fromkeys(labels))
+    for label in unique_labels:
+        print(label)
+    return unique_labels
 
 
 class Boundary:
@@ -335,6 +426,12 @@ class AirspaceBoundary:
 
         return self.record.location_id
 
+    def __str__(self) -> str:
+        """Return the boundary type and FAA location name."""
+
+        name = self.record.name or self.location_id or "unnamed"
+        return f"AirspaceBoundary ({self.boundary_type}): {name}"
+
     @property
     def geometry(self):
         """The boundary's Shapely polygon or multipolygon geometry."""
@@ -360,6 +457,17 @@ class AirspaceBoundary:
         ):
             kwargs.setdefault(option, False)
         return plot_airspace(nasr, self.boundary, **kwargs)
+
+    def print(
+        self, nasr: Mapping[str, DataFrame], data_type: object
+    ) -> tuple[str, ...]:
+        """Print and return named entities of ``data_type`` within this boundary.
+
+        Supported selectors are ``"airport"``, ``"fix"``, ``"navaid"``
+        (also ``"airnav"``), and ``"airway"``; plural forms are accepted.
+        """
+
+        return _print_entities_in_geometry(nasr, self.geometry, data_type)
 
 
 class AirspaceBoundaryRepository:
@@ -480,6 +588,11 @@ class Artcc:
     def low(self) -> ArtccBoundary | None:
         return self.boundaries.get("low")
 
+    def __str__(self) -> str:
+        """Return the ARTCC type and FAA center name."""
+
+        return f"Artcc: {self.name or self.location_id or 'unnamed'}"
+
     def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
         """Plot this ARTCC's high- or low-altitude boundary and map layers.
 
@@ -491,6 +604,16 @@ class Artcc:
         from .plotting import plot_artcc
 
         return plot_artcc(nasr, self, **kwargs)
+
+    def print(
+        self, nasr: Mapping[str, DataFrame], data_type: object, *, level: str = "high"
+    ) -> tuple[str, ...]:
+        """Print and return entities within this ARTCC's selected boundary."""
+
+        boundary = self.boundaries.get(str(level).strip().lower())
+        if boundary is None:
+            raise ValueError(f"ARTCC has no {level!r} boundary")
+        return _print_entities_in_geometry(nasr, boundary.getShape, data_type)
 
 
 class ArtccRepository:
@@ -741,6 +864,11 @@ class Maa:
     def name(self) -> str | None:
         return self.record.name
 
+    def __str__(self) -> str:
+        """Return the activity-area type and published name."""
+
+        return f"Maa: {self.name or self.maa_id or 'unnamed'}"
+
     @property
     def geometry(self):
         """A Shapely polygon (or multipolygon) built from the ordered
@@ -771,6 +899,16 @@ class Maa:
             points = [*points, points[0]]
         lons, lats = zip(*points)
         return Boundary(lons, lats).getShape
+
+    def print(
+        self, nasr: Mapping[str, DataFrame], data_type: object
+    ) -> tuple[str, ...]:
+        """Print and return entities within this activity area's published shape."""
+
+        geometry = self.geometry
+        if geometry is None:
+            raise ValueError("MAA has no published polygon geometry")
+        return _print_entities_in_geometry(nasr, geometry, data_type)
 
 
 class MaaRepository:
@@ -1009,6 +1147,11 @@ class ParachuteJumpArea:
     @property
     def drop_zone_name(self) -> str | None:
         return self.record.drop_zone_name
+
+    def __str__(self) -> str:
+        """Return the jump-area type and published drop-zone name."""
+
+        return f"ParachuteJumpArea: {self.drop_zone_name or self.pja_id or 'unnamed'}"
 
 
 class ParachuteJumpAreaRepository:

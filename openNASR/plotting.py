@@ -54,11 +54,15 @@ class _IlsProfile:
 
 
 def _plot_projection(
-    project_to_nm: bool, projection: PlotProjection | None
+    project_to_nm: bool, projection: PlotProjection | None, basemap: PlotBasemap | None
 ) -> PlotProjection:
     """Resolve the new projection selector and the compatible NM flag."""
 
     if projection is None:
+        if basemap is not None:
+            if project_to_nm:
+                raise ValueError("a basemap cannot be combined with project_to_nm=True")
+            return "web_mercator"
         return "nautical_miles" if project_to_nm else "geographic"
     if projection not in {"geographic", "nautical_miles", "web_mercator"}:
         raise ValueError(
@@ -71,12 +75,26 @@ def _plot_projection(
     return projection
 
 
-def _axis_labels(projection: PlotProjection) -> tuple[str, str]:
+def _axis_labels(
+    projection: PlotProjection, *, kilometers: bool = False
+) -> tuple[str, str]:
     if projection == "nautical_miles":
         return "East (NM)", "North (NM)"
     if projection == "web_mercator":
-        return "Web Mercator X (m)", "Web Mercator Y (m)"
+        unit = "km" if kilometers else "NM"
+        return f"Web Mercator X ({unit})", f"Web Mercator Y ({unit})"
     return "Longitude", "Latitude"
+
+
+def _format_web_mercator_axes(axes: Any, *, kilometers: bool) -> None:
+    """Label meter-based Web Mercator coordinates in user-facing distance units."""
+
+    from matplotlib.ticker import FuncFormatter
+
+    divisor = 1_000.0 if kilometers else 1_852.0
+    formatter = FuncFormatter(lambda value, _: f"{value / divisor:g}")
+    axes.xaxis.set_major_formatter(formatter)
+    axes.yaxis.set_major_formatter(formatter)
 
 
 def _add_usgs_imagery_background(axes: Any) -> None:
@@ -922,6 +940,7 @@ def plot_airspace(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
     """Plot a boundary with contained airports and intersecting airway segments.
@@ -964,7 +983,7 @@ def plot_airspace(
 
     plotting_index = _plotting_index(nasr, index)
     geometry = _geometry(boundary)
-    active_projection = _plot_projection(project_to_nm, projection)
+    active_projection = _plot_projection(project_to_nm, projection, basemap)
     if active_projection == "web_mercator" and projection_center is not None:
         raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = (
@@ -1013,11 +1032,13 @@ def plot_airspace(
 
     if plot_legend:
         axes.legend()
-    x_label, y_label = _axis_labels(active_projection)
+    x_label, y_label = _axis_labels(active_projection, kilometers=kilometers)
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     _add_basemap(axes, active_projection, basemap)
+    if active_projection == "web_mercator":
+        _format_web_mercator_axes(axes, kilometers=kilometers)
     return figure, axes
 
 
@@ -1115,6 +1136,7 @@ def _plot_route_object(
     projection: PlotProjection | None,
     projection_center: tuple[float, float] | None,
     basemap: PlotBasemap | None,
+    kilometers: bool,
     plot_legend: bool,
     color: str,
     label: str,
@@ -1125,7 +1147,7 @@ def _plot_route_object(
 
     from matplotlib import pyplot as plt
 
-    active_projection = _plot_projection(project_to_nm, projection)
+    active_projection = _plot_projection(project_to_nm, projection, basemap)
     if active_projection == "web_mercator" and projection_center is not None:
         raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = None
@@ -1159,11 +1181,13 @@ def _plot_route_object(
     if plot_legend and axes.get_legend_handles_labels()[0]:
         axes.legend()
     axes.set_title(title)
-    x_label, y_label = _axis_labels(active_projection)
+    x_label, y_label = _axis_labels(active_projection, kilometers=kilometers)
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     _add_basemap(axes, active_projection, basemap)
+    if active_projection == "web_mercator":
+        _format_web_mercator_axes(axes, kilometers=kilometers)
     return figure, axes
 
 
@@ -1176,6 +1200,7 @@ def plot_runway(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1196,6 +1221,7 @@ def plot_runway(
         projection=projection,
         projection_center=projection_center,
         basemap=basemap,
+        kilometers=kilometers,
         plot_legend=plot_legend,
         color="black",
         label="Runway",
@@ -1213,6 +1239,7 @@ def plot_airway(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1232,6 +1259,7 @@ def plot_airway(
         projection=projection,
         projection_center=projection_center,
         basemap=basemap,
+        kilometers=kilometers,
         plot_legend=plot_legend,
         color="tab:orange",
         label=identifier,
@@ -1248,6 +1276,7 @@ def plot_star(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1274,6 +1303,7 @@ def plot_star(
         projection=projection,
         projection_center=projection_center,
         basemap=basemap,
+        kilometers=kilometers,
         plot_legend=plot_legend,
         color="tab:green",
         label=identifier,
@@ -1297,6 +1327,7 @@ def plot_artcc(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
     """Plot one altitude boundary from an :class:`Artcc` object.
@@ -1329,6 +1360,7 @@ def plot_artcc(
         projection_center=projection_center,
         projection=projection,
         basemap=basemap,
+        kilometers=kilometers,
         index=index,
     )
     location_id = _text(getattr(artcc, "location_id", None)) or "ARTCC"
@@ -1370,6 +1402,7 @@ def plot_ils_localizer(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1417,7 +1450,7 @@ def plot_ils_localizer(
             except ValueError:
                 if side_axes is not None:
                     raise
-    active_projection = _plot_projection(project_to_nm, projection)
+    active_projection = _plot_projection(project_to_nm, projection, basemap)
     if active_projection == "web_mercator" and projection_center is not None:
         raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = (
@@ -1536,11 +1569,13 @@ def plot_ils_localizer(
     if plot_legend:
         axes.legend()
     axes.set_title(f"{airport_id} {runway_end_id} localizer")
-    x_label, y_label = _axis_labels(active_projection)
+    x_label, y_label = _axis_labels(active_projection, kilometers=kilometers)
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     _add_basemap(axes, active_projection, basemap)
+    if active_projection == "web_mercator":
+        _format_web_mercator_axes(axes, kilometers=kilometers)
     return figure, axes
 
 
@@ -1556,6 +1591,7 @@ def plot_airport_procedures(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1583,7 +1619,7 @@ def plot_airport_procedures(
     if not airport_id:
         raise ValueError("airport must provide a non-empty FAA identifier")
     plotting_index = _plotting_index(nasr, index)
-    active_projection = _plot_projection(project_to_nm, projection)
+    active_projection = _plot_projection(project_to_nm, projection, basemap)
     if active_projection == "web_mercator" and projection_center is not None:
         raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = (
@@ -1613,11 +1649,13 @@ def plot_airport_procedures(
     if plot_legend and axes.get_legend_handles_labels()[0]:
         axes.legend()
     axes.set_title(f"{airport_id} procedures")
-    x_label, y_label = _axis_labels(active_projection)
+    x_label, y_label = _axis_labels(active_projection, kilometers=kilometers)
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     _add_basemap(axes, active_projection, basemap)
+    if active_projection == "web_mercator":
+        _format_web_mercator_axes(axes, kilometers=kilometers)
     return figure, axes
 
 
@@ -1630,6 +1668,7 @@ def plot_flight_plan(
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
     basemap: PlotBasemap | None = None,
+    kilometers: bool = False,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1653,7 +1692,7 @@ def plot_flight_plan(
     else:
         figure = axes.figure
     latitudes, longitudes = zip(*path)
-    active_projection = _plot_projection(project_to_nm, projection)
+    active_projection = _plot_projection(project_to_nm, projection, basemap)
     if active_projection == "web_mercator" and projection_center is not None:
         raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = (
@@ -1678,11 +1717,13 @@ def plot_flight_plan(
     if plot_legend:
         axes.legend()
     axes.set_title("FAA flight plan")
-    x_label, y_label = _axis_labels(active_projection)
+    x_label, y_label = _axis_labels(active_projection, kilometers=kilometers)
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     _add_basemap(axes, active_projection, basemap)
+    if active_projection == "web_mercator":
+        _format_web_mercator_axes(axes, kilometers=kilometers)
     return figure, axes
 
 

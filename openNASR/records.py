@@ -153,6 +153,58 @@ class FaaRecord(Mapping[str, object]):
     def __len__(self) -> int:
         return len(self._raw)
 
+    def __str__(self) -> str:
+        """Return a concise human-readable description of this FAA record.
+
+        The raw mapping remains the authoritative representation. This method
+        is intentionally only a display summary: it names the typed record
+        and selects the best available FAA identifier/name. Point records also
+        include decimal ``(latitude, longitude)`` coordinates.
+        """
+
+        type_name = self.__class__.__name__.removesuffix("Record")
+        name = next(
+            (
+                self._display_value(column)
+                for column in (
+                    "ARPT_NAME",
+                    "FIX_NAME",
+                    "NAME",
+                    "LOCATION_NAME",
+                    "DROP_ZONE_NAME",
+                    "MAA_NAME",
+                    "RWY_ID",
+                    "ILS_ID",
+                    "DP_NAME",
+                    "STAR_COMPUTER_CODE",
+                    "AWY_ID",
+                    "RCode",
+                    "FAC_NAME",
+                    "FIX_ID",
+                    "NAV_ID",
+                    "ARPT_ID",
+                    "LOCATION_ID",
+                    "MAA_ID",
+                    "PJA_ID",
+                )
+                if self._display_value(column) is not None
+            ),
+            None,
+        )
+        summary = type_name if name is None else f"{type_name}: {name}"
+        latitude = self._display_value("LAT_DECIMAL")
+        longitude = self._display_value("LONG_DECIMAL")
+        if latitude is not None and longitude is not None:
+            summary += f" ({latitude}, {longitude})"
+        return summary
+
+    def _display_value(self, column: str) -> str | None:
+        value = self._raw.get(column)
+        if value is None or value != value:
+            return None
+        text = str(value).strip()
+        return text or None
+
     def __getattr__(self, name: str) -> Any:
         try:
             return self._raw[name]

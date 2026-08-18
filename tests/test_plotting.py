@@ -394,8 +394,8 @@ def test_all_public_plotters_support_epsg_3857_web_mercator():
 
     for call in calls:
         _, axes = call()
-        assert axes.get_xlabel() == "Web Mercator X (m)"
-        assert axes.get_ylabel() == "Web Mercator Y (m)"
+        assert axes.get_xlabel() == "Web Mercator X (NM)"
+        assert axes.get_ylabel() == "Web Mercator Y (NM)"
         assert axes.lines
 
 
@@ -1136,8 +1136,10 @@ def test_usgs_basemap_is_available_from_modern_plotting_methods(monkeypatch):
     )
 
     assert len(calls) == 2
-    with pytest.raises(ValueError, match="requires projection='web_mercator'"):
-        runway.plot(tables, basemap="usgs_imagery")
+    _, axes = runway.plot(tables, basemap="usgs_imagery")
+    assert axes.get_xlabel() == "Web Mercator X (NM)"
+    _, kilometer_axes = runway.plot(tables, basemap="usgs_imagery", kilometers=True)
+    assert kilometer_axes.get_xlabel() == "Web Mercator X (km)"
 
 
 def test_plot_ils_localizer_can_hide_wedge_and_reject_invalid_distance():

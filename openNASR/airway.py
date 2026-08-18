@@ -79,6 +79,12 @@ class Airway:
         self.record = record
         self.segments = segments
 
+    def __str__(self) -> str:
+        """Return the airway type and FAA composite identifier."""
+
+        key = self.record.airway_key
+        return "Airway" if key is None else f"Airway: {'/'.join(key)}"
+
     def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
         """Plot only this airway's resolved segments.
 

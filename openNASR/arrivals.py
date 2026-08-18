@@ -39,6 +39,12 @@ class StarProcedure:
         self.airports = airports
         self.routes = routes
 
+    def __str__(self) -> str:
+        """Return the STAR type and FAA computer code."""
+
+        name = self.record.raw.get("STAR_COMPUTER_CODE")
+        return "StarProcedure" if not name else f"StarProcedure: {name}"
+
     def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
         """Plot only this STAR's resolved route legs.
 
