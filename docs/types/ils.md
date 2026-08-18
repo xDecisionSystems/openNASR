@@ -25,6 +25,26 @@ airport.markers
 
 The related tuples preserve FAA source order and raw source values.
 
+## Plotting a localizer
+
+Each `IlsRecord` can plot its surveyed transmitter and approach-course wedge:
+
+```python
+localizer = airport.ils[0]
+figure, axes = localizer.plot(
+    nasr,
+    plot_wedge=True,
+    wedge_distance_nm=20,
+    projection="nautical_miles",
+)
+```
+
+The wedge is 700 feet wide at the surveyed runway threshold and expands at a
+2.5-degree half-angle. `wedge_distance_nm` controls how far it extends into
+the approach area and defaults to 20 NM. Set `plot_wedge=False` to show only
+the localizer transmitter. This visualization is for data exploration, not
+operational navigation.
+
 ## Generated API
 
 ```{eval-rst}

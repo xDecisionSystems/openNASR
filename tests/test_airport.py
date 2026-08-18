@@ -57,3 +57,17 @@ def test_airport_plot_uses_noninteractive_artists(make_nasr_from_fixture):
     assert figure.axes == [axes]
     assert axes.patches
     assert axes.get_aspect() == 1.0
+
+
+def test_airport_plot_can_draw_standard_localizer_wedge(make_nasr_from_fixture):
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+    _, baseline_axes = Airport("BWI", nasr).plot()
+    _, axes = Airport("BWI", nasr).plot(
+        plot_ils_wedge=True,
+        ils_wedge_distance_nm=1.0,
+    )
+
+    assert len(axes.patches) == len(baseline_axes.patches) + 1

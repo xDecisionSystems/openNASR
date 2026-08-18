@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 README = Path(__file__).parents[1] / "README.md"
-API_REFERENCE = Path(__file__).parents[1] / "docs" / "API.md"
+USING_THE_LIBRARY = Path(__file__).parents[1] / "docs" / "using-the-library.md"
 
 
 def test_readme_contains_current_api_examples():
@@ -16,8 +16,17 @@ def test_readme_contains_current_api_examples():
     assert 'NAVAID("ABR", nasr)' in text
 
 
-def test_api_reference_lists_core_public_types():
-    text = API_REFERENCE.read_text(encoding="utf-8")
+def test_using_the_library_covers_setup_and_core_workflows():
+    text = USING_THE_LIBRARY.read_text(encoding="utf-8")
 
-    for name in ("NASR", "CycleManager", "FaaRecord", "TableRepository"):
+    for name in ("NASR", "CycleManager", "RouteResolver", "PlottingIndex"):
         assert name in text
+    for heading in (
+        "## Download NASR data",
+        "## Command-line interface",
+        "## Where data is saved",
+        "## Choose CSV or DuckDB",
+        "## Coordinates and boundaries",
+        "## Errors",
+    ):
+        assert heading in text

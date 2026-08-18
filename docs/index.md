@@ -92,10 +92,21 @@ Python API.
 :maxdepth: 2
 :caption: Documentation
 
-API
+using-the-library
 types/index
 csv-tables/index
 reference/index
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Examples
+
+examples/index
+examples/plotting-airport
+examples/plotting-ils
+examples/plotting-artcc
+examples/flight-plan-path
 ```
 
 ```{toctree}

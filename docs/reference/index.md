@@ -3,7 +3,8 @@
 The generated reference below documents openNASR's supporting table, record,
 query, plotting, and error APIs directly from the installed package. The
 {doc}`../types/index` provides one focused page for each major domain type.
-Start with {doc}`../API` for usage patterns and identifier rules.
+Start with {doc}`../using-the-library` for setup, storage choices, usage
+patterns, and identifier rules.
 
 ```{toctree}
 :maxdepth: 2

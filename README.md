@@ -38,8 +38,8 @@ access is more convenient.
 - Convert latitude/longitude coordinates to local nautical-mile coordinates.
 - Plot airport runways and ILS information with Matplotlib.
 
-See the [API reference](https://github.com/xDecisionSystems/openNASR/blob/main/docs/API.md)
-for public classes and methods and the
+See the [documentation](https://opennasr.readthedocs.io/)
+for setup, usage guides, domain types, CSV tables, and the generated Python API. See the
 [migration guide](https://github.com/xDecisionSystems/openNASR/blob/main/MIGRATION.md)
 when updating legacy code. Release history is in the
 [changelog](https://github.com/xDecisionSystems/openNASR/blob/main/CHANGELOG.md),
@@ -229,14 +229,16 @@ for runway_id in bwi.rwy.ids:
 Plot the airport layout using Matplotlib:
 
 ```python
-bwi.plot(pltILSBnd=True)
+bwi.plot(plot_ils_wedge=True, ils_wedge_distance_nm=20)
 
 from matplotlib import pyplot as plt
 
 plt.show()
 ```
 
-Runway geometry and projected coordinates use nautical miles.
+Runway geometry and projected coordinates use nautical miles. A localizer
+wedge is 700 feet wide at the runway threshold, expands at a 2.5-degree
+half-angle, and extends 20 NM by default.
 
 ## Fixes
 
@@ -373,6 +375,22 @@ All plotting helpers accept `project_to_nm=True` and an optional
 `projection_center=(latitude, longitude)`. Airspace plots default to the
 airspace centroid, airport procedure plots to the airport, and flight-plan
 plots to the route center.
+
+To overlay plotted geometry on Google Maps or another EPSG:3857 tile layer,
+use `projection="web_mercator"`. Coordinates are returned as Web Mercator
+x/y meters; this global projection does not use `projection_center`:
+
+```python
+figure, axes = plot_airspace(
+    nasr,
+    high_boundary,
+    projection="web_mercator",
+)
+```
+
+The explicit `projection=` choices are `"geographic"`, `"nautical_miles"`,
+and `"web_mercator"`. The existing `project_to_nm=True` spelling remains
+supported and is equivalent to `projection="nautical_miles"`.
 
 All plotting helpers include a legend by default. Pass `plot_legend=False` to
 hide it.

@@ -12,6 +12,13 @@ and versions follow Semantic Versioning.
 - Query exceptions are transport-neutral and no longer expose protocol status
   metadata.
 - Documentation now presents openNASR exclusively as a local Python library.
+- Replaced the broad API guide with a task-oriented "Using the library" guide
+  covering downloads, the CLI, cache locations, CSV-versus-DuckDB guidance,
+  coordinates and boundaries, best practices, and errors.
+- The flight-plan example now uses a longer canonical KLAX-to-KDFW route that
+  demonstrates the DOTSS2 departure, J74/J72 jet routes, and JOVEM6 arrival.
+- Example scripts now expose simple configuration variables near the top
+  instead of wrapping their values in command-line argument parsers.
 - Read the Docs now provides a dedicated guide and generated API page for each
   major NASR domain type, including its FAA tables, lookup key, relationships,
   and usage example.
@@ -35,6 +42,14 @@ and versions follow Semantic Versioning.
   convenience methods backed by the shared plotting helpers. Public
   `plot_star()`, `plot_airway()`, and `plot_artcc()` helpers support the same
   axes, projection, legend, and reusable-index options.
+- All public plotting helpers now accept `projection="web_mercator"` for
+  EPSG:3857-compatible x/y meters suitable for Google Maps overlays. Existing
+  geographic and centered nautical-mile output remain available.
+- Added runnable airport, ILS, ARTCC, and flight-plan examples with generated
+  figures and a dedicated Read the Docs Examples section.
+- Added `IlsRecord.plot()` and `plot_ils_localizer()` with an optional standard
+  700-foot threshold-width, 2.5-degree half-angle localizer wedge. The wedge
+  distance defaults to 20 NM, while the airport overview example uses 1 NM.
 
 ## [1.5.0] - 2026-08-17
 

@@ -274,14 +274,40 @@ class Airport:
     def faa_id(self):
         return self.base.faa_id
 
-    def plot(self, closeFigs=False, pltILSBnd=False):
+    def plot(
+        self,
+        closeFigs=False,
+        pltILSBnd=False,
+        *,
+        plot_ils_wedge: bool | None = None,
+        ils_wedge_distance_nm: float = 20.0,
+    ):
+        """Plot the legacy airport view in local nautical-mile coordinates.
+
+        ``plot_ils_wedge=True`` draws each localizer course with a 700-foot
+        threshold width, 2.5-degree half-angle, and the requested distance
+        into the approach area. ``pltILSBnd`` remains a compatibility alias.
+        """
+
         from matplotlib import pyplot as plt
 
         if closeFigs:
             plt.close("all")
         self.fig, self.ax = plt.subplots()
         self.plotRWY()
-        self.ils.plot(self.ax, self.lat, self.lon, pltILSBnd=pltILSBnd)
+        threshold_coordinates = {
+            runway_end: self.rwyend[runway_end].xy(self.lat, self.lon)
+            for runway_end in self.rwyend.ids
+        }
+        self.ils.plot(
+            self.ax,
+            self.lat,
+            self.lon,
+            pltILSBnd=pltILSBnd,
+            plot_wedge=plot_ils_wedge,
+            wedge_distance_nm=ils_wedge_distance_nm,
+            threshold_coordinates=threshold_coordinates,
+        )
         self.gs.plot(self.ax, self.lat, self.lon)
         self.ax.set_title(self.icao_id)
         self.ax.set_aspect("equal")

@@ -3,20 +3,52 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, Literal
 
+import numpy as np
 from numpy import ndarray
 from pandas import DataFrame, Series
 from shapely.geometry import LineString, MultiLineString, Point
 from shapely.geometry.base import BaseGeometry
 
-from .cfcn import ll2xy
+from .cfcn import ll2xy, xy2ll
 from .flightplan import RouteResolver
+from .ils import DEFAULT_LOCALIZER_WEDGE_DISTANCE_NM, localizer_wedge_xy
 from .indexing import (
     NormalizedIndexCache,
     cached_normalized_column_index,
     normalized_index_rows,
 )
+
+PlotProjection = Literal["geographic", "nautical_miles", "web_mercator"]
+_WEB_MERCATOR_RADIUS_M = 6_378_137.0
+_WEB_MERCATOR_MAX_LATITUDE = 85.0511287798066
+
+
+def _plot_projection(
+    project_to_nm: bool, projection: PlotProjection | None
+) -> PlotProjection:
+    """Resolve the new projection selector and the compatible NM flag."""
+
+    if projection is None:
+        return "nautical_miles" if project_to_nm else "geographic"
+    if projection not in {"geographic", "nautical_miles", "web_mercator"}:
+        raise ValueError(
+            "projection must be 'geographic', 'nautical_miles', or 'web_mercator'"
+        )
+    if project_to_nm and projection != "nautical_miles":
+        raise ValueError(
+            "project_to_nm=True cannot be combined with a different projection"
+        )
+    return projection
+
+
+def _axis_labels(projection: PlotProjection) -> tuple[str, str]:
+    if projection == "nautical_miles":
+        return "East (NM)", "North (NM)"
+    if projection == "web_mercator":
+        return "Web Mercator X (m)", "Web Mercator Y (m)"
+    return "Longitude", "Latitude"
 
 
 def _geometry(boundary: object) -> BaseGeometry:
@@ -310,6 +342,34 @@ class PlottingIndex:
             if len(points) >= 2 and points[0] != points[1]
         )
 
+    def runway_end_coordinate(
+        self, airport_id: str, runway_end_id: str
+    ) -> tuple[float, float]:
+        """Return one runway threshold as ``(latitude, longitude)``."""
+
+        frame = self._nasr.get("APT_RWY_END")
+        required = {"ARPT_ID", "RWY_END_ID", "LAT_DECIMAL", "LONG_DECIMAL"}
+        if frame is None or not required.issubset(frame.columns):
+            raise ValueError("localizer plots require APT_RWY_END coordinates")
+        positions = self._route_position_index(
+            "APT_RWY_END", ("ARPT_ID", "RWY_END_ID")
+        ).get((_text(airport_id), _text(runway_end_id)), ())
+        coordinates = []
+        for position in positions:
+            row = frame.iloc[int(position)]
+            try:
+                coordinates.append(
+                    (float(row["LAT_DECIMAL"]), float(row["LONG_DECIMAL"]))
+                )
+            except (TypeError, ValueError):
+                continue
+        if len(coordinates) != 1:
+            raise ValueError(
+                "localizer plots require exactly one surveyed runway threshold for "
+                f"{_text(airport_id)} {_text(runway_end_id)}"
+            )
+        return coordinates[0]
+
     def record_segments(
         self,
         records: Iterable[Mapping[str, object]],
@@ -432,13 +492,41 @@ def _projection_center(
 
 
 def _project_coordinates(
-    longitudes: Any, latitudes: Any, *, center: tuple[float, float] | None
+    longitudes: Any,
+    latitudes: Any,
+    *,
+    projection: PlotProjection,
+    center: tuple[float, float] | None,
 ) -> tuple[Any, Any]:
-    """Project longitude/latitude coordinates to NM when a center is supplied."""
+    """Project longitude/latitude coordinates into the selected plot CRS."""
 
-    if center is None:
+    if projection == "geographic":
         return longitudes, latitudes
-    x_values, y_values, _, _ = ll2xy(latitudes, longitudes, llc=center)
+    if projection == "nautical_miles":
+        if center is None:
+            raise ValueError("nautical-mile projection requires a projection center")
+        x_values, y_values, _, _ = ll2xy(latitudes, longitudes, llc=center)
+        return x_values, y_values
+
+    longitude_values = np.asarray(longitudes, dtype=float)
+    latitude_values = np.asarray(latitudes, dtype=float)
+    if np.any(~np.isfinite(longitude_values)) or np.any(
+        (longitude_values < -180) | (longitude_values > 180)
+    ):
+        raise ValueError("longitude must be finite and between -180 and 180 degrees")
+    if np.any(~np.isfinite(latitude_values)) or np.any(
+        (latitude_values < -90) | (latitude_values > 90)
+    ):
+        raise ValueError("latitude must be finite and between -90 and 90 degrees")
+    clipped_latitudes = np.clip(
+        latitude_values,
+        -_WEB_MERCATOR_MAX_LATITUDE,
+        _WEB_MERCATOR_MAX_LATITUDE,
+    )
+    x_values = _WEB_MERCATOR_RADIUS_M * np.radians(longitude_values)
+    y_values = _WEB_MERCATOR_RADIUS_M * np.log(
+        np.tan(np.pi / 4 + np.radians(clipped_latitudes) / 2)
+    )
     return x_values, y_values
 
 
@@ -450,6 +538,7 @@ def _plot_points(
     marker: str,
     color: str,
     label: str,
+    projection: PlotProjection,
     projection_center: tuple[float, float] | None,
 ) -> None:
     plotted = False
@@ -457,7 +546,10 @@ def _plot_points(
         point = Point(longitude, latitude)
         if geometry.covers(point):
             x_values, y_values = _project_coordinates(
-                point.x, point.y, center=projection_center
+                point.x,
+                point.y,
+                projection=projection,
+                center=projection_center,
             )
             axes.plot(
                 x_values,
@@ -475,6 +567,7 @@ def _plot_boundary(
     axes: Any,
     geometry: BaseGeometry,
     *,
+    projection: PlotProjection,
     projection_center: tuple[float, float] | None,
     **kwargs: Any,
 ) -> None:
@@ -485,7 +578,10 @@ def _plot_boundary(
             continue
         x_values, y_values = polygon.exterior.xy
         x_values, y_values = _project_coordinates(
-            x_values, y_values, center=projection_center
+            x_values,
+            y_values,
+            projection=projection,
+            center=projection_center,
         )
         axes.plot(
             x_values,
@@ -516,6 +612,7 @@ def _airspace_points(
     plot_airports: bool,
     plot_fixes: bool,
     plot_airnavs: bool,
+    projection: PlotProjection,
     projection_center: tuple[float, float] | None,
 ) -> None:
     """Draw the toggleable airport/fix/navaid point layers."""
@@ -534,6 +631,7 @@ def _airspace_points(
                 marker=marker,
                 color=color,
                 label=label,
+                projection=projection,
                 projection_center=projection_center,
             )
 
@@ -546,6 +644,7 @@ def _airspace_airways(
     *,
     plot_high_airways: bool,
     plot_low_airways: bool,
+    projection: PlotProjection,
     projection_center: tuple[float, float] | None,
 ) -> None:
     """Draw intersecting high/low airway segments clipped to the boundary."""
@@ -560,7 +659,10 @@ def _airspace_airways(
         for line in _line_parts(clipped):
             x_values, y_values = line.xy
             x_values, y_values = _project_coordinates(
-                x_values, y_values, center=projection_center
+                x_values,
+                y_values,
+                projection=projection,
+                center=projection_center,
             )
             color = "tab:red" if level == "high" else "tab:orange"
             axes.plot(
@@ -586,6 +688,7 @@ def plot_airspace(
     plot_legend: bool = True,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
     """Plot a boundary with contained airports and intersecting airway segments.
@@ -611,18 +714,30 @@ def plot_airspace(
     projection_center:
         Optional ``(latitude, longitude)`` center for ``project_to_nm``. When
         omitted, the center of the plotted airspace is used.
+    projection:
+        Output coordinate system: ``"geographic"`` for longitude/latitude,
+        ``"nautical_miles"`` for the local centered projection, or
+        ``"web_mercator"`` for EPSG:3857-compatible x/y meters. The existing
+        ``project_to_nm=True`` option is equivalent to
+        ``projection="nautical_miles"``.
 
     Returns
     -------
     tuple
         The Matplotlib ``(figure, axes)`` pair. Coordinates are longitude and
-        latitude by default, or east/north nautical miles when projected.
+        latitude by default, east/north nautical miles for the local
+        projection, or EPSG:3857-compatible x/y meters for Web Mercator.
     """
 
     plotting_index = _plotting_index(nasr, index)
     geometry = _geometry(boundary)
+    active_projection = _plot_projection(project_to_nm, projection)
+    if active_projection == "web_mercator" and projection_center is not None:
+        raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = (
-        _projection_center(geometry, projection_center) if project_to_nm else None
+        _projection_center(geometry, projection_center)
+        if active_projection == "nautical_miles"
+        else None
     )
     from matplotlib import pyplot as plt
 
@@ -633,6 +748,7 @@ def plot_airspace(
     _plot_boundary(
         axes,
         geometry,
+        projection=active_projection,
         projection_center=active_projection_center,
         color="black",
         linewidth=1.5,
@@ -646,6 +762,7 @@ def plot_airspace(
         plot_airports=plot_airports,
         plot_fixes=plot_fixes,
         plot_airnavs=plot_airnavs,
+        projection=active_projection,
         projection_center=active_projection_center,
     )
 
@@ -657,62 +774,80 @@ def plot_airspace(
             geometry,
             plot_high_airways=plot_high_airways,
             plot_low_airways=plot_low_airways,
+            projection=active_projection,
             projection_center=active_projection_center,
         )
 
     if plot_legend:
         axes.legend()
-    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
-    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
+    x_label, y_label = _axis_labels(active_projection)
+    axes.set_xlabel(x_label)
+    axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 
 
 def _airport_procedure_layers(
-    nasr: Mapping[str, DataFrame], airport_id: str, plotting_index: PlottingIndex
+    nasr: Mapping[str, DataFrame],
+    airport_id: str,
+    plotting_index: PlottingIndex,
+    *,
+    plot_runways: bool,
+    plot_departures: bool,
+    plot_arrivals: bool,
 ) -> tuple[tuple[tuple[LineString, ...], str, int, str], ...]:
     """Return (segments, color, linewidth, label) for each procedure layer."""
 
-    return (
-        (
-            _runway_segments(nasr, airport_id, index=plotting_index),
-            "black",
-            3,
-            "Runways",
-        ),
-        (
-            _procedure_segments(
-                nasr,
-                airport_id,
-                "DP_APT",
-                "DP_RTE",
-                ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
-                index=plotting_index,
+    layers = []
+    if plot_runways:
+        layers.append(
+            (
+                _runway_segments(nasr, airport_id, index=plotting_index),
+                "black",
+                3,
+                "Runways",
+            )
+        )
+    if plot_departures:
+        layers.append(
+            (
+                _procedure_segments(
+                    nasr,
+                    airport_id,
+                    "DP_APT",
+                    "DP_RTE",
+                    ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE"),
+                    index=plotting_index,
+                ),
+                "tab:blue",
+                1,
+                "Departures",
             ),
-            "tab:blue",
-            1,
-            "Departures",
-        ),
-        (
-            _procedure_segments(
-                nasr,
-                airport_id,
-                "STAR_APT",
-                "STAR_RTE",
-                ("STAR_COMPUTER_CODE", "ARTCC"),
-                index=plotting_index,
+        )
+    if plot_arrivals:
+        layers.append(
+            (
+                _procedure_segments(
+                    nasr,
+                    airport_id,
+                    "STAR_APT",
+                    "STAR_RTE",
+                    ("STAR_COMPUTER_CODE", "ARTCC"),
+                    index=plotting_index,
+                ),
+                "tab:green",
+                1,
+                "Arrivals",
             ),
-            "tab:green",
-            1,
-            "Arrivals",
-        ),
-    )
+        )
+    return tuple(layers)
 
 
 def _draw_projected_layers(
     axes: Any,
     layers: tuple[tuple[tuple[LineString, ...], str, int, str], ...],
     *,
+    projection: PlotProjection,
     projection_center: tuple[float, float] | None,
 ) -> None:
     """Draw each layer's line segments, labeling only the first per layer."""
@@ -722,7 +857,10 @@ def _draw_projected_layers(
         for segment in segments:
             x_values, y_values = segment.xy
             x_values, y_values = _project_coordinates(
-                x_values, y_values, center=projection_center
+                x_values,
+                y_values,
+                projection=projection,
+                center=projection_center,
             )
             axes.plot(
                 x_values,
@@ -739,6 +877,7 @@ def _plot_route_object(
     *,
     axes: Any | None,
     project_to_nm: bool,
+    projection: PlotProjection | None,
     projection_center: tuple[float, float] | None,
     plot_legend: bool,
     color: str,
@@ -749,8 +888,11 @@ def _plot_route_object(
 
     from matplotlib import pyplot as plt
 
+    active_projection = _plot_projection(project_to_nm, projection)
+    if active_projection == "web_mercator" and projection_center is not None:
+        raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = None
-    if project_to_nm:
+    if active_projection == "nautical_miles":
         if projection_center is not None:
             if len(projection_center) != 2:
                 raise ValueError(
@@ -774,13 +916,15 @@ def _plot_route_object(
     _draw_projected_layers(
         axes,
         ((segments, color, 1, label),),
+        projection=active_projection,
         projection_center=active_projection_center,
     )
     if plot_legend and axes.get_legend_handles_labels()[0]:
         axes.legend()
     axes.set_title(title)
-    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
-    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
+    x_label, y_label = _axis_labels(active_projection)
+    axes.set_xlabel(x_label)
+    axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 
@@ -792,10 +936,11 @@ def plot_airway(
     axes: Any | None = None,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
-    """Plot the resolved segments belonging to one :class:`Airway` object."""
+    """Plot an :class:`Airway` in geographic, local-NM, or Web Mercator coordinates."""
 
     record = getattr(airway, "record", None)
     records = getattr(airway, "segments", None)
@@ -808,6 +953,7 @@ def plot_airway(
         segments,
         axes=axes,
         project_to_nm=project_to_nm,
+        projection=projection,
         projection_center=projection_center,
         plot_legend=plot_legend,
         color="tab:orange",
@@ -823,10 +969,14 @@ def plot_star(
     axes: Any | None = None,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
-    """Plot the resolved route legs belonging to one :class:`StarProcedure`."""
+    """Plot a :class:`StarProcedure` in geographic, local-NM, or Web Mercator.
+
+    Output coordinates follow the selected projection.
+    """
 
     record = getattr(star, "record", None)
     records = getattr(star, "routes", None)
@@ -843,6 +993,7 @@ def plot_star(
         segments,
         axes=axes,
         project_to_nm=project_to_nm,
+        projection=projection,
         projection_center=projection_center,
         plot_legend=plot_legend,
         color="tab:green",
@@ -865,6 +1016,7 @@ def plot_artcc(
     plot_legend: bool = True,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
     """Plot one altitude boundary from an :class:`Artcc` object.
@@ -895,10 +1047,137 @@ def plot_artcc(
         plot_legend=plot_legend,
         project_to_nm=project_to_nm,
         projection_center=projection_center,
+        projection=projection,
         index=index,
     )
     location_id = _text(getattr(artcc, "location_id", None)) or "ARTCC"
     axes.set_title(f"{location_id} {normalized_level}-altitude ARTCC")
+    return figure, axes
+
+
+def _localizer_true_bearing(record: Mapping[str, object]) -> float:
+    """Convert the FAA magnetic approach bearing and variation to true bearing."""
+
+    try:
+        approach_bearing = float(str(record["APCH_BEAR"]))
+        variation = float(str(record.get("MAG_VAR") or 0.0))
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            "localizer plots require numeric APCH_BEAR and MAG_VAR values"
+        ) from error
+    hemisphere = _text(record.get("MAG_VAR_HEMIS"))
+    if hemisphere == "W":
+        variation = -abs(variation)
+    elif hemisphere == "E":
+        variation = abs(variation)
+    if not np.isfinite(approach_bearing) or not np.isfinite(variation):
+        raise ValueError("localizer bearing and magnetic variation must be finite")
+    return (approach_bearing + variation) % 360.0
+
+
+def plot_ils_localizer(
+    nasr: Mapping[str, DataFrame],
+    ils: Mapping[str, object],
+    *,
+    axes: Any | None = None,
+    plot_wedge: bool = True,
+    wedge_distance_nm: float = DEFAULT_LOCALIZER_WEDGE_DISTANCE_NM,
+    project_to_nm: bool = False,
+    projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
+    plot_legend: bool = True,
+    index: PlottingIndex | None = None,
+) -> tuple[Any, Any]:
+    """Plot an ILS localizer site and its standard approach-course wedge.
+
+    ``ils`` is normally an :class:`~openNASR.ils.IlsRecord`. The wedge is 700
+    feet wide at the surveyed runway threshold and expands at a 2.5-degree
+    half-angle for ``wedge_distance_nm`` nautical miles into the approach
+    area. Set ``plot_wedge=False`` to draw only the localizer transmitter.
+    The default wedge distance is 20 NM.
+    """
+
+    if not isinstance(ils, Mapping):
+        raise TypeError("ils must be an IlsRecord or ILS_BASE mapping")
+    airport_id = _text(ils.get("ARPT_ID"))
+    runway_end_id = _text(ils.get("RWY_END_ID"))
+    if not airport_id or not runway_end_id:
+        raise ValueError("localizer plots require ARPT_ID and RWY_END_ID")
+    try:
+        localizer_latitude = float(str(ils["LAT_DECIMAL"]))
+        localizer_longitude = float(str(ils["LONG_DECIMAL"]))
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            "localizer plots require surveyed ILS_BASE coordinates"
+        ) from error
+    if not np.isfinite(localizer_latitude) or not np.isfinite(localizer_longitude):
+        raise ValueError("localizer coordinates must be finite")
+
+    plotting_index = _plotting_index(nasr, index)
+    threshold = plotting_index.runway_end_coordinate(airport_id, runway_end_id)
+    active_projection = _plot_projection(project_to_nm, projection)
+    if active_projection == "web_mercator" and projection_center is not None:
+        raise ValueError("projection_center is not used by web_mercator")
+    active_projection_center = (
+        _projection_center(Point(threshold[1], threshold[0]), projection_center)
+        if active_projection == "nautical_miles"
+        else None
+    )
+
+    from matplotlib import pyplot as plt
+
+    if axes is None:
+        figure, axes = plt.subplots()
+    else:
+        figure = axes.figure
+    localizer_x, localizer_y = _project_coordinates(
+        localizer_longitude,
+        localizer_latitude,
+        projection=active_projection,
+        center=active_projection_center,
+    )
+    axes.scatter(
+        localizer_x,
+        localizer_y,
+        color="tab:blue",
+        marker="h",
+        label="Localizer",
+    )
+
+    if plot_wedge:
+        wedge_x, wedge_y = localizer_wedge_xy(
+            0.0,
+            0.0,
+            _localizer_true_bearing(ils),
+            distance_nm=wedge_distance_nm,
+        )
+        wedge_latitudes, wedge_longitudes = xy2ll(
+            np.asarray(wedge_x),
+            np.asarray(wedge_y),
+            llc=threshold,
+        )
+        projected_x, projected_y = _project_coordinates(
+            wedge_longitudes,
+            wedge_latitudes,
+            projection=active_projection,
+            center=active_projection_center,
+        )
+        axes.fill(
+            projected_x,
+            projected_y,
+            facecolor="tab:blue",
+            edgecolor="tab:blue",
+            alpha=0.2,
+            label="Localizer course",
+        )
+
+    if plot_legend:
+        axes.legend()
+    axes.set_title(f"{airport_id} {runway_end_id} localizer")
+    x_label, y_label = _axis_labels(active_projection)
+    axes.set_xlabel(x_label)
+    axes.set_ylabel(y_label)
+    axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 
 
@@ -907,8 +1186,12 @@ def plot_airport_procedures(
     airport: object,
     *,
     axes: Any | None = None,
+    plot_runways: bool = True,
+    plot_departures: bool = True,
+    plot_arrivals: bool = True,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -918,9 +1201,14 @@ def plot_airport_procedures(
     a mapping with ``ARPT_ID``. Departure and STAR legs are included only when
     both endpoint identifiers resolve uniquely to a fix or navaid.
 
-    Set ``project_to_nm=True`` to use the local gnomonic projection in nautical
-    miles. It defaults to the airport's FAA coordinate; alternatively pass a
-    ``(latitude, longitude)`` ``projection_center``.
+    ``plot_runways``, ``plot_departures``, and ``plot_arrivals`` select the
+    layers to draw; all three are enabled by default.
+
+    Set ``project_to_nm=True`` (or ``projection="nautical_miles"``) to use the
+    local gnomonic projection in nautical miles. It defaults to the airport's
+    FAA coordinate; alternatively pass a ``(latitude, longitude)``
+    ``projection_center``. Use ``projection="web_mercator"`` for
+    EPSG:3857-compatible x/y meters.
     Set ``plot_legend=False`` to hide the default runway/departure/arrival
     legend.
     """
@@ -931,23 +1219,39 @@ def plot_airport_procedures(
     if not airport_id:
         raise ValueError("airport must provide a non-empty FAA identifier")
     plotting_index = _plotting_index(nasr, index)
+    active_projection = _plot_projection(project_to_nm, projection)
+    if active_projection == "web_mercator" and projection_center is not None:
+        raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = (
         projection_center
         or _airport_projection_center(nasr, airport_id, index=plotting_index)
-        if project_to_nm
+        if active_projection == "nautical_miles"
         else None
     )
     if axes is None:
         figure, axes = plt.subplots()
     else:
         figure = axes.figure
-    layers = _airport_procedure_layers(nasr, airport_id, plotting_index)
-    _draw_projected_layers(axes, layers, projection_center=active_projection_center)
+    layers = _airport_procedure_layers(
+        nasr,
+        airport_id,
+        plotting_index,
+        plot_runways=plot_runways,
+        plot_departures=plot_departures,
+        plot_arrivals=plot_arrivals,
+    )
+    _draw_projected_layers(
+        axes,
+        layers,
+        projection=active_projection,
+        projection_center=active_projection_center,
+    )
     if plot_legend and axes.get_legend_handles_labels()[0]:
         axes.legend()
     axes.set_title(f"{airport_id} procedures")
-    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
-    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
+    x_label, y_label = _axis_labels(active_projection)
+    axes.set_xlabel(x_label)
+    axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 
@@ -959,6 +1263,7 @@ def plot_flight_plan(
     axes: Any | None = None,
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
+    projection: PlotProjection | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -968,6 +1273,7 @@ def plot_flight_plan(
     :func:`openNASR.flightplan.flight_plan_path`. Set ``project_to_nm=True``
     to use a local gnomonic projection in nautical miles. Without an explicit
     ``projection_center=(latitude, longitude)``, the route's center is used.
+    Use ``projection="web_mercator"`` for EPSG:3857-compatible x/y meters.
     The returned route is source data only; it is not an operationally
     validated flight plan or clearance. Set ``plot_legend=False`` to hide the
     default flight-plan legend.
@@ -981,13 +1287,19 @@ def plot_flight_plan(
     else:
         figure = axes.figure
     latitudes, longitudes = zip(*path)
+    active_projection = _plot_projection(project_to_nm, projection)
+    if active_projection == "web_mercator" and projection_center is not None:
+        raise ValueError("projection_center is not used by web_mercator")
     active_projection_center = (
         _projection_center(LineString(zip(longitudes, latitudes)), projection_center)
-        if project_to_nm
+        if active_projection == "nautical_miles"
         else None
     )
     x_values, y_values = _project_coordinates(
-        longitudes, latitudes, center=active_projection_center
+        longitudes,
+        latitudes,
+        projection=active_projection,
+        center=active_projection_center,
     )
     axes.plot(
         x_values,
@@ -1000,18 +1312,21 @@ def plot_flight_plan(
     if plot_legend:
         axes.legend()
     axes.set_title("FAA flight plan")
-    axes.set_xlabel("East (NM)" if project_to_nm else "Longitude")
-    axes.set_ylabel("North (NM)" if project_to_nm else "Latitude")
+    x_label, y_label = _axis_labels(active_projection)
+    axes.set_xlabel(x_label)
+    axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
     return figure, axes
 
 
 __all__ = [
+    "PlotProjection",
     "PlottingIndex",
     "plot_airway",
     "plot_artcc",
     "plot_airport_procedures",
     "plot_airspace",
     "plot_flight_plan",
+    "plot_ils_localizer",
     "plot_star",
 ]

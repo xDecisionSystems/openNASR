@@ -2699,7 +2699,7 @@ Tasks:
       converter, and geometry-validity tests added alongside each record
       family as it was implemented; exports wired in `__init__.py` each
       time). What this task added on top:
-      - `docs/API.md`: documented `nasr.artccs`/`nasr.artcc()` (a
+      - `docs/using-the-library.md`: documented `nasr.artccs`/`nasr.artcc()` (a
         pre-existing Milestone 5B gap noticed while documenting the new
         families), `nasr.maas`/`nasr.maa()`, `nasr.parachute_jump_areas`/
         `nasr.parachute_jump_area()`, and

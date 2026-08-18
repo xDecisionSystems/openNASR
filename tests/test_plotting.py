@@ -1,3 +1,5 @@
+from math import radians, tan
+
 import pandas as pd
 import pytest
 from shapely.geometry import Polygon
@@ -16,6 +18,7 @@ from openNASR.plotting import (
     plot_airport_procedures,
     plot_airspace,
     plot_flight_plan,
+    plot_ils_localizer,
     plot_star,
 )
 
@@ -312,6 +315,117 @@ def test_plotting_index_is_public_and_plot_functions_accept_keyword_index():
     ):
         parameter = inspect.signature(function).parameters["index"]
         assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        projection = inspect.signature(function).parameters["projection"]
+        assert projection.kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_all_public_plotters_support_epsg_3857_web_mercator():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = _indexed_tables()
+    index = PlottingIndex(tables)
+    boundary = Polygon([(19, 9), (22, 9), (22, 12), (19, 12)])
+    airway = Airway(
+        AirwayRecord({"AWY_ID": "V1"}),
+        (AirwaySegmentRecord({"FROM_POINT": "ONE", "TO_POINT": "TWO"}),),
+    )
+    star = StarProcedure(
+        StarProcedureRecord({"STAR_COMPUTER_CODE": "ARR1"}),
+        (),
+        (StarRouteRecord({"POINT": "NAV", "NEXT_POINT": "TWO"}),),
+    )
+    artcc = Artcc(ArtccRecord({"LOCATION_ID": "ZXX"}), {"high": boundary})
+
+    calls = (
+        lambda: plot_airspace(
+            tables,
+            boundary,
+            plot_high_airways=False,
+            plot_low_airways=False,
+            plot_airports=False,
+            plot_fixes=False,
+            plot_airnavs=False,
+            plot_legend=False,
+            projection="web_mercator",
+            index=index,
+        ),
+        lambda: plot_airway(
+            tables,
+            airway,
+            projection="web_mercator",
+            plot_legend=False,
+            index=index,
+        ),
+        lambda: plot_star(
+            tables,
+            star,
+            projection="web_mercator",
+            plot_legend=False,
+            index=index,
+        ),
+        lambda: plot_artcc(
+            tables,
+            artcc,
+            plot_high_airways=False,
+            plot_low_airways=False,
+            plot_airports=False,
+            plot_fixes=False,
+            plot_airnavs=False,
+            plot_legend=False,
+            projection="web_mercator",
+            index=index,
+        ),
+        lambda: plot_airport_procedures(
+            tables,
+            "AAA",
+            projection="web_mercator",
+            plot_legend=False,
+            index=index,
+        ),
+        lambda: plot_flight_plan(
+            tables,
+            "KAAA DCT KBBB",
+            projection="web_mercator",
+            plot_legend=False,
+            index=index,
+        ),
+    )
+
+    for call in calls:
+        _, axes = call()
+        assert axes.get_xlabel() == "Web Mercator X (m)"
+        assert axes.get_ylabel() == "Web Mercator Y (m)"
+        assert axes.lines
+
+
+def test_web_mercator_matches_epsg_3857_reference_coordinates():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = _indexed_tables()
+
+    _, axes = plot_flight_plan(
+        tables,
+        "KAAA DCT KBBB",
+        projection="web_mercator",
+        plot_legend=False,
+    )
+
+    assert axes.lines[0].get_xdata()[0] == pytest.approx(2_226_389.8158654715)
+    assert axes.lines[0].get_ydata()[0] == pytest.approx(1_118_889.9748579597)
+
+
+def test_web_mercator_rejects_conflicting_centered_projection_options():
+    boundary = Polygon([(19, 9), (22, 9), (22, 12), (19, 12)])
+
+    with pytest.raises(ValueError, match="different projection"):
+        plot_airspace({}, boundary, project_to_nm=True, projection="web_mercator")
+    with pytest.raises(ValueError, match="not used"):
+        plot_airspace(
+            {},
+            boundary,
+            projection="web_mercator",
+            projection_center=(10, 20),
+        )
+    with pytest.raises(ValueError, match="projection must be"):
+        plot_airspace({}, boundary, projection="unknown")
 
 
 def test_domain_plot_methods_delegate_to_shared_plotting_behavior():
@@ -790,6 +904,28 @@ def test_plot_airport_procedures_draws_runways_departures_and_arrivals():
     ]
 
 
+def test_plot_airport_procedures_can_select_individual_layers():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = _indexed_tables()
+    index = PlottingIndex(tables)
+
+    expected = (
+        ({"plot_departures": False, "plot_arrivals": False}, "black"),
+        ({"plot_runways": False, "plot_arrivals": False}, "tab:blue"),
+        ({"plot_runways": False, "plot_departures": False}, "tab:green"),
+    )
+    for options, color in expected:
+        _, axes = plot_airport_procedures(
+            tables,
+            "AAA",
+            plot_legend=False,
+            index=index,
+            **options,
+        )
+        assert len(axes.lines) == 1
+        assert axes.lines[0].get_color() == color
+
+
 def test_plot_airport_procedures_projects_to_nm_about_the_airport():
     pytest.importorskip("matplotlib").use("Agg")
     tables = {
@@ -820,3 +956,78 @@ def test_plot_airport_procedures_projects_to_nm_about_the_airport():
     assert axes.get_ylabel() == "North (NM)"
     assert axes.lines[0].get_xdata()[0] == pytest.approx(0.0)
     assert axes.lines[0].get_ydata()[0] == pytest.approx(0.0)
+
+
+def test_plot_ils_localizer_draws_standard_threshold_wedge():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_RWY_END": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_END_ID": "36",
+                    "LAT_DECIMAL": "40",
+                    "LONG_DECIMAL": "-75",
+                }
+            ]
+        )
+    }
+    localizer = {
+        "ARPT_ID": "AAA",
+        "RWY_END_ID": "36",
+        "LAT_DECIMAL": "40.01",
+        "LONG_DECIMAL": "-75",
+        "APCH_BEAR": "0",
+        "MAG_VAR": "0",
+        "MAG_VAR_HEMIS": "E",
+    }
+
+    _, axes = plot_ils_localizer(
+        tables,
+        localizer,
+        projection="nautical_miles",
+        wedge_distance_nm=20,
+    )
+
+    vertices = axes.patches[0].get_xy()
+    threshold_half_width_nm = 350 / 6076.12
+    far_half_width_nm = threshold_half_width_nm + 20 * tan(radians(2.5))
+    assert vertices[0] == pytest.approx((-threshold_half_width_nm, 0))
+    assert vertices[1] == pytest.approx((-far_half_width_nm, -20))
+    assert vertices[2] == pytest.approx((far_half_width_nm, -20))
+    assert vertices[3] == pytest.approx((threshold_half_width_nm, 0))
+    assert vertices[4] == pytest.approx(vertices[0])
+    assert [text.get_text() for text in axes.get_legend().get_texts()] == [
+        "Localizer",
+        "Localizer course",
+    ]
+
+
+def test_plot_ils_localizer_can_hide_wedge_and_reject_invalid_distance():
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_RWY_END": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_END_ID": "36",
+                    "LAT_DECIMAL": "40",
+                    "LONG_DECIMAL": "-75",
+                }
+            ]
+        )
+    }
+    localizer = {
+        "ARPT_ID": "AAA",
+        "RWY_END_ID": "36",
+        "LAT_DECIMAL": "40.01",
+        "LONG_DECIMAL": "-75",
+        "APCH_BEAR": "0",
+        "MAG_VAR": "0",
+        "MAG_VAR_HEMIS": "E",
+    }
+
+    _, axes = plot_ils_localizer(tables, localizer, plot_wedge=False)
+    assert not axes.patches
+    with pytest.raises(ValueError, match="greater than zero"):
+        plot_ils_localizer(tables, localizer, wedge_distance_nm=0)

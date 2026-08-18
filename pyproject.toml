@@ -42,7 +42,7 @@ release = ["build", "twine"]
 
 [project.urls]
 Homepage = "https://github.com/xDecisionSystems/openNASR"
-Documentation = "https://github.com/xDecisionSystems/openNASR/blob/main/docs/API.md"
+Documentation = "https://opennasr.readthedocs.io/"
 Repository = "https://github.com/xDecisionSystems/openNASR.git"
 Issues = "https://github.com/xDecisionSystems/openNASR/issues"
 Changelog = "https://github.com/xDecisionSystems/openNASR/blob/main/CHANGELOG.md"

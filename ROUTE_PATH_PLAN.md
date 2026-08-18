@@ -27,7 +27,7 @@ file has grown substantially since earlier tasks were written and will keep
 changing. `RouteResolver` is a public package API, exported from
 `openNASR/__init__.py` alongside `flight_plan_path` and
 `UnsupportedRouteContentError`; `openNASR/exceptions.py`,
-`docs/API.md`/`README.md`, and `benchmarks/flightplan_benchmark.py`/
+`docs/using-the-library.md`/`README.md`, and `benchmarks/flightplan_benchmark.py`/
 `benchmarks/route_benchmark.py`/`tools/route_path_validation.py` (the first
 two moved from `tools/` to `benchmarks/` when that directory was created;
 `route_path_validation.py` stayed in `tools/` since it is a correctness
@@ -163,7 +163,7 @@ Each in-flight task has exactly one owning agent.
   `(latitude, longitude)` tuples; every task in this plan must preserve
   this signature and return type.
 - [x] **T0.7 — Agent model: Luna. Done.** Document supported input forms in the module
-  docstring and/or `docs/API.md`: whitespace-separated and FAA dotted route
+  docstring and/or `docs/using-the-library.md`: whitespace-separated and FAA dotted route
   fields; `..` direct routing; optional trailing `/speed-altitude`;
   airports, fixes, navaids, airways, DPs, STARs, and transitions.
   Dependencies: Phase 1-3 tasks (so the documented contract matches actual
