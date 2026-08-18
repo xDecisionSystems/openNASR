@@ -15,6 +15,7 @@ ils
 fix
 navaid
 artcc
+airspace-boundary
 class-airspace
 maa
 parachute-jump-area

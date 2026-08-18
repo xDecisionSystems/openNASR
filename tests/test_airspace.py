@@ -2,8 +2,17 @@
 
 import pytest
 
+from matplotlib import pyplot as plt
+from pandas import DataFrame
+
 from openNASR import Boundary
-from openNASR.airspace import Maa, MaaRecord, MaaShapePointRecord
+from openNASR.airspace import (
+    AIRSPACE_BOUNDARY_TYPES,
+    AirspaceBoundaryRepository,
+    Maa,
+    MaaRecord,
+    MaaShapePointRecord,
+)
 from openNASR.coordinates import ll2xy
 from openNASR.cfcn import ll2xy as legacy_ll2xy
 from openNASR.exceptions import RecordNotFoundError
@@ -67,6 +76,49 @@ def test_artcc_repository_get_and_singular_facade_are_equivalent(
     assert from_repository.location_id == from_singular_method.location_id == "ZOB"
     assert from_repository.boundaries["high"] is from_repository.high
     assert from_repository.boundaries["low"] is from_repository.low
+
+
+def test_typed_airspace_boundary_has_a_boundary_only_plot(make_nasr_from_fixture):
+    nasr, _ = make_nasr_from_fixture("core/pre_2026_09")
+
+    boundary = nasr.airspace_boundaries.get(
+        "ZOB", boundary_type="ARTCC", altitude="HIGH"
+    )
+    figure, axes = boundary.plot(nasr)
+
+    assert boundary.location_id == "ZOB"
+    assert boundary.boundary_type == "ARTCC"
+    assert len(axes.lines) == 1
+    plt.close(figure)
+
+
+def test_airspace_boundary_repository_supports_every_faa_boundary_type():
+    base_rows = []
+    segment_rows = []
+    for position, boundary_type in enumerate(sorted(AIRSPACE_BOUNDARY_TYPES)):
+        location_id = f"X{position}"
+        base_rows.append({"LOCATION_ID": location_id})
+        for longitude, latitude in ((0, 0), (1, 0), (1, 1), (0, 0)):
+            segment_rows.append(
+                {
+                    "LOCATION_ID": location_id,
+                    "TYPE": boundary_type,
+                    "ALTITUDE": "UNLIMITED",
+                    "LONG_DECIMAL": longitude,
+                    "LAT_DECIMAL": latitude,
+                }
+            )
+
+    repository = AirspaceBoundaryRepository(
+        {"ARB_BASE": DataFrame(base_rows), "ARB_SEG": DataFrame(segment_rows)}
+    )
+
+    boundaries = repository.find()
+
+    assert {
+        boundary.boundary_type for boundary in boundaries
+    } == AIRSPACE_BOUNDARY_TYPES
+    assert repository.get("X0", boundary_type="ARTCC").geometry.is_valid
 
 
 def test_artcc_repository_raises_record_not_found_for_an_unmatched_identifier(

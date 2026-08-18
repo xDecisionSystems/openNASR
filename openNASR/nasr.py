@@ -7,6 +7,7 @@ from zipfile import ZipFile
 from shutil import rmtree
 from pandas import DataFrame, read_csv
 from .airspace import (
+    AirspaceBoundaryRepository,
     ArtccRepository,
     ClassAirspaceRepository,
     MaaRepository,
@@ -144,6 +145,7 @@ class NASR(dict):
         ] = {}
         self.setupFiles(requested_cycle, cache_dir, storage=storage)
         self.class_airspaces = ClassAirspaceRepository(self)
+        self.airspace_boundaries = AirspaceBoundaryRepository(self)
         self.artccs = ArtccRepository(self)
         self.maas = MaaRepository(self)
         self.parachute_jump_areas = ParachuteJumpAreaRepository(self)
@@ -588,6 +590,10 @@ class NASR(dict):
     def artcc(self, identifier: str, **filters):
         """Return the ARTCC selected by :attr:`artccs`."""
         return self.artccs.get(identifier, **filters)
+
+    def airspace_boundary(self, identifier: str, **filters):
+        """Return one typed ARB boundary selected by :attr:`airspace_boundaries`."""
+        return self.airspace_boundaries.get(identifier, **filters)
 
     def maa(self, identifier: str, **filters):
         """Return the Miscellaneous Activity Area selected by :attr:`maas`."""

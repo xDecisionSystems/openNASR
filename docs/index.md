@@ -64,6 +64,7 @@ Python API.
 | Data area | Information represented |
 | --- | --- |
 | [ARTCCs](types/artcc.md) | Air Route Traffic Control Center identities and ordered high- and low-altitude boundary geometry. |
+| [Airspace boundaries](types/airspace-boundary.md) | FAA ARTCC, FIR, CTA, CTA/FIR, and UTA boundary geometry, selected by location, type, and altitude. |
 | [Class airspace](types/class-airspace.md) | Airport-linked controlled-airspace records identified by the FAA's complete site key. |
 | [Miscellaneous Activity Areas](types/maa.md) | Aerobatic, glider, space-launch, ultralight, unmanned-aircraft, and other published activity areas, including contacts and remarks. |
 | [Parachute Jump Areas](types/parachute-jump-area.md) | Published jump-area center points, radii, operating information, contacts, and optional airport relationships. |
@@ -106,6 +107,8 @@ examples/index
 examples/plotting-airport
 examples/plotting-ils
 examples/plotting-artcc
+examples/plotting-nas
+examples/plotting-fir
 examples/flight-plan-path
 ```
 

@@ -1,6 +1,8 @@
 from .nasr import NASR as NASR
 from .airport import Airport as Airport
 from .airspace import Artcc as Artcc
+from .airspace import AirspaceBoundary as AirspaceBoundary
+from .airspace import AirspaceBoundaryRepository as AirspaceBoundaryRepository
 from .airspace import ArtccBoundary as ArtccBoundary
 from .airspace import ArtccRepository as ArtccRepository
 from .airspace import Boundary as Boundary
@@ -55,6 +57,7 @@ from .plotting import plot_ils_localizer as plot_ils_localizer
 from .plotting import plot_runway as plot_runway
 from .plotting import plot_star as plot_star
 from .plotting import PlotProjection as PlotProjection
+from .plotting import PlotBasemap as PlotBasemap
 from .plotting import PlottingIndex as PlottingIndex
 from .records import ArtccRecord as ArtccRecord
 from .records import ClassAirspaceRecord as ClassAirspaceRecord
@@ -121,6 +124,8 @@ __all__ = [
     "AirwayRecord",
     "AirwayRepository",
     "AirwaySegmentRecord",
+    "AirspaceBoundary",
+    "AirspaceBoundaryRepository",
     "Artcc",
     "ArtccBoundary",
     "ArtccRecord",
@@ -196,6 +201,7 @@ __all__ = [
     "plot_runway",
     "plot_star",
     "PlotProjection",
+    "PlotBasemap",
     "PlottingIndex",
     "QueryError",
     "QueryFieldNotFoundError",

@@ -30,13 +30,16 @@ artcc = nasr.artccs.get(artcc_id)
 figure, axes = artcc.plot(
     nasr,
     level=boundary_level,
-    project_to_nm=True,
+    projection="web_mercator",
+    basemap="usgs_imagery",
     plot_fixes=False,
     plot_airnavs=False,
     index=PlottingIndex(nasr),
 )
 figure.set_size_inches(11, 8)
-axes.set_title(f"{artcc_id}: {boundary_level}-altitude ARTCC boundary and airways")
+axes.set_title(
+    f"{artcc_id}: {boundary_level}-altitude ARTCC boundary and airways (USGS imagery)"
+)
 figure.tight_layout()
 output_path.parent.mkdir(parents=True, exist_ok=True)
 figure.savefig(output_path, dpi=180, bbox_inches="tight")

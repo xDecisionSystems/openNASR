@@ -1,6 +1,8 @@
 # Plotting an airport
 
-This example loads ATL and creates four independently scaled panels. Keeping
+This example loads ATL and creates four independently scaled panels. The first
+uses key-free USGS ImageryOnly aerial imagery in Web Mercator; the NASR runway
+geometry is drawn in the matching EPSG:3857-compatible coordinates. Keeping
 airport-scale runway and ILS data separate from long procedure legs makes each
 layer readable:
 
@@ -11,8 +13,8 @@ layer readable:
 4. resolved arrival-procedure legs.
 
 The script uses one shared `PlottingIndex` and the layer controls on
-`plot_airport_procedures()`. Coordinates are projected into east/north nautical
-miles about the airport's published reference point.
+`plot_airport_procedures()`. The ILS and procedure panels use east/north
+nautical miles about the airport's published reference point.
 
 Run it with:
 

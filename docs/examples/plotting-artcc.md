@@ -3,10 +3,11 @@
 This example retrieves Cleveland Center (`ZOB`) through `nasr.artccs` and calls
 the `Artcc.plot()` convenience method. It draws the high-altitude boundary,
 contained airports, and intersecting high- and low-altitude airway segments in
-east/north nautical miles.
+Web Mercator, over key-free USGS National Map imagery.
 
-Use `--level low` to select the low-altitude boundary. Fix and navaid point
-layers are disabled in this figure to keep the larger ARTCC view legible.
+Set `boundary_level = "low"` in the configuration block to select the
+low-altitude boundary. Fix and navaid point layers are disabled in this figure
+to keep the larger ARTCC view legible.
 
 Run it with:
 

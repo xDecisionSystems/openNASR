@@ -1095,6 +1095,51 @@ def test_runway_record_plot_draws_selected_surveyed_runway():
     assert axes.lines[0].get_linewidth() == pytest.approx(4)
 
 
+def test_usgs_basemap_is_available_from_modern_plotting_methods(monkeypatch):
+    pytest.importorskip("matplotlib").use("Agg")
+    tables = {
+        "APT_BASE": pd.DataFrame(
+            [{"ARPT_ID": "AAA", "LAT_DECIMAL": "40", "LONG_DECIMAL": "-75"}]
+        ),
+        "APT_RWY_END": pd.DataFrame(
+            [
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "40",
+                    "LONG_DECIMAL": "-75",
+                },
+                {
+                    "ARPT_ID": "AAA",
+                    "RWY_ID": "01/19",
+                    "LAT_DECIMAL": "40.01",
+                    "LONG_DECIMAL": "-75",
+                },
+            ]
+        ),
+    }
+    calls = []
+    monkeypatch.setattr(
+        plotting,
+        "_add_usgs_imagery_background",
+        lambda axes: calls.append(axes),
+    )
+
+    runway = RunwayRecord({"ARPT_ID": "AAA", "RWY_ID": "01/19"})
+    runway.plot(tables, projection="web_mercator", basemap="usgs_imagery")
+    AirportRecord({"ARPT_ID": "AAA"}).plot(
+        tables,
+        projection="web_mercator",
+        basemap="usgs_imagery",
+        plot_departures=False,
+        plot_arrivals=False,
+    )
+
+    assert len(calls) == 2
+    with pytest.raises(ValueError, match="requires projection='web_mercator'"):
+        runway.plot(tables, basemap="usgs_imagery")
+
+
 def test_plot_ils_localizer_can_hide_wedge_and_reject_invalid_distance():
     pytest.importorskip("matplotlib").use("Agg")
     tables = {

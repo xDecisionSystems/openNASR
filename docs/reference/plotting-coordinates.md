@@ -18,11 +18,17 @@ All public plotting functions support three output coordinate systems:
 `projection="nautical_miles"`. Web Mercator is a fixed global projection and
 therefore does not accept `projection_center`.
 
+Every modern plotting function and plottable record class also accepts
+`basemap="usgs_imagery"`. It adds key-free USGS ImageryOnly aerial imagery
+behind the plotted data and requires `projection="web_mercator"`. The imagery
+is fetched for the final visible plot extent and credited on the axes.
+
 ```python
 figure, axes = plot_airspace(
     nasr,
     boundary,
     projection="web_mercator",
+    basemap="usgs_imagery",
 )
 ```
 

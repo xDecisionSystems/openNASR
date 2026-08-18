@@ -23,5 +23,9 @@ before running it. The checked-in defaults reproduce the figures from the
   plotting methods in one concise example.
 - [Plotting an ARTCC](plotting-artcc.md) draws an ARTCC boundary with airports
   and high- and low-altitude airways.
+- [Plotting the National Airspace System](plotting-nas.md) draws all ARTCC
+  boundaries and the airway network, with an Alaska inset.
+- [Plotting an FIR](plotting-fir.md) reads and draws the Anchorage CTA/FIR
+  directly from the FAA boundary table.
 - [Converting a flight plan to a path](flight-plan-path.md) resolves FAA route
   text into ordered latitude/longitude coordinates and plots the result.

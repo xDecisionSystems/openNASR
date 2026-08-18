@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from io import BytesIO
 from typing import Any, Literal
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 import numpy as np
 from numpy import ndarray
@@ -22,9 +25,18 @@ from .indexing import (
 )
 
 PlotProjection = Literal["geographic", "nautical_miles", "web_mercator"]
+PlotBasemap = Literal["usgs_imagery"]
 _WEB_MERCATOR_RADIUS_M = 6_378_137.0
 _WEB_MERCATOR_MAX_LATITUDE = 85.0511287798066
 _FEET_PER_NAUTICAL_MILE = 6076.12
+_USGS_IMAGERY_ONLY_URL = (
+    "https://basemap.nationalmap.gov/arcgis/rest/services/"
+    "USGSImageryOnly/MapServer/export"
+)
+# The final Matplotlib layout can expand data limits slightly when it applies an
+# equal-scale aspect ratio.  Fetch beyond the initial vector extent so the
+# imagery remains edge-to-edge after that layout pass.
+_USGS_IMAGERY_PADDING = 0.15
 
 
 @dataclass(frozen=True)
@@ -65,6 +77,91 @@ def _axis_labels(projection: PlotProjection) -> tuple[str, str]:
     if projection == "web_mercator":
         return "Web Mercator X (m)", "Web Mercator Y (m)"
     return "Longitude", "Latitude"
+
+
+def _add_usgs_imagery_background(axes: Any) -> None:
+    """Draw USGS ImageryOnly aerial imagery across the current map extent."""
+
+    minimum_x, maximum_x = axes.get_xlim()
+    minimum_y, maximum_y = axes.get_ylim()
+    width_m = maximum_x - minimum_x
+    height_m = maximum_y - minimum_y
+    if width_m <= 0 or height_m <= 0:
+        raise ValueError("USGS imagery requires a non-empty Web Mercator extent")
+    axes_aspect = axes.bbox.width / axes.bbox.height
+    data_aspect = width_m / height_m
+    if data_aspect < axes_aspect:
+        half_width = height_m * axes_aspect / 2.0
+        center_x = (minimum_x + maximum_x) / 2.0
+        minimum_x, maximum_x = center_x - half_width, center_x + half_width
+    elif data_aspect > axes_aspect:
+        half_height = width_m / axes_aspect / 2.0
+        center_y = (minimum_y + maximum_y) / 2.0
+        minimum_y, maximum_y = center_y - half_height, center_y + half_height
+    width_m = maximum_x - minimum_x
+    height_m = maximum_y - minimum_y
+    padding_x = width_m * _USGS_IMAGERY_PADDING
+    padding_y = height_m * _USGS_IMAGERY_PADDING
+    minimum_x -= padding_x
+    maximum_x += padding_x
+    minimum_y -= padding_y
+    maximum_y += padding_y
+    width_m = maximum_x - minimum_x
+    height_m = maximum_y - minimum_y
+    if width_m >= height_m:
+        width = 640
+        height = max(1, round(640 * height_m / width_m))
+    else:
+        height = 640
+        width = max(1, round(640 * width_m / height_m))
+    parameters = {
+        "bbox": f"{minimum_x:.3f},{minimum_y:.3f},{maximum_x:.3f},{maximum_y:.3f}",
+        "bboxSR": 3857,
+        "imageSR": 3857,
+        "size": f"{width},{height}",
+        "format": "png32",
+        "f": "image",
+    }
+    url = _USGS_IMAGERY_ONLY_URL + "?" + urlencode(parameters)
+    with urlopen(url, timeout=30) as response:  # noqa: S310 - fixed HTTPS endpoint
+        from matplotlib import pyplot as plt
+
+        image = plt.imread(BytesIO(response.read()), format="png")
+    axes.imshow(
+        image,
+        extent=(minimum_x, maximum_x, minimum_y, maximum_y),
+        origin="upper",
+        zorder=-1,
+    )
+    # Keep the raster's geographic bounds and resize the axes box rather than
+    # expanding one data dimension after layout.  This avoids an un-imaged
+    # strip at the edge of an equal-scale map.
+    axes.set_aspect("equal", adjustable="box")
+    axes.text(
+        0.99,
+        0.01,
+        "Imagery: USGS National Map",
+        transform=axes.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=7,
+        color="white",
+        bbox={"facecolor": "black", "alpha": 0.6, "pad": 2},
+    )
+
+
+def _add_basemap(
+    axes: Any, projection: PlotProjection, basemap: PlotBasemap | None
+) -> None:
+    """Add one supported map background after projecting the vector layers."""
+
+    if basemap is None:
+        return
+    if basemap != "usgs_imagery":
+        raise ValueError("basemap must be 'usgs_imagery' or None")
+    if projection != "web_mercator":
+        raise ValueError("basemap='usgs_imagery' requires projection='web_mercator'")
+    _add_usgs_imagery_background(axes)
 
 
 def _geometry(boundary: object) -> BaseGeometry:
@@ -824,6 +921,7 @@ def plot_airspace(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
     """Plot a boundary with contained airports and intersecting airway segments.
@@ -919,6 +1017,7 @@ def plot_airspace(
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
+    _add_basemap(axes, active_projection, basemap)
     return figure, axes
 
 
@@ -1015,6 +1114,7 @@ def _plot_route_object(
     project_to_nm: bool,
     projection: PlotProjection | None,
     projection_center: tuple[float, float] | None,
+    basemap: PlotBasemap | None,
     plot_legend: bool,
     color: str,
     label: str,
@@ -1063,6 +1163,7 @@ def _plot_route_object(
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
+    _add_basemap(axes, active_projection, basemap)
     return figure, axes
 
 
@@ -1074,6 +1175,7 @@ def plot_runway(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1093,6 +1195,7 @@ def plot_runway(
         project_to_nm=project_to_nm,
         projection=projection,
         projection_center=projection_center,
+        basemap=basemap,
         plot_legend=plot_legend,
         color="black",
         label="Runway",
@@ -1109,6 +1212,7 @@ def plot_airway(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1127,6 +1231,7 @@ def plot_airway(
         project_to_nm=project_to_nm,
         projection=projection,
         projection_center=projection_center,
+        basemap=basemap,
         plot_legend=plot_legend,
         color="tab:orange",
         label=identifier,
@@ -1142,6 +1247,7 @@ def plot_star(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1167,6 +1273,7 @@ def plot_star(
         project_to_nm=project_to_nm,
         projection=projection,
         projection_center=projection_center,
+        basemap=basemap,
         plot_legend=plot_legend,
         color="tab:green",
         label=identifier,
@@ -1189,6 +1296,7 @@ def plot_artcc(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
     """Plot one altitude boundary from an :class:`Artcc` object.
@@ -1220,6 +1328,7 @@ def plot_artcc(
         project_to_nm=project_to_nm,
         projection_center=projection_center,
         projection=projection,
+        basemap=basemap,
         index=index,
     )
     location_id = _text(getattr(artcc, "location_id", None)) or "ARTCC"
@@ -1260,6 +1369,7 @@ def plot_ils_localizer(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1430,6 +1540,7 @@ def plot_ils_localizer(
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
+    _add_basemap(axes, active_projection, basemap)
     return figure, axes
 
 
@@ -1444,6 +1555,7 @@ def plot_airport_procedures(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1505,6 +1617,7 @@ def plot_airport_procedures(
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
+    _add_basemap(axes, active_projection, basemap)
     return figure, axes
 
 
@@ -1516,6 +1629,7 @@ def plot_flight_plan(
     project_to_nm: bool = False,
     projection_center: tuple[float, float] | None = None,
     projection: PlotProjection | None = None,
+    basemap: PlotBasemap | None = None,
     plot_legend: bool = True,
     index: PlottingIndex | None = None,
 ) -> tuple[Any, Any]:
@@ -1568,10 +1682,12 @@ def plot_flight_plan(
     axes.set_xlabel(x_label)
     axes.set_ylabel(y_label)
     axes.set_aspect("equal", adjustable="datalim")
+    _add_basemap(axes, active_projection, basemap)
     return figure, axes
 
 
 __all__ = [
+    "PlotBasemap",
     "PlotProjection",
     "PlottingIndex",
     "plot_airway",

@@ -1,5 +1,8 @@
 """Plot an airport's runways, ILS sites, arrivals, and departures.
 
+The first panel uses the shared USGS ImageryOnly background behind the Web
+Mercator runway overlay. No API key is required.
+
 Run from the repository root after downloading a NASR cycle::
 
     python examples/plot_airport.py
@@ -21,6 +24,7 @@ cache_dir: Path | None = None
 ils_wedge_distance_nm = 1.0
 output_path = Path(__file__).with_suffix(".png")
 show_plot = False
+
 
 if not show_plot:
     plt.switch_backend("Agg")
@@ -46,7 +50,10 @@ plot_airport_procedures(
     axes=runway_axes,
     plot_departures=False,
     plot_arrivals=False,
-    **common,
+    projection="web_mercator",
+    basemap="usgs_imagery",
+    plot_legend=False,
+    index=index,
 )
 plot_airport_procedures(
     nasr,
@@ -87,7 +94,7 @@ for localizer in airport.ils:
         index=index,
     )
 
-runway_axes.set_title("Runways")
+runway_axes.set_title("Runways (USGS imagery, Web Mercator)")
 ils_axes.set_title("Runways and ILS component sites")
 departure_axes.set_title("Departure procedures")
 arrival_axes.set_title("Arrival procedures")

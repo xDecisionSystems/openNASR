@@ -15,6 +15,7 @@ from .records import FaaRecord, dms_coordinate, integer, nullable_text
 from .relationships import related_record
 
 AIRPORT_SITE_KEY = ("SITE_NO", "SITE_TYPE_CODE")
+AIRSPACE_BOUNDARY_TYPES = frozenset({"ARTCC", "FIR", "CTA", "CTA/FIR", "UTA"})
 
 
 class Boundary:
@@ -306,6 +307,150 @@ class ArtccBoundary:
     @property
     def bbox(self) -> tuple[float, float, float, float]:
         return self._boundary.bbox
+
+
+class AirspaceBoundary:
+    """One FAA ``ARB_SEG`` boundary, such as an ARTCC, FIR, CTA, or UTA.
+
+    The FAA identifies a boundary by its location identifier, boundary type,
+    and altitude. The ordered vertices are retained as :attr:`boundary`.
+    """
+
+    def __init__(
+        self,
+        record: ArtccRecord,
+        boundary: ArtccBoundary,
+        *,
+        boundary_type: str,
+        altitude: str,
+    ) -> None:
+        self.record = record
+        self.boundary = boundary
+        self.boundary_type = boundary_type
+        self.altitude = altitude
+
+    @property
+    def location_id(self) -> str | None:
+        """FAA location identifier, such as ``"ZAN"``."""
+
+        return self.record.location_id
+
+    @property
+    def geometry(self):
+        """The boundary's Shapely polygon or multipolygon geometry."""
+
+        return self.boundary.getShape
+
+    def plot(self, nasr: Mapping[str, DataFrame], **kwargs: Any) -> tuple[Any, Any]:
+        """Plot this boundary through :func:`openNASR.plotting.plot_airspace`.
+
+        Boundary-only rendering is the default because FIR/CTA/UTA geometry
+        can be oceanic or cross the antimeridian. Enable individual map layers
+        explicitly (for example ``plot_low_airways=True``) when appropriate.
+        """
+
+        from .plotting import plot_airspace
+
+        for option in (
+            "plot_high_airways",
+            "plot_low_airways",
+            "plot_airports",
+            "plot_fixes",
+            "plot_airnavs",
+        ):
+            kwargs.setdefault(option, False)
+        return plot_airspace(nasr, self.boundary, **kwargs)
+
+
+class AirspaceBoundaryRepository:
+    """Look up every FAA ``ARB_SEG`` boundary type by its complete key."""
+
+    entity_type = "AirspaceBoundary"
+
+    def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
+        self._nasr = nasr
+
+    @staticmethod
+    def _normalized(value: object) -> str:
+        return str(value).strip().upper()
+
+    def find(
+        self,
+        identifier: object | None = None,
+        *,
+        boundary_type: str | None = None,
+        altitude: str | None = None,
+    ) -> tuple[AirspaceBoundary, ...]:
+        """Return boundaries matching a location ID, type, and/or altitude.
+
+        ``boundary_type`` accepts ``ARTCC``, ``FIR``, ``CTA``, ``CTA/FIR``,
+        and ``UTA``. Results retain FAA source-row order within each boundary.
+        """
+
+        segments = self._nasr["ARB_SEG"]
+        rows = segments
+        if identifier is not None:
+            normalized = self._normalized(identifier)
+            rows = rows[rows["LOCATION_ID"].map(self._normalized).eq(normalized)]
+        if boundary_type is not None:
+            normalized_type = self._normalized(boundary_type)
+            if normalized_type not in AIRSPACE_BOUNDARY_TYPES:
+                supported = ", ".join(sorted(AIRSPACE_BOUNDARY_TYPES))
+                raise ValueError(f"boundary_type must be one of: {supported}")
+            rows = rows[rows["TYPE"].map(self._normalized).eq(normalized_type)]
+        if altitude is not None:
+            rows = rows[
+                rows["ALTITUDE"].map(self._normalized).eq(self._normalized(altitude))
+            ]
+
+        bases = self._nasr["ARB_BASE"]
+        base_by_identifier = {
+            self._normalized(row["LOCATION_ID"]): row
+            for row in bases.to_dict(orient="records")
+        }
+        results = []
+        for (location_id, type_name, level), group in rows.groupby(
+            ["LOCATION_ID", "TYPE", "ALTITUDE"], sort=False
+        ):
+            base = base_by_identifier.get(self._normalized(location_id))
+            if base is None:
+                continue
+            results.append(
+                AirspaceBoundary(
+                    ArtccRecord(base),
+                    ArtccBoundary(
+                        Boundary(group["LONG_DECIMAL"], group["LAT_DECIMAL"])
+                    ),
+                    boundary_type=self._normalized(type_name),
+                    altitude=self._normalized(level),
+                )
+            )
+        return tuple(results)
+
+    def get(
+        self,
+        identifier: object,
+        *,
+        boundary_type: str,
+        altitude: str | None = None,
+    ) -> AirspaceBoundary:
+        """Return exactly one boundary selected by its FAA location and type."""
+
+        records = self.find(identifier, boundary_type=boundary_type, altitude=altitude)
+        if not records:
+            raise RecordNotFoundError(
+                entity_type=self.entity_type,
+                identifier=identifier,
+                filters={"boundary_type": boundary_type, "altitude": altitude},
+            )
+        if len(records) > 1:
+            raise AmbiguousRecordError(
+                entity_type=self.entity_type,
+                identifier=identifier,
+                filters={"boundary_type": boundary_type, "altitude": altitude},
+                candidates=records,
+            )
+        return records[0]
 
 
 class Artcc:
@@ -952,6 +1097,9 @@ class ParachuteJumpAreaRepository:
 
 
 __all__ = [
+    "AIRSPACE_BOUNDARY_TYPES",
+    "AirspaceBoundary",
+    "AirspaceBoundaryRepository",
     "Artcc",
     "ArtccBoundary",
     "ArtccRecord",

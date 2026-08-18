@@ -21,6 +21,7 @@ class RunwayRecord(FaaRecord):
         projection_center: tuple[float, float] | None = None,
         projection: Literal["geographic", "nautical_miles", "web_mercator"]
         | None = None,
+        basemap: Literal["usgs_imagery"] | None = None,
         plot_legend: bool = True,
         index: Any | None = None,
     ) -> tuple[Any, Any]:
@@ -35,6 +36,7 @@ class RunwayRecord(FaaRecord):
             project_to_nm=project_to_nm,
             projection_center=projection_center,
             projection=projection,
+            basemap=basemap,
             plot_legend=plot_legend,
             index=index,
         )
