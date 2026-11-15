@@ -7,6 +7,25 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Breaking (2.0)
+
+- `NASR` serves every cycle from a read-only DuckDB artifact; CSV storage was
+  removed (`storage="csv"` raises `ConfigurationError`). The artifact is built on
+  first use, and a cycle holding only `nasr.duckdb` plus its sidecar can be served
+  without any archive or CSVs.
+- `duckdb` is a required dependency, capped below 2.0 (the 2.0.0 wheel crashes on
+  CPUs without AVX2); the `openNASR[duckdb]` extra was removed.
+- DuckDB sidecar format 2 records the FAA `schema_id` identified at build time;
+  format-1 artifacts are rebuilt when sources are present.
+- Removed `openNASR.tables.TableRepository` and the CSV query fallback.
+- Raw tables are always source text; legacy `Airport` coordinate, elevation,
+  runway-size and bearing accessors now convert numeric text to numbers.
+
+### Fixed
+
+- Download timeouts raised from 2 s to 30 s (pages) / 60 s (archive); downloads over
+  2 GiB and extractions over 16 GiB are rejected; plain `pytest` now works.
+
 ### Changed
 
 - Query exceptions are transport-neutral and no longer expose protocol status

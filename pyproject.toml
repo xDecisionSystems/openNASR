@@ -28,6 +28,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "duckdb>=1.2.2,<2",
     "numpy",
     "pandas",
     "platformdirs",
@@ -37,7 +38,6 @@ dependencies = [
 [project.optional-dependencies]
 plot = ["matplotlib"]
 dev = ["pytest", "ruff", "mypy"]
-duckdb = ["duckdb>=1.2.2,<2"]
 release = ["build", "twine"]
 
 [project.urls]

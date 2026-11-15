@@ -8,17 +8,15 @@ import tomllib
 PYPROJECT = Path(__file__).parents[1] / "pyproject.toml"
 
 
-def test_duckdb_is_declared_only_as_an_optional_extra():
-    """Keep the base installation free of DuckDB."""
-    distribution_metadata = metadata("openNASR")
-    assert "duckdb" in distribution_metadata.get_all("Provides-Extra", [])
-
+def test_duckdb_is_a_required_dependency_capped_below_two():
+    """The 2.0.0 wheel needs AVX2; stay on 1.x until installers probe for it."""
     duckdb_requirements = [
         requirement
         for requirement in requires("openNASR") or []
         if requirement.lower().startswith("duckdb")
     ]
-    assert duckdb_requirements == ['duckdb>=1.2.2; extra == "duckdb"']
+    assert duckdb_requirements == ["duckdb<2,>=1.2.2"]
+    assert "duckdb" not in metadata("openNASR").get_all("Provides-Extra", [])
 
 
 def test_public_release_metadata_uses_modern_license_and_project_urls():

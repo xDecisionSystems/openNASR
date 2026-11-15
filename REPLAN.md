@@ -221,12 +221,12 @@ a `.duckdb` file must not need any of these.
 | Task | Change | Acceptance |
 |------|--------|------------|
 | 1.1 | Builder records `schema_id` in the sidecar (optional field, older sidecars still read) | **done**: tests for present/absent |
-| 1.2 | `NASR` opens from `.duckdb` + sidecar alone: schema id and table list come from metadata, columns from DuckDB; no CSV folder or archive needed | a test opens `NASR` with only the two artifact files present |
-| 1.3 | Cycle lookup works from DuckDB artifacts alone (`CycleManager.get/latest`) | `NASR()` picks the newest cycle that has a valid artifact |
-| 1.4 | Default and only storage is DuckDB; first use builds from archive/CSV if missing (shim); `storage="csv"` raises a clear migration error | old call sites still work, slower on first use |
-| 1.5 | Remove CSV serving code: `TableRepository` use in `NASR`, `_query_csv_frame`, CSV branches in `query.py`, CLI `--storage` | grep shows no CSV read outside builder and import |
-| 1.6 | Drop CSV/DuckDB parity tests; test fixtures build a DuckDB once per session | suite green, runtime not worse |
-| 1.7 | `duckdb` becomes a required dependency (capped `<2` until installer probe exists); README, MIGRATION, CHANGELOG updated | fresh venv install + tests pass |
+| 1.2 | `NASR` opens from `.duckdb` + sidecar alone: schema id and table list come from metadata, columns from DuckDB; no CSV folder or archive needed | **done**: `test_artifact_alone_is_enough_to_serve_a_cycle` |
+| 1.3 | Cycle lookup works from DuckDB artifacts alone (`CycleManager.get/latest`) | **done**: `CycleManager.ensure_duckdb` serves artifact-only cycles |
+| 1.4 | Default and only storage is DuckDB; first use builds from archive/CSV if missing (shim); `storage="csv"` raises a clear migration error | **done**: `storage="csv"` raises a migration error |
+| 1.5 | Remove CSV serving code: `TableRepository` use in `NASR`, `_query_csv_frame`, CSV branches in `query.py`, CLI `--storage` | **done** (CLI `list --storage` kept: it lists artifacts) |
+| 1.6 | Drop CSV/DuckDB parity tests; test fixtures build a DuckDB once per session | **done**: fixtures cached per session; suite ~40 s |
+| 1.7 | `duckdb` becomes a required dependency (capped `<2` until installer probe exists); README, MIGRATION, CHANGELOG updated | **done**: fresh venv installs duckdb 1.x; 412 tests pass |
 
 ## 9. Decisions log (all six resolved)
 

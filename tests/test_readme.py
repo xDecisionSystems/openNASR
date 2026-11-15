@@ -25,7 +25,7 @@ def test_using_the_library_covers_setup_and_core_workflows():
         "## Download NASR data",
         "## Command-line interface",
         "## Where data is saved",
-        "## Choose CSV or DuckDB",
+        "## DuckDB storage",
         "## Coordinates and boundaries",
         "## Errors",
     ):
