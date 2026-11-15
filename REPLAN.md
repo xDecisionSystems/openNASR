@@ -262,5 +262,5 @@ a `.duckdb` file must not need any of these.
 | 2.2 Synthetic corpus in CI with resolution-rate report (`tests/fixtures/route_corpus/synthetic.json`) | done |
 | 2.3 Coverage table per construct | open |
 | 2.4 Real-cycle corpus from `benchmarks/data/example_routes.csv` once a real cycle is cached | open |
-| 2.5 Lat/lon waypoint tokens (`3800N07700W`): launch scope, **currently unresolved** (known gap recorded in the corpus) | open |
+| 2.5 ICAO lat/lon waypoint tokens (`3800N07730W`, `37S078E`) resolve with range checks; FAA slash form (`4300N/05000W`) stays a diagnostic | done |
 | 2.6 Split `flightplan.py` into tokenizer / resolver / procedure and airway expanders | open |

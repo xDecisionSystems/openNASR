@@ -26,6 +26,10 @@ from .exceptions import (
 _DIRECT = "DCT"
 _AIRWAY = re.compile(r"(?P<designation>[A-Z]+)(?P<identifier>[0-9][A-Z0-9]*)$")
 _OCEANIC_COORDINATE = re.compile(r"\d{4}[NS]/\d{5}[EW]")
+_LATLON_WAYPOINT = re.compile(
+    r"(?P<lat>\d{2})(?P<lat_min>\d{2})?(?P<ns>[NS])"
+    r"(?P<lon>\d{3})(?P<lon_min>\d{2})?(?P<ew>[EW])$"
+)
 _EXTERNAL_AIRWAY = re.compile(r"(?:U[A-Z]?\d+[A-Z0-9]*|RTE\d+)$")
 _RADIAL_DISTANCE = re.compile(r"[A-Z]{3}\d{6}$")
 _FOREIGN_ICAO_PREFIX = re.compile(r"(?:C[FGKLMNPSY]|E[A-Z]|MM|TJ)[A-Z]{2}$")
@@ -179,6 +183,9 @@ class _WaypointResolver:
             )
         )
         if not unique:
+            decoded = _latlon_waypoint(identifier)
+            if decoded is not None:
+                return decoded
             raise RecordNotFoundError(
                 entity_type="Flight-plan waypoint", identifier=identifier
             )
@@ -189,6 +196,28 @@ class _WaypointResolver:
                 candidates=unique,
             )
         return unique[0]
+
+
+def _latlon_waypoint(identifier: str) -> _Waypoint | None:
+    """Decode an ICAO lat/lon waypoint (``4620N07805W`` or ``46N078W``)."""
+
+    match = _LATLON_WAYPOINT.match(identifier)
+    if match is None or (match["lat_min"] is None) != (match["lon_min"] is None):
+        return None
+    latitude = int(match["lat"]) + int(match["lat_min"] or 0) / 60
+    longitude = int(match["lon"]) + int(match["lon_min"] or 0) / 60
+    if (
+        latitude > 90
+        or longitude > 180
+        or int(match["lat_min"] or 0) > 59
+        or int(match["lon_min"] or 0) > 59
+    ):
+        return None
+    return _Waypoint(
+        identifier,
+        -latitude if match["ns"] == "S" else latitude,
+        -longitude if match["ew"] == "W" else longitude,
+    )
 
 
 def _text(value: object) -> str:

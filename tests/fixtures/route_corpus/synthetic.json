@@ -198,13 +198,62 @@
    }
   },
   {
-   "id": "latlon_waypoint",
-   "route": "KAAA 3800N07700W KBBB",
+   "id": "latlon_degrees_minutes",
+   "route": "KAAA 3800N07730W KBBB",
+   "expect": {
+    "status": "ok",
+    "points": [
+     [
+      38.0,
+      -77.0
+     ],
+     [
+      38.0,
+      -77.5
+     ],
+     [
+      35.0,
+      -80.0
+     ]
+    ]
+   }
+  },
+  {
+   "id": "latlon_whole_degrees",
+   "route": "KAAA 37S078E KBBB",
+   "expect": {
+    "status": "ok",
+    "points": [
+     [
+      38.0,
+      -77.0
+     ],
+     [
+      -37.0,
+      78.0
+     ],
+     [
+      35.0,
+      -80.0
+     ]
+    ]
+   }
+  },
+  {
+   "id": "latlon_out_of_range",
+   "route": "KAAA 9100N07700W KBBB",
    "expect": {
     "status": "error",
     "error": "RecordNotFoundError"
-   },
-   "note": "KNOWN GAP: lat/lon waypoints are launch scope (REPLAN 4b) but not yet resolved; flip this to an ok expectation when implemented"
+   }
+  },
+  {
+   "id": "latlon_oceanic_slash_form",
+   "route": "KAAA 4300N/05000W KBBB",
+   "expect": {
+    "status": "error",
+    "error": "UnsupportedRouteContentError"
+   }
   }
  ]
 }
