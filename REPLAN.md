@@ -211,6 +211,23 @@ Plan:
 
 Phases 2 and 3 are independent and can run in parallel.
 
+## 8a. Phase 1 task breakdown (DuckDB-only core)
+
+Finding: the `NASR` facade still needs the extracted CSV folder even in DuckDB mode, for
+(a) schema identification (`SchemaCatalog.identify_schema`), (b) the source fingerprint,
+(c) table discovery, and (d) CSV fallbacks in `query.py`. An API container that holds only
+a `.duckdb` file must not need any of these.
+
+| Task | Change | Acceptance |
+|------|--------|------------|
+| 1.1 | Builder records `schema_id` in the sidecar (optional field, older sidecars still read) | **done**: tests for present/absent |
+| 1.2 | `NASR` opens from `.duckdb` + sidecar alone: schema id and table list come from metadata, columns from DuckDB; no CSV folder or archive needed | a test opens `NASR` with only the two artifact files present |
+| 1.3 | Cycle lookup works from DuckDB artifacts alone (`CycleManager.get/latest`) | `NASR()` picks the newest cycle that has a valid artifact |
+| 1.4 | Default and only storage is DuckDB; first use builds from archive/CSV if missing (shim); `storage="csv"` raises a clear migration error | old call sites still work, slower on first use |
+| 1.5 | Remove CSV serving code: `TableRepository` use in `NASR`, `_query_csv_frame`, CSV branches in `query.py`, CLI `--storage` | grep shows no CSV read outside builder and import |
+| 1.6 | Drop CSV/DuckDB parity tests; test fixtures build a DuckDB once per session | suite green, runtime not worse |
+| 1.7 | `duckdb` becomes a required dependency (capped `<2` until installer probe exists); README, MIGRATION, CHANGELOG updated | fresh venv install + tests pass |
+
 ## 9. Decisions log (all six resolved)
 
 1. ~~Drop the CSV serving path?~~ **Decided: DuckDB only.** CSV is only the import

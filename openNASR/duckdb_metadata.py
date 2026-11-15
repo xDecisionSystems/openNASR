@@ -60,6 +60,7 @@ class DuckDbCycleMetadata:
     tables: Mapping[str, int]
     database_sha256: str
     archive_sha256: str | None = None
+    schema_id: str | None = None
     storage_format_version: int = STORAGE_FORMAT_VERSION
     complete: bool = True
 
@@ -90,6 +91,7 @@ class DuckDbCycleMetadata:
             "complete": self.complete,
             "created_at": self.created_at,
             "database_sha256": self.database_sha256,
+            "schema_id": self.schema_id,
             "duckdb_version": self.duckdb_version,
             "effective_date": self.effective_date,
             "source_schema_fingerprint": self.source_schema_fingerprint,
@@ -131,6 +133,7 @@ class DuckDbCycleMetadata:
                 archive_sha256=_optional_str(
                     value.get("archive_sha256"), "archive_sha256"
                 ),
+                schema_id=_optional_str(value.get("schema_id"), "schema_id"),
                 storage_format_version=_require_int(
                     value["storage_format_version"], "storage_format_version"
                 ),

@@ -87,6 +87,7 @@ def build_duckdb(
                 cycle,
                 archive_sha256=archive_sha256,
                 read_options=options,
+                source=source,
             )
             _validate_database(temporary, metadata)
             # Preserve the completed pair until its replacement sidecar is
@@ -155,6 +156,7 @@ def _build_temporary_database(
     *,
     archive_sha256: str | None,
     read_options: Mapping[str, object],
+    source: Path,
 ) -> DuckDbCycleMetadata:
     module = _require_duckdb()
     frames: dict[str, DataFrame] = {}
@@ -194,7 +196,18 @@ def _build_temporary_database(
         tables={name: len(frame.index) for name, frame in frames.items()},
         database_sha256=_sha256_file(temporary),
         archive_sha256=archive_sha256,
+        schema_id=_identify_schema_id(source, frames),
     )
+
+
+def _identify_schema_id(source: Path, frames: Mapping[str, DataFrame]) -> str | None:
+    """Identify the FAA schema once at build time so readers need no CSVs."""
+
+    from .schemas import SCHEMA_SUFFIX, SchemaCatalog
+
+    if not any(name.endswith(SCHEMA_SUFFIX) for name in frames):
+        return None
+    return SchemaCatalog().identify_schema(source)
 
 
 def _validate_database(path: Path, metadata: DuckDbCycleMetadata) -> None:

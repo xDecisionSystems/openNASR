@@ -261,3 +261,34 @@ def test_builder_quotes_untrusted_table_identifiers(tmp_path: Path):
         )
     finally:
         connection.close()
+
+
+def test_build_records_schema_id_when_schema_files_exist(tmp_path):
+    source = (
+        Path(__file__).parent
+        / "fixtures"
+        / "schema_only"
+        / "pre_2026_09"
+        / "CSV_Data"
+        / "pre_2026_09"
+    )
+    result = build_duckdb(source, tmp_path / "nasr.duckdb", "2024-06-13")
+    on_disk = read_metadata(result.metadata_path)
+    assert result.metadata.schema_id is not None
+    assert on_disk.schema_id == result.metadata.schema_id
+
+
+def test_build_without_schema_files_records_no_schema_id(tmp_path):
+    from tools.build_synthetic_fixtures import CORE_CYCLE_STEM
+
+    source = (
+        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
+    )
+    result = build_duckdb(source, tmp_path / "nasr.duckdb", "2024-06-13")
+    assert result.metadata.schema_id is None
+
+
+def test_metadata_without_schema_id_still_reads():
+    payload = _metadata().to_dict()
+    payload.pop("schema_id")
+    assert DuckDbCycleMetadata.from_dict(payload).schema_id is None
