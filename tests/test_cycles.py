@@ -442,7 +442,10 @@ def test_faa_provider_follows_current_landing_link_to_explicit_nfdc_archive():
 
     assert cycle.effective_date == date(2026, 8, 6)
     assert cycle.archive_url == archive_url
-    assert calls == [(landing_url, 2), (detail_url, 2)]
+    assert calls == [
+        (landing_url, cycles.PAGE_TIMEOUT),
+        (detail_url, cycles.PAGE_TIMEOUT),
+    ]
 
 
 def test_faa_provider_rejects_non_nfdc_or_mismatched_archive_links():
@@ -565,3 +568,35 @@ def test_update_notification_uses_default_faa_provider(monkeypatch, tmp_path):
 
     assert notify_if_update_available() is True
     assert used == [True]
+
+
+def test_check_archive_members_rejects_unsafe_paths(tmp_path):
+    archive_path = tmp_path / "unsafe.zip"
+    with ZipFile(archive_path, "w") as archive:
+        archive.writestr("../escape.csv", "x")
+    with ZipFile(archive_path) as archive:
+        with pytest.raises(ArchiveError, match="Unsafe"):
+            cycles.check_archive_members(archive)
+
+
+def test_check_archive_members_rejects_oversized_extraction(tmp_path, monkeypatch):
+    archive_path = tmp_path / "big.zip"
+    with ZipFile(archive_path, "w") as archive:
+        archive.writestr("a.csv", "x" * 100)
+    monkeypatch.setattr(cycles, "MAX_EXTRACTED_BYTES", 10)
+    with ZipFile(archive_path) as archive:
+        with pytest.raises(ArchiveError, match="expands beyond"):
+            cycles.check_archive_members(archive)
+
+
+def test_download_part_rejects_oversized_download(tmp_path, monkeypatch):
+    manager = cycles.CycleManager(cache_dir=tmp_path)
+    monkeypatch.setattr(cycles, "MAX_ARCHIVE_BYTES", 5)
+    with pytest.raises(DownloadError, match="exceeds"):
+        manager.write_download_part(date(2026, 8, 6), iter([b"abc", b"def"]))
+    assert not manager.download_part_path(date(2026, 8, 6)).exists()
+
+
+def test_network_timeouts_are_not_tiny():
+    assert cycles.PAGE_TIMEOUT >= 10
+    assert cycles.DOWNLOAD_TIMEOUT >= 30

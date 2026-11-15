@@ -131,7 +131,7 @@ is one clear owner per task, not adherence to a specific name.
 - **Integration branch.** All phase branches merge into a long-lived
   `duckdb/integration` branch, not directly into `main`. Nothing from this
   plan reaches `main` before Gate 13.5 passes on `duckdb/integration`.
-- **Every agent reads** this file, `PLAN.md`, `README.md`, `pyproject.toml`,
+- **Every agent reads** this file, `docs/archive/PLAN.md`, `README.md`, `pyproject.toml`,
   and every file its task will touch, before editing.
 - **Each task ends with focused tests** scoped to that task. The agent
   merging last in a phase (by the task-ID order above) runs the complete

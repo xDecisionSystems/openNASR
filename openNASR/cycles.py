@@ -37,6 +37,12 @@ ARCHIVE_NAME_PATTERN = re.compile(
 FAA_NASR_SUBSCRIPTION_URL = (
     "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/"
 )
+# Per-socket-operation timeouts (seconds); the archive itself is ~100+ MB.
+PAGE_TIMEOUT = 30
+DOWNLOAD_TIMEOUT = 60
+# Safety caps. Real NASR archives are far below both limits.
+MAX_ARCHIVE_BYTES = 2 * 1024**3
+MAX_EXTRACTED_BYTES = 16 * 1024**3
 FAA_LANDING_HOSTS = frozenset({"www.faa.gov"})
 FAA_ARCHIVE_HOSTS = frozenset({"nfdc.faa.gov"})
 
@@ -141,7 +147,7 @@ class FaaCycleProvider:
         return RemoteCycle(effective_date=effective_date, archive_url=archive_url)
 
     def _read_text(self, url: str) -> str:
-        with self.opener(url, timeout=2) as response:
+        with self.opener(url, timeout=PAGE_TIMEOUT) as response:
             return response.read().decode("utf-8")
 
     def _current_detail(self, landing: str) -> tuple[date, str]:
@@ -255,6 +261,22 @@ def sha256_file(path: str | Path) -> str:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def check_archive_members(archive: ZipFile) -> None:
+    """Reject unsafe member paths and implausibly large extractions."""
+
+    total = 0
+    for member in archive.infolist():
+        path = PurePosixPath(member.filename)
+        if path.is_absolute() or ".." in path.parts:
+            raise ArchiveError(f"Unsafe archive member: {member.filename}")
+        total += member.file_size
+        if total > MAX_EXTRACTED_BYTES:
+            raise ArchiveError(
+                f"Archive expands beyond {MAX_EXTRACTED_BYTES} bytes; "
+                "refusing to extract"
+            )
 
 
 def validate_archive(path: str | Path) -> None:
@@ -483,10 +505,7 @@ class CycleManager:
         temporary = Path(tempfile.mkdtemp(prefix=".nested-", dir=source.parent))
         try:
             with ZipFile(source, "r") as archive:
-                for member in archive.infolist():
-                    path = PurePosixPath(member.filename)
-                    if path.is_absolute() or ".." in path.parts:
-                        raise ArchiveError(f"Unsafe archive member: {member.filename}")
+                check_archive_members(archive)
                 archive.extractall(temporary)
             locate_csv_source(temporary)
             temporary.replace(extracted)
@@ -689,8 +708,14 @@ class CycleManager:
 
         part_path = self.download_part_path(effective_date)
         try:
+            written = 0
             with part_path.open("wb") as output:
                 for chunk in chunks:
+                    written += len(chunk)
+                    if written > MAX_ARCHIVE_BYTES:
+                        raise DownloadError(
+                            f"NASR download exceeds {MAX_ARCHIVE_BYTES} bytes"
+                        )
                     output.write(chunk)
         except Exception:
             part_path.unlink(missing_ok=True)
@@ -711,14 +736,17 @@ class CycleManager:
                 raise ValueError(
                     f"Provider does not offer NASR cycle {effective_date.isoformat()}"
                 )
-            with urlopen(remote_cycle.archive_url, timeout=2) as response:
+            with urlopen(
+                remote_cycle.archive_url, timeout=DOWNLOAD_TIMEOUT
+            ) as response:
                 part_path = self.write_download_part(
                     effective_date,
                     iter(lambda: response.read(1024 * 1024), b""),
                 )
             validate_archive(part_path)
             cycle = self.publish_download(effective_date)
-            assert cycle.archive_path is not None
+            if cycle.archive_path is None:
+                raise DownloadError("Published download has no archive path")
             self.store_sha256_metadata(cycle.archive_path)
             return Cycle(
                 effective_date=cycle.effective_date,
@@ -772,10 +800,7 @@ class CycleManager:
         temporary = Path(tempfile.mkdtemp(prefix=".extract-", dir=self.cycles_dir))
         try:
             with ZipFile(archive) as source:
-                for member in source.infolist():
-                    path = PurePosixPath(member.filename)
-                    if path.is_absolute() or ".." in path.parts:
-                        raise ArchiveError(f"Unsafe archive member: {member.filename}")
+                check_archive_members(source)
                 source.extractall(temporary)
             locate_csv_source(temporary)
             (temporary / "metadata.json").write_text(
