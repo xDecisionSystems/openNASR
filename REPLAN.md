@@ -101,6 +101,21 @@ a manifest uploaded last as the "validated" marker).
 
 Acceptance: a fresh machine with only S3 credentials can rebuild every index.
 
+### DuckDB version selection (installer requirement)
+
+DuckDB 2.0.0 crashes ("Illegal instruction") on CPUs without AVX2 (found on the devbox
+Xeon E5-2620); 1.x runs. Therefore:
+
+- Installers and updaters **probe, not guess**: in a throwaway venv, try DuckDB `2.x`,
+  then `1.4.x`, then `1.3.x`; run `connect().execute('select 1')` in a subprocess; keep the
+  first that works. If none works, stop with a clear error.
+- The chosen version is recorded in the container's state file; the updater re-probes.
+  Optional `--duckdb-version` forces a version (non-interactive installs).
+- **Fleet rule:** the archiver builds with the oldest DuckDB any reader can run. The
+  manifest records the builder's DuckDB version. The API checks it can open a new build
+  before switching; otherwise it keeps serving the previous cycle and alerts.
+- Until installers exist, `pyproject.toml` caps the optional dependency at `<2`.
+
 ## 5. Component B: API service
 
 Read-only, API-key protected, versioned under `/v1`.
@@ -191,7 +206,7 @@ Plan:
 | 3 | Archiver | Timer-driven download to S3, immutable keys, outage staging, alerts; fresh-machine rebuild works |
 | 4 | API v1 | `/v1/route/resolve` + supporting endpoints, API keys, OpenAPI published, contract tests |
 | 5 | Local mode polish | `serve`, `route` CLI, docs, same contract tests run against both modes |
-| 6 | Deploy | Per-subproject container images (LXC or Docker), signed releases, reverse proxy, monitoring |
+| 6 | Deploy | Per-subproject container images (LXC or Docker), signed releases, reverse proxy, monitoring; installer probes for a working DuckDB version |
 | 7 | Observation | A week of cycle checks, checksum and index verification, then go live |
 
 Phases 2 and 3 are independent and can run in parallel.
