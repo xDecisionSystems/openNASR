@@ -7,7 +7,7 @@ import pytest
 from openNASR.duckdb_builder import SOURCE_TEXT_READ_OPTIONS
 from openNASR.exceptions import AmbiguousRecordError
 from openNASR.flightplan import RouteResolver
-from openNASR.tables import TableRepository
+from tests.csv_reference import TableRepository
 
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "duckdb_parity"

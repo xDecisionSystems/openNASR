@@ -293,3 +293,16 @@ def test_metadata_requires_the_schema_id_key():
     payload.pop("schema_id")
     with pytest.raises(DuckDbMetadataIncompleteError, match="schema_id"):
         DuckDbCycleMetadata.from_dict(payload)
+
+
+def test_build_reads_latin1_source_files(tmp_path):
+    source = tmp_path / "CSV_Data"
+    source.mkdir()
+    (source / "APT_BASE.csv").write_bytes(b"ARPT_ID,NAME\nBWI,Montr\xe9al\n")
+    result = build_duckdb(source, tmp_path / "nasr.duckdb", "2026-08-06")
+    connection = open_duckdb_read_only(result.database_path)
+    try:
+        name = connection.execute('SELECT "NAME" FROM "APT_BASE"').fetchone()[0]
+    finally:
+        connection.close()
+    assert name == "Montréal"

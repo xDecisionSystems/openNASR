@@ -200,7 +200,7 @@ def test_every_operational_table_loads_and_constructs_at_least_one_record(
     through TableRepository, and its TableSpec.record_type can construct a
     record from the loaded row without error."""
 
-    from openNASR.tables import TableRepository
+    from tests.csv_reference import TableRepository
 
     catalog = SchemaCatalog()
     registry = TableRegistry(catalog=catalog)
@@ -232,7 +232,7 @@ def test_raw_table_loading_preserves_leading_zero_identifiers_and_empty_nulls(
     drop the leading zero), and an empty identifier field must remain an
     empty string, never become NaN or change the column's dtype."""
 
-    from openNASR.tables import TableRepository
+    from tests.csv_reference import TableRepository
 
     cycle_dir = tmp_path / "cycle"
     cycle_dir.mkdir()

@@ -1,8 +1,7 @@
 """Entity repositories for lookup and relationship assembly over a NASR cycle.
 
-The lazy, indexed CSV table repository (:class:`~openNASR.tables.TableRepository`
-and its helpers) lives in :mod:`openNASR.tables`. It is re-exported here for
-backward compatibility with existing imports from this module.
+Tables are served by :class:`~openNASR.duckdb_tables.DuckDbTableRepository`;
+table-name helpers live in :mod:`openNASR.tables` and are re-exported here.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ from .rwy import RunwayEndRecord, RunwayRecord
 from .airspace import ClassAirspace
 from .military import MilitaryOperation
 from .registry import AIRPORT_SITE_KEY
-from .tables import TableRepository, discover_tables, normalize_table_name
+from .tables import discover_tables, normalize_table_name
 
 
 class AirportRepository:
@@ -405,7 +404,6 @@ __all__ = [
     "FixRepository",
     "NavaidRepository",
     "RecordRepository",
-    "TableRepository",
     "discover_tables",
     "normalize_table_name",
 ]

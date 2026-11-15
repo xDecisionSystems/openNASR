@@ -16,7 +16,7 @@ from openNASR.duckdb_builder import (
 )
 from openNASR.duckdb_tables import DuckDbTableRepository
 from openNASR.exceptions import TableNotFoundError
-from openNASR.tables import TableRepository
+from tests.csv_reference import TableRepository
 
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "duckdb_parity"
