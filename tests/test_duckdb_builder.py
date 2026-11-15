@@ -281,9 +281,7 @@ def test_build_records_schema_id_when_schema_files_exist(tmp_path):
 def test_build_without_schema_files_records_no_schema_id(tmp_path):
     from tools.build_synthetic_fixtures import CORE_CYCLE_STEM
 
-    source = (
-        Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
-    )
+    source = Path(__file__).parent / "fixtures" / "cycle" / "CSV_Data" / CORE_CYCLE_STEM
     result = build_duckdb(source, tmp_path / "nasr.duckdb", "2024-06-13")
     assert result.metadata.schema_id is None
 

@@ -103,7 +103,6 @@ def main() -> None:
     parser.add_argument("--full-file", type=Path)
     parser.add_argument("--cycle")
     parser.add_argument("--cache-dir", type=Path)
-    parser.add_argument("--storage", choices=("csv", "duckdb"), default="csv")
     parser.add_argument("--seed", type=int, default=20260514)
     parser.add_argument("--sample-size", type=int)
     parser.add_argument("--output", type=Path)
@@ -126,7 +125,7 @@ def main() -> None:
     routes = select_routes(
         routes, seed=arguments.seed, sample_size=arguments.sample_size
     )
-    nasr = NASR(cycle=cycle, cache_dir=arguments.cache_dir, storage=arguments.storage)
+    nasr = NASR(cycle=cycle, cache_dir=arguments.cache_dir)
     tables = {name: nasr[name] for name in nasr}
     report = validate(tables, routes, cycle=cycle)
     serialized = json.dumps(report, indent=2, sort_keys=True, default=str)

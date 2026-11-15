@@ -253,3 +253,14 @@ a `.duckdb` file must not need any of these.
    and import `openNASR`; `openNASR-archiver` and `openNASR-api` are separate packages with
    independent versions and containers. 1.x gets security fixes only, then ends.
 6. ~~License~~ **Decided:** keep GPL-3.0-only for now; revisit if/when the project goes public.
+
+## 8b. Phase 2 progress
+
+| Task | Status |
+|------|--------|
+| 2.1 Corpus format and runner (`tools/route_corpus.py`, inline tables, exact point expectations) | done |
+| 2.2 Synthetic corpus in CI with resolution-rate report (`tests/fixtures/route_corpus/synthetic.json`) | done |
+| 2.3 Coverage table per construct | open |
+| 2.4 Real-cycle corpus from `benchmarks/data/example_routes.csv` once a real cycle is cached | open |
+| 2.5 Lat/lon waypoint tokens (`3800N07700W`): launch scope, **currently unresolved** (known gap recorded in the corpus) | open |
+| 2.6 Split `flightplan.py` into tokenizer / resolver / procedure and airway expanders | open |

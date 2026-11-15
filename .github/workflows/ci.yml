@@ -28,8 +28,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[dev,plot,duckdb]"
+      - run: python -m pip install -e ".[dev,plot]"
       - run: python -m pytest
+      - run: python tools/route_corpus.py --output route-corpus-report.json
 
   package:
     name: Static checks and package
