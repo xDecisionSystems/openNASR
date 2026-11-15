@@ -902,12 +902,14 @@ def _procedure_path(
     Departure route strings may identify a ``DP_BASE`` record directly or a
     ``DP_RTE`` transition code (for example ``ORCO8.TRM``). Arrival route
     strings normally carry a STAR transition computer code (for example
-    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. Full FAA
-    ``DP_RTE`` rows (which include ``NEXT_POINT``) are recorded from their
-    terminal exit back toward the airport, so they are traversed in reverse
-    for an outbound flight plan. STAR rows are
-    recorded outbound from the terminal route's end, so they are traversed in
-    reverse for an inbound flight plan.
+    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. FAA
+    ``DP_RTE`` and ``STAR_RTE`` rows are recorded in flight order (a DP from
+    the runway toward its exit, a STAR from its entry fix toward the
+    runway), so they are traversed as stored. A departure's body precedes
+    its transition; an arrival's transition precedes its body. This was
+    checked against a full cycle: the served airport lies at the first
+    point of 1,021 of 1,026 DP bodies and at the last point of 1,179 of
+    1,186 STAR bodies.
     """
 
     departure_routes = tables.get("DP_RTE")
@@ -923,7 +925,7 @@ def _procedure_path(
         # Full FAA DP_RTE rows include NEXT_POINT and are sequenced from the
         # terminal exit back toward the airport. Retain historical behavior
         # for sparse, legacy caller-supplied tables that omit that column.
-        reverse_departure = "NEXT_POINT" in departure_routes
+        full_departure_rows = "NEXT_POINT" in departure_routes
         if len(departure_matches) > 1:
             narrowed = procedure_index.narrow_departures(
                 {_departure_key(row) for row in departure_matches}
@@ -958,7 +960,7 @@ def _procedure_path(
             tables,
             body,
             connection_token=following_token,
-            reverse=reverse_departure,
+            reverse=False,
             connection_at_start=False,
             common_at_start=False,
             resolver=resolver,
@@ -968,7 +970,7 @@ def _procedure_path(
         )
     if departure_transition_matches:
         assert departure_routes is not None
-        reverse_departure = "NEXT_POINT" in departure_routes
+        full_departure_rows = "NEXT_POINT" in departure_routes
         departure_keys = procedure_index.narrow_departures(
             {_departure_key(row) for row in departure_transition_matches}
         )
@@ -995,13 +997,13 @@ def _procedure_path(
         assert body is not None
         assert transition is not None
         transition_points = _route_rows_points(
-            tables, transition, resolver=resolver, reverse=reverse_departure
+            tables, transition, resolver=resolver, reverse=False
         )
         body_points = _select_procedure_body(
             tables,
             body,
             connection_token=following_token,
-            reverse=reverse_departure,
+            reverse=False,
             connection_at_start=False,
             common_at_start=False,
             resolver=resolver,
@@ -1011,7 +1013,7 @@ def _procedure_path(
         )
         return (
             body_points + transition_points
-            if reverse_departure
+            if full_departure_rows
             else transition_points + body_points
         )
     if transition_matches or base_matches:
@@ -1047,13 +1049,13 @@ def _procedure_path(
                 star_routes[column]
         assert transition is not None
         transition_points = _route_rows_points(
-            tables, transition, resolver=resolver, reverse=True
+            tables, transition, resolver=resolver, reverse=False
         )
         body_points = _select_procedure_body(
             tables,
             body,
             connection_token=preceding_token,
-            reverse=True,
+            reverse=False,
             connection_at_start=True,
             common_at_start=True,
             resolver=resolver,

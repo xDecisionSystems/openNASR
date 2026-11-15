@@ -733,7 +733,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "DEST",
+                "POINT": "MERGE",
             },
             {
                 "STAR_COMPUTER_CODE": "MERGE.STAR1",
@@ -742,7 +742,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "20",
-                "POINT": "MERGE",
+                "POINT": "DEST",
             },
             {
                 "STAR_COMPUTER_CODE": "MERGE.STAR1",
@@ -751,7 +751,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "ENTRY.STAR1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "MERGE",
+                "POINT": "ENTRY",
             },
             {
                 "STAR_COMPUTER_CODE": "MERGE.STAR1",
@@ -760,7 +760,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "ENTRY.STAR1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "20",
-                "POINT": "ENTRY",
+                "POINT": "MERGE",
             },
         ]
     )
@@ -853,7 +853,7 @@ def test_flight_plan_path_resolves_bare_star_before_airway_lookup(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "KATL",
+                "POINT": "GOLLM",
             },
             {
                 "STAR_COMPUTER_CODE": "GNDLF3",
@@ -871,7 +871,7 @@ def test_flight_plan_path_resolves_bare_star_before_airway_lookup(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "GOLLM",
+                "POINT": "KATL",
             },
         ]
     )
@@ -925,7 +925,7 @@ def test_flight_plan_path_resolves_bare_departure_after_origin(tables):
     )
 
 
-def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
+def test_flight_plan_path_keeps_full_faa_departure_rows_in_flown_order(
     tables,
 ):
     tables["FIX_BASE"] = pd.concat(
@@ -949,7 +949,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
             }
         ]
     )
-    # FAA DP_RTE ordering runs from the terminal exit toward the runway.
+    # FAA DP_RTE rows are stored in flight order, runway first.
     tables["DP_RTE"] = pd.DataFrame(
         [
             {
@@ -958,7 +958,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
                 "DP_COMPUTER_CODE": "OUTBOUND1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "EXIT",
+                "POINT": "KAAA",
                 "NEXT_POINT": "MID",
             },
             {
@@ -968,7 +968,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "20",
                 "POINT": "MID",
-                "NEXT_POINT": "KAAA",
+                "NEXT_POINT": "EXIT",
             },
             {
                 "DP_NAME": "OUTBOUND",
@@ -976,7 +976,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
                 "DP_COMPUTER_CODE": "OUTBOUND1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "KAAA",
+                "POINT": "EXIT",
                 "NEXT_POINT": "",
             },
         ]
@@ -1003,7 +1003,7 @@ def test_flight_plan_path_resolves_bare_arrival_before_destination(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "KBBB",
+                "POINT": "ALPHA",
             },
             {
                 "STAR_COMPUTER_CODE": "SCAMR4",
@@ -1021,7 +1021,7 @@ def test_flight_plan_path_resolves_bare_arrival_before_destination(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "ALPHA",
+                "POINT": "KBBB",
             },
         ]
     )
@@ -1356,7 +1356,7 @@ def test_star_body_uses_preceding_route_token_and_preserves_ambiguity(tables):
                 ("ALPHA ARRIVAL", "ALPHA"),
                 ("BRAVO ARRIVAL", "BRAVO"),
             )
-            for point_sequence, point in (("10", "KBBB"), ("20", entry))
+            for point_sequence, point in (("10", entry), ("20", "KBBB"))
         ]
     )
 
@@ -1400,7 +1400,7 @@ def test_procedure_body_keeps_only_the_unambiguous_common_portion(tables):
                 ("ALPHA BRANCH", "ALPHA"),
                 ("BRAVO BRANCH", "BRAVO"),
             )
-            for sequence, point in (("10", "KBBB"), ("20", branch), ("30", "MERGE"))
+            for sequence, point in (("10", "MERGE"), ("20", branch), ("30", "KBBB"))
         ]
     )
 
@@ -1464,7 +1464,7 @@ def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "KBBB",
+                "POINT": "ENTRY",
             },
             {
                 "STAR_COMPUTER_CODE": "ARR1",
@@ -1482,7 +1482,7 @@ def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "ENTRY",
+                "POINT": "KBBB",
             },
         ]
     )
@@ -1605,10 +1605,10 @@ def _procedure_matrix_tables():
                     "POINT": point,
                 }
                 for portion, transition, sequence, point in (
-                    ("BODY", "", 10, "KBBB"),
-                    ("BODY", "", 20, "MID"),
-                    ("TRANSITION", "TRANS.ARR1", 10, "MID"),
-                    ("TRANSITION", "TRANS.ARR1", 20, "ARR"),
+                    ("BODY", "", 10, "MID"),
+                    ("BODY", "", 20, "KBBB"),
+                    ("TRANSITION", "TRANS.ARR1", 10, "ARR"),
+                    ("TRANSITION", "TRANS.ARR1", 20, "MID"),
                 )
             ]
         ),
