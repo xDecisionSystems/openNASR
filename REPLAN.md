@@ -263,4 +263,20 @@ a `.duckdb` file must not need any of these.
 | 2.3 Coverage table per construct | open |
 | 2.4 Real-cycle corpus from `benchmarks/data/example_routes.csv` once a real cycle is cached | open |
 | 2.5 ICAO lat/lon waypoint tokens (`3800N07730W`, `37S078E`) resolve with range checks; FAA slash form (`4300N/05000W`) stays a diagnostic | done |
+| 2.7 Disambiguate DP/STAR records using the route origin/destination airport (40% of the pool fails here) | open |
 | 2.6 Split `flightplan.py` into tokenizer / resolver / procedure and airway expanders | open |
+
+### Real-cycle baseline (2.4, cycle 2026-10-29, 46,580-route pool, 20 s DuckDB build, schema_id `nasr_2026_09`)
+
+| Outcome | Routes | Share |
+|---------|--------|-------|
+| Resolved | 15,987 | 34% |
+| DP/STAR matched several records | 18,603 | 40% |
+| Missing NASR data (unknown fix/procedure/airport) | 6,293 | 14% |
+| Unsupported content (foreign airports, oceanic, external routes) | 5,632 | 12% |
+
+Phase 1 caused none of this: a 400-route sample gave identical per-route results on `main` (CSV) and
+this branch (DuckDB). The largest failure class is a pre-existing resolver weakness: a procedure
+name such as `VIEWS.DEHAN3` is shared by several airports' records and the resolver does not use
+the route's own origin/destination airport to choose. New task **2.7**: disambiguate DP/STAR
+records by the route's airports. Pool routes predate this cycle, so some "missing" are retired names.
