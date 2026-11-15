@@ -263,7 +263,8 @@ a `.duckdb` file must not need any of these.
 | 2.3 Coverage table per construct | open |
 | 2.4 Real-cycle corpus from `benchmarks/data/example_routes.csv` once a real cycle is cached | open |
 | 2.5 ICAO lat/lon waypoint tokens (`3800N07730W`, `37S078E`) resolve with range checks; FAA slash form (`4300N/05000W`) stays a diagnostic | done |
-| 2.7 Narrow DP/STAR records and bodies by the route's end airports (`STAR_APT`/`DP_APT`): done, resolved 15,987 -> 16,666 (+679). **Remaining 17,611 (38%)**: several bodies serve the *same* airport (runway-dependent, e.g. `GRNCH-BRICE` vs `GRNCH-YAGGO` at MCO); the route text cannot choose. Needs a decision: return the common portion plus a diagnostic (`complete:false`) | partly done |
+| 2.7 Narrow DP/STAR records and bodies by the route's end airports (`STAR_APT`/`DP_APT`): done, resolved 15,987 -> 16,666 (+679). Runway-dependent bodies (`GRNCH-BRICE` vs `GRNCH-YAGGO` at MCO) are expected: the resolver returns the portion all bodies share (decided with the owner: arrivals branch by runway and airport configuration). Phase 4 must surface this as a diagnostic with `complete:false`; today `RouteResolver.path` returns the shared part silently | done |
+| 2.8 **DP/STAR rows are stored in flight order; the resolver reversed them.** Verified over a full cycle (airport at first point of 1,021/1,026 DP bodies, last point of 1,179/1,186 STAR bodies). Fixed, fixtures rewritten | done |
 | 2.6 Split `flightplan.py` into tokenizer / resolver / procedure and airway expanders | open |
 
 ### Real-cycle baseline (2.4, cycle 2026-10-29, 46,580-route pool, 20 s DuckDB build, schema_id `nasr_2026_09`)
@@ -280,3 +281,18 @@ this branch (DuckDB). The largest failure class is a pre-existing resolver weakn
 name such as `VIEWS.DEHAN3` is shared by several airports' records and the resolver does not use
 the route's own origin/destination airport to choose. New task **2.7**: disambiguate DP/STAR
 records by the route's airports. Pool routes predate this cycle, so some "missing" are retired names.
+
+### Pool result after 2.7 and 2.8 (cycle 2026-10-29)
+
+| Outcome | Routes | Share |
+|---------|--------|-------|
+| Resolved | 31,216 | 67% |
+| Missing NASR data | 9,044 | 19% |
+| Unsupported (foreign airports, oceanic, external) | 5,632 | 12% |
+| Still ambiguous | 688 | 1.5% |
+
+Missing is dominated by names that are not in this cycle: retired procedure versions
+(`CHSLY7` is now `CHSLY9`), `U.S. CANADIAN BORDER-n`, and airports absent from the FAA file
+(`PBI` is not in this cycle's APT_BASE; the build kept all 19,434 source rows). The pool predates this
+cycle, so a fair rate needs routes filed for the cycle under test. **Open:** the silent partial
+path (see 2.7), and a pool of current-cycle routes.
