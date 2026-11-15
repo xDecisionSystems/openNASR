@@ -24,7 +24,12 @@ from zipfile import ZipFile, is_zipfile
 
 from platformdirs import user_cache_dir
 
-from .exceptions import ArchiveError, CycleNotFoundError, DownloadError
+from .exceptions import (
+    ArchiveError,
+    CycleNotFoundError,
+    DownloadError,
+    OpenNASRError,
+)
 from .duckdb_builder import DuckDbBuildResult, build_duckdb, duckdb_metadata_path
 from .duckdb_metadata import read_metadata
 
@@ -466,6 +471,45 @@ class CycleManager:
             archive_sha256=archive_sha256,
         )
 
+    def ensure_duckdb(self, cycle: str | date) -> DuckDbBuildResult:
+        """Return a usable DuckDB artifact, building it only when sources exist.
+
+        A cycle that holds just a published ``nasr.duckdb`` and its sidecar
+        (for example one fetched from S3) is served as-is; no archive or CSV
+        is required. When sources are present the artifact is reused or
+        rebuilt through :meth:`build_duckdb`.
+        """
+
+        effective_date = self._coerce_exact_date(cycle)
+        cached = self.get(effective_date)
+        if cached is None:
+            raise CycleNotFoundError(
+                f"No NASR cycle found for requested date {effective_date} in "
+                f"{self.cache_dir}. Import or download a matching "
+                "28DaySubscription_Effective_YYYY-MM-DD.zip archive first."
+            )
+        if cached.archive_path is not None or self._has_csv_source(cached.data_path):
+            return self.build_duckdb(effective_date)
+        database = self.duckdb_path(effective_date)
+        metadata_path = duckdb_metadata_path(database)
+        if database.is_file() and metadata_path.is_file():
+            metadata = read_metadata(metadata_path, effective_date=effective_date)
+            return DuckDbBuildResult(database, metadata_path, metadata)
+        raise CycleNotFoundError(
+            f"No archive, CSV data, or DuckDB artifact found for NASR cycle "
+            f"{effective_date.isoformat()} in {self.cache_dir}."
+        )
+
+    @staticmethod
+    def _has_csv_source(data_path: Path | None) -> bool:
+        if data_path is None:
+            return False
+        try:
+            locate_csv_source(data_path)
+        except ArchiveError:
+            return False
+        return True
+
     @staticmethod
     def _is_current_duckdb_artifact(
         database: Path,
@@ -488,7 +532,7 @@ class CycleManager:
                 path.stat().st_mtime_ns > database.stat().st_mtime_ns
                 for path in source.glob("*.csv")
             )
-        except (OSError, ValueError):
+        except (OSError, ValueError, OpenNASRError):
             return False
 
     def _resolve_csv_source(self, data_path: Path) -> Path:

@@ -203,11 +203,17 @@ def _build_temporary_database(
 def _identify_schema_id(source: Path, frames: Mapping[str, DataFrame]) -> str | None:
     """Identify the FAA schema once at build time so readers need no CSVs."""
 
+    from .exceptions import SchemaMismatchError
     from .schemas import SCHEMA_SUFFIX, SchemaCatalog
 
     if not any(name.endswith(SCHEMA_SUFFIX) for name in frames):
         return None
-    return SchemaCatalog().identify_schema(source)
+    try:
+        return SchemaCatalog().identify_schema(source)
+    except SchemaMismatchError:
+        # An unrecognized FAA schema is still archived faithfully; readers
+        # decide (strict vs. diagnostic) when they open the artifact.
+        return None
 
 
 def _validate_database(path: Path, metadata: DuckDbCycleMetadata) -> None:

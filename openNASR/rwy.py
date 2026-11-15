@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pandas import DataFrame
 
-from .basictypes import Raw, RawDict
+from .basictypes import as_number, Raw, RawDict
 from .records import FaaRecord
 
 
@@ -54,7 +54,7 @@ class RWYEnditem(Raw):
     @property
     def bearing(self):
         if hasattr(self._raw, "TRUE_ALIGNMENT"):
-            return self._raw.TRUE_ALIGNMENT
+            return as_number(self._raw.TRUE_ALIGNMENT)
         else:
             return None
 
@@ -68,7 +68,7 @@ class RWYEnditem(Raw):
 
     @property
     def trueBearing(self):
-        return self._raw.TRUE_ALIGNMENT
+        return as_number(self._raw.TRUE_ALIGNMENT)
 
     @property
     def trueAngle(self):
@@ -86,7 +86,7 @@ class RWYEnd(RawDict):
 class RWYitem(Raw):
     @property
     def trueBearing(self):
-        return self._raw.TRUE_ALIGNMENT
+        return as_number(self._raw.TRUE_ALIGNMENT)
 
     @property
     def trueAngle(self):
@@ -94,11 +94,11 @@ class RWYitem(Raw):
 
     @property
     def width(self):
-        return self._raw.RWY_WIDTH
+        return as_number(self._raw.RWY_WIDTH)
 
     @property
     def length(self):
-        return self._raw.RWY_LEN
+        return as_number(self._raw.RWY_LEN)
 
     @property
     def RWYbndXY(self):

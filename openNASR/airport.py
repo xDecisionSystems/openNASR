@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from pandas import DataFrame
 
-from .basictypes import Raw
+from .basictypes import as_number, Raw
 from types import SimpleNamespace
 from .ils import (
     DMEitem,
@@ -169,7 +169,7 @@ class AirportBase(Raw):
 
     @property
     def elevation(self):
-        return self._raw.ELEV
+        return as_number(self._raw.ELEV)
 
     @property
     def icao_id(self):

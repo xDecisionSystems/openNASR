@@ -19,8 +19,8 @@ from typing import Any, Iterable, Mapping
 from .exceptions import ConfigurationError
 
 
-STORAGE_FORMAT_VERSION = 1
-"""The first on-disk DuckDB metadata format supported by openNASR."""
+STORAGE_FORMAT_VERSION = 2
+"""Sidecar format. v2 added ``schema_id`` so readers need no source CSVs."""
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -111,6 +111,7 @@ class DuckDbCycleMetadata:
             "effective_date",
             "source_schema_fingerprint",
             "storage_format_version",
+            "schema_id",
             "tables",
         }
         missing = sorted(required - set(value))
@@ -133,7 +134,7 @@ class DuckDbCycleMetadata:
                 archive_sha256=_optional_str(
                     value.get("archive_sha256"), "archive_sha256"
                 ),
-                schema_id=_optional_str(value.get("schema_id"), "schema_id"),
+                schema_id=_optional_str(value["schema_id"], "schema_id"),
                 storage_format_version=_require_int(
                     value["storage_format_version"], "storage_format_version"
                 ),

@@ -288,7 +288,8 @@ def test_build_without_schema_files_records_no_schema_id(tmp_path):
     assert result.metadata.schema_id is None
 
 
-def test_metadata_without_schema_id_still_reads():
+def test_metadata_requires_the_schema_id_key():
     payload = _metadata().to_dict()
     payload.pop("schema_id")
-    assert DuckDbCycleMetadata.from_dict(payload).schema_id is None
+    with pytest.raises(DuckDbMetadataIncompleteError, match="schema_id"):
+        DuckDbCycleMetadata.from_dict(payload)

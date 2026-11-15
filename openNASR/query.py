@@ -15,7 +15,7 @@ from enum import Enum
 import hashlib
 import json
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pandas import isna
 
@@ -357,49 +357,21 @@ def _query_candidates(
     start_row: int,
     limit: int,
 ) -> list[tuple[int, tuple[object, ...]]]:
-    store = nasr._query_table_store
-    execute = getattr(store, "_query_rows", None)
+    execute = nasr._query_table_store._query_rows
     normalized_filters = tuple(
         (item.field, item.operator.value, item.values) for item in filters
     )
-    if callable(execute):
-        return execute(
-            table,
-            fields,
-            normalized_filters,
-            start_row=start_row,
-            limit=limit,
-        )
-
-    # CSV (and any future non-querying store) takes the portable DataFrame
-    # path.  It preserves source order and applies the exact same text-value
-    # comparisons as the parameterized DuckDB path.
-    frame = nasr._query_csv_frame(table)
-    candidates: list[tuple[int, tuple[object, ...]]] = []
-    for position, (_, source_row) in enumerate(frame.iterrows()):
-        if position < start_row:
-            continue
-        if not _matches(source_row, filters):
-            continue
-        candidates.append((position, tuple(source_row[field] for field in fields)))
-        if len(candidates) >= limit:
-            break
-    return candidates
-
-
-def _matches(row: Any, filters: tuple[_NormalizedFilter, ...]) -> bool:
-    for item in filters:
-        value = _source_text(row[item.field])
-        if item.operator is QueryOperator.EQ:
-            if value != item.values[0]:
-                return False
-        elif value not in item.values:
-            return False
-    return True
+    return execute(
+        table,
+        fields,
+        normalized_filters,
+        start_row=start_row,
+        limit=limit,
+    )
 
 
 def _source_text(value: object) -> str:
-    """Produce the source-text representation used by both query backends."""
+    """Render a source cell as the text FAA published (missing becomes empty)."""
 
     if isinstance(value, str):
         return value
