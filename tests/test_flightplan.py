@@ -1779,3 +1779,52 @@ def test_current_cycle_procedure_matrix(name, route, expected):
 
     assert name
     assert flight_plan_path(_procedure_matrix_tables(), route) == expected
+
+
+def _star_row(code, portion, transition, point, seq, body=""):
+    return {
+        "STAR_COMPUTER_CODE": code,
+        "ARTCC": "ZJX",
+        "ROUTE_PORTION_TYPE": portion,
+        "ROUTE_NAME": body,
+        "TRANSITION_COMPUTER_CODE": transition,
+        "BODY_SEQ": "1",
+        "POINT_SEQ": seq,
+        "POINT": point,
+    }
+
+
+def test_shared_star_transition_is_narrowed_by_the_routes_destination(tables):
+    """One transition name used by two airports' STARs resolves for each
+    route from the airport that route ends at."""
+
+    star_rows = []
+    for code, end in (("ONE.STAR1", "KAAA"), ("TWO.STAR1", "KBBB")):
+        star_rows += [
+            _star_row(code, "BODY", "", "BRAVO", "10", body=f"{code}-BODY"),
+            _star_row(code, "BODY", "", end, "20", body=f"{code}-BODY"),
+            _star_row(code, "TRANSITION", "ENTRY.STAR1", "ALPHA", "10"),
+            _star_row(code, "TRANSITION", "ENTRY.STAR1", "BRAVO", "20"),
+        ]
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": c, "ARTCC": "ZJX"} for c in ("ONE.STAR1", "TWO.STAR1")]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(star_rows)
+
+    with pytest.raises(AmbiguousRecordError):
+        flight_plan_path(tables, "ENTRY.STAR1")
+
+    tables["STAR_APT"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": code,
+                "ARTCC": "ZJX",
+                "BODY_NAME": f"{code}-BODY",
+                "ARPT_ID": airport,
+            }
+            for code, airport in (("ONE.STAR1", "AAA"), ("TWO.STAR1", "BBB"))
+        ]
+    )
+
+    assert flight_plan_path(tables, "ENTRY.STAR1.KBBB")[-1] == (35.0, -80.0)
+    assert flight_plan_path(tables, "ENTRY.STAR1.KAAA")[-1] == (38.0, -77.0)

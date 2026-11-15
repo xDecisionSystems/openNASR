@@ -8,6 +8,7 @@ flight plan for operational use.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass
 import re
 
@@ -23,6 +24,12 @@ from .exceptions import (
 )
 
 
+# Airports named at the two ends of the route being resolved. A procedure
+# name shared by several airports' records (``VIEWS.DEHAN3``) is narrowed to
+# the records that serve one of them.
+_ROUTE_AIRPORTS: ContextVar[frozenset[str]] = ContextVar(
+    "route_airports", default=frozenset()
+)
 _DIRECT = "DCT"
 _AIRWAY = re.compile(r"(?P<designation>[A-Z]+)(?P<identifier>[0-9][A-Z0-9]*)$")
 _OCEANIC_COORDINATE = re.compile(r"\d{4}[NS]/\d{5}[EW]")
@@ -375,6 +382,29 @@ class _AirwayIndex:
         return self._segments.iloc[positions] if positions is not None else None
 
 
+def _narrow_to_route_airports(
+    keys: set[tuple[str, ...]],
+    served: dict[tuple[str, ...], frozenset[str]],
+) -> set[tuple[str, ...]]:
+    """Keep the procedures serving a route-end airport, if that decides it."""
+
+    airports = _ROUTE_AIRPORTS.get()
+    if len(keys) <= 1 or not airports:
+        return keys
+    kept = {key for key in keys if served.get(key, frozenset()) & airports}
+    return kept or keys
+
+
+def _route_end_airports(flight_plan: str) -> frozenset[str]:
+    tokens = re.findall(r"[A-Z0-9]+", re.sub(r"/\S*", "", flight_plan.upper()))
+    ends: set[str] = set()
+    for token in (tokens[0], tokens[-1]) if tokens else ():
+        ends.add(token)
+        if len(token) == 4 and token[0] in "KP":
+            ends.add(token[1:])
+    return frozenset(ends)
+
+
 class _ProcedureIndex:
     """Snapshot normalized procedure-table lookups for one route session.
 
@@ -384,7 +414,62 @@ class _ProcedureIndex:
     effect on current matching or error behavior by itself.
     """
 
+    @staticmethod
+    def _served_airports(
+        frame: DataFrame | None, key_columns: tuple[str, ...]
+    ) -> dict[tuple[str, ...], frozenset[str]]:
+        columns = (*key_columns, "ARPT_ID")
+        if frame is None or any(column not in frame for column in columns):
+            return {}
+        served: dict[tuple[str, ...], set[str]] = {}
+        for *key, airport in zip(*(frame[c].map(_text).to_numpy() for c in columns)):
+            served.setdefault(tuple(key), set()).add(airport)
+        return {key: frozenset(value) for key, value in served.items()}
+
+    def narrow_departures(self, keys: set[tuple[str, ...]]) -> set[tuple[str, ...]]:
+        return _narrow_to_route_airports(keys, self._served_departures)
+
+    def narrow_bodies(
+        self, entity_type: str, rows: DataFrame, names: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        """Keep the named bodies that serve a route-end airport, if any do."""
+
+        airports = _ROUTE_AIRPORTS.get()
+        departure = entity_type == "DepartureProcedure"
+        columns = (
+            ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE")
+            if departure
+            else ("STAR_COMPUTER_CODE", "ARTCC")
+        )
+        if not airports or rows.empty or any(c not in rows for c in columns):
+            return names
+        prefix = tuple(_text(rows[column].iloc[0]) for column in columns)
+        served = (
+            self._served_departure_bodies if departure else self._served_star_bodies
+        )
+        kept = tuple(
+            name
+            for name in names
+            if served.get((*prefix, name), frozenset()) & airports
+        )
+        return kept or names
+
+    def narrow_stars(self, keys: set[tuple[str, ...]]) -> set[tuple[str, ...]]:
+        return _narrow_to_route_airports(keys, self._served_stars)
+
     def __init__(self, tables: Mapping[str, DataFrame]) -> None:
+        self._served_departures = self._served_airports(
+            tables.get("DP_APT"), ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE")
+        )
+        self._served_stars = self._served_airports(
+            tables.get("STAR_APT"), ("STAR_COMPUTER_CODE", "ARTCC")
+        )
+        self._served_departure_bodies = self._served_airports(
+            tables.get("DP_APT"), ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE", "BODY_NAME")
+        )
+        self._served_star_bodies = self._served_airports(
+            tables.get("STAR_APT"), ("STAR_COMPUTER_CODE", "ARTCC", "BODY_NAME")
+        )
         self._departures = tables.get("DP_BASE")
         self._departure_routes = tables.get("DP_RTE")
         self._stars = tables.get("STAR_BASE")
@@ -670,12 +755,15 @@ def _select_procedure_body(
     resolver: _WaypointResolver | None,
     entity_type: str,
     identifier: str,
+    procedure_index: _ProcedureIndex | None = None,
 ) -> tuple[_Waypoint, ...]:
     """Select a published procedure body using its filed route connection."""
 
     if "ROUTE_NAME" not in rows:
         return _route_rows_points(tables, rows, resolver=resolver, reverse=reverse)
     names = tuple(dict.fromkeys(rows["ROUTE_NAME"].map(_text)))
+    if procedure_index is not None and len(names) > 1:
+        names = procedure_index.narrow_bodies(entity_type, rows, names)
     candidates = tuple(
         _route_rows_points(
             tables,
@@ -796,6 +884,10 @@ def _classify_procedure_token(
     )
 
 
+def _departure_key(row: Mapping[str, object]) -> tuple[str, ...]:
+    return (_text(row["DP_NAME"]), _text(row["ARTCC"]), _text(row["DP_COMPUTER_CODE"]))
+
+
 def _procedure_path(
     tables: Mapping[str, DataFrame],
     token: str,
@@ -832,6 +924,13 @@ def _procedure_path(
         # terminal exit back toward the airport. Retain historical behavior
         # for sparse, legacy caller-supplied tables that omit that column.
         reverse_departure = "NEXT_POINT" in departure_routes
+        if len(departure_matches) > 1:
+            narrowed = procedure_index.narrow_departures(
+                {_departure_key(row) for row in departure_matches}
+            )
+            departure_matches = list(
+                row for row in departure_matches if _departure_key(row) in narrowed
+            )
         if len(departure_matches) != 1:
             raise AmbiguousRecordError(
                 entity_type="DepartureProcedure",
@@ -865,18 +964,14 @@ def _procedure_path(
             resolver=resolver,
             entity_type="DepartureProcedure",
             identifier=token,
+            procedure_index=procedure_index,
         )
     if departure_transition_matches:
         assert departure_routes is not None
         reverse_departure = "NEXT_POINT" in departure_routes
-        departure_keys = {
-            (
-                _text(row["DP_NAME"]),
-                _text(row["ARTCC"]),
-                _text(row["DP_COMPUTER_CODE"]),
-            )
-            for row in departure_transition_matches
-        }
+        departure_keys = procedure_index.narrow_departures(
+            {_departure_key(row) for row in departure_transition_matches}
+        )
         if len(departure_keys) != 1:
             raise AmbiguousRecordError(
                 entity_type="DepartureProcedure",
@@ -912,6 +1007,7 @@ def _procedure_path(
             resolver=resolver,
             entity_type="DepartureProcedure",
             identifier=token,
+            procedure_index=procedure_index,
         )
         return (
             body_points + transition_points
@@ -921,7 +1017,7 @@ def _procedure_path(
     if transition_matches or base_matches:
         assert star_routes is not None
         if transition_matches:
-            keys = {
+            keys: set[tuple[str, ...]] = {
                 (_text(row["STAR_COMPUTER_CODE"]), _text(row["ARTCC"]))
                 for row in transition_matches
             }
@@ -930,6 +1026,7 @@ def _procedure_path(
                 (_text(row["STAR_COMPUTER_CODE"]), _text(row["ARTCC"]))
                 for row in base_matches
             }
+        keys = procedure_index.narrow_stars(set(keys))
         if len(keys) != 1:
             raise AmbiguousRecordError(
                 entity_type="StarProcedure", identifier=token, candidates=tuple(keys)
@@ -962,6 +1059,7 @@ def _procedure_path(
             resolver=resolver,
             entity_type="StarProcedure",
             identifier=token,
+            procedure_index=procedure_index,
         )
         return transition_points + body_points
     return None
@@ -1281,6 +1379,29 @@ def _procedure_step_coordinates(
 
 
 def _flight_plan_path(
+    nasr: Mapping[str, DataFrame],
+    flight_plan: str,
+    *,
+    resolver: _WaypointResolver,
+    airway_index: _AirwayIndex | None = None,
+    procedure_index: _ProcedureIndex | None = None,
+) -> tuple[tuple[float, float], ...]:
+    """Resolve a route with its end airports available for disambiguation."""
+
+    reset = _ROUTE_AIRPORTS.set(_route_end_airports(flight_plan))
+    try:
+        return _resolve_route_path(
+            nasr,
+            flight_plan,
+            resolver=resolver,
+            airway_index=airway_index,
+            procedure_index=procedure_index,
+        )
+    finally:
+        _ROUTE_AIRPORTS.reset(reset)
+
+
+def _resolve_route_path(
     nasr: Mapping[str, DataFrame],
     flight_plan: str,
     *,

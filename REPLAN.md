@@ -263,7 +263,7 @@ a `.duckdb` file must not need any of these.
 | 2.3 Coverage table per construct | open |
 | 2.4 Real-cycle corpus from `benchmarks/data/example_routes.csv` once a real cycle is cached | open |
 | 2.5 ICAO lat/lon waypoint tokens (`3800N07730W`, `37S078E`) resolve with range checks; FAA slash form (`4300N/05000W`) stays a diagnostic | done |
-| 2.7 Disambiguate DP/STAR records using the route origin/destination airport (40% of the pool fails here) | open |
+| 2.7 Narrow DP/STAR records and bodies by the route's end airports (`STAR_APT`/`DP_APT`): done, resolved 15,987 -> 16,666 (+679). **Remaining 17,611 (38%)**: several bodies serve the *same* airport (runway-dependent, e.g. `GRNCH-BRICE` vs `GRNCH-YAGGO` at MCO); the route text cannot choose. Needs a decision: return the common portion plus a diagnostic (`complete:false`) | partly done |
 | 2.6 Split `flightplan.py` into tokenizer / resolver / procedure and airway expanders | open |
 
 ### Real-cycle baseline (2.4, cycle 2026-10-29, 46,580-route pool, 20 s DuckDB build, schema_id `nasr_2026_09`)
