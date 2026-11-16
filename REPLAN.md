@@ -386,7 +386,7 @@ resolving a route. Neither key can create buckets.
 
 `openNASR-archiver backfill --from 2026-09-03` published every cycle on the new FAA schema (`nasr_2026_09`,
 first effective 2026-09-03): 2026-09-03, 2026-10-01, 2026-10-29 and the upcoming 2026-11-26 (the FAA had posted it).
-All four are `flight_order`; zips 251-259 MB, databases 54 MB. Older cycles (`pre_2026_09` schema) are next.
+All four are `flight_order`; zips 251-259 MB, databases 54 MB. **Decision (owner): backfill the current format only; no older cycles.** The daily `run` keeps adding each new cycle as the FAA posts it.
 Slack alerts use the infrastructure repo's webhook, stored as `OPENNASR_ALERT_WEBHOOK_URL` in the gitignored `.env`
 (one test message delivered, HTTP 200).
 
