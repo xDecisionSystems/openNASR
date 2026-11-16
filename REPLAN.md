@@ -359,7 +359,7 @@ incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
 |------|--------|
 | 3.1 `contract/` package: key layout (`<year>/<date>_<zipsha>.zip`, `.b<N>.duckdb`, `.b<N>.json`) and strict manifest parse/serialize | done |
 | 3.2 `archiver/` package: `Bucket` protocol, `LocalBucket` (immutable keys), `publish_cycle` with gates (recognised schema, supported procedure order, required tables non-empty, read-only smoke test), zip -> db -> manifest-last | done |
-| 3.3 `S3Bucket` (boto3, optional `s3` extra; sha256 kept as object metadata; tested against a fake client, **not yet against a real bucket**) | done |
+| 3.3 `S3Bucket` (boto3, optional `s3` extra; sha256 kept as object metadata; `S3Bucket.from_env` reads `OPENNASR_*`; verified against the real Garage server on 2026-11-16) | done |
 | 3.4 `run_once`: discover -> download -> publish (current cycle). Upcoming cycle and backfill need provider support (the provider only offers the current cycle) | partly done |
 | 3.5 Outage staging (the local cache), de-duplicated alerts persisted in a state file (fail once, resolve once), "no new cycle" alert after 28 + 3 days | done (notifier is log-only so far) |
 | 3.6 CLI + systemd timer + container image | open |
@@ -373,3 +373,11 @@ The bucket clients (`Bucket`, `LocalBucket`, `S3Bucket`) and the reader side (`l
 carries a `sidecar` reference; a reader verifies the database hash against the manifest before installing.
 Real cycle: zip 259 MB, DuckDB 55 MB. The DuckDB recorded was 1.5.6; per the fleet rule the archiver should build
 with the oldest DuckDB any reader runs, which is still to be pinned when the containers are defined.
+
+### Storage (Garage at s3.xds-lab.com, created 2026-11-16)
+
+Bucket `opennasr` on the Garage S3 store (path-style, region `garage`, Tailscale clients only). Two keys, in the
+gitignored `.env`: `opennasr-archiver` (read + write) and `opennasr-api` (read only). Verified live: archiver write and
+API read work, the API key is refused a write (`AccessDenied`), overwriting a key is refused by the client, and the real
+2026-10-29 cycle published (zip, database, sidecar, manifest) and fetched back into an empty cache with the API key,
+resolving a route. Neither key can create buckets.

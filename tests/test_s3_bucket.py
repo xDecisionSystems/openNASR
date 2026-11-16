@@ -103,3 +103,23 @@ def test_other_errors_are_not_mistaken_for_missing_keys(bucket):
     broken = S3Bucket("nasr", client=Broken())
     with pytest.raises(RuntimeError, match="connection reset"):
         broken.exists("k")
+
+
+def test_env_file_parsing_ignores_comments_and_strips_quotes(tmp_path):
+    from openNASR_contract.s3 import load_env_file
+
+    path = tmp_path / ".env"
+    path.write_text("# c\n\nA=1\nB='two'\nC=\"three\"\nnoequals\n", encoding="utf-8")
+
+    assert load_env_file(path) == {"A": "1", "B": "two", "C": "three"}
+
+
+def test_from_env_names_the_missing_variable():
+    with pytest.raises(KeyError, match="OPENNASR_S3_BUCKET"):
+        S3Bucket.from_env({}, "API")
+    environ = {
+        "OPENNASR_S3_BUCKET": "b",
+        "OPENNASR_S3_ENDPOINT_URL": "https://example.invalid",
+    }
+    with pytest.raises(KeyError, match="OPENNASR_ARCHIVER_S3_ACCESS_KEY_ID"):
+        S3Bucket.from_env(environ, "ARCHIVER")

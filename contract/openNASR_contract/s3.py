@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 import hashlib
 from pathlib import Path
 from typing import Any
@@ -15,6 +15,19 @@ def _not_found(error: Exception) -> bool:
     code = str(response.get("Error", {}).get("Code", ""))
     status = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
     return code in {"404", "NoSuchKey", "NotFound"} or status == 404
+
+
+def load_env_file(path: str | Path) -> dict[str, str]:
+    """Read ``KEY=VALUE`` lines (never ``source`` an env file)."""
+
+    values: dict[str, str] = {}
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        values[name.strip()] = value.strip().strip("'\"")
+    return values
 
 
 class S3Bucket:
@@ -31,14 +44,55 @@ class S3Bucket:
         prefix: str = "",
         client: Any | None = None,
         endpoint_url: str | None = None,
+        region: str | None = None,
+        addressing_style: str = "auto",
+        access_key_id: str | None = None,
+        secret_access_key: str | None = None,
     ) -> None:
         if client is None:
             import boto3  # optional dependency
+            from botocore.config import Config
 
-            client = boto3.client("s3", endpoint_url=endpoint_url)
+            client = boto3.client(
+                "s3",
+                endpoint_url=endpoint_url,
+                region_name=region,
+                aws_access_key_id=access_key_id,
+                aws_secret_access_key=secret_access_key,
+                config=Config(
+                    s3={"addressing_style": addressing_style},
+                    # S3-compatible servers need not accept the newer default
+                    # integrity-checksum trailers; send them only when required.
+                    request_checksum_calculation="when_required",
+                    response_checksum_validation="when_required",
+                    retries={"max_attempts": 5, "mode": "standard"},
+                ),
+            )
         self._client = client
         self._bucket = bucket
         self._prefix = prefix.strip("/") + "/" if prefix.strip("/") else ""
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str], role: str) -> "S3Bucket":
+        """Build from ``OPENNASR_S3_*`` plus the ``OPENNASR_<ROLE>_S3_*`` key.
+
+        ``role`` is ``"ARCHIVER"`` (read/write) or ``"API"`` (read-only).
+        """
+
+        def need(name: str) -> str:
+            try:
+                return environ[name]
+            except KeyError:
+                raise KeyError(f"{name} is not set") from None
+
+        return cls(
+            need("OPENNASR_S3_BUCKET"),
+            endpoint_url=need("OPENNASR_S3_ENDPOINT_URL"),
+            region=environ.get("OPENNASR_S3_REGION"),
+            addressing_style=environ.get("OPENNASR_S3_ADDRESSING_STYLE", "path"),
+            access_key_id=need(f"OPENNASR_{role}_S3_ACCESS_KEY_ID"),
+            secret_access_key=need(f"OPENNASR_{role}_S3_SECRET_ACCESS_KEY"),
+        )
 
     def _key(self, key: str) -> str:
         return f"{self._prefix}{key}"
