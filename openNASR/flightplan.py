@@ -1177,6 +1177,8 @@ def _departure_airway_join(
     proximity or later route text to make a connection.
     """
 
+    if not procedure:
+        return None  # a procedure with no geometry cannot be joined to an airway
     procedure_token = tokens[procedure_token_index].value
     airway_index_in_route = _next_route_token_index(tokens, procedure_token_index)
     if airway_index_in_route is None or not _is_departure_procedure(

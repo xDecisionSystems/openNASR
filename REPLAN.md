@@ -326,3 +326,22 @@ the typed error names (`RecordNotFoundError`, `AmbiguousRecordError`, `Unsupport
 - **2.11** Departures that publish transitions but no body rows (radar-vector, e.g. `LARGO3`) now resolve from the transition: ambiguity 688 -> 263.
 - **2.12** Fan markers that share a navaid's name (`MCK`, `AST`) are not route-point candidates. Run after the figures above, so it adds roughly 65 more resolved routes (not yet re-measured).
 - Remaining ambiguity is genuine (`ZFP`: an NDB and a VOR/DME with one identifier). Remaining "airway" misses are mostly foreign-FIR airways (`J5` out of CYVR).
+
+### Pool result with honest outcome classes (cycle 2026-10-29, 46,580 routes)
+
+The earlier "failure" wording was wrong. The report (`tools/route_path_validation.py`) now classifies:
+
+| Outcome | Routes | Meaning |
+|---------|--------|---------|
+| resolved | 18,040 | every part resolved exactly |
+| resolved_with_branches | 14,814 | resolved; a procedure's runway/configuration-dependent branches are reported as a `procedure_branches` diagnostic and only the shared portion is included |
+| **usable** | **32,854 (70.5%)** | the two rows above |
+| not_in_cycle | 8,023 | a fix, airway, procedure or airport that is not in this cycle (pool filed against older cycles; foreign points) |
+| outside_scope | 5,632 | foreign airports, oceanic coordinates, external routes |
+| ambiguous | 68 | one identifier names two records and the route does not decide (`ZFP`: NDB and VOR/DME) |
+| internal_error | 3 -> 0 | resolver bugs (empty procedure bodies); fixed after this run |
+
+Runway-dependent branching (departures such as `MONTN2.SEA`, `CONLE5.SCOOB`; arrivals such as
+`GRNCH5`) is expected FAA data, not an error. Open: a dotted departure with no published points
+(`SLC4.TCH`, `LAKES5.MCI`) starts the following airway from the whole token instead of its exit
+fix, so those routes report `RecordNotFoundError`.
