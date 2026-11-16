@@ -940,6 +940,50 @@ def _departure_key(row: Mapping[str, object]) -> tuple[str, ...]:
     return (_text(row["DP_NAME"]), _text(row["ARTCC"]), _text(row["DP_COMPUTER_CODE"]))
 
 
+def _unpublished_departure_exit(
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    resolver: _WaypointResolver | None,
+) -> tuple[_Waypoint, ...]:
+    """Terminal fix of a departure that publishes no body geometry.
+
+    FAA DP computer codes read ``NAME#.FIX``; across a full cycle ``FIX`` is the
+    end of the DP's body (or the start of its transitions) for about 90% of the
+    DPs that publish geometry, and the DP's airways attach there. A radar-vector
+    departure publishes no points at all, so the code's own suffix is the only
+    source for where it ends.
+    """
+
+    suffix = token.split(".", 1)[1] if "." in token else ""
+    if not suffix:
+        return ()
+    try:
+        exit_fix = _waypoint(
+            tables,
+            _text(suffix),
+            preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
+            resolver=resolver,
+        )
+    except (RecordNotFoundError, AmbiguousRecordError):
+        return ()
+    diagnostics = _DIAGNOSTICS.get()
+    if diagnostics is not None:
+        diagnostics.append(
+            RouteDiagnostic(
+                code="procedure_geometry_unpublished",
+                message=(
+                    f"{token} publishes no route points; its terminal fix "
+                    f"{exit_fix.identifier} comes from the procedure's code."
+                ),
+                token=token,
+                detail={"terminal_fix": exit_fix.identifier},
+                severity="info",
+            )
+        )
+    return (exit_fix,)
+
+
 def _procedure_path(
     tables: Mapping[str, DataFrame],
     token: str,
@@ -1008,7 +1052,7 @@ def _procedure_path(
             else rows
         )
         assert body is not None
-        return _select_procedure_body(
+        body_points = _select_procedure_body(
             tables,
             body,
             connection_token=following_token,
@@ -1019,6 +1063,9 @@ def _procedure_path(
             entity_type="DepartureProcedure",
             identifier=token,
             procedure_index=procedure_index,
+        )
+        return body_points or _unpublished_departure_exit(
+            tables, token, resolver=resolver
         )
     if departure_transition_matches:
         assert departure_routes is not None

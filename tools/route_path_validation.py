@@ -52,7 +52,11 @@ OUTCOMES = {
 
 
 def _outcome(result) -> str:
-    codes = {item.code for item in result.diagnostics}
+    codes = {
+        item.code
+        for item in result.diagnostics
+        if item.code != "procedure_geometry_unpublished"
+    }
     if not codes:
         return "resolved"
     if codes == {"procedure_branches"}:

@@ -14,6 +14,9 @@ class RouteDiagnostic:
     token: str | None = None
     position: int | None = None
     detail: dict[str, object] = field(default_factory=dict)
+    severity: str = "warning"
+    """``"info"`` notes how a point was derived and does not make the route
+    incomplete; ``"warning"`` means part of the route is missing or unresolved."""
 
 
 @dataclass(frozen=True)
@@ -21,8 +24,9 @@ class RouteResult:
     """The outcome of resolving one route against one cycle.
 
     ``complete`` is ``True`` only when every part of the route was resolved
-    exactly. A route with a diagnostic is never complete: its ``points`` hold
-    what could be resolved without guessing (empty when resolution stopped).
+    exactly. A route with a warning diagnostic is never complete: its ``points``
+    hold what could be resolved without guessing (empty when resolution
+    stopped). Diagnostics of severity ``"info"`` do not affect completeness.
     """
 
     route: str
@@ -32,4 +36,4 @@ class RouteResult:
 
     @property
     def complete(self) -> bool:
-        return not self.diagnostics
+        return all(item.severity == "info" for item in self.diagnostics)

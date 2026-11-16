@@ -2027,3 +2027,39 @@ def test_airway_after_a_procedure_with_no_body_points_uses_the_filed_fix(tables)
 
     assert [d.code for d in result.diagnostics] == []
     assert result.points[-1] == (35.0, -80.0)
+
+
+def test_vector_departure_ends_at_its_computer_code_suffix_and_airway_continues(
+    tables,
+):
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "VECTOR", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "VECTOR3.ALPHA"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        columns=[
+            "DP_NAME",
+            "ARTCC",
+            "DP_COMPUTER_CODE",
+            "ROUTE_PORTION_TYPE",
+            "ROUTE_NAME",
+            "TRANSITION_COMPUTER_CODE",
+            "BODY_SEQ",
+            "POINT_SEQ",
+            "POINT",
+            "NEXT_POINT",
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA VECTOR3.ALPHA V1 BBB")
+
+    assert result.complete  # an info note does not make the route incomplete
+    assert result.points == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+    (note,) = result.diagnostics
+    assert note.code == "procedure_geometry_unpublished"
+    assert note.severity == "info"
+    assert note.detail == {"terminal_fix": "ALPHA"}
