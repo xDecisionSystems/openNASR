@@ -352,3 +352,18 @@ fix, so those routes report `RecordNotFoundError`.
 suffix (`SLC4.TCH`) is the DP's terminal fix in ~90% of the DPs that do publish geometry, so it is used and an
 `info` diagnostic (`procedure_geometry_unpublished`) records the source. Info diagnostics do not make a route
 incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
+
+## 8c. Phase 3 progress (archiver)
+
+| Task | Status |
+|------|--------|
+| 3.1 `contract/` package: key layout (`<year>/<date>_<zipsha>.zip`, `.b<N>.duckdb`, `.b<N>.json`) and strict manifest parse/serialize | done |
+| 3.2 `archiver/` package: `Bucket` protocol, `LocalBucket` (immutable keys), `publish_cycle` with gates (recognised schema, supported procedure order, required tables non-empty, read-only smoke test), zip -> db -> manifest-last | done |
+| 3.3 `S3Bucket` (boto3, optional extra) | open |
+| 3.4 `run_once`: discover -> download -> publish; upcoming cycle; backfill | open |
+| 3.5 Outage staging, de-duplicated alerts (fail once, resolve once), "no new cycle by N days" alert | open |
+| 3.6 CLI + systemd timer + container image | open |
+| 3.7 Fresh-machine rebuild test (acceptance) | open |
+
+Repo layout so far: the existing `openNASR/` package at the root is `core`; `contract/` and `archiver/`
+sit beside it. Moving core into `core/` is deferred until the API package exists, to keep history readable.

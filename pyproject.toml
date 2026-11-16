@@ -58,7 +58,7 @@ openNASR = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "contract", "archiver"]
 
 [tool.ruff]
 target-version = "py310"
