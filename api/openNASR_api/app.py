@@ -8,9 +8,10 @@ import re
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openNASR.exceptions import ConfigurationError
+from openNASR.icaomessage import IcaoFlightPlan, IcaoMessageError
 from openNASR.routeresult import RouteResult
 
 from .store import CycleStore, CycleUnavailableError
@@ -20,17 +21,24 @@ _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class RouteRequest(BaseModel):
-    route: str = Field(min_length=1, max_length=4096, description="FAA route text")
+    route: str | None = Field(
+        default=None, max_length=4096, description="FAA route text"
+    )
+    icao_message: str | None = Field(
+        default=None,
+        max_length=8192,
+        description="An ICAO FPL message; the route and aerodromes are extracted",
+    )
     cycle: str | None = Field(
         default=None, description="Effective date YYYY-MM-DD; default is today's cycle"
     )
 
-    @field_validator("route")
-    @classmethod
-    def _not_blank(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("route must not be blank")
-        return value
+    @model_validator(mode="after")
+    def _exactly_one_input(self) -> "RouteRequest":
+        given = [v for v in (self.route, self.icao_message) if v and v.strip()]
+        if len(given) != 1:
+            raise ValueError("give exactly one of 'route' or 'icao_message'")
+        return self
 
     @field_validator("cycle")
     @classmethod
@@ -58,7 +66,21 @@ class Diagnostic(BaseModel):
     detail: dict[str, Any]
 
 
+class Extracted(BaseModel):
+    message_type: str
+    aircraft_id: str
+    departure: str
+    destination: str
+    route_field: str
+
+
+class InputEcho(BaseModel):
+    mode: str  # "route" | "icao_message"
+    extracted: Extracted | None = None
+
+
 class RouteResponse(BaseModel):
+    input: InputEcho
     route: str
     cycle: str | None
     complete: bool
@@ -85,8 +107,22 @@ def _geojson(result: RouteResult) -> dict[str, Any]:
     }
 
 
-def _response(result: RouteResult) -> RouteResponse:
+def _response(
+    result: RouteResult, extracted: IcaoFlightPlan | None = None
+) -> RouteResponse:
     return RouteResponse(
+        input=InputEcho(
+            mode="icao_message" if extracted else "route",
+            extracted=Extracted(
+                message_type=extracted.message_type,
+                aircraft_id=extracted.aircraft_id,
+                departure=extracted.departure,
+                destination=extracted.destination,
+                route_field=extracted.route_field,
+            )
+            if extracted
+            else None,
+        ),
         route=result.route,
         cycle=result.cycle,
         complete=result.complete,
@@ -124,13 +160,22 @@ def create_app(store: CycleStore, api_keys: Collection[str]) -> FastAPI:
         ):
             raise HTTPException(401, "a valid API key is required")
 
-    def resolve(route: str, cycle: str | None) -> RouteResponse:
+    def resolve(
+        route: str | None, cycle: str | None, icao_message: str | None = None
+    ) -> RouteResponse:
         try:
             chosen, resolver = store.resolver(cycle)
         except CycleUnavailableError as error:
             status = 404 if cycle else 503
             raise HTTPException(status, str(error)) from error
         try:
+            if icao_message and icao_message.strip():
+                try:
+                    extracted, result = resolver.resolve_icao_message(icao_message)
+                except IcaoMessageError as error:
+                    raise HTTPException(422, str(error)) from error
+                return _response(result, extracted)
+            assert route is not None
             return _response(resolver.resolve(route))
         except ConfigurationError as error:
             raise HTTPException(
@@ -155,7 +200,7 @@ def create_app(store: CycleStore, api_keys: Collection[str]) -> FastAPI:
         dependencies=[Depends(require_key)],
     )
     def resolve_post(request: RouteRequest) -> RouteResponse:
-        return resolve(request.route, request.cycle)
+        return resolve(request.route, request.cycle, request.icao_message)
 
     @app.get(
         "/v1/route/resolve",

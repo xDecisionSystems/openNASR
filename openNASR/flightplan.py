@@ -15,6 +15,7 @@ import re
 from numpy import ndarray
 from pandas import DataFrame
 
+from .icaomessage import IcaoFlightPlan, parse_icao_flight_plan
 from .routeresult import RouteDiagnostic, RoutePoint, RouteResult
 from .exceptions import (
     AmbiguousRecordError,
@@ -43,6 +44,7 @@ _LATLON_WAYPOINT = re.compile(
     r"(?P<lat>\d{2})(?P<lat_min>\d{2})?(?P<ns>[NS])"
     r"(?P<lon>\d{3})(?P<lon_min>\d{2})?(?P<ew>[EW])$"
 )
+_SPEED_LEVEL = re.compile(r"[NKM]\d{3,4}(?:[FSAM]\d{3,4}|VFR)$")
 _EXTERNAL_AIRWAY = re.compile(r"(?:U[A-Z]?\d+[A-Z0-9]*|RTE\d+)$")
 _RADIAL_DISTANCE = re.compile(r"[A-Z]{3}\d{6}$")
 _FOREIGN_ICAO_PREFIX = re.compile(r"(?:C[FGKLMNPSY]|E[A-Z]|MM|TJ)[A-Z]{2}$")
@@ -1374,6 +1376,24 @@ def _is_published_dotted_procedure(
     return not departure_matches.empty and first_component_matches.empty
 
 
+def _note_ignored(position: int, group: str, *, after: str | None = None) -> None:
+    """Report speed/level and time groups the resolver skips (not geometry)."""
+
+    diagnostics = _DIAGNOSTICS.get()
+    if diagnostics is None:
+        return
+    diagnostics.append(
+        RouteDiagnostic(
+            code="ignored_speed_level",
+            message=f"{group!r} is a speed, level or time group; it is ignored.",
+            token=group,
+            position=position,
+            detail={"after": after} if after else {},
+            severity="info",
+        )
+    )
+
+
 def _tokenize_flight_plan(
     tables: Mapping[str, DataFrame],
     flight_plan: str,
@@ -1394,7 +1414,13 @@ def _tokenize_flight_plan(
     procedure_index = procedure_index or _ProcedureIndex(tables)
     normalized: list[_RouteToken] = []
     for field_match in re.finditer(r"\S+", flight_plan.upper()):
-        field = field_match.group().split("/", 1)[0]
+        group = field_match.group()
+        field, slash, suffix = group.partition("/")
+        if slash and suffix:
+            _note_ignored(field_match.start() + len(field) + 1, suffix, after=field)
+        if _SPEED_LEVEL.match(field):
+            _note_ignored(field_match.start(), field)
+            continue
         if not field:
             continue
         components = field.split(".")
@@ -1743,6 +1769,16 @@ class RouteResolver:
         except OpenNASRError as error:
             _attach_route_diagnostic(error, flight_plan=flight_plan, cycle=self._cycle)
             raise
+
+    def resolve_icao_message(self, message: str) -> tuple[IcaoFlightPlan, RouteResult]:
+        """Resolve the route inside an ICAO FPL message.
+
+        Returns what was extracted alongside the result so it can be checked.
+        Raises :class:`IcaoMessageError` for a message that is not a usable FPL.
+        """
+
+        extracted = parse_icao_flight_plan(message)
+        return extracted, self.resolve(extracted.route)
 
     def resolve(self, flight_plan: str) -> RouteResult:
         """Resolve one route into points plus structured diagnostics.
