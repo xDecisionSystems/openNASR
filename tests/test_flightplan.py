@@ -2002,3 +2002,28 @@ def test_dotted_star_computer_code_is_kept_as_one_procedure(tables):
         (36.0, -79.0),
         (35.0, -80.0),
     )
+
+
+def test_airway_after_a_procedure_with_no_body_points_uses_the_filed_fix(tables):
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "VECTOR", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "VECTOR3"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        columns=[
+            "DP_NAME",
+            "ARTCC",
+            "DP_COMPUTER_CODE",
+            "ROUTE_PORTION_TYPE",
+            "ROUTE_NAME",
+            "TRANSITION_COMPUTER_CODE",
+            "BODY_SEQ",
+            "POINT_SEQ",
+            "POINT",
+            "NEXT_POINT",
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA VECTOR3 ALPHA V1 BBB")
+
+    assert [d.code for d in result.diagnostics] == []
+    assert result.points[-1] == (35.0, -80.0)

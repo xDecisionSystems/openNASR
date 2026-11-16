@@ -1551,19 +1551,19 @@ def _resolve_route_path(
                     airway_index=airway_index,
                     procedure_index=procedure_index,
                 )
-                if previous_procedure is not None
+                if previous_procedure
                 else None
             )
             previous = (
                 previous_join.identifier
                 if previous_join is not None
                 else previous_procedure[-1].identifier
-                if previous_procedure is not None
+                if previous_procedure
                 else tokens[previous_index].value
             )
             following = (
                 following_procedure[0].identifier
-                if following_procedure is not None
+                if following_procedure
                 else tokens[following_index].value
             )
             vertices = _airway_vertices(

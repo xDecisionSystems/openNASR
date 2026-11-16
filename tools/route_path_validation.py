@@ -47,6 +47,7 @@ OUTCOMES = {
     "not_in_cycle": "a fix, airway, procedure or airport that is not in this cycle",
     "ambiguous": "an identifier names several records and the route does not decide",
     "malformed": "the route text is not a valid route",
+    "internal_error": "the resolver raised an unexpected exception (a bug to fix)",
 }
 
 
@@ -69,7 +70,27 @@ def validate(tables, routes: list[dict[str, str]], *, cycle: str) -> dict[str, o
     resolver = RouteResolver(tables)
     results = []
     for entry in routes:
-        result = resolver.resolve(entry["route"])
+        try:
+            result = resolver.resolve(entry["route"])
+        except Exception as error:  # a bug: record it and keep going
+            results.append(
+                {
+                    "id": entry.get("id"),
+                    "route": entry["route"],
+                    "outcome": "internal_error",
+                    "complete": False,
+                    "coordinates": (),
+                    "diagnostics": [
+                        {
+                            "code": type(error).__name__,
+                            "token": None,
+                            "message": str(error),
+                        }
+                    ],
+                    "cycle": cycle,
+                }
+            )
+            continue
         results.append(
             {
                 "id": entry.get("id"),
