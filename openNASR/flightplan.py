@@ -779,6 +779,10 @@ def _select_procedure_body(
         )
         for name in names
     )
+    if not candidates:
+        # A published procedure may have transitions but no body points
+        # (radar-vector departures); there is simply no body geometry.
+        return ()
     if len(candidates) == 1:
         return candidates[0]
     if connection_token is not None:

@@ -1890,3 +1890,38 @@ def test_resolve_reports_failures_as_diagnostics_not_exceptions(tables):
 
 def test_path_still_returns_the_shared_portion_without_diagnostics(tables):
     assert RouteResolver(_shared_star_tables(tables)).path("KAAA SHARED3 KBBB")
+
+
+def test_departure_with_transitions_but_no_body_rows_uses_the_transition(tables):
+    """Radar-vector departures publish transitions without any body points."""
+
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "VECTOR", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "VECTOR3.AAA"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "VECTOR",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "VECTOR3.AAA",
+                "ROUTE_PORTION_TYPE": "TRANSITION",
+                "ROUTE_NAME": "ALPHA TRANSITION",
+                "TRANSITION_COMPUTER_CODE": "VECTOR3.ALPHA",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": str(seq),
+                "POINT": point,
+                "NEXT_POINT": next_point,
+            }
+            for seq, point, next_point in ((10, "BRAVO", "ALPHA"), (20, "ALPHA", ""))
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA.VECTOR3.ALPHA..KBBB")
+
+    assert result.complete
+    assert result.points == (
+        (38.0, -77.0),
+        (36.0, -79.0),
+        (37.0, -78.0),
+        (35.0, -80.0),
+    )
