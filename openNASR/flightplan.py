@@ -154,6 +154,10 @@ class _WaypointResolver:
                 nav_types,
             ):
                 *raw_identifiers, latitude, longitude, nav_type = values
+                if table == "NAV_BASE" and _text(nav_type) == "FAN MARKER":
+                    # Marker beacons share names with navaids but are never
+                    # filed as route points.
+                    continue
                 try:
                     coordinates = float(str(latitude)), float(str(longitude))
                 except ValueError:

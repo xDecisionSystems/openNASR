@@ -1925,3 +1925,23 @@ def test_departure_with_transitions_but_no_body_rows_uses_the_transition(tables)
         (37.0, -78.0),
         (35.0, -80.0),
     )
+
+
+def test_fan_marker_with_a_navaids_name_is_not_a_route_point(tables):
+    tables["NAV_BASE"] = pd.DataFrame(
+        [
+            {
+                "NAV_ID": "MCK",
+                "NAV_TYPE": nav_type,
+                "LAT_DECIMAL": lat,
+                "LONG_DECIMAL": "-79",
+            }
+            for nav_type, lat in (("FAN MARKER", "36.5"), ("VOR/DME", "36"))
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA MCK KBBB") == (
+        (38.0, -77.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
