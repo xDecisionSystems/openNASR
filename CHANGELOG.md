@@ -23,6 +23,16 @@ and versions follow Semantic Versioning.
 
 ### Fixed
 
+- Departure and arrival procedures were traversed backwards. FAA `DP_RTE` and
+  `STAR_RTE` rows are stored in flight order; the resolver reversed them. Checked
+  against a full cycle (airport at the first point of 1,021 of 1,024 DP bodies and
+  the last point of 1,179 of 1,186 STAR bodies).
+- A procedure name shared by several airports (`VIEWS.DEHAN3`) is now narrowed by
+  the route's origin and destination airports, using `STAR_APT` and `DP_APT`.
+- ICAO lat/lon waypoints (`3800N07730W`, `37S078E`) resolve.
+- Each built artifact records `checks.procedure_order` in its sidecar, and the
+  build warns if the FAA stops storing procedures in flight order.
+
 - Download timeouts raised from 2 s to 30 s (pages) / 60 s (archive); downloads over
   2 GiB and extractions over 16 GiB are rejected; plain `pytest` now works.
 

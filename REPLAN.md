@@ -296,3 +296,11 @@ Missing is dominated by names that are not in this cycle: retired procedure vers
 (`PBI` is not in this cycle's APT_BASE; the build kept all 19,434 source rows). The pool predates this
 cycle, so a fair rate needs routes filed for the cycle under test. **Open:** the silent partial
 path (see 2.7), and a pool of current-cycle routes.
+
+### 2.9 Format-change guard (decided with the owner)
+
+Instead of inferring DP/STAR direction per route, the builder measures it once per cycle
+(`openNASR/invariants.py`) and records `checks.procedure_order` in the sidecar
+(`flight_order` / `reversed` / `unexpected` / `insufficient_data`), with a `RuntimeWarning` at build
+time when the FAA convention is not flight order. **Phase 3 gate:** the archiver must not write the
+validated manifest for a cycle whose status is `reversed` or `unexpected`, and must alert.
