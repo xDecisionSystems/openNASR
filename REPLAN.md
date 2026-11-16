@@ -359,9 +359,9 @@ incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
 |------|--------|
 | 3.1 `contract/` package: key layout (`<year>/<date>_<zipsha>.zip`, `.b<N>.duckdb`, `.b<N>.json`) and strict manifest parse/serialize | done |
 | 3.2 `archiver/` package: `Bucket` protocol, `LocalBucket` (immutable keys), `publish_cycle` with gates (recognised schema, supported procedure order, required tables non-empty, read-only smoke test), zip -> db -> manifest-last | done |
-| 3.3 `S3Bucket` (boto3, optional extra) | open |
-| 3.4 `run_once`: discover -> download -> publish; upcoming cycle; backfill | open |
-| 3.5 Outage staging, de-duplicated alerts (fail once, resolve once), "no new cycle by N days" alert | open |
+| 3.3 `S3Bucket` (boto3, optional `s3` extra; sha256 kept as object metadata; tested against a fake client, **not yet against a real bucket**) | done |
+| 3.4 `run_once`: discover -> download -> publish (current cycle). Upcoming cycle and backfill need provider support (the provider only offers the current cycle) | partly done |
+| 3.5 Outage staging (the local cache), de-duplicated alerts persisted in a state file (fail once, resolve once), "no new cycle" alert after 28 + 3 days | done (notifier is log-only so far) |
 | 3.6 CLI + systemd timer + container image | open |
 | 3.7 Fresh-machine rebuild test (acceptance) | open |
 
