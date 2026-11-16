@@ -393,3 +393,17 @@ Slack alerts use the infrastructure repo's webhook, stored as `OPENNASR_ALERT_WE
 Operational note: an extracted cycle needs ~1.4 GB. `/tmp` on the devbox is a 7.9 GB RAM-backed tmpfs and filled up during
 testing (builds then failed with "No space left on device"); caches must live on disk (`/home/aev/.cache/...`,
 `/var/lib/openNASR-archiver`). Re-posted preview zips get new keys (the key holds the zip hash); readers pick the newest.
+
+## 8d. Phase 4 progress (API)
+
+| Task | Status |
+|------|--------|
+| 4.1 Per-point provenance in core: `RouteResult.waypoints` (name, kind, via, segment) | done |
+| 4.2 `api/` package: `CycleStore` (fetches verified builds with the read-only key, serves from disk, a failed refresh never drops a working cycle, only the 11 route tables are loaded, LRU of loaded cycles), FastAPI app, `X-API-Key`/Bearer auth with constant-time compare | done |
+| 4.3 `POST/GET /v1/route/resolve` (points, GeoJSON LineString in lon/lat, structured diagnostics, `complete`, cycle echoed), `/v1/cycles`, `/health`, `/ready`; unresolved routes are a 200 with diagnostics, bad input 422, unknown cycle 404, no cycle 503 | done |
+| 4.4 Real-data check: server against Garage, `KABQ.DOOKK3.TXO..KTYR` complete with provenance; `GRNCH5` returns the branch warning; ~40 ms per request warm, 2.5 s first load of a cycle, ~330 MB per loaded cycle | done |
+| 4.5 `icao_message` input mode | open |
+| 4.6 Ignored speed/level groups echoed as info diagnostics | open |
+| 4.7 Supporting endpoints (`/airports/{id}`, `/fixes/{id}`, `/navaids/{id}`, `/airways/{id}`, `/airspace/at`) | open |
+| 4.8 `max_segment_nm` densify option; OpenAPI published; contract tests; rate limiting; request logging | open |
+| 4.9 Container/unit files | open |

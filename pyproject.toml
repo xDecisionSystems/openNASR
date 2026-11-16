@@ -37,7 +37,7 @@ dependencies = [
 
 [project.optional-dependencies]
 plot = ["matplotlib"]
-dev = ["pytest", "ruff", "mypy"]
+dev = ["pytest", "ruff", "mypy", "fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.29"]
 release = ["build", "twine"]
 
 [project.urls]
@@ -58,7 +58,7 @@ openNASR = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", "contract", "archiver"]
+pythonpath = [".", "contract", "archiver", "api"]
 
 [tool.ruff]
 target-version = "py310"
