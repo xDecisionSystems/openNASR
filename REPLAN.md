@@ -313,3 +313,16 @@ per-cycle measurement of every DP/STAR was removed as redundant.
 API serializes it. Codes so far: `procedure_branches` (partial, with `split_after` and `branches`),
 the typed error names (`RecordNotFoundError`, `AmbiguousRecordError`, `UnsupportedRouteContentError`,
 ...) and `MalformedRoute`. Still to add for the API: per-point provenance and GeoJSON.
+
+### Pool result after 2.11 and 2.12 (cycle 2026-10-29)
+
+| Outcome | Routes | Share |
+|---------|--------|-------|
+| Resolved | 31,566 | 68% |
+| Missing NASR data | 9,119 | 20% |
+| Unsupported (foreign airports, oceanic, external) | 5,632 | 12% |
+| Still ambiguous | 263 | 0.6% |
+
+- **2.11** Departures that publish transitions but no body rows (radar-vector, e.g. `LARGO3`) now resolve from the transition: ambiguity 688 -> 263.
+- **2.12** Fan markers that share a navaid's name (`MCK`, `AST`) are not route-point candidates. Run after the figures above, so it adds roughly 65 more resolved routes (not yet re-measured).
+- Remaining ambiguity is genuine (`ZFP`: an NDB and a VOR/DME with one identifier). Remaining "airway" misses are mostly foreign-FIR airways (`J5` out of CYVR).
