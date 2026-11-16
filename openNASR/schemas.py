@@ -178,6 +178,14 @@ class SchemaCatalog:
 
     SUPPORTED_SCHEMA_IDS = ("pre_2026_09", "nasr_2026_09")
 
+    # How DP_RTE / STAR_RTE rows are ordered. The FAA's DP and STAR DATA LAYOUT
+    # documents say "POINT_SEQ - Points are in order adapted for given Segment"
+    # and "NEXT_POINT - The Point that directly follows the current Point", i.e.
+    # flight order (a DP from its runway, a STAR toward its runway). Confirmed
+    # against the 2026-10-29 cycle. A new schema must declare its convention
+    # here before the route resolver will accept it.
+    PROCEDURE_ORDER = {"pre_2026_09": "flight_order", "nasr_2026_09": "flight_order"}
+
     def __init__(self, manifest_dir: str | Path | None = None) -> None:
         if manifest_dir is None:
             manifest_dir = (

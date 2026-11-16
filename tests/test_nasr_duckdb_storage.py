@@ -86,3 +86,13 @@ def test_csv_storage_was_removed_with_a_migration_message():
 def test_nasr_rejects_unrecognized_storage_backend(storage):
     with pytest.raises(ConfigurationError, match="storage must be"):
         NASR(storage=storage)
+
+
+def test_built_artifact_records_the_schemas_procedure_order(make_nasr_from_fixture):
+    nasr, cache_root = make_nasr_from_fixture("schema_only/nasr_2026_09")
+
+    sidecar = duckdb_metadata_path(
+        CycleManager(cache_root).duckdb_path(nasr.effective_date)
+    )
+    assert json.loads(sidecar.read_text("utf-8"))["procedure_order"] == "flight_order"
+    assert nasr.procedure_order == "flight_order"

@@ -17,6 +17,7 @@ from pandas import DataFrame
 
 from .exceptions import (
     AmbiguousRecordError,
+    ConfigurationError,
     OpenNASRError,
     RecordNotFoundError,
     RouteConnectivityError,
@@ -1550,6 +1551,12 @@ class RouteResolver:
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._cycle = getattr(nasr, "effective_date", None)
+        order = getattr(nasr, "procedure_order", None)
+        if order not in (None, "flight_order"):
+            raise ConfigurationError(
+                f"Cycle {self._cycle} stores procedures as {order!r}; the route "
+                "resolver only supports flight_order."
+            )
         self._nasr = dict(nasr)
         self._waypoints = _WaypointResolver(self._nasr)
         self._airways = _AirwayIndex(self._nasr)

@@ -61,7 +61,7 @@ class DuckDbCycleMetadata:
     database_sha256: str
     archive_sha256: str | None = None
     schema_id: str | None = None
-    checks: Mapping[str, Any] | None = None
+    procedure_order: str | None = None
     storage_format_version: int = STORAGE_FORMAT_VERSION
     complete: bool = True
 
@@ -93,7 +93,7 @@ class DuckDbCycleMetadata:
             "created_at": self.created_at,
             "database_sha256": self.database_sha256,
             "schema_id": self.schema_id,
-            "checks": dict(self.checks) if self.checks is not None else None,
+            "procedure_order": self.procedure_order,
             "duckdb_version": self.duckdb_version,
             "effective_date": self.effective_date,
             "source_schema_fingerprint": self.source_schema_fingerprint,
@@ -137,7 +137,9 @@ class DuckDbCycleMetadata:
                     value.get("archive_sha256"), "archive_sha256"
                 ),
                 schema_id=_optional_str(value["schema_id"], "schema_id"),
-                checks=_optional_mapping(value.get("checks"), "checks"),
+                procedure_order=_optional_str(
+                    value.get("procedure_order"), "procedure_order"
+                ),
                 storage_format_version=_require_int(
                     value["storage_format_version"], "storage_format_version"
                 ),
@@ -322,13 +324,3 @@ __all__ = [
     "read_metadata",
     "write_metadata_atomic",
 ]
-
-
-def _optional_mapping(value: Any, name: str) -> Mapping[str, Any] | None:
-    if value is None:
-        return None
-    if not isinstance(value, Mapping):
-        raise DuckDbMetadataIncompleteError(
-            f"DuckDB metadata {name} must be an object."
-        )
-    return value

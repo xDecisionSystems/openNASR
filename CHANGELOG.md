@@ -30,8 +30,9 @@ and versions follow Semantic Versioning.
 - A procedure name shared by several airports (`VIEWS.DEHAN3`) is now narrowed by
   the route's origin and destination airports, using `STAR_APT` and `DP_APT`.
 - ICAO lat/lon waypoints (`3800N07730W`, `37S078E`) resolve.
-- Each built artifact records `checks.procedure_order` in its sidecar, and the
-  build warns if the FAA stops storing procedures in flight order.
+- Each FAA schema declares how `DP_RTE`/`STAR_RTE` rows are ordered (flight order,
+  per the FAA layout documents). The built sidecar records it as
+  `procedure_order`, and the route resolver refuses a cycle that declares otherwise.
 
 - Download timeouts raised from 2 s to 30 s (pages) / 60 s (archive); downloads over
   2 GiB and extractions over 16 GiB are rejected; plain `pytest` now works.

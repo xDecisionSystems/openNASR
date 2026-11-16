@@ -10,13 +10,11 @@ import hashlib
 import os
 from pathlib import Path
 import tempfile
-import warnings
 
 from pandas import DataFrame, read_csv
 
 from .exceptions import ConfigurationError
 from .duckdb_metadata import DuckDbCycleMetadata, write_metadata_atomic
-from .invariants import FLIGHT_ORDER, INSUFFICIENT, check_procedure_order
 from .tables import normalize_table_name
 
 
@@ -190,8 +188,7 @@ def _build_temporary_database(
         if connection is not None:
             connection.close()
 
-    order = check_procedure_order(frames)
-    _warn_on_unexpected_order(effective_date, order)
+    schema_id = _identify_schema_id(source, frames)
     return DuckDbCycleMetadata(
         effective_date=effective_date,
         source_schema_fingerprint=source_schema_fingerprint(frames),
@@ -200,19 +197,15 @@ def _build_temporary_database(
         tables={name: len(frame.index) for name, frame in frames.items()},
         database_sha256=_sha256_file(temporary),
         archive_sha256=archive_sha256,
-        schema_id=_identify_schema_id(source, frames),
-        checks={"procedure_order": order},
+        schema_id=schema_id,
+        procedure_order=_declared_procedure_order(schema_id),
     )
 
 
-def _warn_on_unexpected_order(effective_date: str, order: Mapping[str, object]) -> None:
-    if order["status"] not in (FLIGHT_ORDER, INSUFFICIENT):
-        warnings.warn(
-            f"NASR cycle {effective_date}: DP/STAR rows are not stored in flight "
-            f"order ({order['status']}); routes through procedures would be wrong.",
-            RuntimeWarning,
-            stacklevel=3,
-        )
+def _declared_procedure_order(schema_id: str | None) -> str | None:
+    from .schemas import SchemaCatalog
+
+    return SchemaCatalog.PROCEDURE_ORDER.get(schema_id) if schema_id else None
 
 
 def _identify_schema_id(source: Path, frames: Mapping[str, DataFrame]) -> str | None:

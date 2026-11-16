@@ -297,10 +297,12 @@ Missing is dominated by names that are not in this cycle: retired procedure vers
 cycle, so a fair rate needs routes filed for the cycle under test. **Open:** the silent partial
 path (see 2.7), and a pool of current-cycle routes.
 
-### 2.9 Format-change guard (decided with the owner)
+### 2.9 Procedure order is declared per schema (decided with the owner)
 
-Instead of inferring DP/STAR direction per route, the builder measures it once per cycle
-(`openNASR/invariants.py`) and records `checks.procedure_order` in the sidecar
-(`flight_order` / `reversed` / `unexpected` / `insufficient_data`), with a `RuntimeWarning` at build
-time when the FAA convention is not flight order. **Phase 3 gate:** the archiver must not write the
-validated manifest for a cycle whose status is `reversed` or `unexpected`, and must alert.
+The FAA's DP and STAR DATA LAYOUT documents (in every download) say points are "in order adapted
+for given Segment" and `NEXT_POINT` "directly follows the current Point": flight order. That is
+prose in a PDF, so the convention is declared once per supported schema
+(`SchemaCatalog.PROCEDURE_ORDER`), recorded in the sidecar as `procedure_order`, exposed as
+`NASR.procedure_order`, and enforced by `RouteResolver`. The FAA announces format changes, and a new
+schema must be added to the catalog by a person, who declares its convention then. An earlier
+per-cycle measurement of every DP/STAR was removed as redundant.

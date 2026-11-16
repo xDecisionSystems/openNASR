@@ -125,6 +125,7 @@ class NASR(dict):
         requested_cycle = cycle if cycle is not None else useDate
         self.__diagnostic = diagnostic
         self.__schema_fingerprint = ""
+        self.__procedure_order: str | None = None
         self.__legacy_indexes: NormalizedIndexCache = {}
         # Legacy ``Airport`` builds several RawDict collections from related
         # airport tables.  Keep their row mappings snapshot-scoped so repeat
@@ -225,6 +226,7 @@ class NASR(dict):
             artifact.database_path, metadata=metadata
         )
         self.__schema_fingerprint = metadata.source_schema_fingerprint
+        self.__procedure_order = metadata.procedure_order
         self.__schema_catalog: tuple[SchemaCatalog, str, TableRegistry] | None = (
             self._validate_schema_catalog(
                 tuple(sorted(metadata.tables)), metadata.schema_id
@@ -246,6 +248,12 @@ class NASR(dict):
         """Return the exact immutable NASR cycle selected by this instance."""
 
         return self.__useDate
+
+    @property
+    def procedure_order(self) -> str | None:
+        """How DP/STAR rows are ordered, as declared for this cycle's schema."""
+
+        return self.__procedure_order
 
     @property
     def schema_fingerprint(self) -> str:
