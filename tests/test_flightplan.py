@@ -1945,3 +1945,60 @@ def test_fan_marker_with_a_navaids_name_is_not_a_route_point(tables):
         (36.0, -79.0),
         (35.0, -80.0),
     )
+
+
+def test_departure_whose_runway_branches_share_nothing_is_partial_not_a_failure(
+    tables,
+):
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "SPLIT", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "SPLIT3"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "SPLIT",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "SPLIT3",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "ROUTE_NAME": point,
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": point,
+                "NEXT_POINT": "",
+            }
+            for point in ("ALPHA", "BRAVO")
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA SPLIT3 KBBB")
+
+    assert not result.complete
+    assert result.points == ((38.0, -77.0), (35.0, -80.0))
+    (diagnostic,) = result.diagnostics
+    assert diagnostic.code == "procedure_branches"
+    assert diagnostic.detail == {
+        "split_after": None,
+        "branches": [["ALPHA"], ["BRAVO"]],
+    }
+    with pytest.raises(AmbiguousRecordError):
+        RouteResolver(tables).path("KAAA SPLIT3 KBBB")
+
+
+def test_dotted_star_computer_code_is_kept_as_one_procedure(tables):
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "ALPHA.ARR3", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            _star_row("ALPHA.ARR3", "BODY", "", point, seq)
+            for seq, point in (("10", "ALPHA"), ("20", "BRAVO"), ("30", "KBBB"))
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA ALPHA.ARR3 KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )

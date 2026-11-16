@@ -803,6 +803,8 @@ def _select_procedure_body(
         )
         if len(matches) == 1:
             return matches[0]
+        if matches:
+            candidates = matches
     common: list[_Waypoint] = []
     ordered_candidates = (
         candidates
@@ -813,8 +815,8 @@ def _select_procedure_body(
         if len(set(points)) != 1:
             break
         common.append(points[0])
-    if common:
-        diagnostics = _DIAGNOSTICS.get()
+    diagnostics = _DIAGNOSTICS.get()
+    if common or diagnostics is not None:
         if diagnostics is not None:
             shared = len(common)
             branches = sorted(
@@ -822,13 +824,19 @@ def _select_procedure_body(
                     tuple(
                         point.identifier
                         for point in (
-                            path[shared:] if common_at_start else path[:-shared]
+                            path[shared:]
+                            if common_at_start
+                            else path[: len(path) - shared]
                         )
                     )
                     for path in candidates
                 }
             )
-            split_after = (common[-1] if common_at_start else common[0]).identifier
+            split_after = (
+                (common[-1] if common_at_start else common[0]).identifier
+                if common
+                else None
+            )
             diagnostics.append(
                 RouteDiagnostic(
                     code="procedure_branches",
@@ -1046,7 +1054,11 @@ def _procedure_path(
         body_points = _select_procedure_body(
             tables,
             body,
-            connection_token=following_token,
+            connection_token=(
+                transition_points[0].identifier
+                if full_departure_rows and transition_points
+                else following_token
+            ),
             reverse=False,
             connection_at_start=False,
             common_at_start=False,
@@ -1291,10 +1303,15 @@ def _is_published_dotted_procedure(
     ):
         if matches is not None and not matches.empty:
             return True
+    first_component = token.split(".", 1)[0]
+    star_matches = procedure_index.star_base(token)
+    if star_matches is not None and not star_matches.empty:
+        first_star = procedure_index.star_base(first_component)
+        if first_star is None or first_star.empty:
+            return True
     departure_matches = procedure_index.departure_base(token)
     if departure_matches is None:
         return False
-    first_component = token.split(".", 1)[0]
     first_component_matches = procedure_index.departure_base(first_component)
     assert first_component_matches is not None
     return not departure_matches.empty and first_component_matches.empty
@@ -1351,6 +1368,7 @@ def _tokenize_flight_plan(
                     resolver=resolver,
                     procedure_index=procedure_index,
                 )
+                is not None
             ):
                 normalized.append(_RouteToken(combined, position))
                 component_offset += len(component) + 1 + len(components[index + 1])
