@@ -46,6 +46,7 @@ from .holding import HoldingPatternRepository as HoldingPatternRepository
 from .nav import NAVAID as NAVAID
 from .flightplan import RouteResolver as RouteResolver
 from .routeresult import RouteDiagnostic as RouteDiagnostic
+from .routeresult import RoutePoint as RoutePoint
 from .routeresult import RouteResult as RouteResult
 from .flightplan import flight_plan_path as flight_plan_path
 from .exceptions import UnsupportedRouteContentError as UnsupportedRouteContentError
@@ -214,6 +215,7 @@ __all__ = [
     "QueryTableNotFoundError",
     "QueryValidationError",
     "RouteDiagnostic",
+    "RoutePoint",
     "RouteResolver",
     "RouteResult",
     "Radar",

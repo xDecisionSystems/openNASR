@@ -2063,3 +2063,29 @@ def test_vector_departure_ends_at_its_computer_code_suffix_and_airway_continues(
     assert note.code == "procedure_geometry_unpublished"
     assert note.severity == "info"
     assert note.detail == {"terminal_fix": "ALPHA"}
+
+
+def test_resolve_reports_where_every_point_came_from(tables):
+    result = RouteResolver(tables).resolve("KAAA DCT ALPHA V1 BBB")
+
+    assert [(p.name, p.kind, p.via, p.segment) for p in result.waypoints] == [
+        ("KAAA", "airport", None, "origin"),
+        ("ALPHA", "fix", None, "enroute"),
+        ("BRAVO", "fix", "V1", "enroute"),
+        ("BBB", "airport", "V1", "enroute"),
+    ]
+    assert result.points == tuple((p.lat, p.lon) for p in result.waypoints)
+
+
+def test_procedure_points_name_their_procedure_and_flight_phase(tables):
+    result = RouteResolver(_shared_star_tables(tables)).resolve("KAAA SHARED3 KBBB")
+
+    by_name = {p.name: p for p in result.waypoints}
+    assert by_name["MID"].via == "SHARED3" and by_name["MID"].segment == "arrival"
+    assert by_name["KBBB"].segment == "destination"
+
+
+def test_lat_lon_waypoints_are_labelled(tables):
+    result = RouteResolver(tables).resolve("KAAA 3800N07730W KBBB")
+
+    assert [p.kind for p in result.waypoints] == ["airport", "latlon", "airport"]

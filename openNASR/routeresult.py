@@ -6,6 +6,24 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
+class RoutePoint:
+    """One resolved point and where it came from.
+
+    ``kind`` is the NASR record type (``airport``, ``fix``, ``navaid``) or
+    ``latlon`` for a coordinate filed in the route. ``via`` is the airway or
+    procedure token that produced the point (``None`` for a point filed
+    directly), and ``segment`` places it in the flight.
+    """
+
+    lat: float
+    lon: float
+    name: str
+    kind: str
+    via: str | None
+    segment: str  # origin | departure | enroute | arrival | destination
+
+
+@dataclass(frozen=True)
 class RouteDiagnostic:
     """One thing the resolver could not do exactly, or did only partly."""
 
@@ -33,6 +51,8 @@ class RouteResult:
     cycle: str | None
     points: tuple[tuple[float, float], ...]
     diagnostics: tuple[RouteDiagnostic, ...] = ()
+    waypoints: tuple[RoutePoint, ...] = ()
+    """The same points as ``points``, with provenance."""
 
     @property
     def complete(self) -> bool:

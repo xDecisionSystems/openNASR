@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 
 from numpy import ndarray
 from pandas import DataFrame
 
-from .routeresult import RouteDiagnostic, RouteResult
+from .routeresult import RouteDiagnostic, RoutePoint, RouteResult
 from .exceptions import (
     AmbiguousRecordError,
     ConfigurationError,
@@ -53,6 +53,8 @@ class _Waypoint:
     identifier: str
     latitude: float
     longitude: float
+    # Provenance only: two records at one place are the same waypoint.
+    kind: str = field(default="", compare=False)
 
 
 @dataclass(frozen=True)
@@ -166,7 +168,9 @@ class _WaypointResolver:
                     identifier = _text(raw_identifier)
                     if not identifier:
                         continue
-                    waypoint = _Waypoint(identifier, *coordinates)
+                    waypoint = _Waypoint(
+                        identifier, *coordinates, kind=_KIND_BY_TABLE[table]
+                    )
                     candidates.setdefault(identifier, []).append(waypoint)
                     if table == "NAV_BASE" and _text(nav_type) != "VOT":
                         non_vot_candidates.setdefault(identifier, []).append(waypoint)
@@ -234,6 +238,7 @@ def _latlon_waypoint(identifier: str) -> _Waypoint | None:
         identifier,
         -latitude if match["ns"] == "S" else latitude,
         -longitude if match["ew"] == "W" else longitude,
+        kind="latlon",
     )
 
 
@@ -265,6 +270,7 @@ def _coordinates(row: Mapping[str, object]) -> tuple[float, float] | None:
         return None
 
 
+_KIND_BY_TABLE = {"APT_BASE": "airport", "FIX_BASE": "fix", "NAV_BASE": "navaid"}
 _WAYPOINT_TABLES = (
     ("APT_BASE", ("ARPT_ID", "ICAO_ID")),
     ("FIX_BASE", ("FIX_ID",)),
@@ -296,7 +302,9 @@ def _waypoint(
                 continue
             coordinates = _coordinates(row)
             if coordinates is not None:
-                waypoint = _Waypoint(identifier, *coordinates)
+                waypoint = _Waypoint(
+                    identifier, *coordinates, kind=_KIND_BY_TABLE[table]
+                )
                 candidates.append(waypoint)
                 if table == "NAV_BASE" and _text(row.get("NAV_TYPE", "")) != "VOT":
                     non_vot_candidates.append(waypoint)
@@ -1438,8 +1446,8 @@ def _procedure_step_coordinates(
     resolver: _WaypointResolver,
     airway_index: _AirwayIndex | None,
     procedure_index: _ProcedureIndex,
-) -> tuple[tuple[float, float], ...] | None:
-    """Return one procedure token's coordinates, or ``None`` if it is not one.
+) -> tuple[_Waypoint, ...] | None:
+    """Return one procedure token's waypoints, or ``None`` if it is not one.
 
     A bare procedure computer code (for example ``GNDLF3``) can also satisfy
     the airway lexical pattern.  Callers must try this before falling back to
@@ -1485,10 +1493,7 @@ def _procedure_step_coordinates(
         airway_index=airway_index,
         procedure_index=procedure_index,
     )
-    return tuple(
-        (point.latitude, point.longitude)
-        for point in (join.prefix if join is not None else procedure)
-    )
+    return tuple(join.prefix if join is not None else procedure)
 
 
 def _flight_plan_path(
@@ -1498,7 +1503,7 @@ def _flight_plan_path(
     resolver: _WaypointResolver,
     airway_index: _AirwayIndex | None = None,
     procedure_index: _ProcedureIndex | None = None,
-) -> tuple[tuple[float, float], ...]:
+) -> tuple[RoutePoint, ...]:
     """Resolve a route with its end airports available for disambiguation."""
 
     reset = _ROUTE_AIRPORTS.set(_route_end_airports(flight_plan))
@@ -1514,6 +1519,30 @@ def _flight_plan_path(
         _ROUTE_AIRPORTS.reset(reset)
 
 
+def _route_point(waypoint: _Waypoint, *, via: str | None, segment: str) -> RoutePoint:
+    return RoutePoint(
+        lat=waypoint.latitude,
+        lon=waypoint.longitude,
+        name=waypoint.identifier,
+        kind=waypoint.kind,
+        via=via,
+        segment=segment,
+    )
+
+
+def _append_point(
+    output: list[RoutePoint], waypoint: _Waypoint, *, via: str | None, segment: str
+) -> None:
+    """Append a point unless it repeats the previous coordinate."""
+
+    if output and (output[-1].lat, output[-1].lon) == (
+        waypoint.latitude,
+        waypoint.longitude,
+    ):
+        return
+    output.append(_route_point(waypoint, via=via, segment=segment))
+
+
 def _resolve_route_path(
     nasr: Mapping[str, DataFrame],
     flight_plan: str,
@@ -1521,8 +1550,8 @@ def _resolve_route_path(
     resolver: _WaypointResolver,
     airway_index: _AirwayIndex | None = None,
     procedure_index: _ProcedureIndex | None = None,
-) -> tuple[tuple[float, float], ...]:
-    """Return the ``(latitude, longitude)`` path for FAA route-field text.
+) -> tuple[RoutePoint, ...]:
+    """Return the resolved points for FAA route-field text.
 
     ``flight_plan`` is the space-separated route field submitted to the FAA,
     for example ``"KBWI DCT AABEE V1 CHARLIE KDCA"``. Airport identifiers,
@@ -1548,14 +1577,14 @@ def _resolve_route_path(
     if not tokens or any(not token.value for token in tokens):
         raise ValueError("flight_plan must contain route tokens")
 
-    output: list[tuple[float, float]] = []
+    output: list[RoutePoint] = []
     index = 0
     while index < len(tokens):
         token = tokens[index].value
         if token == _DIRECT:
             index += 1
             continue
-        procedure_coordinates = _procedure_step_coordinates(
+        procedure_waypoints = _procedure_step_coordinates(
             nasr,
             tokens,
             index,
@@ -1564,10 +1593,14 @@ def _resolve_route_path(
             airway_index=airway_index,
             procedure_index=procedure_index,
         )
-        if procedure_coordinates is not None:
-            for coordinate in procedure_coordinates:
-                if not output or output[-1] != coordinate:
-                    output.append(coordinate)
+        if procedure_waypoints is not None:
+            segment = (
+                "departure"
+                if _is_departure_procedure(nasr, token, procedure_index=procedure_index)
+                else "arrival"
+            )
+            for waypoint in procedure_waypoints:
+                _append_point(output, waypoint, via=token, segment=segment)
             index += 1
             continue
         airway = _AIRWAY.fullmatch(token)
@@ -1629,7 +1662,7 @@ def _resolve_route_path(
                     preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
                     resolver=resolver,
                 )
-                output.append((point.latitude, point.longitude))
+                output.append(_route_point(point, via=token, segment="enroute"))
             # Process the following token too: normal waypoints are deduplicated
             # below, while a following procedure must contribute its remaining
             # ordered legs beyond the airway connection point.
@@ -1643,9 +1676,14 @@ def _resolve_route_path(
         point = _waypoint(
             nasr, token, preferred_tables=preferred_tables, resolver=resolver
         )
-        coordinate = point.latitude, point.longitude
-        if not output or output[-1] != coordinate:
-            output.append(coordinate)
+        segment = (
+            "origin"
+            if index == 0
+            else "destination"
+            if index == len(tokens) - 1
+            else "enroute"
+        )
+        _append_point(output, point, via=None, segment=segment)
         index += 1
     return tuple(output)
 
@@ -1674,6 +1712,10 @@ class RouteResolver:
 
     def path(self, flight_plan: str) -> tuple[tuple[float, float], ...]:
         """Return the source-coordinate path for one FAA route field."""
+
+        return tuple((point.lat, point.lon) for point in self._points(flight_plan))
+
+    def _points(self, flight_plan: str) -> tuple[RoutePoint, ...]:
 
         unsupported = (
             _recognized_unsupported_content(flight_plan, self._waypoints)
@@ -1712,7 +1754,7 @@ class RouteResolver:
         collected: list[RouteDiagnostic] = []
         reset = _DIAGNOSTICS.set(collected)
         try:
-            points = self.path(flight_plan)
+            waypoints = self._points(flight_plan)
         except OpenNASRError as error:
             if isinstance(error, ConfigurationError):
                 raise
@@ -1740,8 +1782,9 @@ class RouteResolver:
         return RouteResult(
             route=flight_plan,
             cycle=self._cycle,
-            points=points,
+            points=tuple((point.lat, point.lon) for point in waypoints),
             diagnostics=tuple(unique.values()),
+            waypoints=waypoints,
         )
 
 
