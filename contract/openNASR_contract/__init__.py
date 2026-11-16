@@ -5,6 +5,8 @@ bucket and the manifest that marks a build as validated. It has no
 dependencies beyond the standard library.
 """
 
+from .bucket import Bucket, ImmutableKeyError, LocalBucket
+from .fetch import FetchError, fetch_build, list_builds, select_build
 from .keys import (
     LAYOUT_VERSION,
     BucketKeyError,
@@ -19,6 +21,13 @@ from .manifest import (
 )
 
 __all__ = [
+    "FetchError",
+    "fetch_build",
+    "list_builds",
+    "select_build",
+    "Bucket",
+    "ImmutableKeyError",
+    "LocalBucket",
     "LAYOUT_VERSION",
     "ArtifactRef",
     "BucketKeyError",

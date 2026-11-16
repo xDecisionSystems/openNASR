@@ -4,6 +4,7 @@
 
     <year>/<date>_<zipsha>.zip                  the FAA download (immutable)
     <year>/<date>_<zipsha>.b<N>.duckdb          derived database, builder N
+    <year>/<date>_<zipsha>.b<N>.duckdb.json     its provenance sidecar
     <year>/<date>_<zipsha>.b<N>.json            manifest, uploaded last
 
 A build is *validated* once and only once its manifest exists, so a reader
@@ -38,6 +39,7 @@ class BuildKeys:
     builder: int
     zip: str
     duckdb: str
+    sidecar: str
     manifest: str
 
 
@@ -55,6 +57,7 @@ def build_keys(effective_date: str, zip_sha256: str, builder: int) -> BuildKeys:
         builder=builder,
         zip=f"{stem}.zip",
         duckdb=f"{stem}.b{builder}.duckdb",
+        sidecar=f"{stem}.b{builder}.duckdb.json",
         manifest=f"{stem}.b{builder}.json",
     )
 

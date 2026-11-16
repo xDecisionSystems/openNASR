@@ -5,8 +5,8 @@ import io
 
 import pytest
 
-from openNASR_archiver import ImmutableKeyError
-from openNASR_archiver.s3 import S3Bucket
+from openNASR_contract import ImmutableKeyError
+from openNASR_contract.s3 import S3Bucket
 
 
 class _NotFound(Exception):

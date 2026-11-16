@@ -363,7 +363,13 @@ incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
 | 3.4 `run_once`: discover -> download -> publish (current cycle). Upcoming cycle and backfill need provider support (the provider only offers the current cycle) | partly done |
 | 3.5 Outage staging (the local cache), de-duplicated alerts persisted in a state file (fail once, resolve once), "no new cycle" alert after 28 + 3 days | done (notifier is log-only so far) |
 | 3.6 CLI + systemd timer + container image | open |
-| 3.7 Fresh-machine rebuild test (acceptance) | open |
+| 3.7 Fresh-machine test: a cache holding only the fetched `nasr.duckdb` + sidecar opens and resolves routes (synthetic test, and the real 2026-10-29 cycle). Still open: rebuilding every index from the archived zips (`rebuild` command) | partly done |
 
 Repo layout so far: the existing `openNASR/` package at the root is `core`; `contract/` and `archiver/`
 sit beside it. Moving core into `core/` is deferred until the API package exists, to keep history readable.
+
+The bucket clients (`Bucket`, `LocalBucket`, `S3Bucket`) and the reader side (`list_builds`, `select_build`,
+`fetch_build`) live in `contract/` so the API can read a bucket without depending on the archiver. The manifest
+carries a `sidecar` reference; a reader verifies the database hash against the manifest before installing.
+Real cycle: zip 259 MB, DuckDB 55 MB. The DuckDB recorded was 1.5.6; per the fleet rule the archiver should build
+with the oldest DuckDB any reader runs, which is still to be pinned when the containers are defined.

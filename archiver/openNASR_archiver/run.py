@@ -19,7 +19,7 @@ from openNASR.cycles import CycleManager
 from openNASR.duckdb_builder import DuckDbBuildError
 from openNASR.exceptions import DownloadError
 
-from .bucket import Bucket
+from openNASR_contract import Bucket
 from .publish import PublishError, PublishResult, publish_cycle
 
 CYCLE_DAYS = 28

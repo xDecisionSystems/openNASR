@@ -36,6 +36,7 @@ class Manifest:
     builder: int
     zip: ArtifactRef
     duckdb: ArtifactRef
+    sidecar: ArtifactRef
     duckdb_version: str
     schema_id: str | None
     procedure_order: str | None
@@ -56,7 +57,11 @@ class Manifest:
             )
         if not _DATE.match(self.effective_date):
             raise ManifestError(f"bad effective date: {self.effective_date!r}")
-        for name, ref in (("zip", self.zip), ("duckdb", self.duckdb)):
+        for name, ref in (
+            ("zip", self.zip),
+            ("duckdb", self.duckdb),
+            ("sidecar", self.sidecar),
+        ):
             if not _SHA.match(ref.sha256):
                 raise ManifestError(f"{name} hash must be 64 lowercase hex characters")
             if ref.size < 0:
@@ -67,7 +72,11 @@ class Manifest:
             expected = self.keys()
         except BucketKeyError as error:
             raise ManifestError(str(error)) from error
-        if self.zip.key != expected.zip or self.duckdb.key != expected.duckdb:
+        if (
+            self.zip.key != expected.zip
+            or self.duckdb.key != expected.duckdb
+            or self.sidecar.key != expected.sidecar
+        ):
             raise ManifestError(
                 "artifact keys do not match the layout for this date, hash and builder"
             )
@@ -79,6 +88,7 @@ class Manifest:
             "builder": self.builder,
             "zip": _ref_dict(self.zip),
             "duckdb": _ref_dict(self.duckdb),
+            "sidecar": _ref_dict(self.sidecar),
             "duckdb_version": self.duckdb_version,
             "schema_id": self.schema_id,
             "procedure_order": self.procedure_order,
@@ -104,7 +114,7 @@ class Manifest:
         if not isinstance(value, Mapping):
             raise ManifestError("manifest must be a JSON object")
         required = (
-            "layout_version", "effective_date", "builder", "zip", "duckdb",
+            "layout_version", "effective_date", "builder", "zip", "duckdb", "sidecar",
             "duckdb_version", "schema_id", "procedure_order",
             "source_schema_fingerprint", "tables", "created_at", "archiver_version",
         )  # fmt: skip
@@ -124,6 +134,7 @@ class Manifest:
                 builder=_int(value["builder"], "builder"),
                 zip=_ref(value["zip"], "zip"),
                 duckdb=_ref(value["duckdb"], "duckdb"),
+                sidecar=_ref(value["sidecar"], "sidecar"),
                 duckdb_version=_str(value["duckdb_version"], "duckdb_version"),
                 schema_id=_opt_str(value["schema_id"], "schema_id"),
                 procedure_order=_opt_str(value["procedure_order"], "procedure_order"),

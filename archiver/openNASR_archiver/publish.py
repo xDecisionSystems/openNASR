@@ -14,9 +14,8 @@ from pathlib import Path
 from typing import Iterable
 
 from openNASR.cycles import CycleManager, sha256_file, validate_archive
-from openNASR_contract import ArtifactRef, Manifest, build_keys
+from openNASR_contract import ArtifactRef, Bucket, Manifest, build_keys
 
-from .bucket import Bucket
 
 BUILDER_VERSION = 1
 ARCHIVER_VERSION = "0.1.0"
@@ -77,11 +76,16 @@ def publish_cycle(
 
     bucket.put_file(keys.zip, archive, zip_sha)
     bucket.put_file(keys.duckdb, result.database_path, db_sha)
+    sidecar_sha = sha256_file(result.metadata_path)
+    bucket.put_file(keys.sidecar, result.metadata_path, sidecar_sha)
     manifest = Manifest(
         effective_date=effective_date.isoformat(),
         builder=builder,
         zip=ArtifactRef(keys.zip, zip_sha, archive.stat().st_size),
         duckdb=ArtifactRef(keys.duckdb, db_sha, result.database_path.stat().st_size),
+        sidecar=ArtifactRef(
+            keys.sidecar, sidecar_sha, result.metadata_path.stat().st_size
+        ),
         duckdb_version=metadata.duckdb_version,
         schema_id=metadata.schema_id,
         procedure_order=metadata.procedure_order,

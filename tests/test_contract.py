@@ -25,6 +25,7 @@ def _manifest(**overrides):
         builder=1,
         zip=ArtifactRef(keys.zip, ZIP_SHA, 248_000_000),
         duckdb=ArtifactRef(keys.duckdb, DB_SHA, 560_000_000),
+        sidecar=ArtifactRef(keys.sidecar, DB_SHA, 1_000),
         duckdb_version="1.4.4",
         schema_id="nasr_2026_09",
         procedure_order="flight_order",

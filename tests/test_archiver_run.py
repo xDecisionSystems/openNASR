@@ -5,7 +5,8 @@ from datetime import date, datetime, timezone
 import pytest
 
 from openNASR.cycles import CycleManager, RemoteCycle
-from openNASR_archiver import LocalBucket, run_once
+from openNASR_archiver import run_once
+from openNASR_contract import LocalBucket
 from openNASR_archiver import run as run_module
 
 FIXTURE = "schema_only/nasr_2026_09"

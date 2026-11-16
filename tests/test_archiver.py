@@ -5,13 +5,8 @@ from datetime import date
 import pytest
 
 from openNASR.cycles import CycleManager
-from openNASR_archiver import (
-    ImmutableKeyError,
-    LocalBucket,
-    PublishError,
-    publish_cycle,
-)
-from openNASR_contract import Manifest, build_keys
+from openNASR_archiver import PublishError, publish_cycle
+from openNASR_contract import ImmutableKeyError, LocalBucket, Manifest, build_keys
 
 FIXTURE = "schema_only/nasr_2026_09"
 
@@ -31,7 +26,9 @@ def test_publish_uploads_zip_database_then_manifest(cycle, tmp_path):
     assert not result.already_published
     manifest = result.manifest
     keys = manifest.keys()
-    assert sorted(bucket.list_keys()) == sorted([keys.zip, keys.duckdb, keys.manifest])
+    assert sorted(bucket.list_keys()) == sorted(
+        [keys.zip, keys.duckdb, keys.sidecar, keys.manifest]
+    )
     assert Manifest.from_json(bucket.get_bytes(keys.manifest)) == manifest
     assert manifest.schema_id == "nasr_2026_09"
     assert manifest.procedure_order == "flight_order"
