@@ -23,6 +23,12 @@ and versions follow Semantic Versioning.
 
 ### Fixed
 
+- `RouteResolver.resolve(route)` returns a `RouteResult` (points, cycle, structured
+  `RouteDiagnostic` list, `complete`). Route problems become diagnostics instead of
+  exceptions, and an arrival or departure whose published branches depend on
+  runway or airport configuration is flagged `procedure_branches` (where it splits
+  and each branch) with only the shared portion included. `path()` is unchanged.
+
 - Departure and arrival procedures were traversed backwards. FAA `DP_RTE` and
   `STAR_RTE` rows are stored in flight order; the resolver reversed them. Checked
   against a full cycle (airport at the first point of 1,021 of 1,024 DP bodies and

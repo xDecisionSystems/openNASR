@@ -15,6 +15,7 @@ import re
 from numpy import ndarray
 from pandas import DataFrame
 
+from .routeresult import RouteDiagnostic, RouteResult
 from .exceptions import (
     AmbiguousRecordError,
     ConfigurationError,
@@ -30,6 +31,10 @@ from .exceptions import (
 # the records that serve one of them.
 _ROUTE_AIRPORTS: ContextVar[frozenset[str]] = ContextVar(
     "route_airports", default=frozenset()
+)
+# Collects diagnostics for partial resolutions while a route is resolved.
+_DIAGNOSTICS: ContextVar[list[RouteDiagnostic] | None] = ContextVar(
+    "route_diagnostics", default=None
 )
 _DIRECT = "DCT"
 _AIRWAY = re.compile(r"(?P<designation>[A-Z]+)(?P<identifier>[0-9][A-Z0-9]*)$")
@@ -801,6 +806,36 @@ def _select_procedure_body(
             break
         common.append(points[0])
     if common:
+        diagnostics = _DIAGNOSTICS.get()
+        if diagnostics is not None:
+            shared = len(common)
+            branches = sorted(
+                {
+                    tuple(
+                        point.identifier
+                        for point in (
+                            path[shared:] if common_at_start else path[:-shared]
+                        )
+                    )
+                    for path in candidates
+                }
+            )
+            split_after = (common[-1] if common_at_start else common[0]).identifier
+            diagnostics.append(
+                RouteDiagnostic(
+                    code="procedure_branches",
+                    message=(
+                        f"{identifier} has {len(candidates)} published branches "
+                        "that depend on runway or airport configuration; only "
+                        "the portion common to all of them is included."
+                    ),
+                    token=identifier,
+                    detail={
+                        "split_after": split_after,
+                        "branches": [list(branch) for branch in branches],
+                    },
+                )
+            )
         return tuple(common) if common_at_start else tuple(reversed(common))
     raise AmbiguousRecordError(
         entity_type=entity_type,
@@ -1591,6 +1626,57 @@ class RouteResolver:
         except OpenNASRError as error:
             _attach_route_diagnostic(error, flight_plan=flight_plan, cycle=self._cycle)
             raise
+
+    def resolve(self, flight_plan: str) -> RouteResult:
+        """Resolve one route into points plus structured diagnostics.
+
+        Route problems (unknown fix, ambiguity, unsupported content) are
+        reported as diagnostics with ``complete`` false rather than raised.
+        """
+
+        collected: list[RouteDiagnostic] = []
+        reset = _DIAGNOSTICS.set(collected)
+        try:
+            points = self.path(flight_plan)
+        except OpenNASRError as error:
+            if isinstance(error, ConfigurationError):
+                raise
+            return RouteResult(
+                route=flight_plan,
+                cycle=self._cycle,
+                points=(),
+                diagnostics=(*collected, _error_diagnostic(error)),
+            )
+        except ValueError as error:
+            return RouteResult(
+                route=flight_plan,
+                cycle=self._cycle,
+                points=(),
+                diagnostics=(
+                    *collected,
+                    RouteDiagnostic(code="MalformedRoute", message=str(error)),
+                ),
+            )
+        finally:
+            _DIAGNOSTICS.reset(reset)
+        unique = {
+            (item.code, item.token, repr(item.detail)): item for item in collected
+        }
+        return RouteResult(
+            route=flight_plan,
+            cycle=self._cycle,
+            points=points,
+            diagnostics=tuple(unique.values()),
+        )
+
+
+def _error_diagnostic(error: OpenNASRError) -> RouteDiagnostic:
+    return RouteDiagnostic(
+        code=type(error).__name__,
+        message=str(error),
+        token=getattr(error, "token", None),
+        position=getattr(error, "position", None),
+    )
 
 
 def flight_plan_path(

@@ -306,3 +306,10 @@ prose in a PDF, so the convention is declared once per supported schema
 `NASR.procedure_order`, and enforced by `RouteResolver`. The FAA announces format changes, and a new
 schema must be added to the catalog by a person, who declares its convention then. An earlier
 per-cycle measurement of every DP/STAR was removed as redundant.
+
+### 2.10 Structured result (done)
+
+`RouteResolver.resolve()` -> `RouteResult(route, cycle, points, diagnostics, complete)`; the phase 4
+API serializes it. Codes so far: `procedure_branches` (partial, with `split_after` and `branches`),
+the typed error names (`RecordNotFoundError`, `AmbiguousRecordError`, `UnsupportedRouteContentError`,
+...) and `MalformedRoute`. Still to add for the API: per-point provenance and GeoJSON.

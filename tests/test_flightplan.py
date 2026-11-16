@@ -1828,3 +1828,65 @@ def test_shared_star_transition_is_narrowed_by_the_routes_destination(tables):
 
     assert flight_plan_path(tables, "ENTRY.STAR1.KBBB")[-1] == (35.0, -80.0)
     assert flight_plan_path(tables, "ENTRY.STAR1.KAAA")[-1] == (38.0, -77.0)
+
+
+def _shared_star_tables(tables):
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "SHARED3", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            _star_row("SHARED3", "BODY", "", point, seq, body=f"{branch} BRANCH")
+            for branch in ("ALPHA", "BRAVO")
+            for seq, point in (("10", "MID"), ("20", branch), ("30", "KBBB"))
+        ]
+    )
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [{"FIX_ID": "MID", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-79"}]
+            ),
+        ],
+        ignore_index=True,
+    )
+    return tables
+
+
+def test_resolve_reports_a_clean_route_as_complete(tables):
+    result = RouteResolver(tables).resolve("KAAA ALPHA KBBB")
+
+    assert result.complete
+    assert result.diagnostics == ()
+    assert result.points == ((38.0, -77.0), (37.0, -78.0), (35.0, -80.0))
+
+
+def test_resolve_flags_a_runway_dependent_arrival_as_incomplete(tables):
+    result = RouteResolver(_shared_star_tables(tables)).resolve("KAAA SHARED3 KBBB")
+
+    assert not result.complete
+    assert result.points == ((38.0, -77.0), (34.0, -79.0), (35.0, -80.0))
+    (diagnostic,) = result.diagnostics
+    assert diagnostic.code == "procedure_branches"
+    assert diagnostic.token == "SHARED3"
+    assert diagnostic.detail == {
+        "split_after": "MID",
+        "branches": [["ALPHA", "KBBB"], ["BRAVO", "KBBB"]],
+    }
+
+
+def test_resolve_reports_failures_as_diagnostics_not_exceptions(tables):
+    resolver = RouteResolver(tables)
+
+    unknown = resolver.resolve("KAAA UNKNOWN")
+    assert not unknown.complete and unknown.points == ()
+    assert unknown.diagnostics[0].code == "RecordNotFoundError"
+    assert unknown.diagnostics[0].token == "UNKNOWN"
+
+    assert resolver.resolve("").diagnostics[0].code == "MalformedRoute"
+    oceanic = resolver.resolve("KAAA 4300N/05000W KBBB")
+    assert oceanic.diagnostics[0].code == "UnsupportedRouteContentError"
+
+
+def test_path_still_returns_the_shared_portion_without_diagnostics(tables):
+    assert RouteResolver(_shared_star_tables(tables)).path("KAAA SHARED3 KBBB")
