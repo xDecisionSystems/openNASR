@@ -203,3 +203,44 @@ def test_a_bad_icao_message_is_a_422_with_the_reason(client):
 
     assert response.status_code == 422
     assert "only FPL" in response.json()["detail"]
+
+
+def test_airport_lookup_by_faa_or_icao_id(client):
+    by_faa = client.get("/v1/airports/bwi", headers=HEADERS).json()
+    by_icao = client.get("/v1/airports/KBWI", headers=HEADERS).json()
+
+    assert by_faa == by_icao
+    assert by_faa["cycle"] == CYCLE
+    airport = by_faa["airport"]
+    assert airport["id"] == "BWI" and airport["icao_id"] == "KBWI"
+    assert airport["position"] == {"lat": 39.1754, "lon": -76.6684}
+    assert "EFF_DATE" not in airport["base"]  # empty columns are dropped
+    assert isinstance(airport["runways"], list)
+
+
+def test_fix_lookup_and_unknown_identifiers_are_404(client):
+    fix = client.get("/v1/fixes/AABEE", headers=HEADERS).json()["fixes"][0]
+
+    assert fix["id"] == "AABEE" and fix["position"]["lat"] == 39.0
+    assert client.get("/v1/fixes/NOPE", headers=HEADERS).status_code == 404
+    assert client.get("/v1/airports/ZZZ", headers=HEADERS).status_code == 404
+    assert (
+        client.get("/v1/airports/BWI?cycle=2020-01-02", headers=HEADERS).status_code
+        == 404
+    )
+
+
+def test_lookups_need_a_key_and_validate_the_cycle(client):
+    assert client.get("/v1/fixes/AABEE").status_code == 401
+    assert client.get("/v1/fixes/AABEE?cycle=bad", headers=HEADERS).status_code == 422
+
+
+def test_concurrent_lookups_share_one_connection_safely(client):
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(index):
+        path = ["/v1/airports/BWI", "/v1/fixes/AABEE", "/v1/airports/DCA"][index % 3]
+        return client.get(path, headers=HEADERS).status_code
+
+    with ThreadPoolExecutor(8) as pool:
+        assert set(pool.map(one, range(60))) == {200}

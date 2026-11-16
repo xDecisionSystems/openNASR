@@ -404,6 +404,7 @@ testing (builds then failed with "No space left on device"); caches must live on
 | 4.4 Real-data check: server against Garage, `KABQ.DOOKK3.TXO..KTYR` complete with provenance; `GRNCH5` returns the branch warning; ~40 ms per request warm, 2.5 s first load of a cycle, ~330 MB per loaded cycle | done |
 | 4.5 `icao_message` input mode: `parse_icao_flight_plan` (FPL fields 7, 13, 15, 16; opening speed/level dropped), `RouteResolver.resolve_icao_message`, API accepts exactly one of `route` / `icao_message`, response `input` echoes the extraction; non-FPL or malformed messages are a 422 with the reason | done |
 | 4.6 Ignored speed/level/time groups (`FIX/N0450F350`, `KMSP/0354`, standalone `N0450F350`) echoed as `ignored_speed_level` info diagnostics (do not affect `complete`) | done |
-| 4.7 Supporting endpoints (`/airports/{id}`, `/fixes/{id}`, `/navaids/{id}`, `/airways/{id}`, `/airspace/at`) | open |
+| 4.7 Supporting endpoints `/v1/airports/{id}` (FAA or ICAO id, with runways and runway ends), `/v1/fixes/{id}`, `/v1/navaids/{id}` (several records when a name is shared, e.g. VOR/DME and fan marker), `/v1/airways/{id}` (ordered segments); the FAA's own rows as source text, empty columns dropped, optional `?cycle=`; lookups on one cycle take turns on its DuckDB connection (60 concurrent requests tested). Checked on the real cycle | done |
+| 4.7b `/v1/airspace/at?lat=&lon=` needs a design first: which datasets (Class B/C/D/E from `CLS_ARSP`, ARTCC boundaries from `ARB_SEG`, SUA), polygon build and containment, altitude handling | open |
 | 4.8 `max_segment_nm` densify option; OpenAPI published; contract tests; rate limiting; request logging | open |
 | 4.9 Container/unit files | open |

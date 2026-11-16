@@ -14,10 +14,12 @@ from openNASR.exceptions import ConfigurationError
 from openNASR.icaomessage import IcaoFlightPlan, IcaoMessageError
 from openNASR.routeresult import RouteResult
 
+from . import lookups
 from .store import CycleStore, CycleUnavailableError
 
 API_VERSION = "0.1.0"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+CycleParam = Annotated[str | None, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")]
 
 
 class RouteRequest(BaseModel):
@@ -214,6 +216,32 @@ def create_app(store: CycleStore, api_keys: Collection[str]) -> FastAPI:
         if not route.strip():
             raise HTTPException(422, "route must not be blank")
         return resolve(route, cycle)
+
+    def entity(kind: str, fetch, identifier: str, cycle: str | None) -> dict[str, Any]:
+        try:
+            with store.lookup(cycle) as (chosen, query):
+                found = fetch(query, identifier)
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if cycle else 503, str(error)) from error
+        except lookups.NotFoundError as error:
+            raise HTTPException(404, str(error)) from error
+        return {"cycle": chosen, kind: found}
+
+    @app.get("/v1/airports/{identifier}", dependencies=[Depends(require_key)])
+    def get_airport(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
+        return entity("airport", lookups.airport, identifier, cycle)
+
+    @app.get("/v1/fixes/{identifier}", dependencies=[Depends(require_key)])
+    def get_fix(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
+        return entity("fixes", lookups.fixes, identifier, cycle)
+
+    @app.get("/v1/navaids/{identifier}", dependencies=[Depends(require_key)])
+    def get_navaid(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
+        return entity("navaids", lookups.navaids, identifier, cycle)
+
+    @app.get("/v1/airways/{identifier}", dependencies=[Depends(require_key)])
+    def get_airway(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
+        return entity("airways", lookups.airways, identifier, cycle)
 
     @app.get("/v1/cycles", dependencies=[Depends(require_key)])
     def cycles() -> dict[str, Any]:

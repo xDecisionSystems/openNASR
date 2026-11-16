@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 import logging
@@ -72,6 +73,7 @@ class CycleStore:
         self.max_loaded = max_loaded
         self._today = today
         self._loaded: OrderedDict[str, RouteResolver] = OrderedDict()
+        self._lookups: dict[str, tuple[NASR, threading.Lock]] = {}
         self._lock = threading.Lock()
 
     def _directory(self, effective_date: str) -> Path:
@@ -111,6 +113,10 @@ class CycleStore:
     def _forget(self, effective_date: str) -> None:
         with self._lock:
             self._loaded.pop(effective_date, None)
+            entry = self._lookups.pop(effective_date, None)
+        if entry is not None:
+            with entry[1]:  # wait for in-flight lookups before dropping it
+                pass
 
     def cycles(self) -> list[str]:
         """Effective dates present on disk, oldest first."""
@@ -157,6 +163,31 @@ class CycleStore:
             while len(self._loaded) > self.max_loaded:
                 self._loaded.popitem(last=False)
             return chosen, resolver
+
+    @contextmanager
+    def lookup(
+        self, effective_date: str | None = None
+    ) -> Iterator[tuple[str, Callable]]:
+        """Yield ``(cycle, query_table)`` with exclusive use of the cycle's connection.
+
+        A DuckDB connection is not safe across threads, so lookups on one
+        cycle take turns; route resolution does not use this connection.
+        """
+
+        chosen = effective_date or self.default_cycle()
+        if chosen not in self.cycles():
+            raise CycleUnavailableError(f"cycle {chosen} is not available")
+        with self._lock:
+            entry = self._lookups.get(chosen)
+            if entry is None:
+                entry = (
+                    NASR(cycle=chosen, cache_dir=self.cache_dir),
+                    threading.Lock(),
+                )
+                self._lookups[chosen] = entry
+        nasr, lock = entry
+        with lock:
+            yield chosen, nasr.query_table
 
     def describe(self) -> list[dict]:
         today = self._today().isoformat()
