@@ -151,6 +151,23 @@ class FaaCycleProvider:
         archive_url = self._archive_url(detail, detail_url, effective_date)
         return RemoteCycle(effective_date=effective_date, archive_url=archive_url)
 
+    def for_date(self, effective_date: date) -> RemoteCycle:
+        """Find the archive for one named cycle, current, past or upcoming.
+
+        The FAA keeps a detail page per cycle date; the same host and archive
+        rules as :meth:`discover` apply, so a date cannot point anywhere else.
+        """
+
+        detail_url = urljoin(self.landing_url, f"{effective_date.isoformat()}/")
+        parsed = urlparse(detail_url)
+        if parsed.scheme != "https" or parsed.hostname not in FAA_LANDING_HOSTS:
+            raise ValueError("FAA cycle detail pages must be served from faa.gov")
+        detail = self._read_text(detail_url)
+        return RemoteCycle(
+            effective_date=effective_date,
+            archive_url=self._archive_url(detail, detail_url, effective_date),
+        )
+
     def _read_text(self, url: str) -> str:
         with self.opener(url, timeout=PAGE_TIMEOUT) as response:
             return response.read().decode("utf-8")
@@ -775,7 +792,10 @@ class CycleManager:
         if self.provider is None:
             raise ValueError("A FAA cycle provider is required for downloads")
         try:
-            remote_cycle = self.provider.discover()
+            for_date = getattr(self.provider, "for_date", None)
+            remote_cycle = (
+                for_date(effective_date) if for_date else self.provider.discover()
+            )
             if remote_cycle.effective_date != effective_date:
                 raise ValueError(
                     f"Provider does not offer NASR cycle {effective_date.isoformat()}"

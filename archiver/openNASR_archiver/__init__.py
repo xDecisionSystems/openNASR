@@ -2,6 +2,7 @@
 
 from openNASR_contract import Bucket, ImmutableKeyError, LocalBucket
 
+from .backfill import BackfillResult, backfill, cycle_dates, next_cycle_after
 from .rebuild import RebuildReport, rebuild_from_bucket
 from .run import (
     AlertState,
@@ -21,6 +22,10 @@ from .publish import (
 )
 
 __all__ = [
+    "BackfillResult",
+    "backfill",
+    "cycle_dates",
+    "next_cycle_after",
     "CompositeNotifier",
     "RebuildReport",
     "WebhookNotifier",

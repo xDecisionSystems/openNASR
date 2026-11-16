@@ -134,3 +134,45 @@ def test_alert_state_survives_a_restart(setup):
     _run(setup, restarted)
 
     assert restarted.events == []  # already announced before the restart
+
+
+def _stub_upcoming(monkeypatch, status, detail=""):
+    from openNASR_archiver.backfill import BackfillResult
+
+    monkeypatch.setattr(
+        run_module,
+        "_upcoming",
+        lambda *a, **k: BackfillResult(date(2026, 10, 1), status, detail),
+    )
+
+
+def test_an_upcoming_cycle_that_is_not_posted_yet_raises_no_alert(setup, monkeypatch):
+    _stub_upcoming(monkeypatch, "unavailable", "not posted")
+    notifier = RecordingNotifier()
+
+    outcome = _run(setup, notifier)
+
+    assert outcome.status == "published"
+    assert notifier.events == []
+
+
+def test_an_upcoming_cycle_that_fails_validation_alerts_once_then_resolves(
+    setup, monkeypatch
+):
+    notifier = RecordingNotifier()
+    _stub_upcoming(monkeypatch, "failed", "schema not recognized")
+    _run(setup, notifier)
+    _run(setup, notifier)
+    _stub_upcoming(monkeypatch, "published")
+    _run(setup, notifier)
+
+    assert notifier.events == [
+        (run_module.UPCOMING_FAILED, "firing"),
+        (run_module.UPCOMING_FAILED, "resolved"),
+    ]
+
+
+def test_a_failing_upcoming_cycle_does_not_fail_the_current_pass(setup, monkeypatch):
+    _stub_upcoming(monkeypatch, "failed", "boom")
+
+    assert _run(setup, RecordingNotifier()).status == "published"

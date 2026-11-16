@@ -20,7 +20,8 @@ from openNASR.duckdb_builder import DuckDbBuildError
 from openNASR.exceptions import DownloadError
 
 from openNASR_contract import Bucket
-from .publish import PublishError, PublishResult, publish_cycle
+from .backfill import BackfillResult, _one, next_cycle_after
+from .publish import BUILDER_VERSION, PublishError, PublishResult, publish_cycle
 
 CYCLE_DAYS = 28
 LOGGER = logging.getLogger("openNASR_archiver")
@@ -30,6 +31,7 @@ VALIDATION_FAILED = "validation_failed"
 BUILD_FAILED = "build_failed"
 BUCKET_UNAVAILABLE = "bucket_unavailable"
 NO_NEW_CYCLE = "no_new_cycle"
+UPCOMING_FAILED = "upcoming_cycle_failed"
 
 
 class Notifier(Protocol):
@@ -132,6 +134,7 @@ def run_once(
         ):
             _resolve(state, notifier, kind)
         _check_overdue(state, notifier, now(), grace_days, outcome)
+        _handle_upcoming(manager, bucket, state, notifier, outcome, publish_options)
     state.save()
     return outcome
 
@@ -161,6 +164,34 @@ def _attempt(manager, bucket, state, **publish_options) -> RunOutcome:
         "already_published" if result.already_published else "published",
         effective_date,
     )
+
+
+def _upcoming(manager, bucket, current: date, publish_options) -> BackfillResult:
+    """Publish the cycle after ``current``, which the FAA posts ~20 days early."""
+
+    upcoming = next_cycle_after(current)
+    return _one(
+        manager, bucket, upcoming, BUILDER_VERSION, False, set(), publish_options
+    )
+
+
+def _handle_upcoming(
+    manager, bucket, state, notifier, outcome, publish_options
+) -> None:
+    """Best effort: not being posted yet is normal; a build that fails is not."""
+
+    if outcome.effective_date is None:
+        return
+    result = _upcoming(manager, bucket, outcome.effective_date, publish_options)
+    if result.status == "failed":
+        _fire(
+            state,
+            notifier,
+            UPCOMING_FAILED,
+            f"{result.effective_date}: {result.detail}",
+        )
+    else:
+        _resolve(state, notifier, UPCOMING_FAILED)
 
 
 def _check_overdue(state, notifier, today, grace_days, outcome) -> None:

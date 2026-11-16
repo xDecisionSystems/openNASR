@@ -600,3 +600,62 @@ def test_download_part_rejects_oversized_download(tmp_path, monkeypatch):
 def test_network_timeouts_are_not_tiny():
     assert cycles.PAGE_TIMEOUT >= 10
     assert cycles.DOWNLOAD_TIMEOUT >= 30
+
+
+def test_provider_finds_a_named_cycle_without_the_landing_page():
+    landing_url = (
+        "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/"
+        "NASR_Subscription/"
+    )
+    requested = []
+
+    class Response:
+        def __init__(self, body):
+            self.body = body
+
+        def read(self):
+            return self.body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    def opener(url, timeout):
+        requested.append(url)
+        return Response(
+            b"<a href='https://nfdc.faa.gov/webContent/28DaySub/"
+            b"28DaySubscription_Effective_2026-10-01.zip'>Full</a>"
+        )
+
+    cycle = FaaCycleProvider(landing_url, opener).for_date(date(2026, 10, 1))
+
+    assert requested == [f"{landing_url}2026-10-01/"]
+    assert cycle.effective_date == date(2026, 10, 1)
+    assert cycle.archive_url.endswith("28DaySubscription_Effective_2026-10-01.zip")
+
+
+def test_a_named_cycle_cannot_point_at_another_cycles_archive():
+    landing_url = (
+        "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/"
+        "NASR_Subscription/"
+    )
+
+    class Response:
+        def read(self):
+            return (
+                b"<a href='https://nfdc.faa.gov/webContent/28DaySub/"
+                b"28DaySubscription_Effective_2026-11-26.zip'>Full</a>"
+            )
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    provider = FaaCycleProvider(landing_url, lambda url, timeout: Response())
+
+    with pytest.raises(ValueError, match="expected full-subscription"):
+        provider.for_date(date(2026, 10, 1))

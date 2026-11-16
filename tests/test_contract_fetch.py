@@ -94,3 +94,22 @@ def test_unreadable_manifests_are_skipped_not_fatal(published):
     bucket.put_bytes(broken, b"not json")
 
     assert list_builds(bucket) == [manifest]
+
+
+def test_a_reposted_cycle_resolves_to_the_newest_build(published):
+    import dataclasses
+
+    from openNASR_contract import ArtifactRef, build_keys
+
+    bucket, first = published
+    keys = build_keys(first.effective_date, "d" * 64, first.builder)
+    second = dataclasses.replace(
+        first,
+        zip=ArtifactRef(keys.zip, "d" * 64, first.zip.size),
+        duckdb=ArtifactRef(keys.duckdb, first.duckdb.sha256, first.duckdb.size),
+        sidecar=ArtifactRef(keys.sidecar, first.sidecar.sha256, first.sidecar.size),
+        created_at="2099-01-01T00:00:00+00:00",
+    )
+    bucket.put_bytes(second.keys().manifest, second.to_json().encode())
+
+    assert select_build(bucket, effective_date=first.effective_date) == second

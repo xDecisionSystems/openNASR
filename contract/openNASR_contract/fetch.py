@@ -41,7 +41,7 @@ def list_builds(bucket: Bucket) -> list[Manifest]:
             continue
         if manifest.keys().manifest == expected.manifest:
             builds.append(manifest)
-    return sorted(builds, key=lambda m: (m.effective_date, m.builder))
+    return sorted(builds, key=lambda m: (m.effective_date, m.builder, m.created_at))
 
 
 def select_build(

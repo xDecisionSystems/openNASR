@@ -360,7 +360,7 @@ incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
 | 3.1 `contract/` package: key layout (`<year>/<date>_<zipsha>.zip`, `.b<N>.duckdb`, `.b<N>.json`) and strict manifest parse/serialize | done |
 | 3.2 `archiver/` package: `Bucket` protocol, `LocalBucket` (immutable keys), `publish_cycle` with gates (recognised schema, supported procedure order, required tables non-empty, read-only smoke test), zip -> db -> manifest-last | done |
 | 3.3 `S3Bucket` (boto3, optional `s3` extra; sha256 kept as object metadata; `S3Bucket.from_env` reads `OPENNASR_*`; verified against the real Garage server on 2026-11-16) | done |
-| 3.4 `run_once`: discover -> download -> publish (current cycle). Upcoming cycle and backfill need provider support (the provider only offers the current cycle) | partly done |
+| 3.4 `run_once`: discover -> download -> publish the current cycle, then best-effort the upcoming one (not posted yet = silent; build failure = one alert). `FaaCycleProvider.for_date` fetches any named cycle; `backfill` publishes a range of the 28-day grid, skipping what the bucket already holds | done |
 | 3.5 Outage staging (the local cache), de-duplicated alerts persisted in a state file (fail once, resolve once), "no new cycle" alert after 28 + 3 days | done (notifier is log-only so far) |
 | 3.6 CLI (`run`, `status`, `publish`, `rebuild`), webhook alerts, systemd service + timer, Dockerfile, README. Unit files and the Dockerfile are **not yet exercised on a host** | partly done |
 | 3.7 Fresh-machine test: a cache holding only the fetched `nasr.duckdb` + sidecar opens and resolves routes (synthetic test, and the real 2026-10-29 cycle). `openNASR-archiver rebuild` recreates the database from only the zip in the bucket and compares tables, schema and fingerprint: verified against Garage with the real cycle | done |
@@ -381,3 +381,15 @@ gitignored `.env`: `opennasr-archiver` (read + write) and `opennasr-api` (read o
 API read work, the API key is refused a write (`AccessDenied`), overwriting a key is refused by the client, and the real
 2026-10-29 cycle published (zip, database, sidecar, manifest) and fetched back into an empty cache with the API key,
 resolving a route. Neither key can create buckets.
+
+### Backfill (2026-11-16)
+
+`openNASR-archiver backfill --from 2026-09-03` published every cycle on the new FAA schema (`nasr_2026_09`,
+first effective 2026-09-03): 2026-09-03, 2026-10-01, 2026-10-29 and the upcoming 2026-11-26 (the FAA had posted it).
+All four are `flight_order`; zips 251-259 MB, databases 54 MB. Older cycles (`pre_2026_09` schema) are next.
+Slack alerts use the infrastructure repo's webhook, stored as `OPENNASR_ALERT_WEBHOOK_URL` in the gitignored `.env`
+(one test message delivered, HTTP 200).
+
+Operational note: an extracted cycle needs ~1.4 GB. `/tmp` on the devbox is a 7.9 GB RAM-backed tmpfs and filled up during
+testing (builds then failed with "No space left on device"); caches must live on disk (`/home/aev/.cache/...`,
+`/var/lib/openNASR-archiver`). Re-posted preview zips get new keys (the key holds the zip hash); readers pick the newest.
