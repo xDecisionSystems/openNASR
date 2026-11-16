@@ -260,7 +260,7 @@ a `.duckdb` file must not need any of these.
 |------|--------|
 | 2.1 Corpus format and runner (`tools/route_corpus.py`, inline tables, exact point expectations) | done |
 | 2.2 Synthetic corpus in CI with resolution-rate report (`tests/fixtures/route_corpus/synthetic.json`) | done |
-| 2.3 Coverage table per construct | open |
+| 2.3 Coverage table per construct (`docs/route-coverage.md`) | done |
 | 2.4 Real-cycle corpus from `benchmarks/data/example_routes.csv` once a real cycle is cached | open |
 | 2.5 ICAO lat/lon waypoint tokens (`3800N07730W`, `37S078E`) resolve with range checks; FAA slash form (`4300N/05000W`) stays a diagnostic | done |
 | 2.7 Narrow DP/STAR records and bodies by the route's end airports (`STAR_APT`/`DP_APT`): done, resolved 15,987 -> 16,666 (+679). Runway-dependent bodies (`GRNCH-BRICE` vs `GRNCH-YAGGO` at MCO) are expected: the resolver returns the portion all bodies share (decided with the owner: arrivals branch by runway and airport configuration). Phase 4 must surface this as a diagnostic with `complete:false`; today `RouteResolver.path` returns the shared part silently | done |
@@ -345,3 +345,10 @@ Runway-dependent branching (departures such as `MONTN2.SEA`, `CONLE5.SCOOB`; arr
 `GRNCH5`) is expected FAA data, not an error. Open: a dotted departure with no published points
 (`SLC4.TCH`, `LAKES5.MCI`) starts the following airway from the whole token instead of its exit
 fix, so those routes report `RecordNotFoundError`.
+
+### 2.13 Departures with no published geometry (done)
+
+117 of 1,189 DPs have no `DP_RTE` rows (radar-vector SIDs), and others have transitions but no body. The code's
+suffix (`SLC4.TCH`) is the DP's terminal fix in ~90% of the DPs that do publish geometry, so it is used and an
+`info` diagnostic (`procedure_geometry_unpublished`) records the source. Info diagnostics do not make a route
+incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
