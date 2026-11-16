@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily openNASR archiver pass (the FAA publishes every 28 days; most passes do nothing)
+
+[Timer]
+OnCalendar=*-*-* 06:15:00
+RandomizedDelaySec=20min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

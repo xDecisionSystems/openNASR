@@ -1,0 +1,21 @@
+[Unit]
+Description=openNASR archiver: fetch the current FAA NASR cycle and publish it
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=opennasr
+Group=opennasr
+EnvironmentFile=/etc/openNASR/archiver.env
+Environment=OPENNASR_CACHE_DIR=/var/lib/openNASR-archiver/cache
+Environment=OPENNASR_STATE_FILE=/var/lib/openNASR-archiver/state.json
+ExecStart=/opt/openNASR/venv/bin/openNASR-archiver run
+StateDirectory=openNASR-archiver
+# A failed pass exits non-zero so the unit shows as failed; alerts are separate.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/openNASR-archiver
+TimeoutStartSec=2h

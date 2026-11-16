@@ -43,6 +43,40 @@ class LogNotifier:
         LOGGER.log(level, "[%s] %s: %s", state, kind, message)
 
 
+class WebhookNotifier:
+    """Post alerts as ``{"text": ...}`` JSON (Slack-compatible)."""
+
+    def __init__(self, url: str, *, opener=None) -> None:
+        self.url = url
+        self._opener = opener
+
+    def notify(self, kind: str, state: str, message: str) -> None:
+        import urllib.request
+
+        icon = ":rotating_light:" if state == "firing" else ":white_check_mark:"
+        body = json.dumps(
+            {"text": f"{icon} openNASR archiver [{state}] {kind}: {message}"}
+        )
+        request = urllib.request.Request(
+            self.url,
+            data=body.encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            (self._opener or urllib.request.urlopen)(request, timeout=10).close()
+        except Exception:  # an alert that cannot be delivered must not stop a pass
+            LOGGER.exception("could not deliver alert %s", kind)
+
+
+class CompositeNotifier:
+    def __init__(self, *notifiers: Notifier) -> None:
+        self.notifiers = notifiers
+
+    def notify(self, kind: str, state: str, message: str) -> None:
+        for notifier in self.notifiers:
+            notifier.notify(kind, state, message)
+
+
 @dataclass(frozen=True)
 class RunOutcome:
     status: str  # published | already_published | failed

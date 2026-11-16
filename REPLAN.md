@@ -362,8 +362,8 @@ incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
 | 3.3 `S3Bucket` (boto3, optional `s3` extra; sha256 kept as object metadata; `S3Bucket.from_env` reads `OPENNASR_*`; verified against the real Garage server on 2026-11-16) | done |
 | 3.4 `run_once`: discover -> download -> publish (current cycle). Upcoming cycle and backfill need provider support (the provider only offers the current cycle) | partly done |
 | 3.5 Outage staging (the local cache), de-duplicated alerts persisted in a state file (fail once, resolve once), "no new cycle" alert after 28 + 3 days | done (notifier is log-only so far) |
-| 3.6 CLI + systemd timer + container image | open |
-| 3.7 Fresh-machine test: a cache holding only the fetched `nasr.duckdb` + sidecar opens and resolves routes (synthetic test, and the real 2026-10-29 cycle). Still open: rebuilding every index from the archived zips (`rebuild` command) | partly done |
+| 3.6 CLI (`run`, `status`, `publish`, `rebuild`), webhook alerts, systemd service + timer, Dockerfile, README. Unit files and the Dockerfile are **not yet exercised on a host** | partly done |
+| 3.7 Fresh-machine test: a cache holding only the fetched `nasr.duckdb` + sidecar opens and resolves routes (synthetic test, and the real 2026-10-29 cycle). `openNASR-archiver rebuild` recreates the database from only the zip in the bucket and compares tables, schema and fingerprint: verified against Garage with the real cycle | done |
 
 Repo layout so far: the existing `openNASR/` package at the root is `core`; `contract/` and `archiver/`
 sit beside it. Moving core into `core/` is deferred until the API package exists, to keep history readable.

@@ -50,7 +50,7 @@ def publish_cycle(
     bucket: Bucket,
     *,
     builder: int = BUILDER_VERSION,
-    required_tables: Iterable[str] = REQUIRED_TABLES,
+    required_tables: Iterable[str] | None = None,
 ) -> PublishResult:
     """Publish a cycle that is already in ``manager``'s cache."""
 
@@ -71,7 +71,8 @@ def publish_cycle(
 
     result = manager.build_duckdb(effective_date)
     metadata = result.metadata
-    _validate_build(metadata, result.database_path, tuple(required_tables))
+    required = REQUIRED_TABLES if required_tables is None else tuple(required_tables)
+    _validate_build(metadata, result.database_path, required)
     db_sha = sha256_file(result.database_path)
 
     bucket.put_file(keys.zip, archive, zip_sha)

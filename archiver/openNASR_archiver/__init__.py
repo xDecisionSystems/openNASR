@@ -2,7 +2,16 @@
 
 from openNASR_contract import Bucket, ImmutableKeyError, LocalBucket
 
-from .run import AlertState, LogNotifier, Notifier, RunOutcome, run_once
+from .rebuild import RebuildReport, rebuild_from_bucket
+from .run import (
+    AlertState,
+    CompositeNotifier,
+    LogNotifier,
+    Notifier,
+    RunOutcome,
+    WebhookNotifier,
+    run_once,
+)
 from .publish import (
     ARCHIVER_VERSION,
     BUILDER_VERSION,
@@ -12,6 +21,10 @@ from .publish import (
 )
 
 __all__ = [
+    "CompositeNotifier",
+    "RebuildReport",
+    "WebhookNotifier",
+    "rebuild_from_bucket",
     "AlertState",
     "LogNotifier",
     "Notifier",

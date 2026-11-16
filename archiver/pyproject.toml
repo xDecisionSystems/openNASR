@@ -13,5 +13,8 @@ dependencies = ["openNASR>=2.0", "openNASR-contract>=0.1"]
 [project.optional-dependencies]
 s3 = ["boto3>=1.34"]
 
+[project.scripts]
+openNASR-archiver = "openNASR_archiver.cli:main"
+
 [tool.setuptools]
 packages = ["openNASR_archiver"]
