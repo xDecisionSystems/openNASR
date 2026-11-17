@@ -1,0 +1,1671 @@
+{
+  "components": {
+    "schemas": {
+      "AirportEntity": {
+        "properties": {
+          "base": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Base",
+            "type": "object"
+          },
+          "icao_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icao Id"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Position"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runway_ends": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Runway Ends",
+            "type": "array"
+          },
+          "runways": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Runways",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "icao_id",
+          "position",
+          "base",
+          "runways",
+          "runway_ends"
+        ],
+        "title": "AirportEntity",
+        "type": "object"
+      },
+      "AirportResponse": {
+        "properties": {
+          "airport": {
+            "$ref": "#/components/schemas/AirportEntity"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "airport"
+        ],
+        "title": "AirportResponse",
+        "type": "object"
+      },
+      "AirspaceRegion": {
+        "properties": {
+          "id": {
+            "description": "FAA location id, e.g. ZAB",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "ARTCC | FIR | CTA | UTA | CTA/FIR",
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "description": "low | high | unlimited",
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "level"
+        ],
+        "title": "AirspaceRegion",
+        "type": "object"
+      },
+      "AirspaceResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "not_covered": {
+            "title": "Not Covered",
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/AirspaceRegion"
+            },
+            "title": "Regions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycle",
+          "position",
+          "regions",
+          "not_covered"
+        ],
+        "title": "AirspaceResponse",
+        "type": "object"
+      },
+      "AirwayEntity": {
+        "properties": {
+          "base": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Base",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "segments": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Segments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "base",
+          "segments"
+        ],
+        "title": "AirwayEntity",
+        "type": "object"
+      },
+      "AirwaysResponse": {
+        "properties": {
+          "airways": {
+            "items": {
+              "$ref": "#/components/schemas/AirwayEntity"
+            },
+            "title": "Airways",
+            "type": "array"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "airways"
+        ],
+        "title": "AirwaysResponse",
+        "type": "object"
+      },
+      "CycleInfo": {
+        "properties": {
+          "effective_date": {
+            "title": "Effective Date",
+            "type": "string"
+          },
+          "in_effect": {
+            "title": "In Effect",
+            "type": "boolean"
+          },
+          "schema_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Id"
+          },
+          "zip_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zip Sha256"
+          }
+        },
+        "required": [
+          "effective_date",
+          "in_effect",
+          "schema_id",
+          "zip_sha256"
+        ],
+        "title": "CycleInfo",
+        "type": "object"
+      },
+      "CyclesResponse": {
+        "properties": {
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/CycleInfo"
+            },
+            "title": "Cycles",
+            "type": "array"
+          },
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          }
+        },
+        "required": [
+          "default",
+          "cycles"
+        ],
+        "title": "CyclesResponse",
+        "type": "object"
+      },
+      "Diagnostic": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Offset of the token in the route text",
+            "title": "Position"
+          },
+          "severity": {
+            "description": "'warning' = something is missing; 'info' = a note",
+            "title": "Severity",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "token",
+          "position",
+          "detail"
+        ],
+        "title": "Diagnostic",
+        "type": "object"
+      },
+      "Extracted": {
+        "properties": {
+          "aircraft_id": {
+            "title": "Aircraft Id",
+            "type": "string"
+          },
+          "departure": {
+            "title": "Departure",
+            "type": "string"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "message_type": {
+            "title": "Message Type",
+            "type": "string"
+          },
+          "route_field": {
+            "title": "Route Field",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_type",
+          "aircraft_id",
+          "departure",
+          "destination",
+          "route_field"
+        ],
+        "title": "Extracted",
+        "type": "object"
+      },
+      "FixEntity": {
+        "properties": {
+          "base": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Base",
+            "type": "object"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Position"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "base"
+        ],
+        "title": "FixEntity",
+        "type": "object"
+      },
+      "FixesResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "fixes": {
+            "items": {
+              "$ref": "#/components/schemas/FixEntity"
+            },
+            "title": "Fixes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycle",
+          "fixes"
+        ],
+        "title": "FixesResponse",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "InputEcho": {
+        "properties": {
+          "extracted": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Extracted"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "description": "route | icao_message",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "InputEcho",
+        "type": "object"
+      },
+      "NavaidEntity": {
+        "properties": {
+          "base": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Base",
+            "type": "object"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Position"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "base",
+          "type"
+        ],
+        "title": "NavaidEntity",
+        "type": "object"
+      },
+      "NavaidsResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "navaids": {
+            "items": {
+              "$ref": "#/components/schemas/NavaidEntity"
+            },
+            "title": "Navaids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycle",
+          "navaids"
+        ],
+        "title": "NavaidsResponse",
+        "type": "object"
+      },
+      "Point": {
+        "properties": {
+          "kind": {
+            "description": "airport | fix | navaid | latlon | interpolated",
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "description": "The identifier as filed; empty for interpolated points",
+            "title": "Name",
+            "type": "string"
+          },
+          "segment": {
+            "description": "origin | departure | enroute | arrival | destination",
+            "title": "Segment",
+            "type": "string"
+          },
+          "via": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Airway or procedure that produced the point",
+            "title": "Via"
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "name",
+          "kind",
+          "via",
+          "segment"
+        ],
+        "title": "Point",
+        "type": "object"
+      },
+      "Position": {
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "Position",
+        "type": "object"
+      },
+      "Problem": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "Ready": {
+        "properties": {
+          "default_cycle": {
+            "title": "Default Cycle",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "default_cycle"
+        ],
+        "title": "Ready",
+        "type": "object"
+      },
+      "RouteRequest": {
+        "properties": {
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Effective date YYYY-MM-DD; default is today's cycle",
+            "title": "Cycle"
+          },
+          "icao_message": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An ICAO FPL message; the route and aerodromes are extracted",
+            "title": "Icao Message"
+          },
+          "max_segment_nm": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opt in to great-circle interpolation between points",
+            "title": "Max Segment Nm"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FAA route text, e.g. 'KABQ.DOOKK3.TXO..KTYR'",
+            "title": "Route"
+          }
+        },
+        "title": "RouteRequest",
+        "type": "object"
+      },
+      "RouteResponse": {
+        "properties": {
+          "complete": {
+            "description": "True when no warning diagnostics were raised",
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/Diagnostic"
+            },
+            "title": "Diagnostics",
+            "type": "array"
+          },
+          "geojson": {
+            "additionalProperties": true,
+            "title": "Geojson",
+            "type": "object"
+          },
+          "input": {
+            "$ref": "#/components/schemas/InputEcho"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "input",
+          "route",
+          "cycle",
+          "complete",
+          "points",
+          "geojson",
+          "diagnostics"
+        ],
+        "title": "RouteResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      },
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
+    "title": "openNASR API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Liveness: the process is up.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Readiness: at least one cycle in effect is available.",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ready"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/v1/airports/{identifier}": {
+      "get": {
+        "description": "An airport by FAA or ICAO identifier, with its runways.",
+        "operationId": "get_airport_v1_airports__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Airport",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/airspace/at": {
+      "get": {
+        "description": "The ARTCC, FIR, CTA and UTA regions that contain a point.\n\nClass B/C/D/E airspace and special-use airspace are not in the FAA CSV\ndata as polygons, so they are not searched; `not_covered` says so.",
+        "operationId": "airspace_at_v1_airspace_at_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lat",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lon",
+            "required": true,
+            "schema": {
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lon",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirspaceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Airspace At",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/airways/{identifier}": {
+      "get": {
+        "description": "An airway by designation, e.g. J74, with its segments in order.",
+        "operationId": "get_airway_v1_airways__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirwaysResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Airway",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/cycles": {
+      "get": {
+        "description": "The cycles this service holds and which one is the default.",
+        "operationId": "cycles_v1_cycles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CyclesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cycles",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/v1/fixes/{identifier}": {
+      "get": {
+        "description": "Every fix record with this name.",
+        "operationId": "get_fix_v1_fixes__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Fix",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/navaids/{identifier}": {
+      "get": {
+        "description": "Every navaid record with this identifier (several when a name is shared).",
+        "operationId": "get_navaid_v1_navaids__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavaidsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Navaid",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/route/resolve": {
+      "get": {
+        "operationId": "resolve_get_v1_route_resolve_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "route",
+            "required": true,
+            "schema": {
+              "maxLength": 4096,
+              "minLength": 1,
+              "title": "Route",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          },
+          {
+            "description": "Insert great-circle points so no leg exceeds this many nm",
+            "in": "query",
+            "name": "max_segment_nm",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Insert great-circle points so no leg exceeds this many nm",
+              "title": "Max Segment Nm"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resolve a route given in the query string",
+        "tags": [
+          "route"
+        ]
+      },
+      "post": {
+        "description": "Resolve a route string or ICAO FPL message to an ordered list of points.",
+        "operationId": "resolve_post_v1_route_resolve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resolve a route to points",
+        "tags": [
+          "route"
+        ]
+      }
+    }
+  }
+}

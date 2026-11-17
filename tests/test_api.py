@@ -16,7 +16,7 @@ CYCLE = "2026-08-06"
 def client(make_nasr_from_fixture):
     _, cache_root = make_nasr_from_fixture("core/pre_2026_09")  # builds the cycle
     store = CycleStore(cache_root, today=lambda: date(2026, 8, 20))
-    return TestClient(create_app(store, [KEY, "test-key-2"]))
+    return TestClient(create_app(store, [KEY, "test-key-2"], rate_limit_per_minute=0))
 
 
 def test_health_needs_no_key_and_ready_names_the_default_cycle(client):
@@ -244,3 +244,26 @@ def test_concurrent_lookups_share_one_connection_safely(client):
 
     with ThreadPoolExecutor(8) as pool:
         assert set(pool.map(one, range(60))) == {200}
+
+
+def test_airspace_at_with_no_boundary_data_is_empty_and_says_what_is_not_covered(
+    client,
+):
+    data = client.get(
+        "/v1/airspace/at", params={"lat": 39, "lon": -76.6}, headers=HEADERS
+    ).json()
+
+    assert data["cycle"] == CYCLE
+    assert data["position"] == {"lat": 39.0, "lon": -76.6}
+    assert isinstance(data["regions"], list)
+    assert "Class B/C/D/E" in data["not_covered"]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [{"lat": 91, "lon": 0}, {"lat": 0, "lon": 181}, {"lat": "x", "lon": 0}, {"lat": 0}],
+)
+def test_airspace_at_validates_the_position(client, params):
+    assert (
+        client.get("/v1/airspace/at", params=params, headers=HEADERS).status_code == 422
+    )

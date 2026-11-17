@@ -11,10 +11,13 @@ import logging
 from pathlib import Path
 import threading
 
+from openNASR.exceptions import TableNotFoundError
 from openNASR.flightplan import RouteResolver
 from openNASR.nasr import NASR
 from openNASR_contract import Bucket, FetchError, Manifest, fetch_build, select_build
 from openNASR_contract.fetch import list_builds
+
+from .airspace import AirspaceIndex
 
 LOGGER = logging.getLogger("openNASR_api")
 
@@ -47,6 +50,24 @@ class CycleTables(dict):
         self.procedure_order = procedure_order
 
 
+def _empty_boundaries():
+    from pandas import DataFrame
+
+    return (
+        DataFrame(columns=["LOCATION_ID", "LOCATION_NAME"]),
+        DataFrame(
+            columns=[
+                "LOCATION_ID",
+                "ALTITUDE",
+                "TYPE",
+                "POINT_SEQ",
+                "LAT_DECIMAL",
+                "LONG_DECIMAL",
+            ]
+        ),
+    )
+
+
 @dataclass
 class RefreshReport:
     fetched: list[str] = field(default_factory=list)
@@ -74,6 +95,7 @@ class CycleStore:
         self._today = today
         self._loaded: OrderedDict[str, RouteResolver] = OrderedDict()
         self._lookups: dict[str, tuple[NASR, threading.Lock]] = {}
+        self._airspace: dict[str, AirspaceIndex] = {}
         self._lock = threading.Lock()
 
     def _directory(self, effective_date: str) -> Path:
@@ -114,6 +136,7 @@ class CycleStore:
         with self._lock:
             self._loaded.pop(effective_date, None)
             entry = self._lookups.pop(effective_date, None)
+            self._airspace.pop(effective_date, None)
         if entry is not None:
             with entry[1]:  # wait for in-flight lookups before dropping it
                 pass
@@ -163,6 +186,24 @@ class CycleStore:
             while len(self._loaded) > self.max_loaded:
                 self._loaded.popitem(last=False)
             return chosen, resolver
+
+    def airspace(self, effective_date: str | None = None) -> tuple[str, AirspaceIndex]:
+        """The ARTCC/FIR/CTA boundary index for a cycle, built on first use."""
+
+        chosen = effective_date or self.default_cycle()
+        if chosen not in self.cycles():
+            raise CycleUnavailableError(f"cycle {chosen} is not available")
+        with self._lock:
+            index = self._airspace.get(chosen)
+            if index is not None:
+                return chosen, index
+            nasr = NASR(cycle=chosen, cache_dir=self.cache_dir)
+            try:
+                index = AirspaceIndex(nasr["ARB_BASE"], nasr["ARB_SEG"])
+            except TableNotFoundError:
+                index = AirspaceIndex(*(_empty_boundaries()))
+            self._airspace[chosen] = index
+            return chosen, index
 
     @contextmanager
     def lookup(

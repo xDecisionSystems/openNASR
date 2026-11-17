@@ -1,0 +1,25 @@
+[Unit]
+Description=openNASR API (route resolution over validated FAA NASR cycles)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=opennasr
+Group=opennasr
+EnvironmentFile=/etc/openNASR/api.env
+ExecStart=/opt/openNASR/venv/bin/openNASR-api
+Restart=on-failure
+RestartSec=5
+StateDirectory=openNASR-api
+Environment=OPENNASR_API_CACHE_DIR=/var/lib/openNASR-api/cache
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/openNASR-api
+# One loaded cycle is ~330 MB; three are kept in memory.
+MemoryMax=3G
+
+[Install]
+WantedBy=multi-user.target

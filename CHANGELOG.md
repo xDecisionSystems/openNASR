@@ -23,6 +23,11 @@ and versions follow Semantic Versioning.
 
 ### Fixed
 
+- New packages in this repository: `contract/` (bucket layout, manifest, bucket clients, reader),
+  `archiver/` (publish, backfill, run loop, alerts, CLI) and `api/` (FastAPI service). Route results now
+  carry per-point provenance (`RouteResult.waypoints`), ICAO FPL messages can be resolved, and ignored
+  speed/level groups are reported as info diagnostics.
+
 - `RouteResolver.resolve(route)` returns a `RouteResult` (points, cycle, structured
   `RouteDiagnostic` list, `complete`). Route problems become diagnostics instead of
   exceptions, and an arrival or departure whose published branches depend on
