@@ -20,7 +20,8 @@ It has three runnable parts:
 ```
 openNASR/            core library (package "openNASR", version 2.0.1). No I/O policy; depends on neither contract, archiver nor api.
   flightplan.py      import point for route resolution (re-exports the public API and the private names tests use)
-  _route_common.py, _route_waypoints.py, _route_airways.py, _route_procedures.py, _route_tokenizer.py, _route_resolver.py
+  _route_common.py, _route_waypoints.py, _route_airways.py, _route_procedure_index.py,
+  _route_procedures.py, _route_tokenizer.py, _route_resolver.py
                      the implementation, layered in that order (a module imports only from earlier ones). Flat files on purpose: the wheel lists only the top package
   routeresult.py     RouteResult / RoutePoint / RouteDiagnostic
   routejson.py       route_result_to_dict(): THE JSON shape, used by the API and the CLI
@@ -140,7 +141,7 @@ Both guests run signed `v2.0.1` with DuckDB 1.5.6 and retain `v2.0.0` for rollba
 
 1. **Phase 7 observation is in progress.** The manual production pass on `v2.0.1` exited 0 with `already_published 2026-10-29` and no active alerts. Verify the first timer-triggered pass, then check that the API defaults to 2026-11-26 when that prepublished cycle takes effect. When the FAA posts 2026-12-24, verify its Garage manifest, artifact hashes, and explicit-cycle API response. See [the observation checklist](REPLAN.md#8g-phase-7-observation).
 2. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
-3. **Refactors**: `flightplan.py` is already split (done 2026-11-18, verified identical on 9,316 real routes). Remaining: `_route_procedures.py` is still ~900 lines (its `_ProcedureIndex` could move out); move core into a `core/` directory. Verify any routing change with `tools/route_corpus.py` and by running the same pool sample through the old and new code (usable must stay at 70.3% of every 5th route, 70.5% of the full pool).
+3. **Refactors**: `flightplan.py` is a compatibility facade, and procedure lookup indexes now live in `_route_procedure_index.py`. Moving core into a `core/` directory remains open. Verify any routing change with `tools/route_corpus.py` and compare the same pool sample through the old and new code.
 4. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
 5. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
 6. Class B/C/D/E polygons need a different FAA data source, such as shapefiles.
@@ -154,6 +155,7 @@ answers readiness and route requests. Production runs in the Proxmox LXCs.
 ## 9. Owner preferences and working agreements
 
 - **Commit straight to `main`.** The owner does not want PRs, feature branches or merge commits ("everything should just be committed"). `git config pull.ff only` is set so a pull never creates a merge commit.
+- **One checkout, one branch.** Claude and Codex both work in `/srv/projects/openNASR` on `main`; the owner does not want extra branches or clones. To avoid sweeping up each other's unfinished work: commit small and often, run `git status` and `git pull --ff-only` before starting and before committing, and stage by explicit path (never `git add -A`).
 - **Do the work; do not keep re-asking.** The owner reacted badly to repeated, rephrased questions. Make a recommendation, state it, proceed. Ask only for decisions that are really theirs (hosts, keys, outward-facing actions).
 - Tagging releases, publishing to PyPI, creating infrastructure, using admin tokens, and sending messages require the owner's go-ahead.
 - **Precise language matters.** They pushed back on calling normal FAA branching a "failure" and on "ambiguous". Prefer the outcome classes in section 6. Never present a guess as a resolved point; unsupported things become diagnostics.
