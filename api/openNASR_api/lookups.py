@@ -180,6 +180,45 @@ def airways(query: Callable[..., Any], identifier: str) -> list[dict]:
     return result
 
 
+def airway_plot_segments(
+    segments: list[dict[str, str]],
+    locate: Callable[[str, str], tuple[float, float]],
+) -> list[dict]:
+    """Resolve each published airway segment without joining missing points."""
+
+    point_types = {
+        row["FROM_POINT"]: row.get("FROM_PT_TYPE", "")
+        for row in segments
+        if row.get("FROM_POINT")
+    }
+    cache: dict[tuple[str, str], dict] = {}
+
+    def waypoint(name: str, point_type: str) -> dict:
+        key = (name, point_type)
+        if key not in cache:
+            position = None
+            issue = None
+            try:
+                lat, lon = locate(name, point_type)
+                position = {"lat": lat, "lon": lon}
+            except (AmbiguousRecordError, RecordNotFoundError) as error:
+                issue = str(error)
+            cache[key] = {"name": name, "position": position, "issue": issue}
+        return cache[key]
+
+    return [
+        {
+            "sequence": row.get("POINT_SEQ", ""),
+            "start": waypoint(start, row.get("FROM_PT_TYPE", "")),
+            "end": waypoint(end, point_types.get(end, "")) if end else None,
+            "gap": row.get("AWY_SEG_GAP_FLAG", "").strip().upper() == "Y",
+        }
+        for row in segments
+        if (start := row.get("FROM_POINT", "").strip())
+        for end in [row.get("TO_POINT", "").strip()]
+    ]
+
+
 def _procedure_rows(query, table, *filters):
     try:
         return _rows(query, table, *filters)

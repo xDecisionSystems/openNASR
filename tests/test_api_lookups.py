@@ -114,6 +114,33 @@ def test_airway_is_found_by_designation_plus_number():
     assert airway["base"]["AWY_ID"] == "1" and airway["segments"] == []
 
 
+def test_airway_plot_keeps_gaps_and_unresolved_waypoints():
+    segments = [
+        {
+            "POINT_SEQ": "10",
+            "FROM_POINT": "A",
+            "FROM_PT_TYPE": "VOR",
+            "TO_POINT": "B",
+            "AWY_SEG_GAP_FLAG": "Y",
+        },
+        {"POINT_SEQ": "20", "FROM_POINT": "B", "TO_POINT": "MISSING"},
+        {"POINT_SEQ": "30", "FROM_POINT": "MISSING"},
+    ]
+
+    def locate(name, point_type):
+        if name == "MISSING":
+            raise RecordNotFoundError(entity_type="waypoint", identifier=name)
+        return (40.0, -75.0 if name == "A" else -74.0)
+
+    first, second, terminal = lookups.airway_plot_segments(segments, locate)
+    assert first["gap"]
+    assert first["start"]["position"] == {"lat": 40, "lon": -75}
+    assert first["end"]["position"] == {"lat": 40, "lon": -74}
+    assert second["end"]["position"] is None
+    assert second["end"]["issue"]
+    assert terminal["end"] is None
+
+
 @pytest.mark.parametrize("identifier", ["", "74", "J-74", "Q999"])
 def test_unknown_or_malformed_airways_are_not_found(identifier):
     with pytest.raises(lookups.NotFoundError):

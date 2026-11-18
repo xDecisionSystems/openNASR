@@ -24,11 +24,17 @@ const views = {
     ],
     caption: "Query a point to see the ARTCC boundaries that cover it.",
   },
-  routes: {
-    title: "Resolve a route",
+  flightplan: {
+    title: "Resolve a flight plan",
     help: "Enter an FAA route string to see its waypoints and diagnostics.",
     fields: [{ name: "route", label: "Flight plan route", example: "KABQ.DOOKK3.TXO..KTYR", multiline: true }],
     caption: "Resolved waypoints will appear here in flight order.",
+  },
+  routes: {
+    title: "Find a jetway or airway",
+    help: "Enter a published route designation such as J74 or V12.",
+    fields: [{ name: "identifier", label: "Route designation", example: "J74" }],
+    caption: "Query a jetway or airway to plot its published segments.",
   },
   arrivals: {
     title: "Find an arrival",
@@ -51,6 +57,8 @@ let cycleRequest = 0;
 let plotPoints = [];
 let plotBranches = [];
 let partialRoute = false;
+let plotZoom = 1;
+let plotPan = { x: 0, y: 0 };
 let printing = false;
 let airportCaption = "";
 let airspaceMap = null;
@@ -158,6 +166,8 @@ function resetResult() {
   plotPoints = [];
   plotBranches = [];
   partialRoute = false;
+  plotZoom = 1;
+  plotPan = { x: 0, y: 0 };
   airportCaption = "";
   airspaceMap?.controller.abort();
   airspaceMap = null;
@@ -412,7 +422,7 @@ function showResult(data) {
       element("p", data.not_covered, "coverage"),
     );
     addAirspaceMap(data);
-  } else if (currentView === "routes") {
+  } else if (currentView === "flightplan") {
     plotPoints = data.points;
     partialRoute = !data.complete;
     results.append(
@@ -423,6 +433,28 @@ function showResult(data) {
     );
     if (data.diagnostics.length) results.append(table("Diagnostics", ["Severity", "Token", "Message"],
       data.diagnostics.map((note) => [note.severity, note.token, note.message])));
+  } else if (currentView === "routes") {
+    for (const airway of data.airways) {
+      const details = [airway.base.AWY_LOCATION, airway.base.REGULATORY === "Y" ? "Regulatory" : ""]
+        .filter(Boolean).join(" · ");
+      results.append(element("h3", [airway.id, details].filter(Boolean).join(" · "), "result-title"));
+      const rows = [];
+      for (const segment of airway.plot_segments) {
+        const convert = (point) => point?.position ? { ...point.position, name: point.name } : null;
+        const start = convert(segment.start);
+        const end = convert(segment.end);
+        const points = segment.gap ? [start, null, end] : [start, end];
+        plotBranches.push({ points, color: "#76dfca", visible: true });
+        rows.push([segment.sequence, segment.start.name, segment.end?.name,
+          segment.gap ? "Published gap" : "",
+          [segment.start.issue, segment.end?.issue].filter(Boolean).join("; ")]);
+      }
+      results.append(table("Published segments", ["Sequence", "From", "To", "Gap", "Position issues"], rows));
+    }
+    const count = data.airways.reduce((sum, airway) => sum + airway.plot_segments.length, 0);
+    const label = `${count} published segments · Gaps and unresolved waypoints are shown in the table.`;
+    byId("plot-caption").textContent = label;
+    canvas.setAttribute("aria-label", label);
   } else {
     for (const procedure of data.procedures) {
       addProcedureBranches(procedure, data.procedures.length > 1);
@@ -436,7 +468,7 @@ function showResult(data) {
   const raw = element("details", null, "raw");
   raw.append(element("summary", "View response JSON"), element("pre", JSON.stringify(data, null, 2)));
   results.append(raw);
-  if (plotPoints.length && currentView === "routes") {
+  if (plotPoints.length && currentView === "flightplan") {
     const label = plotPoints.length === 1
       ? `${plotPoints[0].name || "Position"} · ${coordinates(plotPoints[0])}`
       : `${plotPoints.length} waypoints${partialRoute ? " · partial route" : ""}`;
@@ -481,14 +513,16 @@ function drawPlot() {
   const east = Math.max(...outline.map((point) => point.x));
   const south = Math.min(...outline.map((point) => point.lat));
   const north = Math.max(...outline.map((point) => point.lat));
-  const centerX = points.length ? (west + east) / 2 : -98;
-  const centerY = points.length ? (south + north) / 2 : 38;
-  const longitudeFactor = Math.max(.17, Math.cos(centerY * Math.PI / 180));
+  const baseX = points.length ? (west + east) / 2 : -98;
+  const baseY = points.length ? (south + north) / 2 : 38;
+  const longitudeFactor = Math.max(.17, Math.cos(baseY * Math.PI / 180));
   const minimumSpan = currentView === "airports" ? .003 : 1;
-  const scale = points.length ? Math.min(
+  const scale = plotZoom * (points.length ? Math.min(
     (width - 2 * padding) / Math.max((east - west) * longitudeFactor, minimumSpan),
     (height - 2 * padding) / Math.max(north - south, minimumSpan),
-  ) : Math.max(4, width / 90);
+  ) : Math.max(4, width / 90));
+  const centerX = baseX - plotPan.x / (scale * longitudeFactor);
+  const centerY = baseY + plotPan.y / scale;
   const xy = (lon, lat) => [
     width / 2 + (lon - centerX) * scale * longitudeFactor,
     height / 2 - (lat - centerY) * scale,
@@ -660,7 +694,7 @@ async function submit(event) {
   const params = new URLSearchParams();
   if (cycle.value) params.set("cycle", cycle.value);
   let url, options = { signal: activeRequest.signal };
-  if (currentView === "routes") {
+  if (currentView === "flightplan") {
     const body = { route: values.route.trim() };
     if (cycle.value) body.cycle = cycle.value;
     url = "/v1/route/resolve";
@@ -670,6 +704,8 @@ async function submit(event) {
     params.set("lat", values.lat);
     params.set("lon", values.lon);
     url = `/v1/airspace/at?${params}`;
+  } else if (currentView === "routes") {
+    url = `/v1/airways/${encodeURIComponent(values.identifier.trim())}?${params}`;
   } else {
     url = `/v1/${currentView}/${encodeURIComponent(values.identifier.trim())}?${params}`;
   }
@@ -721,6 +757,32 @@ byId("apply-key").addEventListener("click", () => {
   loadCycles();
 });
 new ResizeObserver(drawPlot).observe(canvas.parentElement);
+for (const [id, factor] of [["zoom-in", 1.5], ["zoom-out", 1 / 1.5]]) {
+  byId(id).addEventListener("click", () => {
+    plotZoom = Math.max(.25, Math.min(32, plotZoom * factor));
+    drawPlot();
+  });
+}
+byId("zoom-reset").addEventListener("click", () => {
+  plotZoom = 1;
+  plotPan = { x: 0, y: 0 };
+  drawPlot();
+});
+let dragPosition = null;
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  dragPosition = { x: event.clientX, y: event.clientY };
+  canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener("pointermove", (event) => {
+  if (!dragPosition) return;
+  plotPan.x += event.clientX - dragPosition.x;
+  plotPan.y += event.clientY - dragPosition.y;
+  dragPosition = { x: event.clientX, y: event.clientY };
+  drawPlot();
+});
+canvas.addEventListener("pointerup", () => { dragPosition = null; });
+canvas.addEventListener("pointercancel", () => { dragPosition = null; });
 byId("ils-wedges").addEventListener("change", drawPlot);
 window.addEventListener("beforeprint", () => { printing = true; drawPlot(); });
 window.addEventListener("afterprint", () => { printing = false; drawPlot(); });

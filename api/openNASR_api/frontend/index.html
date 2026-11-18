@@ -36,6 +36,7 @@
     <div class="tabs" role="tablist" aria-label="Data type">
       <button type="button" role="tab" id="tab-airports" aria-controls="query-panel" aria-selected="true" data-tab="airports">Airports</button>
       <button type="button" role="tab" id="tab-airspace" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="airspace">Airspace</button>
+      <button type="button" role="tab" id="tab-flightplan" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="flightplan">Flight Plan</button>
       <button type="button" role="tab" id="tab-routes" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="routes">Routes</button>
       <button type="button" role="tab" id="tab-arrivals" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="arrivals">Arrivals</button>
       <button type="button" role="tab" id="tab-departures" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="departures">Departures</button>
@@ -61,6 +62,11 @@
         </div>
         <div class="plot">
           <canvas id="plot" role="img" aria-label="Latitude and longitude grid"></canvas>
+          <div class="zoom-controls" aria-label="Plot zoom">
+            <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+            <button type="button" id="zoom-reset" aria-label="Fit plot">Fit</button>
+          </div>
           <p class="plot-caption" id="plot-caption">Query an airport to plot its runways, helipads, and ILS localizers.</p>
         </div>
         <div id="plot-legend" class="plot-legend" aria-label="Visible procedure branches" hidden></div>

@@ -279,6 +279,13 @@
             "title": "Id",
             "type": "string"
           },
+          "plot_segments": {
+            "items": {
+              "$ref": "#/components/schemas/AirwayPlotSegment"
+            },
+            "title": "Plot Segments",
+            "type": "array"
+          },
           "segments": {
             "items": {
               "additionalProperties": {
@@ -293,9 +300,79 @@
         "required": [
           "id",
           "base",
-          "segments"
+          "segments",
+          "plot_segments"
         ],
         "title": "AirwayEntity",
+        "type": "object"
+      },
+      "AirwayPlotSegment": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AirwayWaypoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gap": {
+            "title": "Gap",
+            "type": "boolean"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "string"
+          },
+          "start": {
+            "$ref": "#/components/schemas/AirwayWaypoint"
+          }
+        },
+        "required": [
+          "sequence",
+          "start",
+          "end",
+          "gap"
+        ],
+        "title": "AirwayPlotSegment",
+        "type": "object"
+      },
+      "AirwayWaypoint": {
+        "properties": {
+          "issue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Position"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "position",
+          "issue"
+        ],
+        "title": "AirwayWaypoint",
         "type": "object"
       },
       "AirwaysResponse": {
@@ -1150,7 +1227,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.3"
+    "version": "0.2.4"
   },
   "openapi": "3.1.0",
   "paths": {

@@ -7,6 +7,14 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.4]
+
+### Added
+
+- The Routes tab plots published jetways and airways with waypoint labels and
+  reports gaps or unresolved positions. The Flight Plan tab resolves routes.
+- All explorer plots support zooming, panning, and fitting to the data.
+
 ## [2.1.3]
 
 ### Added

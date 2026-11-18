@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.3"
+API_VERSION = "0.2.4"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -204,10 +204,24 @@ class NavaidsResponse(BaseModel):
     navaids: list[NavaidEntity]
 
 
+class AirwayWaypoint(BaseModel):
+    name: str
+    position: Position | None
+    issue: str | None
+
+
+class AirwayPlotSegment(BaseModel):
+    sequence: str
+    start: AirwayWaypoint
+    end: AirwayWaypoint | None
+    gap: bool
+
+
 class AirwayEntity(BaseModel):
     id: str
     base: dict[str, str]
     segments: list[dict[str, str]]
+    plot_segments: list[AirwayPlotSegment]
 
 
 class AirwaysResponse(BaseModel):
@@ -506,6 +520,7 @@ def create_app(
         cycle: str | None,
         *,
         include_branches: bool = False,
+        include_airway_plot: bool = False,
     ) -> dict[str, Any]:
         try:
             with store.lookup(cycle) as (chosen, query):
@@ -515,6 +530,12 @@ def create_app(
                     for procedure in found:
                         procedure["branches"] = lookups.procedure_branches(
                             procedure["points"], resolver.procedure_waypoint
+                        )
+                if include_airway_plot:
+                    _, resolver = store.resolver(chosen)
+                    for airway in found:
+                        airway["plot_segments"] = lookups.airway_plot_segments(
+                            airway["segments"], resolver.procedure_waypoint
                         )
         except CycleUnavailableError as error:
             raise HTTPException(404 if cycle else 503, str(error)) from error
@@ -568,7 +589,9 @@ def create_app(
     def get_airway(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
         """An airway by designation, e.g. J74, with its segments in order."""
 
-        return entity("airways", lookups.airways, identifier, cycle)
+        return entity(
+            "airways", lookups.airways, identifier, cycle, include_airway_plot=True
+        )
 
     @app.get(
         "/v1/arrivals/{identifier}",

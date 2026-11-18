@@ -62,7 +62,11 @@ textarea { min-height: 74px; resize: vertical; }
 .ils-toggle { margin-left: auto; white-space: nowrap; font-size: .8rem; }
 .ils-toggle input { width: auto; vertical-align: middle; }
 .plot { position: relative; flex: 1; min-height: 235px; }
-canvas { width: 100%; height: 100%; position: absolute; inset: 0; }
+.zoom-controls { position: absolute; top: 9px; right: 9px; display: flex; gap: 4px; }
+.zoom-controls button { min-width: 30px; height: 29px; border: 1px solid #71909b; border-radius: 4px; background: #203f50; color: #fff; font-weight: 650; }
+.zoom-controls button:hover { background: #315969; }
+canvas { width: 100%; height: 100%; position: absolute; inset: 0; cursor: grab; touch-action: none; }
+canvas:active { cursor: grabbing; }
 .plot-caption { position: absolute; bottom: 8px; left: 16px; right: 16px; pointer-events: none; }
 .procedure-plot .plot { min-height: 410px; }
 .airspace-plot .plot { min-height: 420px; }
@@ -114,7 +118,7 @@ footer span { border-left: 1px solid #bdccd0; padding-left: 12px; }
 @media print {
   body { background: white; }
   .shell { width: 100%; }
-  .topbar, .intro, .tabs, .query-card, .print-airport, .ils-toggle, .raw, footer { display: none; }
+  .topbar, .intro, .tabs, .query-card, .print-airport, .ils-toggle, .zoom-controls, .raw, footer { display: none; }
   .workspace { display: block; }
   .card { box-shadow: none; }
   .plot-card { break-inside: avoid; background: white; color: var(--ink); border-color: var(--line); }
