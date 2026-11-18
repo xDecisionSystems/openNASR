@@ -23,6 +23,7 @@ from openNASR_contract.fetch import (
 )
 
 from .airspace import AirspaceIndex
+from .map_layers import LayerName, MapLayer
 
 LOGGER = logging.getLogger("openNASR_api")
 
@@ -78,6 +79,7 @@ class CycleStore:
         self._lookups: dict[str, NASR] = {}
         self._lookup_locks: dict[str, threading.Lock] = {}
         self._airspace: dict[str, AirspaceIndex] = {}
+        self._map_layers: OrderedDict[tuple[str, LayerName], MapLayer] = OrderedDict()
         self._lock = threading.Lock()
         self._refresh_lock = threading.Lock()
 
@@ -137,6 +139,9 @@ class CycleStore:
             yield
             self._loaded.pop(effective_date, None)
             self._airspace.pop(effective_date, None)
+            for key in tuple(self._map_layers):
+                if key[0] == effective_date:
+                    del self._map_layers[key]
 
     def _lookup_lock(self, effective_date: str) -> threading.Lock:
         with self._lock:
@@ -237,6 +242,34 @@ class CycleStore:
                     nasr = NASR(cycle=chosen, cache_dir=self.cache_dir)
                     self._lookups[chosen] = nasr
             yield chosen, nasr.query_table
+
+    def map_layer(
+        self, layer: LayerName, lat: float, lon: float, effective_date: str | None
+    ) -> tuple[str, dict]:
+        chosen = effective_date or self.default_cycle()
+        key = (chosen, layer)
+        with self._lookup_lock(chosen):
+            _, airspace = self.airspace(chosen)
+            extent = airspace.artcc_extent(lat, lon)
+            if extent.is_empty:
+                return chosen, {"points": [], "lines": []}
+            with self._lock:
+                index = self._map_layers.get(key)
+                if index is not None:
+                    self._map_layers.move_to_end(key)
+            if index is None:
+                resolver = (
+                    self.resolver(chosen)[1]
+                    if layer in {"arrivals", "departures"}
+                    else None
+                )
+                with closing(NASR(cycle=chosen, cache_dir=self.cache_dir)) as nasr:
+                    index = MapLayer.from_nasr(nasr, layer, resolver)
+                with self._lock:
+                    self._map_layers[key] = index
+                    while len(self._map_layers) > 4 * self.max_loaded:
+                        self._map_layers.popitem(last=False)
+        return chosen, index.within(extent)
 
     def describe(self) -> list[dict]:
         today = self._today().isoformat()

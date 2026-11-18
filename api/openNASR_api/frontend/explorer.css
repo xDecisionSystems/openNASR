@@ -65,11 +65,17 @@ textarea { min-height: 74px; resize: vertical; }
 canvas { width: 100%; height: 100%; position: absolute; inset: 0; }
 .plot-caption { position: absolute; bottom: 8px; left: 16px; right: 16px; pointer-events: none; }
 .procedure-plot .plot { min-height: 410px; }
+.airspace-plot .plot { min-height: 420px; }
 .ils-plot .plot { min-height: 360px; }
 .plot-legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border-top: 1px solid #36515e; }
 .plot-legend[hidden] { display: none; }
 .plot-legend button { display: inline-flex; gap: 6px; align-items: center; border: 1px solid #56717d; border-radius: 5px; background: #203f50; color: #e8f5f5; padding: 3px 7px; font-size: .77rem; }
 .plot-legend button[aria-pressed="false"] { opacity: .55; }
+.airspace-layers label { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; font-size: .8rem; cursor: pointer; }
+.airspace-layers input { width: auto; margin: 0; }
+.airspace-layers [aria-busy="true"] { opacity: .6; }
+.layer-status { width: 100%; color: #ffdcb0; font-size: .8rem; }
+.layer-status:empty { display: none; }
 .branch-color { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .results { margin-top: 16px; }
 .results-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--line); }
@@ -101,6 +107,7 @@ footer span { border-left: 1px solid #bdccd0; padding-left: 12px; }
   .key-panel { inset: 27px auto auto 0; }
   .workspace { grid-template-columns: 1fr; }
   .procedure-plot .plot { min-height: 360px; }
+  .airspace-plot .plot { min-height: 360px; }
   .tabs button { padding-inline: 11px; }
   .intro { margin-top: 23px; }
 }
@@ -113,6 +120,7 @@ footer span { border-left: 1px solid #bdccd0; padding-left: 12px; }
   .plot-card { break-inside: avoid; background: white; color: var(--ink); border-color: var(--line); }
   .plot-header { border-color: var(--line); }
   .plot-header span, .plot-caption { color: var(--muted); }
+  .airspace-layers { color: var(--ink); }
   .plot-card .plot { min-height: 390px; }
   canvas { object-fit: contain; object-position: center top; }
   .result-block h3 { break-after: avoid; }

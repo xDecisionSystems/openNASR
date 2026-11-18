@@ -28,9 +28,10 @@ from openNASR.routeresult import RouteResult
 from . import lookups
 from .airspace import AltitudeLimit
 from .limits import RateLimiter
+from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.2"
+API_VERSION = "0.2.3"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -268,11 +269,28 @@ class AirspaceRegion(BaseModel):
     upper: AltitudeLimit | None = None
 
 
+class ArtccBoundary(BaseModel):
+    id: str
+    level: str
+    rings: list[list[Position]]
+
+
 class AirspaceResponse(BaseModel):
     cycle: str
     position: Position
     regions: list[AirspaceRegion]
+    artcc_boundaries: list[ArtccBoundary]
     not_covered: str
+
+
+class AirportMapPoint(Position):
+    name: str
+
+
+class AirspaceLayerResponse(BaseModel):
+    cycle: str
+    points: list[AirportMapPoint]
+    lines: list[list[Position]]
 
 
 class Health(BaseModel):
@@ -608,8 +626,30 @@ def create_app(
             "cycle": chosen,
             "position": {"lat": lat, "lon": lon},
             "regions": [asdict(region) for region in index.at(lat, lon)],
+            "artcc_boundaries": index.artcc_boundaries(lat, lon),
             "not_covered": index.not_covered,
         }
+
+    @app.get(
+        "/v1/airspace/layer",
+        response_model=AirspaceLayerResponse,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def airspace_layer(
+        layer: LayerName,
+        lat: Annotated[float, Query(ge=-90, le=90)],
+        lon: Annotated[float, Query(ge=-180, le=180)],
+        cycle: CycleParam = None,
+    ) -> dict[str, Any]:
+        """Airports or published route legs inside the ARTCCs that cover a point."""
+
+        try:
+            chosen, features = store.map_layer(layer, lat, lon, cycle)
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if cycle else 503, str(error)) from error
+        return {"cycle": chosen, **features}
 
     @app.get(
         "/v1/cycles",

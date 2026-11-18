@@ -22,7 +22,7 @@ const views = {
       { name: "lat", label: "Latitude", example: "35.0402", min: -90, max: 90 },
       { name: "lon", label: "Longitude", example: "-106.609", min: -180, max: 180 },
     ],
-    caption: "The plot shows the query point. Matching regions appear below.",
+    caption: "Query a point to see the ARTCC boundaries that cover it.",
   },
   routes: {
     title: "Resolve a route",
@@ -53,7 +53,14 @@ let plotBranches = [];
 let partialRoute = false;
 let printing = false;
 let airportCaption = "";
+let airspaceMap = null;
 const ilsPlotNote = "ILS course wedges are illustrative · 700 ft at the runway end · ±2.5° · 20 NM.";
+const airspaceLayers = [
+  ["airports", "Airports", "#ffcb81"],
+  ["departures", "Departures", "#87ddbf"],
+  ["arrivals", "Arrivals", "#ffa7d4"],
+  ["airways", "Jetways / airways", "#9bbaff"],
+];
 const savedInputs = new Map();
 const savedResults = new Map();
 
@@ -152,16 +159,21 @@ function resetResult() {
   plotBranches = [];
   partialRoute = false;
   airportCaption = "";
+  airspaceMap?.controller.abort();
+  airspaceMap = null;
   const procedures = currentView === "arrivals" || currentView === "departures";
   canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
+  canvas.closest(".plot-card").classList.toggle("airspace-plot", currentView === "airspace");
   canvas.closest(".plot-card").classList.remove("ils-plot");
   byId("ils-toggle").hidden = true;
   byId("ils-wedges").checked = true;
   byId("plot-title").textContent = {
-    airports: "Airport layout", arrivals: "Procedure branches", departures: "Procedure branches",
+    airports: "Airport layout", airspace: "ARTCC boundaries", arrivals: "Procedure branches", departures: "Procedure branches",
   }[currentView] || "Coordinate plot";
   byId("plot-legend").hidden = true;
   byId("plot-legend").replaceChildren();
+  byId("airspace-layers").hidden = true;
+  byId("airspace-layers").replaceChildren();
   byId("plot-note").textContent = "WGS 84";
   canvas.setAttribute("aria-label", "Latitude and longitude grid");
   byId("plot-caption").textContent = views[currentView].caption;
@@ -316,6 +328,63 @@ function addAirportLayout(airport) {
   }
 }
 
+function addAirspaceMap(data) {
+  plotPoints = [{ ...data.position, name: "Query point" }];
+  const boundaries = data.artcc_boundaries;
+  const caption = boundaries.length
+    ? `ARTCC · ${boundaries.map((boundary) => [boundary.id, boundary.level].filter(Boolean).join(" ")).join(" · ")}`
+    : "No ARTCC boundary covers this point.";
+  byId("plot-caption").textContent = caption;
+  canvas.setAttribute("aria-label", caption);
+  if (!boundaries.length) return;
+
+  const map = { boundaries, layers: new Map(), controller: new AbortController() };
+  airspaceMap = map;
+  const controls = byId("airspace-layers");
+  controls.hidden = false;
+  const message = element("p", "", "layer-status");
+  message.setAttribute("role", "status");
+  for (const [key, name, color] of airspaceLayers) {
+    const checkbox = element("input");
+    checkbox.type = "checkbox";
+    const label = element("label", name);
+    const swatch = element("span", null, "branch-color");
+    swatch.setAttribute("aria-hidden", "true");
+    swatch.style.backgroundColor = color;
+    label.prepend(checkbox, swatch);
+    const layer = { color, data: null, selected: false, loading: false };
+    map.layers.set(key, layer);
+    checkbox.addEventListener("change", async () => {
+      layer.selected = checkbox.checked;
+      message.textContent = "";
+      drawPlot();
+      if (!layer.selected || layer.data || layer.loading) return;
+      layer.loading = true;
+      label.setAttribute("aria-busy", "true");
+      const params = new URLSearchParams({ layer: key, cycle: data.cycle,
+        lat: data.position.lat, lon: data.position.lon });
+      try {
+        layer.data = await api(`/v1/airspace/layer?${params}`, { signal: map.controller.signal });
+        if (airspaceMap !== map) return;
+        if (layer.selected && !layer.data.points.length && !layer.data.lines.length) {
+          message.textContent = `No ${name.toLowerCase()} are available in these ARTCC boundaries.`;
+        }
+        drawPlot();
+      } catch (error) {
+        if (airspaceMap !== map) return;
+        layer.selected = checkbox.checked = false;
+        message.textContent = `${name} could not load. ${error.message}`;
+        drawPlot();
+      } finally {
+        layer.loading = false;
+        label.removeAttribute("aria-busy");
+      }
+    });
+    controls.append(label);
+  }
+  controls.append(message);
+}
+
 function showResult(data) {
   byId("result-cycle").textContent = `Cycle ${data.cycle}`;
   results.replaceChildren();
@@ -342,7 +411,7 @@ function showResult(data) {
       )),
       element("p", data.not_covered, "coverage"),
     );
-    plotPoints = [{ ...data.position, name: "Query point" }];
+    addAirspaceMap(data);
   } else if (currentView === "routes") {
     plotPoints = data.points;
     partialRoute = !data.complete;
@@ -367,7 +436,7 @@ function showResult(data) {
   const raw = element("details", null, "raw");
   raw.append(element("summary", "View response JSON"), element("pre", JSON.stringify(data, null, 2)));
   results.append(raw);
-  if (plotPoints.length && currentView !== "airports") {
+  if (plotPoints.length && currentView === "routes") {
     const label = plotPoints.length === 1
       ? `${plotPoints[0].name || "Position"} · ${coordinates(plotPoints[0])}`
       : `${plotPoints.length} waypoints${partialRoute ? " · partial route" : ""}`;
@@ -398,7 +467,10 @@ function drawPlot() {
     if (note.textContent !== caption) note.textContent = caption;
     canvas.setAttribute("aria-label", note.textContent);
   }
-  const points = [...plotted.flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge)].filter(available);
+  const boundaryRings = airspaceMap?.boundaries.flatMap((boundary) => boundary.rings) || [];
+  const points = [
+    ...plotted.flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
+  ].filter(available);
   const reference = points[0]?.lon || 0;
   const project = (point) => ({
     ...point,
@@ -448,6 +520,36 @@ function drawPlot() {
   ctx.lineWidth = 2;
   ctx.setLineDash(partialRoute ? [5, 5] : []);
   const visible = new Map();
+  if (airspaceMap) {
+    const trace = (points) => {
+      points.forEach((point, index) => {
+        const [x, y] = xy(project(point).x, point.lat);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+    };
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = printing ? "#12685e" : "#76dfca";
+    for (const boundary of airspaceMap.boundaries) {
+      ctx.beginPath();
+      for (const ring of boundary.rings) trace(ring);
+      ctx.setLineDash(boundary.level === "high" ? [5, 4] : []);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    for (const layer of airspaceMap.layers.values()) {
+      if (!layer.selected || !layer.data) continue;
+      ctx.strokeStyle = printing ? "#244b6b" : layer.color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const line of layer.data.lines) trace(line);
+      ctx.stroke();
+      for (const point of layer.data.points) {
+        visible.set(JSON.stringify([point.name, point.lat, point.lon]),
+          { ...project(point), color: ctx.strokeStyle, kind: "map-airport" });
+      }
+    }
+  }
   const plotColor = (branch) => {
     if (!printing) return branch.color;
     if (branch.kind === "localizer") return "#94236f";
@@ -509,11 +611,12 @@ function drawPlot() {
       ctx.strokeRect(x - 5, y - 5, 10, 10);
       return;
     }
-    ctx.fillStyle = printing ? "#12534f" : "#b8f6e7";
-    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = point.kind === "map-airport" ? point.color : printing ? "#12534f" : "#b8f6e7";
+    ctx.beginPath(); ctx.arc(x, y, point.kind === "map-airport" ? 2 : 3.5, 0, Math.PI * 2); ctx.fill();
   });
   const labels = [];
-  const labelOrder = [shown[0], shown.at(-1), ...shown.slice(1, -1)];
+  const labelOrder = airspaceMap ? [shown.at(-1), ...shown.slice(0, -1)]
+    : [shown[0], shown.at(-1), ...shown.slice(1, -1)];
   for (const point of new Set(labelOrder)) {
     if (!point?.name) continue;
     const [x, y] = xy(point.x, point.lat);
@@ -541,7 +644,7 @@ function drawPlot() {
     }
     const right = left + textWidth;
     labels.push({ left, right, top });
-    ctx.fillStyle = point.kind === "pad" || point.kind === "localizer" || printing ? point.color : "#b8f6e7";
+    ctx.fillStyle = point.kind || printing ? point.color : "#b8f6e7";
     ctx.fillText(point.name, left, top + 10);
   }
 }

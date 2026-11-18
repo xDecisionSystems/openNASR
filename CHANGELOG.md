@@ -7,6 +7,13 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.3]
+
+### Added
+
+- Airspace queries plot the matching FAA ARTCC outlines. Map checkboxes load
+  airports, departures, arrivals, and jetways or airways within those outlines.
+
 ## [2.1.2]
 
 ### Added

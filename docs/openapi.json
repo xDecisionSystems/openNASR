@@ -82,6 +82,29 @@
         "title": "AirportEntity",
         "type": "object"
       },
+      "AirportMapPoint": {
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "name"
+        ],
+        "title": "AirportMapPoint",
+        "type": "object"
+      },
       "AirportResponse": {
         "properties": {
           "airport": {
@@ -97,6 +120,38 @@
           "airport"
         ],
         "title": "AirportResponse",
+        "type": "object"
+      },
+      "AirspaceLayerResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/Position"
+              },
+              "type": "array"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AirportMapPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycle",
+          "points",
+          "lines"
+        ],
+        "title": "AirspaceLayerResponse",
         "type": "object"
       },
       "AirspaceRegion": {
@@ -175,6 +230,13 @@
       },
       "AirspaceResponse": {
         "properties": {
+          "artcc_boundaries": {
+            "items": {
+              "$ref": "#/components/schemas/ArtccBoundary"
+            },
+            "title": "Artcc Boundaries",
+            "type": "array"
+          },
           "cycle": {
             "title": "Cycle",
             "type": "string"
@@ -198,6 +260,7 @@
           "cycle",
           "position",
           "regions",
+          "artcc_boundaries",
           "not_covered"
         ],
         "title": "AirspaceResponse",
@@ -278,6 +341,35 @@
           "code"
         ],
         "title": "AltitudeLimit",
+        "type": "object"
+      },
+      "ArtccBoundary": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "rings": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/Position"
+              },
+              "type": "array"
+            },
+            "title": "Rings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "rings"
+        ],
+        "title": "ArtccBoundary",
         "type": "object"
       },
       "CycleInfo": {
@@ -1058,7 +1150,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.2"
+    "version": "0.2.3"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1344,6 +1436,144 @@
           }
         ],
         "summary": "Airspace At",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/airspace/layer": {
+      "get": {
+        "description": "Airports or published route legs inside the ARTCCs that cover a point.",
+        "operationId": "airspace_layer_v1_airspace_layer_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "layer",
+            "required": true,
+            "schema": {
+              "enum": [
+                "airports",
+                "departures",
+                "arrivals",
+                "airways"
+              ],
+              "title": "Layer",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lat",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lon",
+            "required": true,
+            "schema": {
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lon",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirspaceLayerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Airspace Layer",
         "tags": [
           "lookup"
         ]

@@ -6,12 +6,14 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 import logging
 from pathlib import Path
+from typing import Any
 
 import duckdb
 from numpy import ndarray
 from pandas import DataFrame
 from shapely import STRtree, from_wkb, transform, unary_union
-from shapely.geometry import Point, Polygon
+from shapely.affinity import translate
+from shapely.geometry import Point, Polygon, box
 from shapely.geometry.base import BaseGeometry
 from shapely.validation import make_valid
 
@@ -73,6 +75,10 @@ def _shift_longitudes(coordinates: ndarray) -> ndarray:
     return shifted
 
 
+def map_coordinates(coordinates: Any) -> list[dict[str, float]]:
+    return [{"lon": (x + 180) % 360 - 180, "lat": y} for x, y in coordinates]
+
+
 class AirspaceIndex:
     """A spatial index over one cycle's boundaries and class polygons."""
 
@@ -84,6 +90,7 @@ class AirspaceIndex:
             for row in base.to_dict(orient="records")
         }
         self._regions: list[Region] = []
+        self._artcc: dict[int, BaseGeometry] = {}
         shapes: dict[bool, list[BaseGeometry]] = {False: [], True: []}
         self._members: dict[bool, list[int]] = {False: [], True: []}
         skipped = 0
@@ -128,6 +135,8 @@ class AirspaceIndex:
                     level=str(altitude).strip().lower(),
                 )
             )
+            if self._regions[-1].kind == "ARTCC":
+                self._artcc[len(self._regions) - 1] = shape
             shapes[wraps].append(shape)
             self._members[wraps].append(len(self._regions) - 1)
         if skipped:
@@ -152,7 +161,7 @@ class AirspaceIndex:
     def __len__(self) -> int:
         return len(self._regions)
 
-    def at(self, lat: float, lon: float) -> list[Region]:
+    def _hits(self, lat: float, lon: float) -> set[int]:
         found: set[int] = set()
         for wrapped, tree in self._trees.items():
             if tree is None:
@@ -160,8 +169,38 @@ class AirspaceIndex:
             x = lon + 360 if wrapped and lon < 0 else lon
             for hit in tree.query(Point(x, lat), predicate="intersects"):
                 found.add(self._members[wrapped][hit])
-        regions = (self._regions[index] for index in sorted(found))
+        return found
+
+    def at(self, lat: float, lon: float) -> list[Region]:
+        regions = (self._regions[index] for index in sorted(self._hits(lat, lon)))
         return sorted(regions, key=lambda r: (r.id, r.level, r.kind))
+
+    def artcc_boundaries(self, lat: float, lon: float) -> list[dict]:
+        return [
+            {
+                "id": self._regions[index].id,
+                "level": self._regions[index].level,
+                "rings": [
+                    map_coordinates(ring.coords)
+                    for polygon in _polygonal_parts(self._artcc[index])
+                    for ring in (polygon.exterior, *polygon.interiors)
+                ],
+            }
+            for index in sorted(self._hits(lat, lon) & self._artcc.keys())
+        ]
+
+    def artcc_extent(self, lat: float, lon: float) -> BaseGeometry:
+        parts = []
+        for index in self._hits(lat, lon) & self._artcc.keys():
+            shape = self._artcc[index]
+            if shape.bounds[2] <= 180:
+                parts.append(shape)
+            else:
+                parts.append(shape.intersection(box(-180, -90, 180, 90)))
+                parts.append(
+                    translate(shape.intersection(box(180, -90, 360, 90)), xoff=-360)
+                )
+        return unary_union(parts)
 
 
 def _class_regions(path: Path) -> Iterator[tuple[Region, BaseGeometry]]:

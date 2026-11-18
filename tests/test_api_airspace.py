@@ -2,9 +2,10 @@
 
 import pandas as pd
 import pytest
-from shapely.geometry import MultiPolygon, Polygon, box
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 
 from openNASR_api.airspace import AirspaceIndex, Region
+from openNASR_api.map_layers import MapLayer
 
 
 def _square(location, altitude, kind, west, south, east, north):
@@ -74,6 +75,52 @@ def test_a_point_reports_every_region_that_contains_it(index):
 def test_regions_carry_names_and_a_point_on_the_edge_counts_as_inside(index):
     region = index.at(35, -110)[0]  # exactly on ZAA's western edge
     assert (region.id, region.name) == ("ZAA", "ALPHA")
+
+
+def test_artcc_map_includes_only_matching_outlines_and_clips_layers(index):
+    outlines = index.artcc_boundaries(35, -105)
+    assert {(boundary["id"], boundary["level"]) for boundary in outlines} == {
+        ("ZAA", "high"),
+        ("ZAA", "low"),
+    }
+    for boundary in outlines:
+        (ring,) = boundary["rings"]
+        assert len(ring) == 5 and ring[0] == ring[-1]
+    assert index.artcc_boundaries(35, -97) == []
+
+    layer = MapLayer(
+        [
+            ("IN", Point(-105, 35)),
+            ("OUT", Point(-95, 35)),
+            ("", LineString([(-115, 35), (-95, 35)])),
+        ]
+    )
+    features = layer.within(index.artcc_extent(35, -105))
+    assert features["points"] == [{"name": "IN", "lat": 35, "lon": -105}]
+    (line,) = features["lines"]
+    assert [point["lon"] for point in line] == [-110, -100]
+
+
+def test_artcc_layer_handles_airports_on_both_sides_of_the_dateline():
+    base = pd.DataFrame([{"LOCATION_ID": "ZXX"}])
+    segments = pd.DataFrame(_square("ZXX", "HIGH", "ARTCC", 170, 10, -170, 20))
+    index = AirspaceIndex(base, segments)
+    layer = MapLayer(
+        [
+            ("EAST", Point(175, 15)),
+            ("WEST", Point(-175, 15)),
+            ("OUT", Point(165, 15)),
+        ]
+    )
+    for longitude in (175, -175):
+        (boundary,) = index.artcc_boundaries(15, longitude)
+        assert boundary["id"] == "ZXX"
+        assert {
+            p["name"] for p in layer.within(index.artcc_extent(15, longitude))["points"]
+        } == {
+            "EAST",
+            "WEST",
+        }
 
 
 def test_a_region_crossing_the_antimeridian_works_on_both_sides(index):
