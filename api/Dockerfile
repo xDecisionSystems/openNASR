@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 RUN useradd --system --create-home --home-dir /var/lib/openNASR-api opennasr
 WORKDIR /src
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md LICENSE ./
 COPY openNASR ./openNASR
 COPY contract ./contract
 COPY api ./api

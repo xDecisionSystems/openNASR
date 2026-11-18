@@ -75,3 +75,77 @@ jobs:
           name: python-package-distributions
           path: dist/
           if-no-files-found: error
+
+  docker:
+    name: Docker deployment smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build images
+        run: |
+          docker build -f archiver/Dockerfile -t opennasr-archiver:ci .
+          docker build -f api/Dockerfile -t opennasr-api:ci .
+      - name: Publish and serve a synthetic cycle
+        run: |
+          set -euo pipefail
+          bucket="$(mktemp -d)"
+          chmod 0777 "$bucket"
+          fixture="$PWD/tests/fixtures/schema_only/nasr_2026_09"
+          docker run --rm -i --network none \
+            --mount "type=bind,src=$fixture,dst=/fixture,readonly" \
+            --mount "type=bind,src=$bucket,dst=/bucket" \
+            --entrypoint python opennasr-archiver:ci - <<'PY'
+          import os
+          from datetime import date
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from zipfile import ZipFile
+
+          from openNASR.cycles import CycleManager
+          from openNASR_archiver import publish_cycle
+          from openNASR_contract import LocalBucket
+
+          assert os.getuid() != 0
+          cycle = date(2026, 9, 3)
+          source = Path("/fixture")
+          with TemporaryDirectory() as directory:
+              cache = Path(directory)
+              archives = cache / "archives"
+              archives.mkdir()
+              with ZipFile(archives / f"28DaySubscription_Effective_{cycle}.zip", "w") as output:
+                  for path in sorted(source.rglob("*.csv")):
+                      output.write(path, path.relative_to(source))
+              publish_cycle(CycleManager(cache), cycle, LocalBucket("/bucket"), required_tables=())
+          PY
+          docker run --rm --network none \
+            --mount "type=bind,src=$bucket,dst=/bucket,readonly" \
+            opennasr-archiver:ci --local-bucket /bucket status | grep -F '2026-09-03'
+
+          docker run --detach --name opennasr-api-ci --network none \
+            --env OPENNASR_API_AUTH=none \
+            --mount "type=bind,src=$bucket,dst=/bucket,readonly" \
+            opennasr-api:ci --local-bucket /bucket
+          trap 'docker logs opennasr-api-ci; docker rm -f opennasr-api-ci >/dev/null' EXIT
+          docker exec -i opennasr-api-ci python - <<'PY'
+          import json
+          import os
+          import time
+          from urllib.error import URLError
+          from urllib.request import urlopen
+
+          assert os.getuid() != 0
+          base = "http://127.0.0.1:8000"
+          for _ in range(30):
+              try:
+                  with urlopen(f"{base}/ready", timeout=2) as response:
+                      ready = json.load(response)
+              except URLError:
+                  time.sleep(1)
+              else:
+                  break
+          else:
+              raise SystemExit("API never became ready")
+          assert ready == {"status": "ready", "default_cycle": "2026-09-03"}
+          with urlopen(f"{base}/v1/route/resolve?route=AAAA%20BBBB", timeout=10) as response:
+              assert json.load(response)["cycle"] == "2026-09-03"
+          PY
