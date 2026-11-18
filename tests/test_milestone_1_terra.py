@@ -35,7 +35,7 @@ def test_airport_faa_and_icao_lookups_have_identical_related_collections(
         assert faa_collection.ids
         assert faa_collection.ids == icao_collection.ids
 
-    assert airport_by_faa.rwy.getRawByID("10/28").RWY_LEN == 5000
+    assert airport_by_faa.rwy.getRawByID("10/28").RWY_LEN == "5000"
     assert airport_by_faa.rwy.getRaw()["10/28"].RWY_ID == "10/28"
 
 
@@ -94,7 +94,7 @@ def test_legacy_airport_reuses_related_row_mappings_but_not_raw_objects(
     second = Airport("BWI", nasr)
 
     assert second.rwy.ids == first.rwy.ids == ["10/28"]
-    assert second.rwy.getRawByID("10/28").RWY_LEN == 5000
+    assert second.rwy.getRawByID("10/28").RWY_LEN == "5000"
     assert second.rwy.getRawByID("10/28") is not first_runway_raw
 
 
@@ -224,7 +224,7 @@ def test_nasr_reads_from_the_supplied_cache_dir_and_never_touches_package_data(
 
     after = set(package_data_dir.rglob("*")) if package_data_dir.exists() else set()
     assert after == before
-    assert str(cache_root) in str(nasr._NASR__useDateCSVFolder)
+    assert str(cache_root) in str(nasr._query_table_store.database_path)
 
 
 def test_schema_drift_on_one_table_does_not_block_an_unrelated_valid_table(

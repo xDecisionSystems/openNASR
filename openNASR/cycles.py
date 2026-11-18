@@ -24,7 +24,12 @@ from zipfile import ZipFile, is_zipfile
 
 from platformdirs import user_cache_dir
 
-from .exceptions import ArchiveError, CycleNotFoundError, DownloadError
+from .exceptions import (
+    ArchiveError,
+    CycleNotFoundError,
+    DownloadError,
+    OpenNASRError,
+)
 from .duckdb_builder import DuckDbBuildResult, build_duckdb, duckdb_metadata_path
 from .duckdb_metadata import read_metadata
 
@@ -37,6 +42,12 @@ ARCHIVE_NAME_PATTERN = re.compile(
 FAA_NASR_SUBSCRIPTION_URL = (
     "https://www.faa.gov/air_traffic/flight_info/aeronav/Aero_Data/NASR_Subscription/"
 )
+# Per-socket-operation timeouts (seconds); the archive itself is ~100+ MB.
+PAGE_TIMEOUT = 30
+DOWNLOAD_TIMEOUT = 60
+# Safety caps. Real NASR archives are far below both limits.
+MAX_ARCHIVE_BYTES = 2 * 1024**3
+MAX_EXTRACTED_BYTES = 16 * 1024**3
 FAA_LANDING_HOSTS = frozenset({"www.faa.gov"})
 FAA_ARCHIVE_HOSTS = frozenset({"nfdc.faa.gov"})
 
@@ -140,8 +151,25 @@ class FaaCycleProvider:
         archive_url = self._archive_url(detail, detail_url, effective_date)
         return RemoteCycle(effective_date=effective_date, archive_url=archive_url)
 
+    def for_date(self, effective_date: date) -> RemoteCycle:
+        """Find the archive for one named cycle, current, past or upcoming.
+
+        The FAA keeps a detail page per cycle date; the same host and archive
+        rules as :meth:`discover` apply, so a date cannot point anywhere else.
+        """
+
+        detail_url = urljoin(self.landing_url, f"{effective_date.isoformat()}/")
+        parsed = urlparse(detail_url)
+        if parsed.scheme != "https" or parsed.hostname not in FAA_LANDING_HOSTS:
+            raise ValueError("FAA cycle detail pages must be served from faa.gov")
+        detail = self._read_text(detail_url)
+        return RemoteCycle(
+            effective_date=effective_date,
+            archive_url=self._archive_url(detail, detail_url, effective_date),
+        )
+
     def _read_text(self, url: str) -> str:
-        with self.opener(url, timeout=2) as response:
+        with self.opener(url, timeout=PAGE_TIMEOUT) as response:
             return response.read().decode("utf-8")
 
     def _current_detail(self, landing: str) -> tuple[date, str]:
@@ -255,6 +283,22 @@ def sha256_file(path: str | Path) -> str:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def check_archive_members(archive: ZipFile) -> None:
+    """Reject unsafe member paths and implausibly large extractions."""
+
+    total = 0
+    for member in archive.infolist():
+        path = PurePosixPath(member.filename)
+        if path.is_absolute() or ".." in path.parts:
+            raise ArchiveError(f"Unsafe archive member: {member.filename}")
+        total += member.file_size
+        if total > MAX_EXTRACTED_BYTES:
+            raise ArchiveError(
+                f"Archive expands beyond {MAX_EXTRACTED_BYTES} bytes; "
+                "refusing to extract"
+            )
 
 
 def validate_archive(path: str | Path) -> None:
@@ -444,6 +488,45 @@ class CycleManager:
             archive_sha256=archive_sha256,
         )
 
+    def ensure_duckdb(self, cycle: str | date) -> DuckDbBuildResult:
+        """Return a usable DuckDB artifact, building it only when sources exist.
+
+        A cycle that holds just a published ``nasr.duckdb`` and its sidecar
+        (for example one fetched from S3) is served as-is; no archive or CSV
+        is required. When sources are present the artifact is reused or
+        rebuilt through :meth:`build_duckdb`.
+        """
+
+        effective_date = self._coerce_exact_date(cycle)
+        cached = self.get(effective_date)
+        if cached is None:
+            raise CycleNotFoundError(
+                f"No NASR cycle found for requested date {effective_date} in "
+                f"{self.cache_dir}. Import or download a matching "
+                "28DaySubscription_Effective_YYYY-MM-DD.zip archive first."
+            )
+        if cached.archive_path is not None or self._has_csv_source(cached.data_path):
+            return self.build_duckdb(effective_date)
+        database = self.duckdb_path(effective_date)
+        metadata_path = duckdb_metadata_path(database)
+        if database.is_file() and metadata_path.is_file():
+            metadata = read_metadata(metadata_path, effective_date=effective_date)
+            return DuckDbBuildResult(database, metadata_path, metadata)
+        raise CycleNotFoundError(
+            f"No archive, CSV data, or DuckDB artifact found for NASR cycle "
+            f"{effective_date.isoformat()} in {self.cache_dir}."
+        )
+
+    @staticmethod
+    def _has_csv_source(data_path: Path | None) -> bool:
+        if data_path is None:
+            return False
+        try:
+            locate_csv_source(data_path)
+        except ArchiveError:
+            return False
+        return True
+
     @staticmethod
     def _is_current_duckdb_artifact(
         database: Path,
@@ -466,7 +549,7 @@ class CycleManager:
                 path.stat().st_mtime_ns > database.stat().st_mtime_ns
                 for path in source.glob("*.csv")
             )
-        except (OSError, ValueError):
+        except (OSError, ValueError, OpenNASRError):
             return False
 
     def _resolve_csv_source(self, data_path: Path) -> Path:
@@ -483,10 +566,7 @@ class CycleManager:
         temporary = Path(tempfile.mkdtemp(prefix=".nested-", dir=source.parent))
         try:
             with ZipFile(source, "r") as archive:
-                for member in archive.infolist():
-                    path = PurePosixPath(member.filename)
-                    if path.is_absolute() or ".." in path.parts:
-                        raise ArchiveError(f"Unsafe archive member: {member.filename}")
+                check_archive_members(archive)
                 archive.extractall(temporary)
             locate_csv_source(temporary)
             temporary.replace(extracted)
@@ -510,6 +590,21 @@ class CycleManager:
             if (effective_date := self._extracted_cycle_date(path)) is not None
         }
         return tuple(sorted(archive_dates | extracted_dates))
+
+    def servable_cycles(self) -> tuple[date, ...]:
+        """Cycles that can be opened: cached sources and fetched database-only ones."""
+
+        dates = set(self.available_cycles())
+        if self.cycles_dir.is_dir():
+            for path in self.cycles_dir.iterdir():
+                if (path / "nasr.duckdb").is_file() and (
+                    path / "nasr.duckdb.json"
+                ).is_file():
+                    try:
+                        dates.add(date.fromisoformat(path.name))
+                    except ValueError:
+                        continue
+        return tuple(sorted(dates))
 
     def latest(self) -> Cycle:
         """Return the newest cached cycle.
@@ -689,8 +784,14 @@ class CycleManager:
 
         part_path = self.download_part_path(effective_date)
         try:
+            written = 0
             with part_path.open("wb") as output:
                 for chunk in chunks:
+                    written += len(chunk)
+                    if written > MAX_ARCHIVE_BYTES:
+                        raise DownloadError(
+                            f"NASR download exceeds {MAX_ARCHIVE_BYTES} bytes"
+                        )
                     output.write(chunk)
         except Exception:
             part_path.unlink(missing_ok=True)
@@ -706,19 +807,25 @@ class CycleManager:
         if self.provider is None:
             raise ValueError("A FAA cycle provider is required for downloads")
         try:
-            remote_cycle = self.provider.discover()
+            for_date = getattr(self.provider, "for_date", None)
+            remote_cycle = (
+                for_date(effective_date) if for_date else self.provider.discover()
+            )
             if remote_cycle.effective_date != effective_date:
                 raise ValueError(
                     f"Provider does not offer NASR cycle {effective_date.isoformat()}"
                 )
-            with urlopen(remote_cycle.archive_url, timeout=2) as response:
+            with urlopen(
+                remote_cycle.archive_url, timeout=DOWNLOAD_TIMEOUT
+            ) as response:
                 part_path = self.write_download_part(
                     effective_date,
                     iter(lambda: response.read(1024 * 1024), b""),
                 )
             validate_archive(part_path)
             cycle = self.publish_download(effective_date)
-            assert cycle.archive_path is not None
+            if cycle.archive_path is None:
+                raise DownloadError("Published download has no archive path")
             self.store_sha256_metadata(cycle.archive_path)
             return Cycle(
                 effective_date=cycle.effective_date,
@@ -772,10 +879,7 @@ class CycleManager:
         temporary = Path(tempfile.mkdtemp(prefix=".extract-", dir=self.cycles_dir))
         try:
             with ZipFile(archive) as source:
-                for member in source.infolist():
-                    path = PurePosixPath(member.filename)
-                    if path.is_absolute() or ".." in path.parts:
-                        raise ArchiveError(f"Unsafe archive member: {member.filename}")
+                check_archive_members(source)
                 source.extractall(temporary)
             locate_csv_source(temporary)
             (temporary / "metadata.json").write_text(

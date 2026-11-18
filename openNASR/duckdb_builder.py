@@ -87,6 +87,7 @@ def build_duckdb(
                 cycle,
                 archive_sha256=archive_sha256,
                 read_options=options,
+                source=source,
             )
             _validate_database(temporary, metadata)
             # Preserve the completed pair until its replacement sidecar is
@@ -155,6 +156,7 @@ def _build_temporary_database(
     *,
     archive_sha256: str | None,
     read_options: Mapping[str, object],
+    source: Path,
 ) -> DuckDbCycleMetadata:
     module = _require_duckdb()
     frames: dict[str, DataFrame] = {}
@@ -186,6 +188,7 @@ def _build_temporary_database(
         if connection is not None:
             connection.close()
 
+    schema_id = _identify_schema_id(source, frames)
     return DuckDbCycleMetadata(
         effective_date=effective_date,
         source_schema_fingerprint=source_schema_fingerprint(frames),
@@ -194,7 +197,31 @@ def _build_temporary_database(
         tables={name: len(frame.index) for name, frame in frames.items()},
         database_sha256=_sha256_file(temporary),
         archive_sha256=archive_sha256,
+        schema_id=schema_id,
+        procedure_order=_declared_procedure_order(schema_id),
     )
+
+
+def _declared_procedure_order(schema_id: str | None) -> str | None:
+    from .schemas import SchemaCatalog
+
+    return SchemaCatalog.PROCEDURE_ORDER.get(schema_id) if schema_id else None
+
+
+def _identify_schema_id(source: Path, frames: Mapping[str, DataFrame]) -> str | None:
+    """Identify the FAA schema once at build time so readers need no CSVs."""
+
+    from .exceptions import SchemaMismatchError
+    from .schemas import SCHEMA_SUFFIX, SchemaCatalog
+
+    if not any(name.endswith(SCHEMA_SUFFIX) for name in frames):
+        return None
+    try:
+        return SchemaCatalog().identify_schema(source)
+    except SchemaMismatchError:
+        # An unrecognized FAA schema is still archived faithfully; readers
+        # decide (strict vs. diagnostic) when they open the artifact.
+        return None
 
 
 def _validate_database(path: Path, metadata: DuckDbCycleMetadata) -> None:

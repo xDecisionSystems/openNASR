@@ -19,8 +19,8 @@ from typing import Any, Iterable, Mapping
 from .exceptions import ConfigurationError
 
 
-STORAGE_FORMAT_VERSION = 1
-"""The first on-disk DuckDB metadata format supported by openNASR."""
+STORAGE_FORMAT_VERSION = 2
+"""Sidecar format. v2 added ``schema_id`` so readers need no source CSVs."""
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -60,6 +60,8 @@ class DuckDbCycleMetadata:
     tables: Mapping[str, int]
     database_sha256: str
     archive_sha256: str | None = None
+    schema_id: str | None = None
+    procedure_order: str | None = None
     storage_format_version: int = STORAGE_FORMAT_VERSION
     complete: bool = True
 
@@ -90,6 +92,8 @@ class DuckDbCycleMetadata:
             "complete": self.complete,
             "created_at": self.created_at,
             "database_sha256": self.database_sha256,
+            "schema_id": self.schema_id,
+            "procedure_order": self.procedure_order,
             "duckdb_version": self.duckdb_version,
             "effective_date": self.effective_date,
             "source_schema_fingerprint": self.source_schema_fingerprint,
@@ -109,6 +113,7 @@ class DuckDbCycleMetadata:
             "effective_date",
             "source_schema_fingerprint",
             "storage_format_version",
+            "schema_id",
             "tables",
         }
         missing = sorted(required - set(value))
@@ -130,6 +135,10 @@ class DuckDbCycleMetadata:
                 ),
                 archive_sha256=_optional_str(
                     value.get("archive_sha256"), "archive_sha256"
+                ),
+                schema_id=_optional_str(value["schema_id"], "schema_id"),
+                procedure_order=_optional_str(
+                    value.get("procedure_order"), "procedure_order"
                 ),
                 storage_format_version=_require_int(
                     value["storage_format_version"], "storage_format_version"

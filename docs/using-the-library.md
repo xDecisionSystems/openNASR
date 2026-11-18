@@ -136,7 +136,7 @@ atl = nasr.airports.get("ATL")
 For reproducible work, select the exact effective date:
 
 ```python
-nasr = NASR(cycle="2024-06-13", storage="csv")
+nasr = NASR(cycle="2024-06-13")
 ```
 
 An absent exact cycle raises `CycleNotFoundError`; openNASR does not download
@@ -145,37 +145,22 @@ objects. Prefer domain repositories such as `nasr.airports`, `nasr.airways`,
 and `nasr.stars` for keyed relationships, and raw tables for bulk analysis or
 fields that do not yet have a domain convenience property.
 
-## Choose CSV or DuckDB
+## DuckDB storage
 
-CSV is the canonical source and the best default. DuckDB is an optional,
-read-only derivative built from one exact extracted CSV cycle.
-
-| Prefer CSV when | Prefer DuckDB when |
-| --- | --- |
-| You are exploring a few tables or making occasional lookups. | You repeatedly run selective queries over large tables. |
-| You want the simplest installation and least additional disk use. | You want filters applied before rows are materialized as pandas data. |
-| You need transparent access to the original extracted source tables. | You reuse many tables in an analysis and can afford a one-time build. |
-
-Regular table and domain-object access still materializes pandas DataFrames
-lazily in both modes, so DuckDB is not automatically faster for every
-workflow. It also needs build time and extra disk space. Keep the extracted
-CSV cycle as the source of truth; treat the database and its JSON provenance
-sidecar as a replaceable pair.
-
-Build and open a DuckDB artifact explicitly:
+Every cycle is served from a read-only DuckDB artifact built from the FAA
+CSVs. The first `NASR(...)` for a cycle builds it (a one-time cost); later opens
+reuse it. Build ahead of time with:
 
 ```bash
-python -m pip install "openNASR[duckdb]"
 opennasr build-duckdb 2024-06-13
 opennasr list --storage
 ```
 
-```python
-nasr = NASR(cycle="2024-06-13", storage="duckdb")
-```
-
-DuckDB mode never builds a missing artifact, falls back to CSV, or selects a
-nearby cycle. Rebuild the artifact after replacing its source cycle.
+Regular table and domain-object access still materializes pandas DataFrames
+lazily; DuckDB lets `query_table` apply filters before rows are materialized.
+A cycle directory holding only `nasr.duckdb` and its JSON sidecar is enough to
+serve that cycle. Opening never selects a nearby cycle. Rebuild the artifact
+after replacing its source cycle.
 
 ## Best practices
 

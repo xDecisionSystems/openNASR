@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 from openNASR.duckdb_builder import SOURCE_TEXT_READ_OPTIONS
-from openNASR.exceptions import AmbiguousRecordError
+from openNASR.exceptions import AmbiguousRecordError, ConfigurationError
 from openNASR.flightplan import RouteResolver
-from openNASR.tables import TableRepository
+from tests.csv_reference import TableRepository
 
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "duckdb_parity"
@@ -61,3 +61,12 @@ def test_route_resolver_isolated_between_duckdb_instances(tmp_path):
     finally:
         first.close()
         second.close()
+
+
+def test_a_cycle_declaring_another_procedure_order_is_refused():
+    class Reversed(dict):
+        effective_date = "2026-10-29"
+        procedure_order = "reversed"
+
+    with pytest.raises(ConfigurationError, match="flight_order"):
+        RouteResolver(Reversed())

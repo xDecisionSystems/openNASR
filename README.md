@@ -62,11 +62,10 @@ Install the base package from PyPI:
 python -m pip install openNASR
 ```
 
-Install optional plotting or DuckDB support when needed:
+Install optional plotting support when needed:
 
 ```bash
 python -m pip install "openNASR[plot]"
-python -m pip install "openNASR[duckdb]"
 ```
 
 For development, clone the repository and use an editable installation:
@@ -74,7 +73,7 @@ For development, clone the repository and use an editable installation:
 ```bash
 git clone https://github.com/xDecisionSystems/openNASR.git
 cd openNASR
-python -m pip install -e ".[dev,plot,duckdb,release]"
+python -m pip install -e ".[dev,plot,release]"
 ```
 
 ## NASR data setup
@@ -122,14 +121,13 @@ under `archives/` and extracted cycles under `cycles/`.
 NASR archives and extracted data can be large. They are runtime data, are not
 included in the PyPI package, and should not be committed to source control.
 
-### Optional DuckDB cycle artifacts
+### DuckDB cycle artifacts
 
-DuckDB is an explicit, opt-in derivative of an extracted cycle. It is not
-created while importing or loading CSV data. After installing the optional
-extra, build one artifact by exact effective date:
+`NASR` serves every cycle from a read-only DuckDB artifact. The first time a
+cycle is opened, openNASR builds the artifact from its archive or extracted CSVs;
+later opens reuse it. You can also build explicitly, by exact effective date:
 
 ```bash
-python -m pip install "openNASR[duckdb]"
 opennasr build-duckdb 2024-06-13
 opennasr build-duckdb latest
 opennasr list --storage
@@ -142,20 +140,17 @@ The artifact and its provenance sidecar are stored beside that cycle:
 <cache>/cycles/2024-06-13/nasr.duckdb.json
 ```
 
-Use `NASR(cycle="2024-06-13", storage="duckdb")` to open an already-built
-artifact. DuckDB mode never silently selects a neighboring cycle, downloads a
-cycle, or rebuilds a missing artifact. The CSV-backed default remains
-`storage="csv"`. Building a database requires additional disk space roughly
-equal to the materialized tables. Rebuilding keeps the prior completed
-artifact until the replacement pair is published, so allow headroom for both
-database copies (roughly twice the final database size). It replaces only that
-cycle's derivative. Remove it selectively with
+A cycle directory that contains only these two files is enough to serve that
+cycle: no archive or CSVs are needed. Opening never silently selects a
+neighboring cycle or downloads one. Building needs disk space roughly equal to
+the materialized tables, and rebuilding keeps the prior completed artifact until
+the replacement pair is published (roughly twice the final size). Remove an
+artifact selectively with
 `CycleManager().remove("2024-06-13", archive=False, extracted=False, duckdb=True)`.
-Removing the DuckDB artifact does not remove the archive or extracted CSVs.
 
-The sidecar records the exact effective date and source/schema provenance, so
-the same date and source can be reproduced later. Treat both files as a pair;
-an incomplete or mismatched pair is rejected rather than used as a fallback.
+The sidecar records the exact effective date, the FAA schema identified at
+build time, and source/schema provenance. Treat both files as a pair; an
+incomplete or mismatched pair is rejected, or rebuilt when sources are present.
 
 Programmatic downloads require an explicit provider. Importing a local archive
 never performs a network request:

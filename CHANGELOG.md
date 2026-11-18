@@ -7,6 +7,55 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Breaking (2.0)
+
+- `NASR` serves every cycle from a read-only DuckDB artifact; CSV storage was
+  removed (`storage="csv"` raises `ConfigurationError`). The artifact is built on
+  first use, and a cycle holding only `nasr.duckdb` plus its sidecar can be served
+  without any archive or CSVs.
+- `duckdb` is a required dependency, capped below 2.0 (the 2.0.0 wheel crashes on
+  CPUs without AVX2); the `openNASR[duckdb]` extra was removed.
+- DuckDB sidecar format 2 records the FAA `schema_id` identified at build time;
+  format-1 artifacts are rebuilt when sources are present.
+- Removed `openNASR.tables.TableRepository` and the CSV query fallback.
+- Raw tables are always source text; legacy `Airport` coordinate, elevation,
+  runway-size and bearing accessors now convert numeric text to numbers.
+
+### Fixed
+
+- The schema manifests ship inside the package (`openNASR/schema_manifests/`); an installed wheel previously could not open any
+  cycle because it looked for them under `tests/`. Version is now 2.0.0.
+- `deploy/proxmox/install.sh` creates an archiver or API container and picks a DuckDB version that actually runs on the CPU.
+- The API can run without keys only when `OPENNASR_API_AUTH=none` is set explicitly; the archiver prunes old published cycles from its cache.
+
+- `opennasr route`, `opennasr serve` and `opennasr fetch` (local mode): the same route resolution and JSON as
+  the HTTP API, run from the local cycle cache; see `docs/local-mode.md`.
+
+- New packages in this repository: `contract/` (bucket layout, manifest, bucket clients, reader),
+  `archiver/` (publish, backfill, run loop, alerts, CLI) and `api/` (FastAPI service). Route results now
+  carry per-point provenance (`RouteResult.waypoints`), ICAO FPL messages can be resolved, and ignored
+  speed/level groups are reported as info diagnostics.
+
+- `RouteResolver.resolve(route)` returns a `RouteResult` (points, cycle, structured
+  `RouteDiagnostic` list, `complete`). Route problems become diagnostics instead of
+  exceptions, and an arrival or departure whose published branches depend on
+  runway or airport configuration is flagged `procedure_branches` (where it splits
+  and each branch) with only the shared portion included. `path()` is unchanged.
+
+- Departure and arrival procedures were traversed backwards. FAA `DP_RTE` and
+  `STAR_RTE` rows are stored in flight order; the resolver reversed them. Checked
+  against a full cycle (airport at the first point of 1,021 of 1,024 DP bodies and
+  the last point of 1,179 of 1,186 STAR bodies).
+- A procedure name shared by several airports (`VIEWS.DEHAN3`) is now narrowed by
+  the route's origin and destination airports, using `STAR_APT` and `DP_APT`.
+- ICAO lat/lon waypoints (`3800N07730W`, `37S078E`) resolve.
+- Each FAA schema declares how `DP_RTE`/`STAR_RTE` rows are ordered (flight order,
+  per the FAA layout documents). The built sidecar records it as
+  `procedure_order`, and the route resolver refuses a cycle that declares otherwise.
+
+- Download timeouts raised from 2 s to 30 s (pages) / 60 s (archive); downloads over
+  2 GiB and extractions over 16 GiB are rejected; plain `pytest` now works.
+
 ### Changed
 
 - Query exceptions are transport-neutral and no longer expose protocol status

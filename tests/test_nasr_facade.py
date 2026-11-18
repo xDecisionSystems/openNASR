@@ -111,7 +111,7 @@ def test_airport_record_exposes_immutable_typed_runway_collections(fixture_nasr)
     assert isinstance(airport.runways, tuple)
     assert isinstance(airport.runway_ends, tuple)
     assert airport.runways[0]["RWY_ID"] == "10/28"
-    assert airport.runway_ends[0]["RWY_END_ID"] == 10
+    assert airport.runway_ends[0]["RWY_END_ID"] == "10"
 
 
 def test_airport_repository_rejects_missing_reciprocal_runway_end(fixture_nasr):

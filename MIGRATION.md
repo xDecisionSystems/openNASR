@@ -28,24 +28,18 @@ Catch the specific `openNASR.exceptions` class relevant to the operation,
 especially `RecordNotFoundError` and `AmbiguousRecordError`, rather than
 matching legacy printed output.
 
-## Optional DuckDB storage
+## DuckDB storage (2.0)
 
-CSV remains the default storage mode. Install the optional dependency and
-explicitly build an artifact for each reproducible effective date:
+openNASR 2.0 serves every cycle from a DuckDB artifact; CSV storage was removed.
 
-```bash
-python -m pip install -e ".[duckdb]"
-opennasr build-duckdb 2024-06-13
-```
-
-Then pass both the exact cycle and backend when constructing `NASR`:
-
-```python
-nasr = NASR(cycle="2024-06-13", storage="duckdb")
-```
-
-DuckDB is a read-only derivative; it does not replace or mutate source CSVs.
-Missing, incomplete, or incompatible artifacts raise a typed error. Rebuild
-the selected cycle explicitly after source data changes, and use
-`CycleManager.remove(date, archive=False, extracted=False, duckdb=True)` to
-remove only its database and sidecar.
+- `NASR(..., storage="csv")` now raises `ConfigurationError`. Drop the argument
+  (or pass `storage="duckdb"`, which is the only value).
+- The first `NASR(...)` for a cycle builds the artifact from its archive or CSVs.
+  Build ahead of time with `opennasr build-duckdb 2024-06-13`.
+- `duckdb` is now a required dependency (the `openNASR[duckdb]` extra is gone).
+  It is capped below 2.0 because the 2.0.0 wheel needs AVX2 CPUs.
+- `openNASR.tables.TableRepository` and the CSV query fallback were removed.
+- Raw tables are always source text (as with real FAA data). Fixtures that
+  relied on pandas inferring numbers now see strings such as `"121.500"`.
+- Existing artifacts built by 1.x use sidecar format 1 and are rebuilt
+  automatically when sources are present.

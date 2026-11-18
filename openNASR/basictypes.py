@@ -2,6 +2,17 @@ from types import SimpleNamespace
 from .cfcn import ll2xy
 
 
+def as_number(value):
+    """Return FAA text coordinates as floats; leave anything else untouched."""
+
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return value
+    return value
+
+
 class Raw:
     def __init__(self, sm):
         self._raw = sm
@@ -11,36 +22,36 @@ class Raw:
 
     @property
     def lat(self):
-        return self._raw.LAT_DECIMAL
+        return as_number(self._raw.LAT_DECIMAL)
 
     @property
     def lon(self):
-        return self._raw.LONG_DECIMAL
+        return as_number(self._raw.LONG_DECIMAL)
 
     @property
     def lonlat(self):
-        return [self._raw.LONG_DECIMAL, self._raw.LAT_DECIMAL]
+        return [as_number(self._raw.LONG_DECIMAL), as_number(self._raw.LAT_DECIMAL)]
 
     @property
     def elevation(self):
         if hasattr(self._raw, "SITE_ELEVATION"):
-            return self._raw.SITE_ELEVATION
+            return as_number(self._raw.SITE_ELEVATION)
         elif hasattr(self._raw, "RWY_END_ELEV"):
-            return self._raw.RWY_END_ELEV
+            return as_number(self._raw.RWY_END_ELEV)
         else:
             return None
 
     @property
     def len(self):
         if hasattr(self._raw, "RWY_LEN"):
-            return self._raw.RWY_LEN
+            return as_number(self._raw.RWY_LEN)
         else:
             return None
 
     @property
     def width(self):
         if hasattr(self._raw, "RWY_WIDTH"):
-            return self._raw.RWY_WIDTH
+            return as_number(self._raw.RWY_WIDTH)
         else:
             return None
 

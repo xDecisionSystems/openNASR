@@ -37,62 +37,87 @@ def select_routes(
     return [routes[index] for index in indexes]
 
 
-def _category(error: Exception) -> str:
-    name = type(error).__name__
-    if name == "AmbiguousRecordError":
-        return "waypoint ambiguity"
-    if name in {"RecordNotFoundError", "TableNotFoundError"}:
-        return "missing NASR data"
-    if name == "ValueError" and "must have waypoints" in str(error):
-        return "malformed input"
-    if name == "ValueError":
-        return "parser error"
-    return name
+OUTCOMES = {
+    "resolved": "every part of the route resolved exactly",
+    "resolved_with_branches": (
+        "resolved; a procedure has runway- or configuration-dependent branches, "
+        "so only the portion common to all of them is included"
+    ),
+    "outside_scope": "foreign airports, oceanic coordinates or external routes",
+    "not_in_cycle": "a fix, airway, procedure or airport that is not in this cycle",
+    "ambiguous": "an identifier names several records and the route does not decide",
+    "malformed": "the route text is not a valid route",
+    "internal_error": "the resolver raised an unexpected exception (a bug to fix)",
+}
+
+
+def _outcome(result) -> str:
+    codes = {
+        item.code
+        for item in result.diagnostics
+        if item.code != "procedure_geometry_unpublished"
+    }
+    if not codes:
+        return "resolved"
+    if codes == {"procedure_branches"}:
+        return "resolved_with_branches"
+    if "UnsupportedRouteContentError" in codes:
+        return "outside_scope"
+    if codes & {"RecordNotFoundError", "TableNotFoundError"}:
+        return "not_in_cycle"
+    if "AmbiguousRecordError" in codes:
+        return "ambiguous"
+    return "malformed"
 
 
 def validate(tables, routes: list[dict[str, str]], *, cycle: str) -> dict[str, object]:
     resolver = RouteResolver(tables)
     results = []
     for entry in routes:
-        route = entry["route"]
         try:
-            path = resolver.path(route)
-        except Exception as error:  # batch validation records, rather than stops
+            result = resolver.resolve(entry["route"])
+        except Exception as error:  # a bug: record it and keep going
             results.append(
                 {
                     "id": entry.get("id"),
-                    "route": route,
-                    "expected_category": entry.get("category"),
-                    "category": _category(error),
-                    "error_type": type(error).__name__,
-                    "error": str(error),
+                    "route": entry["route"],
+                    "outcome": "internal_error",
+                    "complete": False,
+                    "coordinates": (),
+                    "diagnostics": [
+                        {
+                            "code": type(error).__name__,
+                            "token": None,
+                            "message": str(error),
+                        }
+                    ],
                     "cycle": cycle,
                 }
             )
-        else:
-            results.append(
-                {
-                    "id": entry.get("id"),
-                    "route": route,
-                    "expected_category": entry.get("category"),
-                    "category": "success",
-                    "coordinates": path,
-                    "cycle": cycle,
-                }
-            )
-    counts = Counter(result["category"] for result in results)
-    mismatches = sum(
-        result.get("expected_category") is not None
-        and result["expected_category"] != result["category"]
-        for result in results
-    )
+            continue
+        results.append(
+            {
+                "id": entry.get("id"),
+                "route": entry["route"],
+                "outcome": _outcome(result),
+                "complete": result.complete,
+                "coordinates": result.points,
+                "diagnostics": [
+                    {"code": item.code, "token": item.token, "message": item.message}
+                    for item in result.diagnostics
+                ],
+                "cycle": cycle,
+            }
+        )
+    counts = Counter(result["outcome"] for result in results)
+    usable = counts["resolved"] + counts["resolved_with_branches"]
     return {
         "cycle": cycle,
         "total": len(results),
-        "successes": counts.get("success", 0),
-        "failures": len(results) - counts.get("success", 0),
-        "categories": dict(sorted(counts.items())),
-        "category_mismatches": mismatches,
+        "usable": usable,
+        "usable_rate": usable / len(results) if results else 1.0,
+        "outcomes": {name: counts.get(name, 0) for name in OUTCOMES},
+        "outcome_meanings": OUTCOMES,
         "results": results,
     }
 
@@ -103,7 +128,6 @@ def main() -> None:
     parser.add_argument("--full-file", type=Path)
     parser.add_argument("--cycle")
     parser.add_argument("--cache-dir", type=Path)
-    parser.add_argument("--storage", choices=("csv", "duckdb"), default="csv")
     parser.add_argument("--seed", type=int, default=20260514)
     parser.add_argument("--sample-size", type=int)
     parser.add_argument("--output", type=Path)
@@ -126,7 +150,7 @@ def main() -> None:
     routes = select_routes(
         routes, seed=arguments.seed, sample_size=arguments.sample_size
     )
-    nasr = NASR(cycle=cycle, cache_dir=arguments.cache_dir, storage=arguments.storage)
+    nasr = NASR(cycle=cycle, cache_dir=arguments.cache_dir)
     tables = {name: nasr[name] for name in nasr}
     report = validate(tables, routes, cycle=cycle)
     serialized = json.dumps(report, indent=2, sort_keys=True, default=str)

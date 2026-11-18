@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openNASR"
-version = "1.5.0"
+version = "2.0.0"
 description = "Load, query, and plot FAA NASR subscription data"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,6 +28,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "duckdb>=1.2.2,<2",
     "numpy",
     "pandas",
     "platformdirs",
@@ -36,8 +37,15 @@ dependencies = [
 
 [project.optional-dependencies]
 plot = ["matplotlib"]
-dev = ["pytest", "ruff", "mypy"]
-duckdb = ["duckdb>=1.2.2"]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "fastapi>=0.110",
+    "httpx>=0.27",
+    "uvicorn>=0.29",
+    "tomli; python_version < '3.11'",
+]
 release = ["build", "twine"]
 
 [project.urls]
@@ -54,10 +62,11 @@ opennasr = "openNASR.cli:main"
 packages = ["openNASR"]
 
 [tool.setuptools.package-data]
-openNASR = ["py.typed"]
+openNASR = ["py.typed", "schema_manifests/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = [".", "contract", "archiver", "api"]
 
 [tool.ruff]
 target-version = "py310"

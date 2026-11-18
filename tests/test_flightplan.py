@@ -733,7 +733,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "DEST",
+                "POINT": "MERGE",
             },
             {
                 "STAR_COMPUTER_CODE": "MERGE.STAR1",
@@ -742,7 +742,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "20",
-                "POINT": "MERGE",
+                "POINT": "DEST",
             },
             {
                 "STAR_COMPUTER_CODE": "MERGE.STAR1",
@@ -751,7 +751,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "ENTRY.STAR1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "MERGE",
+                "POINT": "ENTRY",
             },
             {
                 "STAR_COMPUTER_CODE": "MERGE.STAR1",
@@ -760,7 +760,7 @@ def test_flight_plan_path_expands_departure_and_arrival_procedures(tables):
                 "TRANSITION_COMPUTER_CODE": "ENTRY.STAR1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "20",
-                "POINT": "ENTRY",
+                "POINT": "MERGE",
             },
         ]
     )
@@ -853,7 +853,7 @@ def test_flight_plan_path_resolves_bare_star_before_airway_lookup(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "KATL",
+                "POINT": "GOLLM",
             },
             {
                 "STAR_COMPUTER_CODE": "GNDLF3",
@@ -871,7 +871,7 @@ def test_flight_plan_path_resolves_bare_star_before_airway_lookup(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "GOLLM",
+                "POINT": "KATL",
             },
         ]
     )
@@ -925,7 +925,7 @@ def test_flight_plan_path_resolves_bare_departure_after_origin(tables):
     )
 
 
-def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
+def test_flight_plan_path_keeps_full_faa_departure_rows_in_flown_order(
     tables,
 ):
     tables["FIX_BASE"] = pd.concat(
@@ -949,7 +949,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
             }
         ]
     )
-    # FAA DP_RTE ordering runs from the terminal exit toward the runway.
+    # FAA DP_RTE rows are stored in flight order, runway first.
     tables["DP_RTE"] = pd.DataFrame(
         [
             {
@@ -958,7 +958,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
                 "DP_COMPUTER_CODE": "OUTBOUND1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "EXIT",
+                "POINT": "KAAA",
                 "NEXT_POINT": "MID",
             },
             {
@@ -968,7 +968,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "20",
                 "POINT": "MID",
-                "NEXT_POINT": "KAAA",
+                "NEXT_POINT": "EXIT",
             },
             {
                 "DP_NAME": "OUTBOUND",
@@ -976,7 +976,7 @@ def test_flight_plan_path_reverses_full_faa_departure_rows_into_flown_order(
                 "DP_COMPUTER_CODE": "OUTBOUND1",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "KAAA",
+                "POINT": "EXIT",
                 "NEXT_POINT": "",
             },
         ]
@@ -1003,7 +1003,7 @@ def test_flight_plan_path_resolves_bare_arrival_before_destination(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "KBBB",
+                "POINT": "ALPHA",
             },
             {
                 "STAR_COMPUTER_CODE": "SCAMR4",
@@ -1021,7 +1021,7 @@ def test_flight_plan_path_resolves_bare_arrival_before_destination(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "ALPHA",
+                "POINT": "KBBB",
             },
         ]
     )
@@ -1356,7 +1356,7 @@ def test_star_body_uses_preceding_route_token_and_preserves_ambiguity(tables):
                 ("ALPHA ARRIVAL", "ALPHA"),
                 ("BRAVO ARRIVAL", "BRAVO"),
             )
-            for point_sequence, point in (("10", "KBBB"), ("20", entry))
+            for point_sequence, point in (("10", entry), ("20", "KBBB"))
         ]
     )
 
@@ -1400,7 +1400,7 @@ def test_procedure_body_keeps_only_the_unambiguous_common_portion(tables):
                 ("ALPHA BRANCH", "ALPHA"),
                 ("BRAVO BRANCH", "BRAVO"),
             )
-            for sequence, point in (("10", "KBBB"), ("20", branch), ("30", "MERGE"))
+            for sequence, point in (("10", "MERGE"), ("20", branch), ("30", "KBBB"))
         ]
     )
 
@@ -1464,7 +1464,7 @@ def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "10",
-                "POINT": "KBBB",
+                "POINT": "ENTRY",
             },
             {
                 "STAR_COMPUTER_CODE": "ARR1",
@@ -1482,7 +1482,7 @@ def test_flight_plan_path_combines_procedures_direct_airway_and_navaid(tables):
                 "TRANSITION_COMPUTER_CODE": "",
                 "BODY_SEQ": "1",
                 "POINT_SEQ": "30",
-                "POINT": "ENTRY",
+                "POINT": "KBBB",
             },
         ]
     )
@@ -1605,10 +1605,10 @@ def _procedure_matrix_tables():
                     "POINT": point,
                 }
                 for portion, transition, sequence, point in (
-                    ("BODY", "", 10, "KBBB"),
-                    ("BODY", "", 20, "MID"),
-                    ("TRANSITION", "TRANS.ARR1", 10, "MID"),
-                    ("TRANSITION", "TRANS.ARR1", 20, "ARR"),
+                    ("BODY", "", 10, "MID"),
+                    ("BODY", "", 20, "KBBB"),
+                    ("TRANSITION", "TRANS.ARR1", 10, "ARR"),
+                    ("TRANSITION", "TRANS.ARR1", 20, "MID"),
                 )
             ]
         ),
@@ -1779,3 +1779,313 @@ def test_current_cycle_procedure_matrix(name, route, expected):
 
     assert name
     assert flight_plan_path(_procedure_matrix_tables(), route) == expected
+
+
+def _star_row(code, portion, transition, point, seq, body=""):
+    return {
+        "STAR_COMPUTER_CODE": code,
+        "ARTCC": "ZJX",
+        "ROUTE_PORTION_TYPE": portion,
+        "ROUTE_NAME": body,
+        "TRANSITION_COMPUTER_CODE": transition,
+        "BODY_SEQ": "1",
+        "POINT_SEQ": seq,
+        "POINT": point,
+    }
+
+
+def test_shared_star_transition_is_narrowed_by_the_routes_destination(tables):
+    """One transition name used by two airports' STARs resolves for each
+    route from the airport that route ends at."""
+
+    star_rows = []
+    for code, end in (("ONE.STAR1", "KAAA"), ("TWO.STAR1", "KBBB")):
+        star_rows += [
+            _star_row(code, "BODY", "", "BRAVO", "10", body=f"{code}-BODY"),
+            _star_row(code, "BODY", "", end, "20", body=f"{code}-BODY"),
+            _star_row(code, "TRANSITION", "ENTRY.STAR1", "ALPHA", "10"),
+            _star_row(code, "TRANSITION", "ENTRY.STAR1", "BRAVO", "20"),
+        ]
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": c, "ARTCC": "ZJX"} for c in ("ONE.STAR1", "TWO.STAR1")]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(star_rows)
+
+    with pytest.raises(AmbiguousRecordError):
+        flight_plan_path(tables, "ENTRY.STAR1")
+
+    tables["STAR_APT"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": code,
+                "ARTCC": "ZJX",
+                "BODY_NAME": f"{code}-BODY",
+                "ARPT_ID": airport,
+            }
+            for code, airport in (("ONE.STAR1", "AAA"), ("TWO.STAR1", "BBB"))
+        ]
+    )
+
+    assert flight_plan_path(tables, "ENTRY.STAR1.KBBB")[-1] == (35.0, -80.0)
+    assert flight_plan_path(tables, "ENTRY.STAR1.KAAA")[-1] == (38.0, -77.0)
+
+
+def _shared_star_tables(tables):
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "SHARED3", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            _star_row("SHARED3", "BODY", "", point, seq, body=f"{branch} BRANCH")
+            for branch in ("ALPHA", "BRAVO")
+            for seq, point in (("10", "MID"), ("20", branch), ("30", "KBBB"))
+        ]
+    )
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [{"FIX_ID": "MID", "LAT_DECIMAL": "34", "LONG_DECIMAL": "-79"}]
+            ),
+        ],
+        ignore_index=True,
+    )
+    return tables
+
+
+def test_resolve_reports_a_clean_route_as_complete(tables):
+    result = RouteResolver(tables).resolve("KAAA ALPHA KBBB")
+
+    assert result.complete
+    assert result.diagnostics == ()
+    assert result.points == ((38.0, -77.0), (37.0, -78.0), (35.0, -80.0))
+
+
+def test_resolve_flags_a_runway_dependent_arrival_as_incomplete(tables):
+    result = RouteResolver(_shared_star_tables(tables)).resolve("KAAA SHARED3 KBBB")
+
+    assert not result.complete
+    assert result.points == ((38.0, -77.0), (34.0, -79.0), (35.0, -80.0))
+    (diagnostic,) = result.diagnostics
+    assert diagnostic.code == "procedure_branches"
+    assert diagnostic.token == "SHARED3"
+    assert diagnostic.detail == {
+        "split_after": "MID",
+        "branches": [["ALPHA", "KBBB"], ["BRAVO", "KBBB"]],
+    }
+
+
+def test_resolve_reports_failures_as_diagnostics_not_exceptions(tables):
+    resolver = RouteResolver(tables)
+
+    unknown = resolver.resolve("KAAA UNKNOWN")
+    assert not unknown.complete and unknown.points == ()
+    assert unknown.diagnostics[0].code == "RecordNotFoundError"
+    assert unknown.diagnostics[0].token == "UNKNOWN"
+
+    assert resolver.resolve("").diagnostics[0].code == "MalformedRoute"
+    oceanic = resolver.resolve("KAAA 4300N/05000W KBBB")
+    assert oceanic.diagnostics[0].code == "UnsupportedRouteContentError"
+
+
+def test_path_still_returns_the_shared_portion_without_diagnostics(tables):
+    assert RouteResolver(_shared_star_tables(tables)).path("KAAA SHARED3 KBBB")
+
+
+def test_departure_with_transitions_but_no_body_rows_uses_the_transition(tables):
+    """Radar-vector departures publish transitions without any body points."""
+
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "VECTOR", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "VECTOR3.AAA"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "VECTOR",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "VECTOR3.AAA",
+                "ROUTE_PORTION_TYPE": "TRANSITION",
+                "ROUTE_NAME": "ALPHA TRANSITION",
+                "TRANSITION_COMPUTER_CODE": "VECTOR3.ALPHA",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": str(seq),
+                "POINT": point,
+                "NEXT_POINT": next_point,
+            }
+            for seq, point, next_point in ((10, "BRAVO", "ALPHA"), (20, "ALPHA", ""))
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA.VECTOR3.ALPHA..KBBB")
+
+    assert result.complete
+    assert result.points == (
+        (38.0, -77.0),
+        (36.0, -79.0),
+        (37.0, -78.0),
+        (35.0, -80.0),
+    )
+
+
+def test_fan_marker_with_a_navaids_name_is_not_a_route_point(tables):
+    tables["NAV_BASE"] = pd.DataFrame(
+        [
+            {
+                "NAV_ID": "MCK",
+                "NAV_TYPE": nav_type,
+                "LAT_DECIMAL": lat,
+                "LONG_DECIMAL": "-79",
+            }
+            for nav_type, lat in (("FAN MARKER", "36.5"), ("VOR/DME", "36"))
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA MCK KBBB") == (
+        (38.0, -77.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+
+
+def test_departure_whose_runway_branches_share_nothing_is_partial_not_a_failure(
+    tables,
+):
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "SPLIT", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "SPLIT3"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        [
+            {
+                "DP_NAME": "SPLIT",
+                "ARTCC": "ZJX",
+                "DP_COMPUTER_CODE": "SPLIT3",
+                "ROUTE_PORTION_TYPE": "BODY",
+                "ROUTE_NAME": point,
+                "TRANSITION_COMPUTER_CODE": "",
+                "BODY_SEQ": "1",
+                "POINT_SEQ": "10",
+                "POINT": point,
+                "NEXT_POINT": "",
+            }
+            for point in ("ALPHA", "BRAVO")
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA SPLIT3 KBBB")
+
+    assert not result.complete
+    assert result.points == ((38.0, -77.0), (35.0, -80.0))
+    (diagnostic,) = result.diagnostics
+    assert diagnostic.code == "procedure_branches"
+    assert diagnostic.detail == {
+        "split_after": None,
+        "branches": [["ALPHA"], ["BRAVO"]],
+    }
+    with pytest.raises(AmbiguousRecordError):
+        RouteResolver(tables).path("KAAA SPLIT3 KBBB")
+
+
+def test_dotted_star_computer_code_is_kept_as_one_procedure(tables):
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "ALPHA.ARR3", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            _star_row("ALPHA.ARR3", "BODY", "", point, seq)
+            for seq, point in (("10", "ALPHA"), ("20", "BRAVO"), ("30", "KBBB"))
+        ]
+    )
+
+    assert flight_plan_path(tables, "KAAA ALPHA.ARR3 KBBB") == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+
+
+def test_airway_after_a_procedure_with_no_body_points_uses_the_filed_fix(tables):
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "VECTOR", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "VECTOR3"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        columns=[
+            "DP_NAME",
+            "ARTCC",
+            "DP_COMPUTER_CODE",
+            "ROUTE_PORTION_TYPE",
+            "ROUTE_NAME",
+            "TRANSITION_COMPUTER_CODE",
+            "BODY_SEQ",
+            "POINT_SEQ",
+            "POINT",
+            "NEXT_POINT",
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA VECTOR3 ALPHA V1 BBB")
+
+    assert [d.code for d in result.diagnostics] == []
+    assert result.points[-1] == (35.0, -80.0)
+
+
+def test_vector_departure_ends_at_its_computer_code_suffix_and_airway_continues(
+    tables,
+):
+    tables["DP_BASE"] = pd.DataFrame(
+        [{"DP_NAME": "VECTOR", "ARTCC": "ZJX", "DP_COMPUTER_CODE": "VECTOR3.ALPHA"}]
+    )
+    tables["DP_RTE"] = pd.DataFrame(
+        columns=[
+            "DP_NAME",
+            "ARTCC",
+            "DP_COMPUTER_CODE",
+            "ROUTE_PORTION_TYPE",
+            "ROUTE_NAME",
+            "TRANSITION_COMPUTER_CODE",
+            "BODY_SEQ",
+            "POINT_SEQ",
+            "POINT",
+            "NEXT_POINT",
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA VECTOR3.ALPHA V1 BBB")
+
+    assert result.complete  # an info note does not make the route incomplete
+    assert result.points == (
+        (38.0, -77.0),
+        (37.0, -78.0),
+        (36.0, -79.0),
+        (35.0, -80.0),
+    )
+    (note,) = result.diagnostics
+    assert note.code == "procedure_geometry_unpublished"
+    assert note.severity == "info"
+    assert note.detail == {"terminal_fix": "ALPHA"}
+
+
+def test_resolve_reports_where_every_point_came_from(tables):
+    result = RouteResolver(tables).resolve("KAAA DCT ALPHA V1 BBB")
+
+    assert [(p.name, p.kind, p.via, p.segment) for p in result.waypoints] == [
+        ("KAAA", "airport", None, "origin"),
+        ("ALPHA", "fix", None, "enroute"),
+        ("BRAVO", "fix", "V1", "enroute"),
+        ("BBB", "airport", "V1", "enroute"),
+    ]
+    assert result.points == tuple((p.lat, p.lon) for p in result.waypoints)
+
+
+def test_procedure_points_name_their_procedure_and_flight_phase(tables):
+    result = RouteResolver(_shared_star_tables(tables)).resolve("KAAA SHARED3 KBBB")
+
+    by_name = {p.name: p for p in result.waypoints}
+    assert by_name["MID"].via == "SHARED3" and by_name["MID"].segment == "arrival"
+    assert by_name["KBBB"].segment == "destination"
+
+
+def test_lat_lon_waypoints_are_labelled(tables):
+    result = RouteResolver(tables).resolve("KAAA 3800N07730W KBBB")
+
+    assert [p.kind for p in result.waypoints] == ["airport", "latlon", "airport"]

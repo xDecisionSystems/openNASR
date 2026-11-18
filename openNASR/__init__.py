@@ -45,6 +45,12 @@ from .holding import HoldingPattern as HoldingPattern
 from .holding import HoldingPatternRepository as HoldingPatternRepository
 from .nav import NAVAID as NAVAID
 from .flightplan import RouteResolver as RouteResolver
+from .icaomessage import IcaoFlightPlan as IcaoFlightPlan
+from .icaomessage import IcaoMessageError as IcaoMessageError
+from .icaomessage import parse_icao_flight_plan as parse_icao_flight_plan
+from .routeresult import RouteDiagnostic as RouteDiagnostic
+from .routeresult import RoutePoint as RoutePoint
+from .routeresult import RouteResult as RouteResult
 from .flightplan import flight_plan_path as flight_plan_path
 from .exceptions import UnsupportedRouteContentError as UnsupportedRouteContentError
 from .exceptions import RouteConnectivityError as RouteConnectivityError
@@ -211,7 +217,13 @@ __all__ = [
     "QueryResultTooLargeError",
     "QueryTableNotFoundError",
     "QueryValidationError",
+    "IcaoFlightPlan",
+    "IcaoMessageError",
+    "parse_icao_flight_plan",
+    "RouteDiagnostic",
+    "RoutePoint",
     "RouteResolver",
+    "RouteResult",
     "Radar",
     "RadarRecord",
     "RadarRepository",

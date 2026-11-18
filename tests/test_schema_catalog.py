@@ -38,11 +38,12 @@ from openNASR.schemas import (
 
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
+MANIFEST_ROOT = Path(__file__).parents[1] / "openNASR" / "schema_manifests"
 SCHEMA_IDS = ("pre_2026_09", "nasr_2026_09")
 
 
 def _manifest(schema_id: str) -> dict[str, object]:
-    path = FIXTURE_ROOT / "manifests" / f"{schema_id}.json"
+    path = MANIFEST_ROOT / f"{schema_id}.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -200,7 +201,7 @@ def test_every_operational_table_loads_and_constructs_at_least_one_record(
     through TableRepository, and its TableSpec.record_type can construct a
     record from the loaded row without error."""
 
-    from openNASR.tables import TableRepository
+    from tests.csv_reference import TableRepository
 
     catalog = SchemaCatalog()
     registry = TableRegistry(catalog=catalog)
@@ -232,7 +233,7 @@ def test_raw_table_loading_preserves_leading_zero_identifiers_and_empty_nulls(
     drop the leading zero), and an empty identifier field must remain an
     empty string, never become NaN or change the column's dtype."""
 
-    from openNASR.tables import TableRepository
+    from tests.csv_reference import TableRepository
 
     cycle_dir = tmp_path / "cycle"
     cycle_dir.mkdir()

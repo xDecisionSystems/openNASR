@@ -8,14 +8,18 @@ flight plan for operational use.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 import re
 
 from numpy import ndarray
 from pandas import DataFrame
 
+from .icaomessage import IcaoFlightPlan, parse_icao_flight_plan
+from .routeresult import RouteDiagnostic, RoutePoint, RouteResult
 from .exceptions import (
     AmbiguousRecordError,
+    ConfigurationError,
     OpenNASRError,
     RecordNotFoundError,
     RouteConnectivityError,
@@ -23,9 +27,24 @@ from .exceptions import (
 )
 
 
+# Airports named at the two ends of the route being resolved. A procedure
+# name shared by several airports' records (``VIEWS.DEHAN3``) is narrowed to
+# the records that serve one of them.
+_ROUTE_AIRPORTS: ContextVar[frozenset[str]] = ContextVar(
+    "route_airports", default=frozenset()
+)
+# Collects diagnostics for partial resolutions while a route is resolved.
+_DIAGNOSTICS: ContextVar[list[RouteDiagnostic] | None] = ContextVar(
+    "route_diagnostics", default=None
+)
 _DIRECT = "DCT"
 _AIRWAY = re.compile(r"(?P<designation>[A-Z]+)(?P<identifier>[0-9][A-Z0-9]*)$")
 _OCEANIC_COORDINATE = re.compile(r"\d{4}[NS]/\d{5}[EW]")
+_LATLON_WAYPOINT = re.compile(
+    r"(?P<lat>\d{2})(?P<lat_min>\d{2})?(?P<ns>[NS])"
+    r"(?P<lon>\d{3})(?P<lon_min>\d{2})?(?P<ew>[EW])$"
+)
+_SPEED_LEVEL = re.compile(r"[NKM]\d{3,4}(?:[FSAM]\d{3,4}|VFR)$")
 _EXTERNAL_AIRWAY = re.compile(r"(?:U[A-Z]?\d+[A-Z0-9]*|RTE\d+)$")
 _RADIAL_DISTANCE = re.compile(r"[A-Z]{3}\d{6}$")
 _FOREIGN_ICAO_PREFIX = re.compile(r"(?:C[FGKLMNPSY]|E[A-Z]|MM|TJ)[A-Z]{2}$")
@@ -36,6 +55,8 @@ class _Waypoint:
     identifier: str
     latitude: float
     longitude: float
+    # Provenance only: two records at one place are the same waypoint.
+    kind: str = field(default="", compare=False)
 
 
 @dataclass(frozen=True)
@@ -137,6 +158,10 @@ class _WaypointResolver:
                 nav_types,
             ):
                 *raw_identifiers, latitude, longitude, nav_type = values
+                if table == "NAV_BASE" and _text(nav_type) == "FAN MARKER":
+                    # Marker beacons share names with navaids but are never
+                    # filed as route points.
+                    continue
                 try:
                     coordinates = float(str(latitude)), float(str(longitude))
                 except ValueError:
@@ -145,7 +170,9 @@ class _WaypointResolver:
                     identifier = _text(raw_identifier)
                     if not identifier:
                         continue
-                    waypoint = _Waypoint(identifier, *coordinates)
+                    waypoint = _Waypoint(
+                        identifier, *coordinates, kind=_KIND_BY_TABLE[table]
+                    )
                     candidates.setdefault(identifier, []).append(waypoint)
                     if table == "NAV_BASE" and _text(nav_type) != "VOT":
                         non_vot_candidates.setdefault(identifier, []).append(waypoint)
@@ -179,6 +206,9 @@ class _WaypointResolver:
             )
         )
         if not unique:
+            decoded = _latlon_waypoint(identifier)
+            if decoded is not None:
+                return decoded
             raise RecordNotFoundError(
                 entity_type="Flight-plan waypoint", identifier=identifier
             )
@@ -189,6 +219,29 @@ class _WaypointResolver:
                 candidates=unique,
             )
         return unique[0]
+
+
+def _latlon_waypoint(identifier: str) -> _Waypoint | None:
+    """Decode an ICAO lat/lon waypoint (``4620N07805W`` or ``46N078W``)."""
+
+    match = _LATLON_WAYPOINT.match(identifier)
+    if match is None or (match["lat_min"] is None) != (match["lon_min"] is None):
+        return None
+    latitude = int(match["lat"]) + int(match["lat_min"] or 0) / 60
+    longitude = int(match["lon"]) + int(match["lon_min"] or 0) / 60
+    if (
+        latitude > 90
+        or longitude > 180
+        or int(match["lat_min"] or 0) > 59
+        or int(match["lon_min"] or 0) > 59
+    ):
+        return None
+    return _Waypoint(
+        identifier,
+        -latitude if match["ns"] == "S" else latitude,
+        -longitude if match["ew"] == "W" else longitude,
+        kind="latlon",
+    )
 
 
 def _text(value: object) -> str:
@@ -219,6 +272,7 @@ def _coordinates(row: Mapping[str, object]) -> tuple[float, float] | None:
         return None
 
 
+_KIND_BY_TABLE = {"APT_BASE": "airport", "FIX_BASE": "fix", "NAV_BASE": "navaid"}
 _WAYPOINT_TABLES = (
     ("APT_BASE", ("ARPT_ID", "ICAO_ID")),
     ("FIX_BASE", ("FIX_ID",)),
@@ -250,7 +304,9 @@ def _waypoint(
                 continue
             coordinates = _coordinates(row)
             if coordinates is not None:
-                waypoint = _Waypoint(identifier, *coordinates)
+                waypoint = _Waypoint(
+                    identifier, *coordinates, kind=_KIND_BY_TABLE[table]
+                )
                 candidates.append(waypoint)
                 if table == "NAV_BASE" and _text(row.get("NAV_TYPE", "")) != "VOT":
                     non_vot_candidates.append(waypoint)
@@ -346,6 +402,29 @@ class _AirwayIndex:
         return self._segments.iloc[positions] if positions is not None else None
 
 
+def _narrow_to_route_airports(
+    keys: set[tuple[str, ...]],
+    served: dict[tuple[str, ...], frozenset[str]],
+) -> set[tuple[str, ...]]:
+    """Keep the procedures serving a route-end airport, if that decides it."""
+
+    airports = _ROUTE_AIRPORTS.get()
+    if len(keys) <= 1 or not airports:
+        return keys
+    kept = {key for key in keys if served.get(key, frozenset()) & airports}
+    return kept or keys
+
+
+def _route_end_airports(flight_plan: str) -> frozenset[str]:
+    tokens = re.findall(r"[A-Z0-9]+", re.sub(r"/\S*", "", flight_plan.upper()))
+    ends: set[str] = set()
+    for token in (tokens[0], tokens[-1]) if tokens else ():
+        ends.add(token)
+        if len(token) == 4 and token[0] in "KP":
+            ends.add(token[1:])
+    return frozenset(ends)
+
+
 class _ProcedureIndex:
     """Snapshot normalized procedure-table lookups for one route session.
 
@@ -355,7 +434,62 @@ class _ProcedureIndex:
     effect on current matching or error behavior by itself.
     """
 
+    @staticmethod
+    def _served_airports(
+        frame: DataFrame | None, key_columns: tuple[str, ...]
+    ) -> dict[tuple[str, ...], frozenset[str]]:
+        columns = (*key_columns, "ARPT_ID")
+        if frame is None or any(column not in frame for column in columns):
+            return {}
+        served: dict[tuple[str, ...], set[str]] = {}
+        for *key, airport in zip(*(frame[c].map(_text).to_numpy() for c in columns)):
+            served.setdefault(tuple(key), set()).add(airport)
+        return {key: frozenset(value) for key, value in served.items()}
+
+    def narrow_departures(self, keys: set[tuple[str, ...]]) -> set[tuple[str, ...]]:
+        return _narrow_to_route_airports(keys, self._served_departures)
+
+    def narrow_bodies(
+        self, entity_type: str, rows: DataFrame, names: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        """Keep the named bodies that serve a route-end airport, if any do."""
+
+        airports = _ROUTE_AIRPORTS.get()
+        departure = entity_type == "DepartureProcedure"
+        columns = (
+            ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE")
+            if departure
+            else ("STAR_COMPUTER_CODE", "ARTCC")
+        )
+        if not airports or rows.empty or any(c not in rows for c in columns):
+            return names
+        prefix = tuple(_text(rows[column].iloc[0]) for column in columns)
+        served = (
+            self._served_departure_bodies if departure else self._served_star_bodies
+        )
+        kept = tuple(
+            name
+            for name in names
+            if served.get((*prefix, name), frozenset()) & airports
+        )
+        return kept or names
+
+    def narrow_stars(self, keys: set[tuple[str, ...]]) -> set[tuple[str, ...]]:
+        return _narrow_to_route_airports(keys, self._served_stars)
+
     def __init__(self, tables: Mapping[str, DataFrame]) -> None:
+        self._served_departures = self._served_airports(
+            tables.get("DP_APT"), ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE")
+        )
+        self._served_stars = self._served_airports(
+            tables.get("STAR_APT"), ("STAR_COMPUTER_CODE", "ARTCC")
+        )
+        self._served_departure_bodies = self._served_airports(
+            tables.get("DP_APT"), ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE", "BODY_NAME")
+        )
+        self._served_star_bodies = self._served_airports(
+            tables.get("STAR_APT"), ("STAR_COMPUTER_CODE", "ARTCC", "BODY_NAME")
+        )
         self._departures = tables.get("DP_BASE")
         self._departure_routes = tables.get("DP_RTE")
         self._stars = tables.get("STAR_BASE")
@@ -641,12 +775,15 @@ def _select_procedure_body(
     resolver: _WaypointResolver | None,
     entity_type: str,
     identifier: str,
+    procedure_index: _ProcedureIndex | None = None,
 ) -> tuple[_Waypoint, ...]:
     """Select a published procedure body using its filed route connection."""
 
     if "ROUTE_NAME" not in rows:
         return _route_rows_points(tables, rows, resolver=resolver, reverse=reverse)
     names = tuple(dict.fromkeys(rows["ROUTE_NAME"].map(_text)))
+    if procedure_index is not None and len(names) > 1:
+        names = procedure_index.narrow_bodies(entity_type, rows, names)
     candidates = tuple(
         _route_rows_points(
             tables,
@@ -656,6 +793,10 @@ def _select_procedure_body(
         )
         for name in names
     )
+    if not candidates:
+        # A published procedure may have transitions but no body points
+        # (radar-vector departures); there is simply no body geometry.
+        return ()
     if len(candidates) == 1:
         return candidates[0]
     if connection_token is not None:
@@ -672,6 +813,8 @@ def _select_procedure_body(
         )
         if len(matches) == 1:
             return matches[0]
+        if matches:
+            candidates = matches
     common: list[_Waypoint] = []
     ordered_candidates = (
         candidates
@@ -682,7 +825,43 @@ def _select_procedure_body(
         if len(set(points)) != 1:
             break
         common.append(points[0])
-    if common:
+    diagnostics = _DIAGNOSTICS.get()
+    if common or diagnostics is not None:
+        if diagnostics is not None:
+            shared = len(common)
+            branches = sorted(
+                {
+                    tuple(
+                        point.identifier
+                        for point in (
+                            path[shared:]
+                            if common_at_start
+                            else path[: len(path) - shared]
+                        )
+                    )
+                    for path in candidates
+                }
+            )
+            split_after = (
+                (common[-1] if common_at_start else common[0]).identifier
+                if common
+                else None
+            )
+            diagnostics.append(
+                RouteDiagnostic(
+                    code="procedure_branches",
+                    message=(
+                        f"{identifier} has {len(candidates)} published branches "
+                        "that depend on runway or airport configuration; only "
+                        "the portion common to all of them is included."
+                    ),
+                    token=identifier,
+                    detail={
+                        "split_after": split_after,
+                        "branches": [list(branch) for branch in branches],
+                    },
+                )
+            )
         return tuple(common) if common_at_start else tuple(reversed(common))
     raise AmbiguousRecordError(
         entity_type=entity_type,
@@ -767,6 +946,54 @@ def _classify_procedure_token(
     )
 
 
+def _departure_key(row: Mapping[str, object]) -> tuple[str, ...]:
+    return (_text(row["DP_NAME"]), _text(row["ARTCC"]), _text(row["DP_COMPUTER_CODE"]))
+
+
+def _unpublished_departure_exit(
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    resolver: _WaypointResolver | None,
+) -> tuple[_Waypoint, ...]:
+    """Terminal fix of a departure that publishes no body geometry.
+
+    FAA DP computer codes read ``NAME#.FIX``; across a full cycle ``FIX`` is the
+    end of the DP's body (or the start of its transitions) for about 90% of the
+    DPs that publish geometry, and the DP's airways attach there. A radar-vector
+    departure publishes no points at all, so the code's own suffix is the only
+    source for where it ends.
+    """
+
+    suffix = token.split(".", 1)[1] if "." in token else ""
+    if not suffix:
+        return ()
+    try:
+        exit_fix = _waypoint(
+            tables,
+            _text(suffix),
+            preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
+            resolver=resolver,
+        )
+    except (RecordNotFoundError, AmbiguousRecordError):
+        return ()
+    diagnostics = _DIAGNOSTICS.get()
+    if diagnostics is not None:
+        diagnostics.append(
+            RouteDiagnostic(
+                code="procedure_geometry_unpublished",
+                message=(
+                    f"{token} publishes no route points; its terminal fix "
+                    f"{exit_fix.identifier} comes from the procedure's code."
+                ),
+                token=token,
+                detail={"terminal_fix": exit_fix.identifier},
+                severity="info",
+            )
+        )
+    return (exit_fix,)
+
+
 def _procedure_path(
     tables: Mapping[str, DataFrame],
     token: str,
@@ -781,12 +1008,14 @@ def _procedure_path(
     Departure route strings may identify a ``DP_BASE`` record directly or a
     ``DP_RTE`` transition code (for example ``ORCO8.TRM``). Arrival route
     strings normally carry a STAR transition computer code (for example
-    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. Full FAA
-    ``DP_RTE`` rows (which include ``NEXT_POINT``) are recorded from their
-    terminal exit back toward the airport, so they are traversed in reverse
-    for an outbound flight plan. STAR rows are
-    recorded outbound from the terminal route's end, so they are traversed in
-    reverse for an inbound flight plan.
+    ``IOW.LLROY3``), which identifies a branch in ``STAR_RTE``. FAA
+    ``DP_RTE`` and ``STAR_RTE`` rows are recorded in flight order (a DP from
+    the runway toward its exit, a STAR from its entry fix toward the
+    runway), so they are traversed as stored. A departure's body precedes
+    its transition; an arrival's transition precedes its body. This was
+    checked against a full cycle: the served airport lies at the first
+    point of 1,021 of 1,026 DP bodies and at the last point of 1,179 of
+    1,186 STAR bodies.
     """
 
     departure_routes = tables.get("DP_RTE")
@@ -802,7 +1031,14 @@ def _procedure_path(
         # Full FAA DP_RTE rows include NEXT_POINT and are sequenced from the
         # terminal exit back toward the airport. Retain historical behavior
         # for sparse, legacy caller-supplied tables that omit that column.
-        reverse_departure = "NEXT_POINT" in departure_routes
+        full_departure_rows = "NEXT_POINT" in departure_routes
+        if len(departure_matches) > 1:
+            narrowed = procedure_index.narrow_departures(
+                {_departure_key(row) for row in departure_matches}
+            )
+            departure_matches = list(
+                row for row in departure_matches if _departure_key(row) in narrowed
+            )
         if len(departure_matches) != 1:
             raise AmbiguousRecordError(
                 entity_type="DepartureProcedure",
@@ -826,28 +1062,27 @@ def _procedure_path(
             else rows
         )
         assert body is not None
-        return _select_procedure_body(
+        body_points = _select_procedure_body(
             tables,
             body,
             connection_token=following_token,
-            reverse=reverse_departure,
+            reverse=False,
             connection_at_start=False,
             common_at_start=False,
             resolver=resolver,
             entity_type="DepartureProcedure",
             identifier=token,
+            procedure_index=procedure_index,
+        )
+        return body_points or _unpublished_departure_exit(
+            tables, token, resolver=resolver
         )
     if departure_transition_matches:
         assert departure_routes is not None
-        reverse_departure = "NEXT_POINT" in departure_routes
-        departure_keys = {
-            (
-                _text(row["DP_NAME"]),
-                _text(row["ARTCC"]),
-                _text(row["DP_COMPUTER_CODE"]),
-            )
-            for row in departure_transition_matches
-        }
+        full_departure_rows = "NEXT_POINT" in departure_routes
+        departure_keys = procedure_index.narrow_departures(
+            {_departure_key(row) for row in departure_transition_matches}
+        )
         if len(departure_keys) != 1:
             raise AmbiguousRecordError(
                 entity_type="DepartureProcedure",
@@ -871,28 +1106,33 @@ def _procedure_path(
         assert body is not None
         assert transition is not None
         transition_points = _route_rows_points(
-            tables, transition, resolver=resolver, reverse=reverse_departure
+            tables, transition, resolver=resolver, reverse=False
         )
         body_points = _select_procedure_body(
             tables,
             body,
-            connection_token=following_token,
-            reverse=reverse_departure,
+            connection_token=(
+                transition_points[0].identifier
+                if full_departure_rows and transition_points
+                else following_token
+            ),
+            reverse=False,
             connection_at_start=False,
             common_at_start=False,
             resolver=resolver,
             entity_type="DepartureProcedure",
             identifier=token,
+            procedure_index=procedure_index,
         )
         return (
             body_points + transition_points
-            if reverse_departure
+            if full_departure_rows
             else transition_points + body_points
         )
     if transition_matches or base_matches:
         assert star_routes is not None
         if transition_matches:
-            keys = {
+            keys: set[tuple[str, ...]] = {
                 (_text(row["STAR_COMPUTER_CODE"]), _text(row["ARTCC"]))
                 for row in transition_matches
             }
@@ -901,6 +1141,7 @@ def _procedure_path(
                 (_text(row["STAR_COMPUTER_CODE"]), _text(row["ARTCC"]))
                 for row in base_matches
             }
+        keys = procedure_index.narrow_stars(set(keys))
         if len(keys) != 1:
             raise AmbiguousRecordError(
                 entity_type="StarProcedure", identifier=token, candidates=tuple(keys)
@@ -921,18 +1162,19 @@ def _procedure_path(
                 star_routes[column]
         assert transition is not None
         transition_points = _route_rows_points(
-            tables, transition, resolver=resolver, reverse=True
+            tables, transition, resolver=resolver, reverse=False
         )
         body_points = _select_procedure_body(
             tables,
             body,
             connection_token=preceding_token,
-            reverse=True,
+            reverse=False,
             connection_at_start=True,
             common_at_start=True,
             resolver=resolver,
             entity_type="StarProcedure",
             identifier=token,
+            procedure_index=procedure_index,
         )
         return transition_points + body_points
     return None
@@ -992,6 +1234,8 @@ def _departure_airway_join(
     proximity or later route text to make a connection.
     """
 
+    if not procedure:
+        return None  # a procedure with no geometry cannot be joined to an airway
     procedure_token = tokens[procedure_token_index].value
     airway_index_in_route = _next_route_token_index(tokens, procedure_token_index)
     if airway_index_in_route is None or not _is_departure_procedure(
@@ -1118,13 +1362,36 @@ def _is_published_dotted_procedure(
     ):
         if matches is not None and not matches.empty:
             return True
+    first_component = token.split(".", 1)[0]
+    star_matches = procedure_index.star_base(token)
+    if star_matches is not None and not star_matches.empty:
+        first_star = procedure_index.star_base(first_component)
+        if first_star is None or first_star.empty:
+            return True
     departure_matches = procedure_index.departure_base(token)
     if departure_matches is None:
         return False
-    first_component = token.split(".", 1)[0]
     first_component_matches = procedure_index.departure_base(first_component)
     assert first_component_matches is not None
     return not departure_matches.empty and first_component_matches.empty
+
+
+def _note_ignored(position: int, group: str, *, after: str | None = None) -> None:
+    """Report speed/level and time groups the resolver skips (not geometry)."""
+
+    diagnostics = _DIAGNOSTICS.get()
+    if diagnostics is None:
+        return
+    diagnostics.append(
+        RouteDiagnostic(
+            code="ignored_speed_level",
+            message=f"{group!r} is a speed, level or time group; it is ignored.",
+            token=group,
+            position=position,
+            detail={"after": after} if after else {},
+            severity="info",
+        )
+    )
 
 
 def _tokenize_flight_plan(
@@ -1147,7 +1414,13 @@ def _tokenize_flight_plan(
     procedure_index = procedure_index or _ProcedureIndex(tables)
     normalized: list[_RouteToken] = []
     for field_match in re.finditer(r"\S+", flight_plan.upper()):
-        field = field_match.group().split("/", 1)[0]
+        group = field_match.group()
+        field, slash, suffix = group.partition("/")
+        if slash and suffix:
+            _note_ignored(field_match.start() + len(field) + 1, suffix, after=field)
+        if _SPEED_LEVEL.match(field):
+            _note_ignored(field_match.start(), field)
+            continue
         if not field:
             continue
         components = field.split(".")
@@ -1178,6 +1451,7 @@ def _tokenize_flight_plan(
                     resolver=resolver,
                     procedure_index=procedure_index,
                 )
+                is not None
             ):
                 normalized.append(_RouteToken(combined, position))
                 component_offset += len(component) + 1 + len(components[index + 1])
@@ -1198,8 +1472,8 @@ def _procedure_step_coordinates(
     resolver: _WaypointResolver,
     airway_index: _AirwayIndex | None,
     procedure_index: _ProcedureIndex,
-) -> tuple[tuple[float, float], ...] | None:
-    """Return one procedure token's coordinates, or ``None`` if it is not one.
+) -> tuple[_Waypoint, ...] | None:
+    """Return one procedure token's waypoints, or ``None`` if it is not one.
 
     A bare procedure computer code (for example ``GNDLF3``) can also satisfy
     the airway lexical pattern.  Callers must try this before falling back to
@@ -1245,10 +1519,7 @@ def _procedure_step_coordinates(
         airway_index=airway_index,
         procedure_index=procedure_index,
     )
-    return tuple(
-        (point.latitude, point.longitude)
-        for point in (join.prefix if join is not None else procedure)
-    )
+    return tuple(join.prefix if join is not None else procedure)
 
 
 def _flight_plan_path(
@@ -1258,8 +1529,55 @@ def _flight_plan_path(
     resolver: _WaypointResolver,
     airway_index: _AirwayIndex | None = None,
     procedure_index: _ProcedureIndex | None = None,
-) -> tuple[tuple[float, float], ...]:
-    """Return the ``(latitude, longitude)`` path for FAA route-field text.
+) -> tuple[RoutePoint, ...]:
+    """Resolve a route with its end airports available for disambiguation."""
+
+    reset = _ROUTE_AIRPORTS.set(_route_end_airports(flight_plan))
+    try:
+        return _resolve_route_path(
+            nasr,
+            flight_plan,
+            resolver=resolver,
+            airway_index=airway_index,
+            procedure_index=procedure_index,
+        )
+    finally:
+        _ROUTE_AIRPORTS.reset(reset)
+
+
+def _route_point(waypoint: _Waypoint, *, via: str | None, segment: str) -> RoutePoint:
+    return RoutePoint(
+        lat=waypoint.latitude,
+        lon=waypoint.longitude,
+        name=waypoint.identifier,
+        kind=waypoint.kind,
+        via=via,
+        segment=segment,
+    )
+
+
+def _append_point(
+    output: list[RoutePoint], waypoint: _Waypoint, *, via: str | None, segment: str
+) -> None:
+    """Append a point unless it repeats the previous coordinate."""
+
+    if output and (output[-1].lat, output[-1].lon) == (
+        waypoint.latitude,
+        waypoint.longitude,
+    ):
+        return
+    output.append(_route_point(waypoint, via=via, segment=segment))
+
+
+def _resolve_route_path(
+    nasr: Mapping[str, DataFrame],
+    flight_plan: str,
+    *,
+    resolver: _WaypointResolver,
+    airway_index: _AirwayIndex | None = None,
+    procedure_index: _ProcedureIndex | None = None,
+) -> tuple[RoutePoint, ...]:
+    """Return the resolved points for FAA route-field text.
 
     ``flight_plan`` is the space-separated route field submitted to the FAA,
     for example ``"KBWI DCT AABEE V1 CHARLIE KDCA"``. Airport identifiers,
@@ -1285,14 +1603,14 @@ def _flight_plan_path(
     if not tokens or any(not token.value for token in tokens):
         raise ValueError("flight_plan must contain route tokens")
 
-    output: list[tuple[float, float]] = []
+    output: list[RoutePoint] = []
     index = 0
     while index < len(tokens):
         token = tokens[index].value
         if token == _DIRECT:
             index += 1
             continue
-        procedure_coordinates = _procedure_step_coordinates(
+        procedure_waypoints = _procedure_step_coordinates(
             nasr,
             tokens,
             index,
@@ -1301,10 +1619,14 @@ def _flight_plan_path(
             airway_index=airway_index,
             procedure_index=procedure_index,
         )
-        if procedure_coordinates is not None:
-            for coordinate in procedure_coordinates:
-                if not output or output[-1] != coordinate:
-                    output.append(coordinate)
+        if procedure_waypoints is not None:
+            segment = (
+                "departure"
+                if _is_departure_procedure(nasr, token, procedure_index=procedure_index)
+                else "arrival"
+            )
+            for waypoint in procedure_waypoints:
+                _append_point(output, waypoint, via=token, segment=segment)
             index += 1
             continue
         airway = _AIRWAY.fullmatch(token)
@@ -1337,19 +1659,19 @@ def _flight_plan_path(
                     airway_index=airway_index,
                     procedure_index=procedure_index,
                 )
-                if previous_procedure is not None
+                if previous_procedure
                 else None
             )
             previous = (
                 previous_join.identifier
                 if previous_join is not None
                 else previous_procedure[-1].identifier
-                if previous_procedure is not None
+                if previous_procedure
                 else tokens[previous_index].value
             )
             following = (
                 following_procedure[0].identifier
-                if following_procedure is not None
+                if following_procedure
                 else tokens[following_index].value
             )
             vertices = _airway_vertices(
@@ -1366,7 +1688,7 @@ def _flight_plan_path(
                     preferred_tables=("FIX_BASE", "NAV_BASE", "APT_BASE"),
                     resolver=resolver,
                 )
-                output.append((point.latitude, point.longitude))
+                output.append(_route_point(point, via=token, segment="enroute"))
             # Process the following token too: normal waypoints are deduplicated
             # below, while a following procedure must contribute its remaining
             # ordered legs beyond the airway connection point.
@@ -1380,11 +1702,41 @@ def _flight_plan_path(
         point = _waypoint(
             nasr, token, preferred_tables=preferred_tables, resolver=resolver
         )
-        coordinate = point.latitude, point.longitude
-        if not output or output[-1] != coordinate:
-            output.append(coordinate)
+        segment = (
+            "origin"
+            if index == 0
+            else "destination"
+            if index == len(tokens) - 1
+            else "enroute"
+        )
+        _append_point(output, point, via=None, segment=segment)
         index += 1
     return tuple(output)
+
+
+ROUTE_TABLES = (
+    "APT_BASE",
+    "FIX_BASE",
+    "NAV_BASE",
+    "AWY_BASE",
+    "AWY_SEG_ALT",
+    "DP_BASE",
+    "DP_RTE",
+    "DP_APT",
+    "STAR_BASE",
+    "STAR_RTE",
+    "STAR_APT",
+)
+"""The only tables route resolution reads; a loader need not read any others."""
+
+
+class _CycleTables(dict):
+    """Route tables for one cycle, with what the resolver reads off a facade."""
+
+    def __init__(self, tables, effective_date: str, procedure_order: str | None):
+        super().__init__(tables)
+        self.effective_date = effective_date
+        self.procedure_order = procedure_order
 
 
 class RouteResolver:
@@ -1396,8 +1748,22 @@ class RouteResolver:
     not attempted for mutable pandas inputs.
     """
 
+    @classmethod
+    def from_nasr(cls, nasr) -> "RouteResolver":
+        """Build a resolver from a ``NASR`` facade, loading only the route tables."""
+
+        available = set(nasr)
+        tables = {name: nasr[name] for name in ROUTE_TABLES if name in available}
+        return cls(_CycleTables(tables, nasr.effective_date, nasr.procedure_order))
+
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._cycle = getattr(nasr, "effective_date", None)
+        order = getattr(nasr, "procedure_order", None)
+        if order not in (None, "flight_order"):
+            raise ConfigurationError(
+                f"Cycle {self._cycle} stores procedures as {order!r}; the route "
+                "resolver only supports flight_order."
+            )
         self._nasr = dict(nasr)
         self._waypoints = _WaypointResolver(self._nasr)
         self._airways = _AirwayIndex(self._nasr)
@@ -1405,6 +1771,10 @@ class RouteResolver:
 
     def path(self, flight_plan: str) -> tuple[tuple[float, float], ...]:
         """Return the source-coordinate path for one FAA route field."""
+
+        return tuple((point.lat, point.lon) for point in self._points(flight_plan))
+
+    def _points(self, flight_plan: str) -> tuple[RoutePoint, ...]:
 
         unsupported = (
             _recognized_unsupported_content(flight_plan, self._waypoints)
@@ -1432,6 +1802,68 @@ class RouteResolver:
         except OpenNASRError as error:
             _attach_route_diagnostic(error, flight_plan=flight_plan, cycle=self._cycle)
             raise
+
+    def resolve_icao_message(self, message: str) -> tuple[IcaoFlightPlan, RouteResult]:
+        """Resolve the route inside an ICAO FPL message.
+
+        Returns what was extracted alongside the result so it can be checked.
+        Raises :class:`IcaoMessageError` for a message that is not a usable FPL.
+        """
+
+        extracted = parse_icao_flight_plan(message)
+        return extracted, self.resolve(extracted.route)
+
+    def resolve(self, flight_plan: str) -> RouteResult:
+        """Resolve one route into points plus structured diagnostics.
+
+        Route problems (unknown fix, ambiguity, unsupported content) are
+        reported as diagnostics with ``complete`` false rather than raised.
+        """
+
+        collected: list[RouteDiagnostic] = []
+        reset = _DIAGNOSTICS.set(collected)
+        try:
+            waypoints = self._points(flight_plan)
+        except OpenNASRError as error:
+            if isinstance(error, ConfigurationError):
+                raise
+            return RouteResult(
+                route=flight_plan,
+                cycle=self._cycle,
+                points=(),
+                diagnostics=(*collected, _error_diagnostic(error)),
+            )
+        except ValueError as error:
+            return RouteResult(
+                route=flight_plan,
+                cycle=self._cycle,
+                points=(),
+                diagnostics=(
+                    *collected,
+                    RouteDiagnostic(code="MalformedRoute", message=str(error)),
+                ),
+            )
+        finally:
+            _DIAGNOSTICS.reset(reset)
+        unique = {
+            (item.code, item.token, repr(item.detail)): item for item in collected
+        }
+        return RouteResult(
+            route=flight_plan,
+            cycle=self._cycle,
+            points=tuple((point.lat, point.lon) for point in waypoints),
+            diagnostics=tuple(unique.values()),
+            waypoints=waypoints,
+        )
+
+
+def _error_diagnostic(error: OpenNASRError) -> RouteDiagnostic:
+    return RouteDiagnostic(
+        code=type(error).__name__,
+        message=str(error),
+        token=getattr(error, "token", None),
+        position=getattr(error, "position", None),
+    )
 
 
 def flight_plan_path(

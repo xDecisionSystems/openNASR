@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pandas import DataFrame
 
-from .basictypes import Raw, RawDict
+from .basictypes import as_number, Raw, RawDict
 from .records import FaaRecord
 
 
@@ -159,7 +159,7 @@ class ILSitem(Raw):
     @property
     def magBearing(self):
         if hasattr(self._raw, "APCH_BEAR"):
-            return self._raw.APCH_BEAR
+            return as_number(self._raw.APCH_BEAR)
         else:
             return None
 
@@ -167,7 +167,7 @@ class ILSitem(Raw):
     def magVar(self):
         if hasattr(self._raw, "MAG_VAR"):
             if self._raw.MAG_VAR_HEMIS == "E":
-                return self._raw.MAG_VAR
+                return as_number(self._raw.MAG_VAR)
             else:
                 return -self._raw.MAG_VAR
         else:
@@ -280,7 +280,7 @@ class GSitem(Raw):
     @property
     def angle(self):
         if hasattr(self._raw, "G_S_ANGLE"):
-            return self._raw.G_S_ANGLE
+            return as_number(self._raw.G_S_ANGLE)
         else:
             return None
 

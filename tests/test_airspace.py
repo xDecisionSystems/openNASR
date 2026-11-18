@@ -204,8 +204,8 @@ def test_maa_contacts_are_ordered_by_freq_seq_not_file_order(make_nasr_from_fixt
     maa = nasr.maas.get("AOH001")
 
     assert [contact.sequence for contact in maa.contacts] == [1, 2]
-    assert maa.contacts[0].commercial_frequency == "121.5"
-    assert maa.contacts[1].commercial_frequency == "124.5"
+    assert maa.contacts[0].commercial_frequency == "121.500"
+    assert maa.contacts[1].commercial_frequency == "124.500"
 
 
 def test_maa_remarks_are_ordered_by_ref_col_seq_no(make_nasr_from_fixture):
@@ -350,7 +350,7 @@ def test_parachute_jump_area_record_exposes_typed_fields(make_nasr_from_fixture)
 
     assert area.drop_zone_name == "Synthetic Drop Zone"
     assert area.record.state == "MD"
-    assert area.record.radius == "1.0"
+    assert area.record.radius == "1.00"
     assert area.record.airport_site_key == ("00000001A", "A")
 
 
