@@ -1,6 +1,8 @@
 """Cycle-cache configuration tests."""
 
 from datetime import date
+from io import BytesIO
+import json
 import os
 from pathlib import Path
 from zipfile import ZipFile
@@ -435,6 +437,13 @@ def test_faa_provider_follows_current_landing_link_to_explicit_nfdc_archive():
                 b"<a href='https://nfdc.faa.gov/webContent/28DaySub/"
                 b"28DaySubscription_Effective_2026-08-06.zip'>"
                 b"Full subscription</a>"
+                b"<a href='https://example.test/webContent/28DaySub/2026-08-06/"
+                b"class_airspace_shape_files.zip'>Wrong host</a>"
+                b"<a href='https://nfdc.faa.gov/webContent/28DaySub/2026-09-03/"
+                b"class_airspace_shape_files.zip'>Wrong cycle</a>"
+                b"<a href='https://nfdc.faa.gov/webContent/28DaySub/2026-08-06/"
+                b"class_airspace_shape_files.zip'>Class B,C,D,E Airspace Shape "
+                b"Files</a>"
             )
         return response
 
@@ -442,10 +451,69 @@ def test_faa_provider_follows_current_landing_link_to_explicit_nfdc_archive():
 
     assert cycle.effective_date == date(2026, 8, 6)
     assert cycle.archive_url == archive_url
+    assert cycle.airspace_url == (
+        "https://nfdc.faa.gov/webContent/28DaySub/2026-08-06/"
+        "class_airspace_shape_files.zip"
+    )
     assert calls == [
         (landing_url, cycles.PAGE_TIMEOUT),
         (detail_url, cycles.PAGE_TIMEOUT),
     ]
+
+
+def test_airspace_download_is_cached_and_failed_refresh_preserves_it(
+    tmp_path, monkeypatch
+):
+    effective_date = date(2026, 10, 29)
+    url = (
+        f"https://nfdc.faa.gov/webContent/28DaySub/{effective_date}/"
+        "class_airspace_shape_files.zip"
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as archive:
+        archive.writestr("Class_Airspace.shp", b"shapefile contents")
+    original = buffer.getvalue()
+    opened = []
+
+    class Provider:
+        def for_date(self, requested):
+            assert requested == effective_date
+            return RemoteCycle(requested, "https://nfdc.faa.gov/full.zip", url)
+
+    class Response(BytesIO):
+        def geturl(self):
+            return url
+
+    def open_archive(requested, timeout):
+        opened.append((requested, timeout))
+        return Response(original)
+
+    monkeypatch.setattr(cycles, "urlopen", open_archive)
+    manager = CycleManager(tmp_path, provider=Provider())
+    path = manager.download_airspace(effective_date)
+    metadata = path.with_name(f"{path.name}.json")
+    assert path.read_bytes() == original
+    assert json.loads(metadata.read_text())["sha256"] == sha256_file(path)
+    assert manager.download_airspace(effective_date) == path
+    assert opened == [(url, cycles.DOWNLOAD_TIMEOUT)]
+
+    monkeypatch.setattr(cycles, "MAX_ARCHIVE_BYTES", 10)
+    with pytest.raises(DownloadError, match="exceeds"):
+        manager.download_airspace(effective_date, force=True)
+    assert path.read_bytes() == original
+    assert set(manager.archives_dir.iterdir()) == {path, metadata}
+    assert manager.archive_paths() == ()
+
+
+def test_airspace_download_requires_an_advertised_archive(tmp_path):
+    effective_date = date(2026, 10, 29)
+
+    class Provider:
+        def discover(self):
+            return RemoteCycle(effective_date, "https://nfdc.faa.gov/full.zip")
+
+    with pytest.raises(DownloadError, match="FAA airspace archive unavailable"):
+        CycleManager(tmp_path, provider=Provider()).download_airspace(effective_date)
 
 
 def test_faa_provider_rejects_non_nfdc_or_mismatched_archive_links():

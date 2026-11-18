@@ -103,6 +103,7 @@ class RemoteCycle:
 
     effective_date: date
     archive_url: str
+    airspace_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -148,8 +149,7 @@ class FaaCycleProvider:
         landing = self._read_text(self.landing_url)
         effective_date, detail_url = self._current_detail(landing)
         detail = self._read_text(detail_url)
-        archive_url = self._archive_url(detail, detail_url, effective_date)
-        return RemoteCycle(effective_date=effective_date, archive_url=archive_url)
+        return self._cycle_from_detail(detail, detail_url, effective_date)
 
     def for_date(self, effective_date: date) -> RemoteCycle:
         """Find the archive for one named cycle, current, past or upcoming.
@@ -163,10 +163,7 @@ class FaaCycleProvider:
         if parsed.scheme != "https" or parsed.hostname not in FAA_LANDING_HOSTS:
             raise ValueError("FAA cycle detail pages must be served from faa.gov")
         detail = self._read_text(detail_url)
-        return RemoteCycle(
-            effective_date=effective_date,
-            archive_url=self._archive_url(detail, detail_url, effective_date),
-        )
+        return self._cycle_from_detail(detail, detail_url, effective_date)
 
     def _read_text(self, url: str) -> str:
         with self.opener(url, timeout=PAGE_TIMEOUT) as response:
@@ -194,7 +191,9 @@ class FaaCycleProvider:
         )
 
     @staticmethod
-    def _archive_url(detail: str, detail_url: str, effective_date: date) -> str:
+    def _cycle_from_detail(
+        detail: str, detail_url: str, effective_date: date
+    ) -> RemoteCycle:
         # A detail page has no Current section; collect every explicit link.
         class DetailLinkParser(HTMLParser):
             def __init__(self) -> None:
@@ -210,20 +209,38 @@ class FaaCycleProvider:
         detail_parser = DetailLinkParser()
         detail_parser.feed(detail)
         expected_name = f"28DaySubscription_Effective_{effective_date.isoformat()}.zip"
+        archive = airspace = None
         for href in detail_parser.links:
             archive_url = urljoin(detail_url, href)
             parsed = urlparse(archive_url)
             if (
                 parsed.scheme == "https"
                 and parsed.hostname in FAA_ARCHIVE_HOSTS
-                and Path(parsed.path).name == expected_name
                 and "/webContent/28DaySub/" in parsed.path
             ):
-                return archive_url
+                if archive is None and Path(parsed.path).name == expected_name:
+                    archive = archive_url
+                if airspace is None and _is_airspace_url(archive_url, effective_date):
+                    airspace = archive_url
+        if archive is not None:
+            return RemoteCycle(effective_date, archive, airspace)
         raise ValueError(
             "The FAA cycle detail page did not publish the expected "
             "full-subscription NFDC ZIP"
         )
+
+
+def _is_airspace_url(url: str, effective_date: date) -> bool:
+    parsed = urlparse(url)
+    expected = (
+        f"/webContent/28DaySub/{effective_date.isoformat()}/"
+        "class_airspace_shape_files.zip"
+    )
+    return (
+        parsed.scheme == "https"
+        and parsed.hostname in FAA_ARCHIVE_HOSTS
+        and parsed.path == expected
+    )
 
 
 def resolve_cache_dir(cache_dir: str | Path | None = None) -> Path:
@@ -305,7 +322,8 @@ def validate_archive(path: str | Path) -> None:
     """Reject HTML responses and files that are not ZIP archives."""
 
     archive = Path(path)
-    prefix = archive.read_bytes()[:512].lstrip().lower()
+    with archive.open("rb") as source:
+        prefix = source.read(512).lstrip().lower()
     if prefix.startswith((b"<!doctype html", b"<html")) or not is_zipfile(archive):
         raise ValueError(f"Invalid NASR archive: {archive}")
 
@@ -783,6 +801,10 @@ class CycleManager:
         """Stream byte chunks to the temporary download path."""
 
         part_path = self.download_part_path(effective_date)
+        return self._write_archive_chunks(part_path, chunks)
+
+    @staticmethod
+    def _write_archive_chunks(part_path: Path, chunks) -> Path:
         try:
             written = 0
             with part_path.open("wb") as output:
@@ -797,6 +819,54 @@ class CycleManager:
             part_path.unlink(missing_ok=True)
             raise
         return part_path
+
+    def download_airspace(self, effective_date: date, *, force: bool = False) -> Path:
+        """Cache the optional FAA Class B/C/D/E shapefile ZIP for one cycle."""
+
+        destination = (
+            self.archives_dir / f"class_airspace_shape_files_{effective_date}.zip"
+        )
+        if destination.is_file() and not force:
+            return destination
+        if self.provider is None:
+            raise ValueError("A FAA cycle provider is required for downloads")
+        part = None
+        try:
+            for_date = getattr(self.provider, "for_date", None)
+            remote = for_date(effective_date) if for_date else self.provider.discover()
+            url = remote.airspace_url
+            if remote.effective_date != effective_date or not (
+                url and _is_airspace_url(url, effective_date)
+            ):
+                raise DownloadError(
+                    f"FAA airspace archive unavailable for {effective_date}"
+                )
+            self.archives_dir.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                dir=self.archives_dir, prefix=f".{destination.name}.", delete=False
+            ) as handle:
+                part = Path(handle.name)
+            with urlopen(url, timeout=DOWNLOAD_TIMEOUT) as response:
+                if not _is_airspace_url(response.geturl(), effective_date):
+                    raise DownloadError(
+                        "FAA airspace archive redirected away from NFDC"
+                    )
+                self._write_archive_chunks(
+                    part, iter(lambda: response.read(1024 * 1024), b"")
+                )
+            validate_archive(part)
+            part.replace(destination)
+            self.store_sha256_metadata(destination)
+            return destination
+        except DownloadError:
+            raise
+        except (OSError, ValueError) as error:
+            raise DownloadError(
+                f"FAA airspace download failed for {effective_date}"
+            ) from error
+        finally:
+            if part is not None:
+                part.unlink(missing_ok=True)
 
     def download(self, effective_date: date, *, force: bool = False) -> Cycle:
         """Download the provider's advertised archive for ``effective_date``."""
