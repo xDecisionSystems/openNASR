@@ -38,8 +38,8 @@ is still available. PyPI is the authority on package-name availability.
    version:
 
    ```bash
-   git tag -a v2.0.0 -m "openNASR 2.0.0"
-   git push origin v2.0.0
+   git tag -a v2.0.1 -m "openNASR 2.0.1"
+   git push origin v2.0.1
    ```
 
    The tag starts only the **signed deployment release** (`release.yml`): it
@@ -64,15 +64,39 @@ Protect release tags with a GitHub tag ruleset. The PyPI workflow never runs fro
 ### Update an existing systemd guest
 
 Run these commands as root inside the guest. Install a trusted Cosign binary
-first. Bootstrap the updater from the trusted repository checkout at the
-desired release tag, or verify the release manifest and the updater hash
-before installing the downloaded script.
+first. Refresh the updater itself before moving from `v2.0.0` to a release
+with dependency locks. The script shipped in `v2.0.0` expects the original
+manifest format.
 
 ```sh
-install -m 0755 deploy/opennasr-update /usr/local/sbin/opennasr-update
-opennasr-update --role api --version v2.0.0
-# On the archiver guest
-opennasr-update --role archiver --version v2.0.0
+set -eu
+tag=v2.0.1
+repo=https://github.com/xDecisionSystems/openNASR
+cd "$(mktemp -d)"
+for asset in manifest.json manifest.json.sigstore.json opennasr-update; do
+  curl --fail --silent --show-error --location --output "$asset" \
+    "$repo/releases/download/$tag/$asset"
+done
+/usr/local/bin/cosign verify-blob --bundle manifest.json.sigstore.json \
+  --certificate-identity "$repo/.github/workflows/release.yml@refs/tags/$tag" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com manifest.json
+python3 - <<'PY'
+import hashlib
+import json
+from pathlib import Path
+
+expected = json.loads(Path("manifest.json").read_bytes())["assets"]["opennasr-update"]
+if hashlib.sha256(Path("opennasr-update").read_bytes()).hexdigest() != expected:
+    raise SystemExit("Updater hash mismatch")
+PY
+install -m 0755 opennasr-update /usr/local/sbin/opennasr-update
+```
+
+Then run the command for the applicable guest.
+
+```sh
+/usr/local/sbin/opennasr-update --role api --version v2.0.1
+/usr/local/sbin/opennasr-update --role archiver --version v2.0.1
 ```
 
 The updater pins the signature to the release workflow in this repository at

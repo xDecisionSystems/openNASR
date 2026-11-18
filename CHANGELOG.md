@@ -7,6 +7,19 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.0.1]
+
+### Changed
+
+- Signed deployment releases include hash-pinned dependencies for the API and
+  archiver. The updater verifies the lockfiles and retains each guest's DuckDB
+  version pin.
+- Before activating a new archiver release, the updater checks that it can read
+  the configured bucket as the service account.
+- After a successful switch, the updater prunes superseded virtual environments
+  while keeping the active and rollback environments. Cleanup waits when the
+  archiver is running.
+
 ## [2.0.0] - 2026-11-18
 
 ### Breaking (2.0)
