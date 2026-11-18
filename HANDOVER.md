@@ -32,7 +32,8 @@ contract/            package openNASR-contract: bucket key layout, Manifest, Loc
 archiver/            package openNASR-archiver: publish_cycle, run_once (alerts, pruning, upcoming), backfill, rebuild, CLI
 api/                 package openNASR-api: CycleStore, FastAPI app, lookups, airspace index, rate limiter
 deploy/proxmox/install.sh, deploy/guest/guest-setup.sh   container creation + in-container setup
-archiver/deploy, api/deploy   systemd units, env examples, Dockerfiles (Dockerfiles NOT exercised)
+archiver/deploy, api/deploy   systemd units and env examples
+archiver/Dockerfile, api/Dockerfile   images built and smoke-tested in GitHub CI
 docs/openapi.json    the published API contract (generated; a test fails if stale)
 docs/route-coverage.md, docs/local-mode.md
 tests/               about 75 entries; tests/fixtures are small synthetic cycles
@@ -140,10 +141,15 @@ Both guests run signed `v2.0.1` with DuckDB 1.5.6 and retain `v2.0.0` for rollba
 1. **Phase 7 observation is in progress.** The manual production pass on `v2.0.1` exited 0 with `already_published 2026-10-29` and no active alerts. Verify the first timer-triggered pass, then check that the API defaults to 2026-11-26 when that prepublished cycle takes effect. When the FAA posts 2026-12-24, verify its Garage manifest, artifact hashes, and explicit-cycle API response. See [the observation checklist](REPLAN.md#8g-phase-7-observation).
 2. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
 3. **Refactors**: `flightplan.py` is already split (done 2026-11-18, verified identical on 9,316 real routes). Remaining: `_route_procedures.py` is still ~900 lines (its `_ProcedureIndex` could move out); move core into a `core/` directory. Verify any routing change with `tools/route_corpus.py` and by running the same pool sample through the old and new code (usable must stay at 70.3% of every 5th route, 70.5% of the full pool).
-4. **Dockerfiles** (`archiver/Dockerfile`, `api/Dockerfile`) still need testing. The Proxmox LXC installer has been exercised.
-5. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
-6. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
-7. Class B/C/D/E polygons need a different FAA data source, such as shapefiles.
+4. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
+5. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
+6. Class B/C/D/E polygons need a different FAA data source, such as shapefiles.
+
+Docker deployment smoke coverage is complete. CI builds both images and runs
+them as their configured non-root users with networking disabled. The archiver
+publishes a synthetic cycle to a local bucket, and the API fetches it and
+answers readiness and route requests. Production runs in the Proxmox LXCs.
+[First passing CI run](https://github.com/xDecisionSystems/openNASR/actions/runs/44235847511)
 
 ## 9. Owner preferences and working agreements
 
