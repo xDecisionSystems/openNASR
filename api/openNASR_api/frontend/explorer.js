@@ -13,7 +13,7 @@ const views = {
     title: "Find an airport",
     help: "Enter an FAA or ICAO airport identifier.",
     fields: [{ name: "identifier", label: "Airport identifier", example: "KABQ" }],
-    caption: "Query an airport to plot its published runways and helipads.",
+    caption: "Query an airport to plot its runways, helipads, and ILS localizers.",
   },
   airspace: {
     title: "Find airspace at a point",
@@ -51,6 +51,9 @@ let cycleRequest = 0;
 let plotPoints = [];
 let plotBranches = [];
 let partialRoute = false;
+let printing = false;
+let airportCaption = "";
+const ilsPlotNote = "ILS course wedges are illustrative · 700 ft at the runway end · ±2.5° · 20 NM.";
 const savedInputs = new Map();
 const savedResults = new Map();
 
@@ -148,8 +151,12 @@ function resetResult() {
   plotPoints = [];
   plotBranches = [];
   partialRoute = false;
+  airportCaption = "";
   const procedures = currentView === "arrivals" || currentView === "departures";
   canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
+  canvas.closest(".plot-card").classList.remove("ils-plot");
+  byId("ils-toggle").hidden = true;
+  byId("ils-wedges").checked = true;
   byId("plot-title").textContent = {
     airports: "Airport layout", arrivals: "Procedure branches", departures: "Procedure branches",
   }[currentView] || "Coordinate plot";
@@ -275,17 +282,38 @@ function addAirportLayout(airport) {
 
   const runwayCount = plotBranches.filter((branch) => branch.kind === "runway").length;
   const padCount = plotBranches.length - runwayCount;
-  if (!plotBranches.length && airport.position) {
-    plotPoints = [{ ...airport.position, name: airport.icao_id || airport.id }];
-  }
   const unavailable = airport.runways.length - plotBranches.length;
-  const label = [
+  if (!plotBranches.length && airport.position) {
+    plotBranches.push({
+      points: [{ ...airport.position, name: airport.icao_id || airport.id }],
+      color: "#b8f6e7", visible: true,
+    });
+  }
+  const hasReference = plotBranches.some((branch) => !branch.kind);
+  airportCaption = [
     `${runwayCount} of ${runwayRows.length} runways and ${padCount} of ${padRows.length} helipads plotted.`,
     unavailable ? "Some records lack usable geometry." : "",
-    plotPoints.length ? "Showing the airport reference point." : "",
+    hasReference ? "Showing the airport reference point." : "",
   ].filter(Boolean).join(" ");
-  byId("plot-caption").textContent = label;
-  canvas.setAttribute("aria-label", label);
+  byId("plot-caption").textContent = airportCaption;
+  canvas.setAttribute("aria-label", airportCaption);
+
+  const localizers = airport.localizers.map((row) => {
+    const name = [row.id || "Localizer", row.runway_end && `RWY ${row.runway_end}`].filter(Boolean).join(" · ");
+    if (row.position || row.wedge.length) {
+      plotBranches.push({
+        points: row.position ? [{ ...row.position, name }] : [],
+        wedge: row.wedge, kind: "localizer", color: "#ffc0ee", visible: true,
+      });
+    }
+    return [row.id, row.runway_end, coordinates(row.position),
+      row.wedge.length ? "Plotted" : "Geometry unavailable"];
+  });
+  results.append(table("ILS localizers", ["Identifier", "Runway", "Transmitter position", "Course wedge"], localizers));
+  if (airport.localizers.some((row) => row.wedge.length)) {
+    canvas.closest(".plot-card").classList.add("ils-plot");
+    byId("ils-toggle").hidden = false;
+  }
 }
 
 function showResult(data) {
@@ -294,12 +322,17 @@ function showResult(data) {
   if (currentView === "airports") {
     const airport = data.airport;
     const base = airport.base;
+    const print = element("button", "Print airport", "print-airport");
+    print.type = "button";
+    print.addEventListener("click", () => window.print());
+    byId("plot-title").textContent = `${airport.icao_id || airport.id} airport layout`;
     results.append(
       element("h3", base.ARPT_NAME || airport.icao_id || airport.id, "result-title"),
       facts([
         ["Airport", airport.icao_id || airport.id], ["City", [base.CITY, base.STATE_CODE].filter(Boolean).join(", ")],
         ["Position", coordinates(airport.position)], ["Elevation", base.ELEV && `${base.ELEV} ft`],
       ]),
+      print,
     );
     addAirportLayout(airport);
   } else if (currentView === "airspace") {
@@ -357,7 +390,15 @@ function drawPlot() {
   const padding = 34;
   const available = (point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lon);
   const plotted = plotBranches.length ? plotBranches : [{ points: plotPoints, color: "#76dfca", visible: true }];
-  const points = plotted.flatMap((branch) => branch.points).filter(available);
+  const showWedges = printing || byId("ils-wedges").checked;
+  const wedges = showWedges ? plotted.filter((branch) => branch.wedge?.length) : [];
+  const note = byId("plot-caption");
+  if (!byId("ils-toggle").hidden) {
+    const caption = wedges.length ? `${airportCaption} ${ilsPlotNote}` : airportCaption;
+    if (note.textContent !== caption) note.textContent = caption;
+    canvas.setAttribute("aria-label", note.textContent);
+  }
+  const points = [...plotted.flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge)].filter(available);
   const reference = points[0]?.lon || 0;
   const project = (point) => ({
     ...point,
@@ -386,8 +427,8 @@ function drawPlot() {
   const lonStep = gridStep(scale * longitudeFactor);
   const latStep = gridStep(scale);
   const degreeLabel = (value) => `${Number(value.toFixed(4))}°`;
-  ctx.strokeStyle = "#355264";
-  ctx.fillStyle = "#8dafbd";
+  ctx.strokeStyle = printing ? "#c5d1d8" : "#355264";
+  ctx.fillStyle = printing ? "#425c6e" : "#8dafbd";
   ctx.font = "10px system-ui";
   const lonStart = centerX - width / (2 * scale * longitudeFactor);
   const lonEnd = centerX + width / (2 * scale * longitudeFactor);
@@ -407,8 +448,29 @@ function drawPlot() {
   ctx.lineWidth = 2;
   ctx.setLineDash(partialRoute ? [5, 5] : []);
   const visible = new Map();
+  const plotColor = (branch) => {
+    if (!printing) return branch.color;
+    if (branch.kind === "localizer") return "#94236f";
+    if (branch.kind === "pad") return "#985900";
+    return "#12534f";
+  };
+  for (const branch of wedges) {
+    ctx.beginPath();
+    branch.wedge.forEach((vertex, index) => {
+      const point = project(vertex);
+      const [x, y] = xy(point.x, point.lat);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = printing ? "#94236f20" : "#ffc0ee30";
+    ctx.strokeStyle = plotColor(branch);
+    ctx.lineWidth = 1.5;
+    ctx.fill();
+    ctx.stroke();
+  }
   for (const branch of plotted.filter((item) => item.visible)) {
-    ctx.strokeStyle = branch.color;
+    ctx.strokeStyle = plotColor(branch);
     ctx.lineWidth = branch.kind === "runway" ? 5 : 2;
     ctx.beginPath();
     let connected = false;
@@ -422,7 +484,7 @@ function drawPlot() {
       if (connected) ctx.lineTo(x, y);
       else ctx.moveTo(x, y);
       connected = true;
-      visible.set(JSON.stringify([point.name, point.lat, point.lon]), { ...point, kind: branch.kind });
+      visible.set(JSON.stringify([point.name, point.lat, point.lon]), { ...point, kind: branch.kind, color: plotColor(branch) });
     }
     ctx.stroke();
   }
@@ -430,13 +492,24 @@ function drawPlot() {
   const shown = [...visible.values()];
   shown.forEach((point) => {
     const [x, y] = xy(point.x, point.lat);
+    if (point.kind === "localizer") {
+      ctx.fillStyle = point.color;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x + 5, y);
+      ctx.lineTo(x, y + 5);
+      ctx.lineTo(x - 5, y);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
     if (point.kind === "pad") {
-      ctx.strokeStyle = "#ffc277";
+      ctx.strokeStyle = point.color;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(x - 5, y - 5, 10, 10);
       return;
     }
-    ctx.fillStyle = "#b8f6e7";
+    ctx.fillStyle = printing ? "#12534f" : "#b8f6e7";
     ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
   });
   const labels = [];
@@ -468,7 +541,7 @@ function drawPlot() {
     }
     const right = left + textWidth;
     labels.push({ left, right, top });
-    ctx.fillStyle = point.kind === "pad" ? "#ffc277" : "#b8f6e7";
+    ctx.fillStyle = point.kind === "pad" || point.kind === "localizer" || printing ? point.color : "#b8f6e7";
     ctx.fillText(point.name, left, top + 10);
   }
 }
@@ -545,5 +618,8 @@ byId("apply-key").addEventListener("click", () => {
   loadCycles();
 });
 new ResizeObserver(drawPlot).observe(canvas.parentElement);
+byId("ils-wedges").addEventListener("change", drawPlot);
+window.addEventListener("beforeprint", () => { printing = true; drawPlot(); });
+window.addEventListener("afterprint", () => { printing = false; drawPlot(); });
 setView(currentView);
 loadCycles();

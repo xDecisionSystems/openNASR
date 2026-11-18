@@ -32,6 +32,13 @@
             ],
             "title": "Id"
           },
+          "localizers": {
+            "items": {
+              "$ref": "#/components/schemas/Localizer"
+            },
+            "title": "Localizers",
+            "type": "array"
+          },
           "position": {
             "anyOf": [
               {
@@ -69,7 +76,8 @@
           "position",
           "base",
           "runways",
-          "runway_ends"
+          "runway_ends",
+          "localizers"
         ],
         "title": "AirportEntity",
         "type": "object"
@@ -530,6 +538,58 @@
           "mode"
         ],
         "title": "InputEcho",
+        "type": "object"
+      },
+      "Localizer": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Position"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runway_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runway End"
+          },
+          "wedge": {
+            "description": "Vertices of the illustrative localizer course wedge",
+            "items": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "title": "Wedge",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "runway_end",
+          "position",
+          "wedge"
+        ],
+        "title": "Localizer",
         "type": "object"
       },
       "NavaidEntity": {
@@ -998,7 +1058,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.1"
+    "version": "0.2.2"
   },
   "openapi": "3.1.0",
   "paths": {

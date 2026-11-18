@@ -59,10 +59,13 @@ textarea { min-height: 74px; resize: vertical; }
 .plot-card { display: flex; flex-direction: column; background: #12283b; color: #ebf6f7; border-color: #294758; }
 .plot-header { display: flex; justify-content: space-between; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #36515e; }
 .plot-header span, .plot-caption { color: #b0c9d0; font-size: .8rem; }
+.ils-toggle { margin-left: auto; white-space: nowrap; font-size: .8rem; }
+.ils-toggle input { width: auto; vertical-align: middle; }
 .plot { position: relative; flex: 1; min-height: 235px; }
 canvas { width: 100%; height: 100%; position: absolute; inset: 0; }
 .plot-caption { position: absolute; bottom: 8px; left: 16px; right: 16px; pointer-events: none; }
 .procedure-plot .plot { min-height: 410px; }
+.ils-plot .plot { min-height: 360px; }
 .plot-legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border-top: 1px solid #36515e; }
 .plot-legend[hidden] { display: none; }
 .plot-legend button { display: inline-flex; gap: 6px; align-items: center; border: 1px solid #56717d; border-radius: 5px; background: #203f50; color: #e8f5f5; padding: 3px 7px; font-size: .77rem; }
@@ -76,6 +79,7 @@ canvas { width: 100%; height: 100%; position: absolute; inset: 0; }
 .result-block + .result-block { margin-top: 19px; }
 .result-block h3 { font-size: .97rem; margin-bottom: 7px; }
 .result-title { font-size: 1.25rem; letter-spacing: -.02em; margin-bottom: 8px; }
+.print-airport { background: white; border: 1px solid #b8c8ce; border-radius: 5px; padding: 4px 10px; color: var(--accent); margin-bottom: 12px; }
 .facts { display: flex; flex-wrap: wrap; gap: 6px 19px; margin: 0 0 12px; }
 .facts div { display: flex; gap: 6px; }
 .facts dt { color: var(--muted); }
@@ -99,4 +103,18 @@ footer span { border-left: 1px solid #bdccd0; padding-left: 12px; }
   .procedure-plot .plot { min-height: 360px; }
   .tabs button { padding-inline: 11px; }
   .intro { margin-top: 23px; }
+}
+@media print {
+  body { background: white; }
+  .shell { width: 100%; }
+  .topbar, .intro, .tabs, .query-card, .print-airport, .ils-toggle, .raw, footer { display: none; }
+  .workspace { display: block; }
+  .card { box-shadow: none; }
+  .plot-card { break-inside: avoid; background: white; color: var(--ink); border-color: var(--line); }
+  .plot-header { border-color: var(--line); }
+  .plot-header span, .plot-caption { color: var(--muted); }
+  .plot-card .plot { min-height: 390px; }
+  canvas { object-fit: contain; object-position: center top; }
+  .result-block h3 { break-after: avoid; }
+  tr { break-inside: avoid; }
 }

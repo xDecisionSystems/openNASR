@@ -54,10 +54,14 @@
       </section>
 
       <section class="card plot-card" aria-labelledby="plot-title">
-        <div class="plot-header"><h2 id="plot-title">Coordinate plot</h2><span id="plot-note">WGS 84</span></div>
+        <div class="plot-header">
+          <h2 id="plot-title">Coordinate plot</h2>
+          <label class="ils-toggle" id="ils-toggle" hidden><input id="ils-wedges" type="checkbox" checked> ILS wedges</label>
+          <span id="plot-note">WGS 84</span>
+        </div>
         <div class="plot">
           <canvas id="plot" role="img" aria-label="Latitude and longitude grid"></canvas>
-          <p class="plot-caption" id="plot-caption">Query an airport to plot its position.</p>
+          <p class="plot-caption" id="plot-caption">Query an airport to plot its runways, helipads, and ILS localizers.</p>
         </div>
         <div id="plot-legend" class="plot-legend" aria-label="Visible procedure branches" hidden></div>
       </section>

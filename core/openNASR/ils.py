@@ -16,6 +16,26 @@ LOCALIZER_HALF_ANGLE_DEG = 2.5
 DEFAULT_LOCALIZER_WEDGE_DISTANCE_NM = 20.0
 
 
+def localizer_true_bearing(record: Mapping[str, object]) -> float:
+    """Convert the FAA magnetic approach bearing and variation to true bearing."""
+
+    try:
+        approach_bearing = float(str(record["APCH_BEAR"]))
+        variation = float(str(record.get("MAG_VAR") or 0.0))
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            "localizer plots require numeric APCH_BEAR and MAG_VAR values"
+        ) from error
+    hemisphere = str(record.get("MAG_VAR_HEMIS") or "").strip().upper()
+    if hemisphere == "W":
+        variation = -abs(variation)
+    elif hemisphere == "E":
+        variation = abs(variation)
+    if not isfinite(approach_bearing) or not isfinite(variation):
+        raise ValueError("localizer bearing and magnetic variation must be finite")
+    return (approach_bearing + variation) % 360.0
+
+
 def localizer_wedge_xy(
     threshold_x: float,
     threshold_y: float,

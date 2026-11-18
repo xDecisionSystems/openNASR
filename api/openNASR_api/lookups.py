@@ -11,9 +11,13 @@ from collections.abc import Callable
 import re
 from typing import Any
 
+from numpy import asarray
+
 from openNASR.arrivals import STAR_KEY
+from openNASR.cfcn import xy2ll
 from openNASR.departure import DEPARTURE_KEY
 from openNASR.exceptions import AmbiguousRecordError, RecordNotFoundError
+from openNASR.ils import localizer_true_bearing, localizer_wedge_xy
 from openNASR.query import QueryFilter, QueryTableNotFoundError
 
 MAX_ROWS = 5_000
@@ -46,6 +50,56 @@ def _position(row: dict[str, str]) -> dict[str, float] | None:
         return None
 
 
+def _survey_position(row: dict[str, str]) -> dict[str, float] | None:
+    point = _position(row)
+    if point and abs(point["lat"]) <= 90 and abs(point["lon"]) <= 180:
+        return point
+    return None
+
+
+def _localizers(
+    query: Callable[..., Any], site_filters: list[QueryFilter], ends: list[dict]
+) -> list[dict]:
+    try:
+        rows = _rows(query, "ILS_BASE", *site_filters)
+    except QueryTableNotFoundError:
+        return []
+    thresholds: dict[str, list[dict[str, float]]] = {}
+    for end in ends:
+        point = _survey_position(end)
+        if point and (identifier := end.get("RWY_END_ID")):
+            thresholds.setdefault(identifier, []).append(point)
+    localizers = []
+    for row in rows:
+        runway_end = row.get("RWY_END_ID")
+        position = _survey_position(row)
+        candidates = thresholds.get(runway_end, []) if runway_end else []
+        wedge = []
+        if len(candidates) == 1:
+            threshold = candidates[0]
+            try:
+                x, y = localizer_wedge_xy(0, 0, localizer_true_bearing(row))
+            except ValueError:
+                pass
+            else:
+                latitudes, longitudes = xy2ll(
+                    asarray(x), asarray(y), llc=(threshold["lat"], threshold["lon"])
+                )
+                wedge = [
+                    {"lat": float(lat), "lon": float((lon + 180) % 360 - 180)}
+                    for lat, lon in zip(latitudes, longitudes, strict=True)
+                ]
+        localizers.append(
+            {
+                "id": row.get("ILS_LOC_ID"),
+                "runway_end": runway_end,
+                "position": position,
+                "wedge": wedge,
+            }
+        )
+    return localizers
+
+
 def airport(query: Callable[..., Any], identifier: str) -> dict:
     ident = identifier.strip().upper()
     base = _rows(query, "APT_BASE", QueryFilter.eq("ARPT_ID", ident))
@@ -56,17 +110,18 @@ def airport(query: Callable[..., Any], identifier: str) -> dict:
     if len(base) > 1:
         raise NotFoundError(f"airport {ident} matches {len(base)} records")
     site = base[0].get("SITE_NO")
+    site_filters = [QueryFilter.eq("SITE_NO", site)] if site else []
+    if site_type := base[0].get("SITE_TYPE_CODE"):
+        site_filters.append(QueryFilter.eq("SITE_TYPE_CODE", site_type))
+    ends = _rows(query, "APT_RWY_END", *site_filters) if site else []
     return {
         "id": base[0].get("ARPT_ID"),
         "icao_id": base[0].get("ICAO_ID"),
         "position": _position(base[0]),
         "base": base[0],
-        "runways": _rows(query, "APT_RWY", QueryFilter.eq("SITE_NO", site))
-        if site
-        else [],
-        "runway_ends": _rows(query, "APT_RWY_END", QueryFilter.eq("SITE_NO", site))
-        if site
-        else [],
+        "runways": _rows(query, "APT_RWY", *site_filters) if site else [],
+        "runway_ends": ends,
+        "localizers": _localizers(query, site_filters, ends) if site else [],
     }
 
 

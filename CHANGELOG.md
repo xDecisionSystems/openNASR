@@ -7,6 +7,13 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.2]
+
+### Added
+
+- Airport results and printouts display surveyed ILS localizers and illustrative
+  course wedges. The Airport tab can hide wedges for a closer view of the layout.
+
 ## [2.1.1]
 
 ### Added

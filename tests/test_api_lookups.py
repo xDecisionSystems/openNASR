@@ -8,6 +8,51 @@ from openNASR.exceptions import RecordNotFoundError
 from openNASR.query import QueryTableNotFoundError
 from openNASR_api import lookups
 
+
+def test_airport_localizer_wedge_extends_outbound_from_the_runway():
+    site = {"SITE_NO": "123", "SITE_TYPE_CODE": "A"}
+    tables = {
+        "APT_BASE": [{**site, "ARPT_ID": "TST", "ICAO_ID": "KTST"}],
+        "APT_RWY": [],
+        "APT_RWY_END": [
+            {**site, "RWY_END_ID": "09", "LAT_DECIMAL": "40", "LONG_DECIMAL": "-75"},
+        ],
+        "ILS_BASE": [
+            {
+                **site,
+                "RWY_END_ID": "09",
+                "ILS_LOC_ID": "TST",
+                "LAT_DECIMAL": "40",
+                "LONG_DECIMAL": "-74.98",
+                "APCH_BEAR": "95",
+                "MAG_VAR": "5",
+                "MAG_VAR_HEMIS": "W",
+            },
+            {**site, "RWY_END_ID": "27", "ILS_LOC_ID": "OTHER"},
+        ],
+    }
+
+    def query(table, *, filters, page_size, cursor):
+        rows = [
+            row
+            for row in tables[table]
+            if all(row.get(f.field) == f.value for f in filters)
+        ]
+        return SimpleNamespace(rows=rows, next_cursor=None)
+
+    localizer, incomplete = lookups.airport(query, "KTST")["localizers"]
+    assert localizer["position"] == {"lat": 40, "lon": -74.98}
+    near_left, far_left, far_right, near_right = localizer["wedge"]
+    assert near_left["lon"] == pytest.approx(-75)
+    assert near_right["lon"] == pytest.approx(-75)
+    assert far_left["lon"] < -75.4
+    assert far_right["lon"] < -75.4
+    assert abs(far_left["lat"] - far_right["lat"]) > 10 * abs(
+        near_left["lat"] - near_right["lat"]
+    )
+    assert incomplete["position"] is None and incomplete["wedge"] == []
+
+
 BASE = [
     {
         "REGULATORY": "Y",

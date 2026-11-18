@@ -17,7 +17,11 @@ from shapely.geometry.base import BaseGeometry
 
 from .cfcn import ll2xy, xy2ll
 from .flightplan import RouteResolver
-from .ils import DEFAULT_LOCALIZER_WEDGE_DISTANCE_NM, localizer_wedge_xy
+from .ils import (
+    DEFAULT_LOCALIZER_WEDGE_DISTANCE_NM,
+    localizer_true_bearing,
+    localizer_wedge_xy,
+)
 from .indexing import (
     NormalizedIndexCache,
     cached_normalized_column_index,
@@ -1368,26 +1372,6 @@ def plot_artcc(
     return figure, axes
 
 
-def _localizer_true_bearing(record: Mapping[str, object]) -> float:
-    """Convert the FAA magnetic approach bearing and variation to true bearing."""
-
-    try:
-        approach_bearing = float(str(record["APCH_BEAR"]))
-        variation = float(str(record.get("MAG_VAR") or 0.0))
-    except (KeyError, TypeError, ValueError) as error:
-        raise ValueError(
-            "localizer plots require numeric APCH_BEAR and MAG_VAR values"
-        ) from error
-    hemisphere = _text(record.get("MAG_VAR_HEMIS"))
-    if hemisphere == "W":
-        variation = -abs(variation)
-    elif hemisphere == "E":
-        variation = abs(variation)
-    if not np.isfinite(approach_bearing) or not np.isfinite(variation):
-        raise ValueError("localizer bearing and magnetic variation must be finite")
-    return (approach_bearing + variation) % 360.0
-
-
 def plot_ils_localizer(
     nasr: Mapping[str, DataFrame],
     ils: Mapping[str, object],
@@ -1498,7 +1482,7 @@ def plot_ils_localizer(
         wedge_x, wedge_y = localizer_wedge_xy(
             0.0,
             0.0,
-            _localizer_true_bearing(ils),
+            localizer_true_bearing(ils),
             distance_nm=wedge_distance_nm,
         )
         wedge_latitudes, wedge_longitudes = xy2ll(
@@ -1531,7 +1515,7 @@ def plot_ils_localizer(
             llc=threshold,
         )
         runway_length = float(np.hypot(local_x[0], local_y[0]))
-        outbound = np.radians((_localizer_true_bearing(ils) + 180.0) % 360.0)
+        outbound = np.radians((localizer_true_bearing(ils) + 180.0) % 360.0)
         glide_distance = float(
             local_x[1] * np.sin(outbound) + local_y[1] * np.cos(outbound)
         )
