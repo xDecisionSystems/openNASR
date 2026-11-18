@@ -46,7 +46,7 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 - The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). **Workflow (owner's rule): commit directly to `main`. No feature branches, no PRs, no merge commits.** Tags are the only release step.
 - Added after the first handover: Python 3.10 test compatibility, a cache-preserving store refresh, hardened `max_segment_nm` limits, `NASR.close()`, the signed-release workflow (`.github/workflows/release.yml`) and the updater (`deploy/opennasr-update`, tested by `tests/test_deployment_update.py`).
-- **`v2.0.0` is released** (annotated tag on `main`, signed GitHub release with the four wheels, `opennasr-update`, `manifest.json` and its Sigstore bundle; verified: hashes match the manifest, `cosign verify-blob` OK). A `v*` tag starts only the signed deployment release (`release.yml`). **Nothing is on PyPI**: `publish-to-pypi.yml` is manual-only (Actions tab, choose the tag, then the owner approves the `pypi` environment). The owner said PyPI is lower priority.
+- [`v2.0.1`](https://github.com/xDecisionSystems/openNASR/releases/tag/v2.0.1) is the current signed release. Its Sigstore manifest covers the four wheels, the updater, and both dependency locks. All seven hashes and the signature were verified independently. A `v*` tag starts the signed deployment release (`release.yml`). PyPI publishing remains pending and uses a separate manual workflow with owner approval. The owner said PyPI is lower priority.
 - The first `v2.0.0` tag was moved once: its release run failed after signing because the publish job had no checkout (`gh` needs `GH_REPO`), the fix was merged (PR #5), and the unreleased tag was re-created on the fixed commit. Cutting a release is therefore tested end to end. If a release run fails after tagging, nothing is published; fix on `main`, then delete and re-create the tag only if no release exists.
 
 ## 4. Build, test, lint (all green at handover)
@@ -102,7 +102,7 @@ Run with `python tools/route_path_validation.py --full-file benchmarks/data/exam
 | | Archiver | API |
 |---|---|---|
 | LXC | 124 `opennasr-archiver`, VLAN 20 `10.10.20.124` | 125 `opennasr-api`, VLAN 20 `10.10.20.125` |
-| Install | `/opt/openNASR/venv` (wheels), user `opennasr` | same |
+| Install | Signed `v2.0.1` under `/opt/openNASR/releases/`, user `opennasr` | same |
 | Settings | `/etc/openNASR/archiver.env` (mode 640) | `/etc/openNASR/api.env` (mode 640) |
 | Run | `openNASR-archiver.timer` daily 06:15 UTC +<=20 min; service is a oneshot | `openNASR-api.service`, port 8000 |
 | Disk / RAM | 24 G / 2 GB | 8 G / 3 GB (`MemoryMax=3G`) |
@@ -114,38 +114,36 @@ Run with `python tools/route_path_validation.py --full-file benchmarks/data/exam
 - Alerts: Slack via `OPENNASR_ALERT_WEBHOOK_URL`; fire once, resolve once, state in `/var/lib/openNASR-archiver/state.json`. Kinds: source_unavailable, validation_failed, build_failed, bucket_unavailable, no_new_cycle (28+3 days), upcoming_cycle_failed.
 - Garage keys (created 2026-11-16 via the Garage CLI in LXC 121): `opennasr-archiver` read+write, `opennasr-api` read-only, neither can create buckets.
 
-Quick health checks:
+### Quick health checks
 
 ```sh
 curl -s https://opennasr.xds-lab.com/ready
+curl -s https://opennasr.xds-lab.com/v1/cycles
 curl -s -X POST https://opennasr.xds-lab.com/v1/route/resolve -H 'content-type: application/json' -d '{"route":"KABQ.DOOKK3.TXO..KTYR"}'
-ssh root@100.100.10.10 'pct exec 124 -- systemctl start openNASR-archiver.service; pct exec 124 -- journalctl -u openNASR-archiver -n 10 --no-pager'
-ssh root@100.100.10.10 'pct exec 124 -- /opt/openNASR/venv/bin/openNASR-archiver --env-file /etc/openNASR/archiver.env status'
+ssh root@100.100.10.10 'pct exec 124 -- systemctl list-timers openNASR-archiver.timer --all; pct exec 124 -- journalctl -u openNASR-archiver -n 10 --no-pager'
 ```
 
 ### Secrets (names only; never print values)
 - `openNASR/.env` (gitignored, mode 600): `OPENNASR_S3_*`, `OPENNASR_ARCHIVER_S3_*`, `OPENNASR_API_S3_*`, `OPENNASR_ALERT_WEBHOOK_URL`.
 - `/srv/projects/IT-management-UCF/.env`: the lab's admin tokens (NPMplus, Tailscale, Garage, Slack). Used only for infra tasks the owner asked for.
 
-## 8. Not done / next steps, in suggested order
+## 8. Next steps
 
-Done since the first version of this document: PR merged and CI green; Gatus + Homepage monitoring for the API; `v2.0.0` released and signed; both containers updated from it with the real updater (update, rollback and roll-forward exercised on the API).
+Both guests run signed `v2.0.1` with DuckDB 1.5.6 and retain `v2.0.0` for rollback. The updater verifies dependency locks, checks archiver bucket access before switching, and prunes superseded venvs. For non-login `pct exec` shells, export `PATH="/usr/local/bin:/usr/local/sbin:$PATH"` so the updater can find Cosign. See [RELEASE.md](RELEASE.md) for the rollout procedure.
 
-1. The first signed rollout used `v2.0.0` on LXC 124 and 125. On the API it exercised update, a no-op rerun, rollback, and roll-forward. For the next release, tag `vX.Y.Z` on `main` after CI is green, wait for the release run, then update each container (API first). The updater is at `/usr/local/sbin/opennasr-update` and the pinned Cosign v3.1.4 binary is at `/usr/local/bin/cosign`.
-2. Both guests now run signed `v2.0.1`, with `v2.0.0` retained for rollback. The updater prunes superseded venvs, checks archiver bucket access before a switch, and installs hash-pinned dependencies from the signed manifest. Both guests kept DuckDB 1.5.6. For non-login `pct exec` shells, export `PATH="/usr/local/bin:/usr/local/sbin:$PATH"` so the updater can find Cosign.
-3. **Phase 7 observation**: watch the archiver through the next FAA cycle. 2026-11-26 is already published; the next new cycle (2026-12-24) should appear around early December. Check alerts, manifests and hashes.
-4. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
-5. **Refactors**: `flightplan.py` is already split (done 2026-11-18, verified identical on 9,316 real routes). Remaining: `_route_procedures.py` is still ~900 lines (its `_ProcedureIndex` could move out); move core into a `core/` directory. Verify any routing change with `tools/route_corpus.py` and by running the same pool sample through the old and new code (usable must stay at 70.3% of every 5th route, 70.5% of the full pool).
-6. **Dockerfiles (`archiver/Dockerfile`, `api/Dockerfile`) are not exercised.** Only the Proxmox LXC installer path has been run.
-7. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
-8. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
-9. Class B/C/D/E polygons would need a different FAA data source (shapefiles), not the CSV.
+1. **Phase 7 observation is in progress.** The manual production pass on `v2.0.1` exited 0 with `already_published 2026-10-29` and no active alerts. Verify the first timer-triggered pass, then check that the API defaults to 2026-11-26 when that prepublished cycle takes effect. When the FAA posts 2026-12-24, verify its Garage manifest, artifact hashes, and explicit-cycle API response. See [the observation checklist](REPLAN.md#8g-phase-7-observation).
+2. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
+3. **Refactors**: `flightplan.py` is already split (done 2026-11-18, verified identical on 9,316 real routes). Remaining: `_route_procedures.py` is still ~900 lines (its `_ProcedureIndex` could move out); move core into a `core/` directory. Verify any routing change with `tools/route_corpus.py` and by running the same pool sample through the old and new code (usable must stay at 70.3% of every 5th route, 70.5% of the full pool).
+4. **Dockerfiles** (`archiver/Dockerfile`, `api/Dockerfile`) still need testing. The Proxmox LXC installer has been exercised.
+5. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
+6. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
+7. Class B/C/D/E polygons need a different FAA data source, such as shapefiles.
 
 ## 9. Owner preferences and working agreements
 
 - **Commit straight to `main`.** The owner does not want PRs, feature branches or merge commits ("everything should just be committed"). `git config pull.ff only` is set so a pull never creates a merge commit.
 - **Do the work; do not keep re-asking.** The owner reacted badly to repeated, rephrased questions. Make a recommendation, state it, proceed. Ask only for decisions that are really theirs (hosts, keys, outward-facing actions).
-- **Outward-facing or hard-to-reverse actions need their go-ahead**: pushing to `main`, tagging/publishing, creating infrastructure, using admin tokens, sending messages. They have approved the infrastructure steps listed in section 7 only.
+- Tagging releases, publishing to PyPI, creating infrastructure, using admin tokens, and sending messages require the owner's go-ahead.
 - **Precise language matters.** They pushed back on calling normal FAA branching a "failure" and on "ambiguous". Prefer the outcome classes in section 6. Never present a guess as a resolved point; unsupported things become diagnostics.
 - **Infrastructure changes are documented in `/srv/projects/IT-management-UCF/documentation`** (host page, service page, a dated change record, inventory/README links), then committed and pushed. See `changes/2026-11-18-create-opennasr-lxcs.md` and `services/opennasr.md` for the pattern.
 - Do not print secrets in output, commit messages, docs or Slack. Delete temporary secret files (`shred -u`).
@@ -154,8 +152,8 @@ Done since the first version of this document: PR merged and CI green; Gatus + H
 
 ## 10. Where the details are
 
-- `REPLAN.md`: phase tables (8a-8f), decision log (section 9), real-data findings with numbers.
-- `CHANGELOG.md` ("Unreleased" has the 2.0 breaking changes and fixes).
+- `REPLAN.md`: phase tables (8a–8g), decision log (section 9), and real-data findings.
+- `CHANGELOG.md`: release notes for 2.0.1 and earlier versions.
 - `docs/openapi.json` (API contract), `docs/route-coverage.md` (what each route construct does), `docs/local-mode.md`.
 - `archiver/README.md`, `api/README.md`, `deploy/proxmox/install.sh --help`.
 - Lab docs: `IT-management-UCF/documentation/services/{opennasr,garage}.md`, `hosts/{opennasr-api,opennasr-archiver,npmplus}.md`.
