@@ -476,3 +476,7 @@ resolution against that explicit cycle. For the integrity check, use
 `openNASR_contract.fetch_build` with a fresh temporary cache for the DuckDB and
 sidecar, then download the archive with read-only bucket access and compare its
 SHA-256 with the manifest's archive hash.
+
+### 2.14 Ambiguity returns every candidate (owner decision, 2026-11-18)
+
+An ambiguous identifier (about 68 of 46,580 pool routes, e.g. `ZFP` as NDB and VOR/DME) stays unresolved, but its diagnostic now carries `detail.candidates`: name, kind, navaid type and coordinates of each record, so the caller decides. `_Waypoint.subtype` holds the navaid type. Needs a release to reach the live API.

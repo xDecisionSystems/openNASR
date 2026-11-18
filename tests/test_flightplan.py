@@ -2089,3 +2089,53 @@ def test_lat_lon_waypoints_are_labelled(tables):
     result = RouteResolver(tables).resolve("KAAA 3800N07730W KBBB")
 
     assert [p.kind for p in result.waypoints] == ["airport", "latlon", "airport"]
+
+
+def test_an_ambiguous_identifier_returns_every_candidate_with_its_coordinates(tables):
+    tables["NAV_BASE"] = pd.DataFrame(
+        [
+            {
+                "NAV_ID": "ZFP",
+                "NAV_TYPE": nav_type,
+                "LAT_DECIMAL": lat,
+                "LONG_DECIMAL": lon,
+            }
+            for nav_type, lat, lon in (
+                ("NDB", "36.5", "-78.7"),
+                ("VOR/DME", "36.6", "-78.6"),
+            )
+        ]
+    )
+
+    result = RouteResolver(tables).resolve("KAAA ZFP KBBB")
+
+    assert not result.complete and result.points == ()
+    (diagnostic,) = result.diagnostics
+    assert diagnostic.code == "AmbiguousRecordError"
+    assert diagnostic.token == "ZFP"
+    assert diagnostic.detail["candidates"] == [
+        {"name": "ZFP", "kind": "navaid", "lat": 36.5, "lon": -78.7, "type": "NDB"},
+        {"name": "ZFP", "kind": "navaid", "lat": 36.6, "lon": -78.6, "type": "VOR/DME"},
+    ]
+
+
+def test_procedure_ambiguity_candidates_are_plain_json(tables):
+    import json
+
+    result = RouteResolver(_shared_star_tables(tables)).resolve("KAAA SHARED3 KBBB")
+    # (a body split is a warning, not an ambiguity; build a real ambiguity instead)
+    assert result.diagnostics[0].code == "procedure_branches"
+
+    tables["STAR_BASE"] = pd.DataFrame(
+        [{"STAR_COMPUTER_CODE": "CHOICE3", "ARTCC": "ZJX"}]
+    )
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            _star_row("CHOICE3", "BODY", "", point, seq, body=f"{entry} ARRIVAL")
+            for entry in ("ALPHA", "BRAVO")
+            for seq, point in (("10", entry), ("20", "KBBB"))
+        ]
+    )
+    ambiguous = RouteResolver(tables).resolve("KAAA CHOICE3 KBBB")
+    for item in ambiguous.diagnostics:
+        json.dumps(item.detail)  # every candidate must serialize

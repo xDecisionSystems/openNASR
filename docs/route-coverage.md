@@ -17,7 +17,7 @@ the 2026-10-29 cycle and a 46,580-route pool (70.5% usable; see REPLAN.md).
 | Runway- or configuration-dependent branches | `GRNCH5`, `MONTN2.SEA` | partial | Only the portion common to all branches is included; `procedure_branches` warning lists the split and each branch. |
 | Departure with no published points | `SLC4.TCH` | supported | Ends at the fix named by the computer code suffix; `procedure_geometry_unpublished` info note. |
 | Speed / level group, `/` suffix | `/N0450F350`, `/0354` | supported | Ignored (not geometry). |
-| Two identifiers, same name | `ZFP` (NDB and VOR/DME) | diagnostic | `AmbiguousRecordError`; the route text does not decide. Under discussion. |
+| Two identifiers, same name | `ZFP` (NDB and VOR/DME) | diagnostic | `AmbiguousRecordError`; the resolver does not pick one. The diagnostic's `detail.candidates` lists every candidate with name, kind, type (for navaids) and lat/lon so the caller can choose (owner decision, 2026-11-18). |
 | Identifier not in this cycle | `CHSLY7` | diagnostic | `RecordNotFoundError`; routes filed against another cycle. |
 | Foreign airport, FIR airway, border point | `CYUL`, `UL6` | out of scope | `UnsupportedRouteContentError`. |
 | FAA oceanic coordinate | `4300N/05000W` | out of scope | `UnsupportedRouteContentError`. |

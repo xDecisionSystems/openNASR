@@ -62,6 +62,8 @@ class _Waypoint:
     longitude: float
     # Provenance only: two records at one place are the same waypoint.
     kind: str = field(default="", compare=False)
+    # NAV_TYPE for navaids (for example "NDB" or "VOR/DME"); empty otherwise.
+    subtype: str = field(default="", compare=False)
 
 
 @dataclass(frozen=True)

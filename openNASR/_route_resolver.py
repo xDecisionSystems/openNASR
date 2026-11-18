@@ -31,6 +31,7 @@ from ._route_procedures import (
 from ._route_tokenizer import _recognized_unsupported_content, _tokenize_flight_plan
 from ._route_waypoints import _waypoint, _WaypointResolver
 from .exceptions import (
+    AmbiguousRecordError,
     ConfigurationError,
     OpenNASRError,
     UnsupportedRouteContentError,
@@ -454,12 +455,38 @@ class RouteResolver:
         )
 
 
+def _candidate(value: object) -> object:
+    """A JSON-safe description of one ambiguity candidate."""
+
+    if isinstance(value, _Waypoint):
+        described: dict[str, object] = {
+            "name": value.identifier,
+            "kind": value.kind,
+            "lat": value.latitude,
+            "lon": value.longitude,
+        }
+        if value.subtype:
+            described["type"] = value.subtype
+        return described
+    if isinstance(value, (tuple, list)):
+        return [_candidate(item) for item in value]
+    return value if isinstance(value, (str, int, float, bool)) else str(value)
+
+
 def _error_diagnostic(error: OpenNASRError) -> RouteDiagnostic:
+    detail: dict[str, object] = {}
+    if isinstance(error, AmbiguousRecordError):
+        # Hand the caller every candidate so they can choose; the resolver does not.
+        detail = {
+            "entity_type": error.entity_type,
+            "candidates": [_candidate(item) for item in error.candidates],
+        }
     return RouteDiagnostic(
         code=type(error).__name__,
         message=str(error),
         token=getattr(error, "token", None),
         position=getattr(error, "position", None),
+        detail=detail,
     )
 
 

@@ -68,7 +68,10 @@ class _WaypointResolver:
                     if not identifier:
                         continue
                     waypoint = _Waypoint(
-                        identifier, *coordinates, kind=_KIND_BY_TABLE[table]
+                        identifier,
+                        *coordinates,
+                        kind=_KIND_BY_TABLE[table],
+                        subtype=_text(nav_type) if table == "NAV_BASE" else "",
                     )
                     candidates.setdefault(identifier, []).append(waypoint)
                     if table == "NAV_BASE" and _text(nav_type) != "VOT":
@@ -166,7 +169,12 @@ def _waypoint(
             coordinates = _coordinates(row)
             if coordinates is not None:
                 waypoint = _Waypoint(
-                    identifier, *coordinates, kind=_KIND_BY_TABLE[table]
+                    identifier,
+                    *coordinates,
+                    kind=_KIND_BY_TABLE[table],
+                    subtype=(
+                        _text(row.get("NAV_TYPE", "")) if table == "NAV_BASE" else ""
+                    ),
                 )
                 candidates.append(waypoint)
                 if table == "NAV_BASE" and _text(row.get("NAV_TYPE", "")) != "VOT":

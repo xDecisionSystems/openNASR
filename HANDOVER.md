@@ -143,7 +143,7 @@ Both guests run signed `v2.0.1` with DuckDB 1.5.6 and retain `v2.0.0` for rollba
 2. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
 3. **Refactors**: `flightplan.py` is a compatibility facade, and procedure lookup indexes now live in `_route_procedure_index.py`. The extraction preserved byte-identical results on 9,316 sampled routes. Moving core into a `core/` directory remains open. Verify future routing changes with `tools/route_corpus.py` and compare the same pool sample through the old and new code.
 4. **Backups: owner decision (2026-11-18) is no backup for now; revisit in a few months.** Garage is single-node, replication factor 1, with no copy. The zips are re-downloadable from the FAA only while the FAA keeps them, and the archiver can rebuild every database from a zip. Option noted for later: a nightly sync of the `opennasr` bucket to the `store` machine (its RAID6 is degraded).
-5. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
+5. **Ambiguity: owner decision (2026-11-18) is to return every candidate.** When an identifier names several records the resolver still refuses to pick, but the `AmbiguousRecordError` diagnostic now carries `detail.candidates` (name, kind, type for navaids, lat, lon; procedure ambiguities list their candidates as plain lists). Done in `_route_resolver._error_diagnostic`; not yet in a release, so the live API (v2.0.1) does not return it.
 6. Class B/C/D/E polygons need a different FAA data source, such as shapefiles.
 
 Docker deployment smoke coverage is complete. CI builds both images and runs
