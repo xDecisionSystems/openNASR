@@ -114,6 +114,40 @@ def test_switch_restores_previous_executable_after_failed_readiness(
     assert previous.read_text() == "first"
 
 
+@pytest.mark.parametrize("healthy", [True, False])
+def test_archiver_install_checks_bucket_access_as_service_user(
+    updater, tmp_path, monkeypatch, healthy
+):
+    monkeypatch.setattr(updater, "APP", tmp_path)
+    pin = tmp_path / "duckdb-version"
+    pin.write_text("1.5.6\n")
+    monkeypatch.setattr(updater, "DUCKDB_VERSION_FILE", pin)
+    monkeypatch.setattr(updater, "verified_wheels", lambda *args: [])
+    commands = []
+
+    def run(command, *, check, **kwargs):
+        assert check
+        commands.append(command)
+        if command[0] == "systemd-run" and not healthy:
+            raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(updater.subprocess, "run", run)
+    if healthy:
+        executable = updater.install("v2.0.0", "archiver")
+        assert executable.parent.parent.stat().st_mode & 0o777 == 0o755
+    else:
+        with pytest.raises(subprocess.CalledProcessError):
+            updater.install("v2.0.0", "archiver")
+        assert not list((tmp_path / "releases").iterdir())
+    probe = commands[-1]
+    assert probe[0] == "systemd-run"
+    assert "--property=User=opennasr" in probe
+    assert "--property=EnvironmentFile=/etc/openNASR/archiver.env" in probe
+    assert probe[-2].name == "openNASR-archiver"
+    assert probe[-1] == "status"
+    assert all(command[0] != "systemctl" for command in commands)
+
+
 @pytest.mark.parametrize(
     "role, state",
     [("api", "active"), ("archiver", "inactive"), ("archiver", "activating")],

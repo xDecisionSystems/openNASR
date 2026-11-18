@@ -21,6 +21,7 @@ GITHUB = f"https://github.com/{REPOSITORY}"
 ISSUER = "https://token.actions.githubusercontent.com"
 APP = Path("/opt/openNASR")
 UNIT_ROOT = Path("/etc/systemd/system")
+DUCKDB_VERSION_FILE = Path("/etc/openNASR/duckdb-version")
 TAG_PATTERN = re.compile(r"v[0-9]+(?:\.[0-9]+){2}(?:[a-z0-9.+-]+)?")
 
 
@@ -88,7 +89,7 @@ def systemctl(*args):
 
 
 def install(tag, role):
-    duckdb = Path("/etc/openNASR/duckdb-version").read_text().strip()
+    duckdb = DUCKDB_VERSION_FILE.read_text().strip()
     releases = APP / "releases"
     releases.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="opennasr-assets-") as temporary:
@@ -117,6 +118,8 @@ def install(tag, role):
             )
             # mkdtemp starts at 0700. Let the service account read the verified venv.
             target.chmod(0o755)
+            if role == "archiver":
+                probe_archiver(executable)
         except Exception:
             shutil.rmtree(target)
             raise
@@ -161,6 +164,26 @@ def activate(role, unit, ready_url):
             pass
         time.sleep(2)
     raise RuntimeError(f"API readiness check failed at {ready_url}")
+
+
+def probe_archiver(executable):
+    subprocess.run(
+        [
+            "systemd-run",
+            "--wait",
+            "--collect",
+            "--pipe",
+            "--quiet",
+            "--property=Type=oneshot",
+            "--property=TimeoutStartSec=45s",
+            "--property=User=opennasr",
+            "--property=Group=opennasr",
+            "--property=EnvironmentFile=/etc/openNASR/archiver.env",
+            executable,
+            "status",
+        ],
+        check=True,
+    )
 
 
 def switch(role, unit, ready_url, override, previous, replacement):

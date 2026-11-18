@@ -80,12 +80,16 @@ Pip resolves third-party dependencies separately, and DuckDB stays pinned to
 the version recorded by the guest installer. The update probes DuckDB in a
 new virtual environment before changing the service's systemd executable.
 The API restarts and must pass `/ready`. Use `--ready-url` if the guest listens
-on a different port. The archiver timer picks up the update on its next run.
+on a different port. Before switching the archiver, the updater runs its
+read-only `status` command as the service account with the systemd environment
+file. If bucket access fails, the current release stays active. The regular
+archiver timer picks up the update on its next run.
 
 To restore the previous executable, run `opennasr-update --role api --rollback`
 or `opennasr-update --role archiver --rollback` on the applicable guest.
 The updater also restores the previous API executable if the readiness check
-fails. Rollback switches code only. Service configuration, cached data, and
+fails. Archiver rollback remains available during a bucket outage.
+Rollback switches code only. Service configuration, cached data, and
 archiver state stay in their existing locations. The original installer venv
 remains on disk. After a successful switch, the updater removes superseded
 release venvs for that role while keeping the active and rollback venvs. It
