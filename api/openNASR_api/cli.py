@@ -64,9 +64,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     host = arguments.host or environ.get("OPENNASR_API_HOST", "127.0.0.1")
     port = arguments.port or int(environ.get("OPENNASR_API_PORT", "8000"))
     keys = api_keys(environ)
-    if not keys:
-        print("error: OPENNASR_API_KEYS is not set (comma-separated keys)")
+    open_access = environ.get("OPENNASR_API_AUTH", "").lower() == "none"
+    if not keys and not open_access:
+        print(
+            "error: OPENNASR_API_KEYS is not set (comma-separated keys); set "
+            "OPENNASR_API_AUTH=none to run without keys behind a private network"
+        )
         return 2
+    if open_access:
+        logging.getLogger("openNASR_api").warning(
+            "API KEYS ARE OFF (OPENNASR_API_AUTH=none): anyone who can reach "
+            "%s:%s can use this service; keep it on a private network",
+            host,
+            port,
+        )
     store = build_store(environ, arguments.local_bucket)
     report = store.refresh()
     logging.getLogger("openNASR_api").info(
@@ -85,7 +96,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     app = create_app(
         store,
         keys,
-        rate_limit_per_minute=int(environ.get("OPENNASR_API_RATE_PER_MINUTE", "120")),
+        rate_limit_per_minute=int(
+            environ.get("OPENNASR_API_RATE_PER_MINUTE", "600" if open_access else "120")
+        ),
+        require_auth=not open_access,
     )
     uvicorn.run(app, host=host, port=port, access_log=False)
     stop.set()

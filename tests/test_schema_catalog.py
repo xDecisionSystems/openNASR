@@ -38,11 +38,12 @@ from openNASR.schemas import (
 
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
+MANIFEST_ROOT = Path(__file__).parents[1] / "openNASR" / "schema_manifests"
 SCHEMA_IDS = ("pre_2026_09", "nasr_2026_09")
 
 
 def _manifest(schema_id: str) -> dict[str, object]:
-    path = FIXTURE_ROOT / "manifests" / f"{schema_id}.json"
+    path = MANIFEST_ROOT / f"{schema_id}.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 

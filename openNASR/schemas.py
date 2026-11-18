@@ -188,9 +188,7 @@ class SchemaCatalog:
 
     def __init__(self, manifest_dir: str | Path | None = None) -> None:
         if manifest_dir is None:
-            manifest_dir = (
-                Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "manifests"
-            )
+            manifest_dir = Path(__file__).resolve().parent / "schema_manifests"
         self.manifest_dir = Path(manifest_dir)
         if not self.manifest_dir.is_dir():
             raise ConfigurationError(

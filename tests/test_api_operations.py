@@ -169,3 +169,47 @@ def test_max_segment_nm_is_bounded(store, value):
     )
 
     assert response.status_code == 422
+
+
+def test_without_keys_clients_are_told_apart_by_address_for_rate_limiting(store):
+    client = _client(
+        store, require_auth=False, rate_limit_per_minute=60, rate_limit_burst=2
+    )
+    body = {"route": "BWI AABEE DCA"}
+
+    def post(forwarded):
+        return client.post(
+            "/v1/route/resolve", json=body, headers={"X-Forwarded-For": forwarded}
+        ).status_code
+
+    assert [post("10.0.0.1"), post("10.0.0.1"), post("10.0.0.1")] == [200, 200, 429]
+    assert post("10.0.0.2") == 200  # another client is unaffected
+    assert (
+        client.post("/v1/route/resolve", json=body).status_code == 200
+    )  # no key needed
+
+
+def test_the_service_refuses_to_start_without_keys_unless_open_access_is_explicit(
+    tmp_path, monkeypatch, caplog
+):
+    from openNASR_api import cli
+
+    started = {}
+    monkeypatch.setattr("uvicorn.run", lambda app, **options: started.update(options))
+    monkeypatch.setattr(
+        cli.CycleStore, "refresh", lambda self: type("R", (), {"fetched": []})()
+    )
+    base = {"OPENNASR_API_CACHE_DIR": str(tmp_path)}
+    for name in ("OPENNASR_API_KEYS", "OPENNASR_API_AUTH"):
+        monkeypatch.delenv(name, raising=False)
+
+    for name, value in base.items():
+        monkeypatch.setenv(name, value)
+    assert cli.main([]) == 2 and started == {}
+
+    monkeypatch.setenv("OPENNASR_API_AUTH", "none")
+    monkeypatch.setenv("OPENNASR_API_HOST", "0.0.0.0")
+    with caplog.at_level(logging.WARNING, logger="openNASR_api"):
+        assert cli.main([]) == 0
+    assert started["host"] == "0.0.0.0"
+    assert "KEYS ARE OFF" in caplog.text

@@ -424,3 +424,24 @@ testing (builds then failed with "No space left on device"); caches must live on
 Checked on the real cycle: `fetch latest` from Garage, `route` (table, geojson, stdin, `--strict` exit 1 for the branching arrival),
 and `serve --no-auth` answering a route and an airspace lookup. **Phase 5 exit criterion met.** Next: Phase 6 (deploy), which
 needs the host, network, key and proxy decisions listed in the Phase 4 summary.
+
+## 8f. Phase 6 (deploy) progress, 2026-11-18
+
+Owner decisions: containers on proxopotamus; Garage reached over the VLAN (`http://10.10.30.121:3900`); **no API keys for
+now** (explicit `OPENNASR_API_AUTH=none`); published **through NPMplus** (the `*.xds-lab.com` wildcard is tailnet-only), so the
+containers are not joined to Tailscale.
+
+| Task | Status |
+|------|--------|
+| 6.1 Host installer `deploy/proxmox/install.sh` + in-container `deploy/guest/guest-setup.sh`: unprivileged Debian 13 LXC, venv from local wheels, **DuckDB probed by running it** (1.5.6 kept on the Xeon E5-2620; 2.x is not a candidate while core caps `duckdb<2`), systemd units, health check | done |
+| 6.2 LXC 125 `opennasr-api` (10.10.20.125) created from scratch twice (the first run found the packaging bug below); real routes answered | done |
+| 6.3 LXC 124 `opennasr-archiver` (10.10.20.124): first real pass fetched the FAA cycle and found it already published; timer 06:15 UTC | done |
+| 6.4 NPMplus proxy host id 30 `opennasr.xds-lab.com`, cert 1, HTTPS forced; verified | done |
+| 6.5 No-key mode: refuses to start without keys unless `OPENNASR_API_AUTH=none`; warns at start; rate limit per client address (first `X-Forwarded-For` hop), 600/min | done |
+| 6.6 Archiver cache pruning (keep the 2 newest, only cycles already published) so the 24 G disk cannot fill | done |
+| 6.7 Packaging fix: schema manifests moved to `openNASR/schema_manifests/` and shipped in the wheel (they were read from `tests/` and did not exist in an installed package); core version set to 2.0.0 | done |
+| 6.8 Gatus + Homepage entries and Slack alerts for the API; signed releases and an updater; a `rebuild-all` run; API keys | open |
+
+Docs for the lab: `IT-management-UCF/documentation/{hosts/opennasr-api,hosts/opennasr-archiver,services/opennasr}.md` and the
+2026-11-18 change record. **Next:** monitoring, signed releases + updater (so the containers can be upgraded without hand-pushing wheels),
+Phase 7 observation week.

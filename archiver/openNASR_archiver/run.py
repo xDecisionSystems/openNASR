@@ -18,6 +18,7 @@ from typing import Callable, Protocol
 from openNASR.cycles import CycleManager
 from openNASR.duckdb_builder import DuckDbBuildError
 from openNASR.exceptions import DownloadError
+from openNASR_contract import list_builds
 
 from openNASR_contract import Bucket
 from .backfill import BackfillResult, _one, next_cycle_after
@@ -118,6 +119,7 @@ def run_once(
     notifier: Notifier | None = None,
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     grace_days: int = 3,
+    keep_cycles: int = 2,
     **publish_options,
 ) -> RunOutcome:
     notifier = notifier or LogNotifier()
@@ -135,6 +137,7 @@ def run_once(
             _resolve(state, notifier, kind)
         _check_overdue(state, notifier, now(), grace_days, outcome)
         _handle_upcoming(manager, bucket, state, notifier, outcome, publish_options)
+        prune_cache(manager, bucket, keep=keep_cycles)
     state.save()
     return outcome
 
@@ -164,6 +167,26 @@ def _attempt(manager, bucket, state, **publish_options) -> RunOutcome:
         "already_published" if result.already_published else "published",
         effective_date,
     )
+
+
+def prune_cache(manager: CycleManager, bucket: Bucket, *, keep: int = 2) -> list[date]:
+    """Delete cached cycles older than the newest ``keep`` once they are published.
+
+    A cycle that is not in the bucket is never removed: the cache is the staging
+    area for anything that has not been published yet. Each cycle is about
+    1.8 GB (zip, extracted CSVs, database), so this keeps a host from filling up.
+    """
+
+    removed: list[date] = []
+    try:
+        published = {build.effective_date for build in list_builds(bucket)}
+        for effective_date in sorted(manager.available_cycles())[: -keep or None]:
+            if keep == 0 or effective_date.isoformat() in published:
+                manager.remove(effective_date)
+                removed.append(effective_date)
+    except Exception:  # pruning is housekeeping; it must never fail a pass
+        LOGGER.exception("could not prune the cycle cache")
+    return removed
 
 
 def _upcoming(manager, bucket, current: date, publish_options) -> BackfillResult:

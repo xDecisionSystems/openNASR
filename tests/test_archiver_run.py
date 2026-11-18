@@ -176,3 +176,29 @@ def test_a_failing_upcoming_cycle_does_not_fail_the_current_pass(setup, monkeypa
     _stub_upcoming(monkeypatch, "failed", "boom")
 
     assert _run(setup, RecordingNotifier()).status == "published"
+
+
+def test_old_published_cycles_are_pruned_but_unpublished_ones_are_kept(setup):
+    manager, bucket, _ = setup
+    _run(setup, RecordingNotifier())  # publishes the one cached cycle
+
+    from openNASR_archiver import run as run_module
+
+    assert run_module.prune_cache(manager, bucket, keep=1) == []  # newest is kept
+    assert manager.available_cycles() == (CYCLE,)
+
+    removed = run_module.prune_cache(manager, bucket, keep=0)
+    assert removed == [CYCLE] and manager.available_cycles() == ()
+
+
+def test_a_cycle_that_is_not_in_the_bucket_is_never_pruned(setup, monkeypatch):
+    manager, bucket, _ = setup
+    from openNASR_archiver import run as run_module
+
+    older = date(2026, 8, 6)
+    monkeypatch.setattr(manager, "available_cycles", lambda: (older, CYCLE))
+    removed = []
+    monkeypatch.setattr(manager, "remove", lambda d: removed.append(d))
+
+    assert run_module.prune_cache(manager, bucket, keep=1) == []  # older is unpublished
+    assert removed == []

@@ -31,3 +31,5 @@ User `opennasr`; a venv at `/opt/openNASR/venv` with `pip install openNASR ./con
 verified cycles from the bucket at start and hourly, and keeps serving what it has if the bucket is
 down. Put a TLS reverse proxy (NPMplus) in front; the service itself speaks plain HTTP. The installer
 must choose a working DuckDB version for the CPU (REPLAN.md, "DuckDB version selection").
+
+On proxopotamus use `deploy/proxmox/install.sh --role api`. Set `OPENNASR_API_KEYS` for key auth, or `OPENNASR_API_AUTH=none` to run without keys on a private network (it logs a warning).

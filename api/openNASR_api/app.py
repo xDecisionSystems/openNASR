@@ -319,7 +319,21 @@ def create_app(
         ] = None,
     ) -> None:
         if not require_auth:
-            return  # local mode on a loopback address only (the CLI enforces that)
+            # No keys: callers are told apart by address (the first hop of
+            # X-Forwarded-For behind a proxy) so one client cannot use up the limit
+            # for everyone. This is fairness, not security.
+            forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+            peer = forwarded or (request.client.host if request.client else "unknown")
+            label = "ip-" + key_id(peer)
+            request.state.key_id = label
+            wait = limiter.check(label)
+            if wait > 0:
+                raise HTTPException(
+                    429,
+                    "rate limit exceeded",
+                    headers={"Retry-After": str(max(1, int(wait + 0.999)))},
+                )
+            return
         supplied = x_api_key or (credentials.credentials if credentials else None)
         if supplied is None or not any(
             hmac.compare_digest(supplied.encode(), key) for key in keys

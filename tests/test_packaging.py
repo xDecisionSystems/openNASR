@@ -28,8 +28,25 @@ def test_public_release_metadata_uses_modern_license_and_project_urls():
     assert project["license-files"] == ["LICENSE"]
     assert project["readme"] == "README.md"
     assert configuration["tool"]["setuptools"]["package-data"]["openNASR"] == [
-        "py.typed"
+        "py.typed",
+        "schema_manifests/*.json",
     ]
     assert {"Homepage", "Documentation", "Repository", "Issues", "Changelog"} <= (
         project["urls"].keys()
     )
+
+
+def test_schema_manifests_ship_inside_the_package():
+    """An installed wheel has no ``tests/`` tree; the catalog must not need one."""
+
+    from pathlib import Path
+
+    import openNASR
+    from openNASR.schemas import SchemaCatalog
+
+    package = Path(openNASR.__file__).parent
+    assert (package / "schema_manifests" / "nasr_2026_09.json").is_file()
+    assert Path(SchemaCatalog().manifest_dir) == package / "schema_manifests"
+    assert set(SchemaCatalog.SUPPORTED_SCHEMA_IDS) <= {
+        path.stem for path in (package / "schema_manifests").glob("*.json")
+    }

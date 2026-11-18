@@ -23,6 +23,11 @@ and versions follow Semantic Versioning.
 
 ### Fixed
 
+- The schema manifests ship inside the package (`openNASR/schema_manifests/`); an installed wheel previously could not open any
+  cycle because it looked for them under `tests/`. Version is now 2.0.0.
+- `deploy/proxmox/install.sh` creates an archiver or API container and picks a DuckDB version that actually runs on the CPU.
+- The API can run without keys only when `OPENNASR_API_AUTH=none` is set explicitly; the archiver prunes old published cycles from its cache.
+
 - `opennasr route`, `opennasr serve` and `opennasr fetch` (local mode): the same route resolution and JSON as
   the HTTP API, run from the local cycle cache; see `docs/local-mode.md`.
 

@@ -20,3 +20,5 @@ Install on a host: create user `opennasr`, a venv at `/opt/openNASR/venv` with
 `/etc/systemd/system/`, put the env file at `/etc/openNASR/archiver.env`, then
 `systemctl enable --now openNASR-archiver.timer`. The installer must pick a working DuckDB
 version for the CPU (see REPLAN.md, "DuckDB version selection").
+
+On proxopotamus use `deploy/proxmox/install.sh --role archiver` (see `deploy/`); it builds the container, picks a DuckDB that runs on the CPU, and installs the timer.
