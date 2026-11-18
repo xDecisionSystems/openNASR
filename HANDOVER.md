@@ -44,7 +44,7 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 - The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). Day-to-day work now goes through branches and PRs; do not push to `main` directly.
 - Added after the first handover: Python 3.10 test compatibility, a cache-preserving store refresh, hardened `max_segment_nm` limits, `NASR.close()`, the signed-release workflow (`.github/workflows/release.yml`) and the updater (`deploy/opennasr-update`, tested by `tests/test_deployment_update.py`).
-- **No tag and no GitHub release exist yet.** Pushing a `v*` tag starts *both* `release.yml` (signed deployment assets) *and* `publish-to-pypi.yml` (public, irreversible PyPI upload of 2.0.0). Do not tag without the owner's explicit go-ahead.
+- A `v*` tag starts only the signed deployment release (`release.yml`). Publishing to PyPI is a separate manual workflow (`publish-to-pypi.yml`, started from the Actions tab, with a required reviewer on the `pypi` environment); the owner said PyPI is lower priority, so it has not been run.
 
 ## 4. Build, test, lint (all green at handover)
 
@@ -128,7 +128,7 @@ ssh root@100.100.10.10 'pct exec 124 -- /opt/openNASR/venv/bin/openNASR-archiver
 
 Done since the first version of this document: PR merged and CI green; Gatus + Homepage monitoring for the API; signed-release workflow and updater written.
 
-1. **Cut the first release, only when the owner says so** (`v2.0.0`, which also publishes to PyPI; see section 3). Then bootstrap `opennasr-update` into LXC 124 and 125 (install a trusted `cosign` in each guest first, then `opennasr-update --role api --version v2.0.0`; it verifies the signed manifest and wheel hashes, probes DuckDB in a fresh venv, restarts the API, checks `/ready`, and rolls back on failure). **The updater has unit tests but has never run on a real guest**; exercise the update and `--rollback` on the API first, then the archiver.
+1. **Release `v2.0.0`** once the release PR is merged (annotated tag on `main`; see `RELEASE.md`). Then bootstrap `opennasr-update` into LXC 124 and 125 (install a trusted `cosign` in each guest first, then `opennasr-update --role api --version v2.0.0`; it verifies the signed manifest and wheel hashes, probes DuckDB in a fresh venv, restarts the API, checks `/ready`, and rolls back on failure). **The updater has unit tests but has never run on a real guest**; exercise the update and `--rollback` on the API first, then the archiver.
 2. Updater gaps worth closing: old release venvs under `/opt/openNASR/releases/` are never removed (~270 MB each; the API rootfs is only 8 G); the archiver update is not health-checked until its next timer run; third-party dependencies are not pinned at update time.
 3. **Phase 7 observation**: watch the archiver through the next FAA cycle. 2026-11-26 is already published; the next new cycle (2026-12-24) should appear around early December. Check alerts, manifests and hashes.
 4. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.

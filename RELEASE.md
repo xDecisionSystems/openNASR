@@ -38,25 +38,27 @@ is still available. PyPI is the authority on package-name availability.
    version:
 
    ```bash
-   git tag -a v1.5.0 -m "openNASR 1.5.0"
-   git push origin v1.5.0
+   git tag -a v2.0.0 -m "openNASR 2.0.0"
+   git push origin v2.0.0
    ```
 
-5. Approve the `pypi` environment deployment, if protection is enabled.
-6. Confirm the release on PyPI and install it in a clean environment.
-7. Confirm the signed GitHub deployment release was published for the same tag.
-
-The publish workflow rejects a tag that does not equal `v` plus the version in
-`pyproject.toml`. It builds once, validates both distributions, and publishes
-the exact artifacts produced by the build job.
+   The tag starts only the **signed deployment release** (`release.yml`): it
+   tests the tag, builds the four wheels and the updater, signs the manifest and
+   publishes a GitHub release.
+5. Confirm the signed GitHub deployment release exists for the same tag.
+6. **PyPI is a separate, deliberate step.** In GitHub, open Actions, choose
+   "Publish to PyPI", pick the release tag as the ref and run it, then approve the
+   `pypi` environment deployment. The workflow rejects a ref that does not equal
+   `v` plus the version in `pyproject.toml`, builds once, validates both
+   distributions, and publishes the exact artifacts it built.
+7. Confirm the release on PyPI and install it in a clean environment.
 
 ## Signed deployment releases
 
 The tag also starts `release.yml`. It tests the tag, builds the four project
 wheels, and publishes them with `opennasr-update`, `manifest.json`, and the
 Sigstore bundle. The manifest records the tag, commit, and asset hashes.
-Protect release tags with a GitHub tag ruleset. The PyPI and deployment
-release workflows have separate jobs and run independently.
+Protect release tags with a GitHub tag ruleset. The PyPI workflow never runs from a tag push; it is started by hand (step 6).
 
 ### Update an existing systemd guest
 
