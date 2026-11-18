@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.7]
+
+### Added
+
+- Airport maps can overlay all published arrivals and departures for the selected airport.
+
 ## [2.1.6]
 
 ### Added

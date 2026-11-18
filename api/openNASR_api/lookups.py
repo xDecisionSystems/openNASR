@@ -226,6 +226,63 @@ def _procedure_rows(query, table, *filters):
         return []
 
 
+def _route_rows(query, prefix, filters):
+    def sequence(value):
+        return int(value) if value and value.isdecimal() else 0
+
+    rows = _procedure_rows(query, f"{prefix}_RTE", *filters)
+    rows.sort(
+        key=lambda row: (sequence(row.get("BODY_SEQ")), sequence(row.get("POINT_SEQ")))
+    )
+    return rows
+
+
+def airport_procedure_rows(query, identifier, kind):
+    prefix, keys = ("STAR", STAR_KEY) if kind == "arrivals" else ("DP", DEPARTURE_KEY)
+    airport_rows = _procedure_rows(
+        query, "APT_BASE", QueryFilter.eq("ARPT_ID", identifier)
+    )
+    if not airport_rows:
+        airport_rows = _procedure_rows(
+            query, "APT_BASE", QueryFilter.eq("ICAO_ID", identifier)
+        )
+    if len(airport_rows) != 1:
+        raise NotFoundError(
+            f"airport {identifier} does not uniquely identify an airport in this cycle"
+        )
+
+    airport = airport_rows[0]
+    codes = tuple(
+        dict.fromkeys(filter(None, (airport.get("ARPT_ID"), airport.get("ICAO_ID"))))
+    )
+    associations = [
+        row
+        for code in codes
+        for row in _procedure_rows(
+            query, f"{prefix}_APT", QueryFilter.eq("ARPT_ID", code)
+        )
+    ]
+    identities = dict.fromkeys(
+        tuple(row.get(column, "") for column in keys) for row in associations
+    )
+    result = []
+    for identity in identities:
+        filters = tuple(
+            QueryFilter.eq(column, value)
+            for column, value in zip(keys, identity, strict=True)
+        )
+        routes = []
+        for row in _route_rows(query, prefix, filters):
+            served = row.get("ARPT_RWY_ASSOC", "")
+            if not served or any(
+                association.split("/")[0].strip() in codes
+                for association in served.split(",")
+            ):
+                routes.append(row)
+        result.append(routes)
+    return result
+
+
 def _procedures(query, identifier, prefix, keys, code, name):
     ident = identifier.strip().upper()
     table = f"{prefix}_BASE"
@@ -242,20 +299,11 @@ def _procedures(query, identifier, prefix, keys, code, name):
     if not bases:
         raise NotFoundError(f"procedure {ident} is not in this cycle")
 
-    def sequence(value):
-        return int(value) if value and value.isdecimal() else 0
-
     result = []
     for base in bases:
         procedure_id = base.get(code) or ident
         filters = tuple(QueryFilter.eq(column, base.get(column, "")) for column in keys)
-        routes = _procedure_rows(query, f"{prefix}_RTE", *filters)
-        routes.sort(
-            key=lambda row: (
-                sequence(row.get("BODY_SEQ")),
-                sequence(row.get("POINT_SEQ")),
-            )
-        )
+        routes = _route_rows(query, prefix, filters)
         result.append(
             {
                 "id": procedure_id,

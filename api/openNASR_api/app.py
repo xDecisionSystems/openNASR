@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.6"
+API_VERSION = "0.2.7"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -242,6 +242,11 @@ class ProcedureBranch(BaseModel):
     sequence: str
     transition: str
     waypoints: list[ProcedureWaypoint]
+
+
+class AirportProceduresResponse(BaseModel):
+    cycle: str
+    branches: list[ProcedureBranch]
 
 
 class ProcedureEntity(BaseModel):
@@ -547,6 +552,39 @@ def create_app(
         except lookups.NotFoundError as error:
             raise HTTPException(404, str(error)) from error
         return {"cycle": chosen, kind: found}
+
+    @app.get(
+        "/v1/airports/{identifier}/procedures/{kind}",
+        response_model=AirportProceduresResponse,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def airport_procedures(
+        identifier: str,
+        kind: Literal["arrivals", "departures"],
+        cycle: CycleParam = None,
+    ) -> dict[str, Any]:
+        """Published procedure branches associated with an airport."""
+        try:
+            with store.lookup(cycle) as (chosen, query):
+                rows = lookups.airport_procedure_rows(
+                    query, identifier.strip().upper(), kind
+                )
+                branches = []
+                if any(rows):
+                    _, resolver = store.resolver(chosen)
+                    for procedure in rows:
+                        branches.extend(
+                            lookups.procedure_branches(
+                                procedure, resolver.procedure_waypoint
+                            )
+                        )
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if cycle else 503, str(error)) from error
+        except lookups.NotFoundError as error:
+            raise HTTPException(404, str(error)) from error
+        return {"cycle": chosen, "branches": branches}
 
     @app.get(
         "/v1/airports/{identifier}",

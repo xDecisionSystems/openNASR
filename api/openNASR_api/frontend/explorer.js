@@ -62,6 +62,7 @@ let plotPan = { x: 0, y: 0 };
 let printing = false;
 let airportCaption = "";
 let airspaceMap = null;
+let airportProcedureRequest = null;
 const ilsPlotNote = "ILS course wedges are illustrative · 700 ft at the runway end · ±2.5° · 20 NM.";
 const airspaceLayers = [
   ["airports", "Airports", "#ffcb81"],
@@ -173,6 +174,10 @@ function resetResult() {
   airportCaption = "";
   airspaceMap?.controller.abort();
   airspaceMap = null;
+  airportProcedureRequest?.abort();
+  const airportLayers = byId("airport-procedure-layers");
+  airportLayers.hidden = true;
+  airportLayers.replaceChildren();
   const procedures = currentView === "arrivals" || currentView === "departures";
   canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
   canvas.closest(".plot-card").classList.toggle("airspace-plot", currentView === "airspace");
@@ -340,6 +345,61 @@ function addAirportLayout(airport) {
   }
 }
 
+function addAirportProcedureLayers(airport, selectedCycle) {
+  const controller = new AbortController();
+  airportProcedureRequest = controller;
+  const controls = byId("airport-procedure-layers");
+  controls.hidden = false;
+  const identifier = encodeURIComponent(airport.icao_id || airport.id);
+  for (const [kind, name, color] of airspaceLayers.filter(([kind]) => kind === "arrivals" || kind === "departures")) {
+    const checkbox = element("input");
+    checkbox.type = "checkbox";
+    const label = element("label", name);
+    const swatch = element("span", null, "branch-color");
+    swatch.style.backgroundColor = color;
+    swatch.setAttribute("aria-hidden", "true");
+    label.prepend(checkbox, swatch);
+    const message = element("p", "", "layer-status");
+    message.setAttribute("role", "status");
+    let branches = null;
+    let loading = false;
+    checkbox.addEventListener("change", async () => {
+      if (branches) {
+        for (const branch of branches) branch.visible = checkbox.checked;
+        drawPlot();
+        return;
+      }
+      if (!checkbox.checked || loading) return;
+      loading = true;
+      message.textContent = "";
+      label.setAttribute("aria-busy", "true");
+      try {
+        const params = new URLSearchParams({ cycle: selectedCycle });
+        const data = await api(`/v1/airports/${identifier}/procedures/${kind}?${params}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        branches = data.branches.map((branch) => ({
+          kind: "airport-procedure", color, visible: checkbox.checked,
+          points: branch.waypoints.map((waypoint) => waypoint.position
+            ? { ...waypoint.position, name: waypoint.name } : null),
+        }));
+        if (!branches.some((branch) => branch.points.some(Boolean))) {
+          message.textContent = `No plottable ${kind} for this airport.`;
+        }
+        plotBranches.push(...branches);
+        drawPlot();
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        checkbox.checked = false;
+        message.textContent = error.message;
+      } finally {
+        loading = false;
+        label.removeAttribute("aria-busy");
+      }
+    });
+    controls.append(label, message);
+  }
+}
+
 const boundaryLayers = [
   ["FIR", "FIR", "#7fb5ff"], ["CTA", "CTA", "#f5be6d"],
   ["UTA", "UTA", "#c5a4ff"], ["CTA/FIR", "CTA/FIR", "#ffa7d4"],
@@ -458,6 +518,7 @@ function showResult(data) {
       print,
     );
     addAirportLayout(airport);
+    addAirportProcedureLayers(airport, data.cycle);
   } else if (currentView === "airspace") {
     results.append(
       table("Matching regions", ["Region", "Type", "Lower", "Upper"], data.regions.map(
@@ -545,7 +606,7 @@ function drawPlot() {
   }
   const boundaryRings = airspaceMap?.boundaries.flatMap((boundary) => boundary.rings) || [];
   const points = [
-    ...plotted.flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
+    ...plotted.filter((branch) => branch.kind !== "airport-procedure" || branch.visible).flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
   ].filter(available);
   const reference = airspaceMap?.overview ? 0 : points[0]?.lon || 0;
   const project = (point) => ({
@@ -660,7 +721,8 @@ function drawPlot() {
     ctx.fill();
     ctx.stroke();
   }
-  for (const branch of plotted.filter((item) => item.visible)) {
+  for (const branch of plotted.filter((item) => item.visible).sort((a, b) =>
+    Number(b.kind === "airport-procedure") - Number(a.kind === "airport-procedure"))) {
     ctx.strokeStyle = plotColor(branch);
     ctx.lineWidth = branch.kind === "runway" ? 5 : 2;
     ctx.beginPath();
@@ -716,7 +778,7 @@ function drawPlot() {
     const collides = (tx, ty) => labels.some((label) => tx < label.right + 4
       && tx + textWidth + 4 > label.left && Math.abs(ty - label.top) < 13);
     if (collides(left, top)) {
-      if (!plotBranches.length) continue;
+      if (!plotBranches.length || point.kind === "airport-procedure") continue;
       for (let step = 1; step <= 10; step++) {
         const candidates = [[anchor, top + step * 13], [anchor, top - step * 13],
           [anchor + step * 17, top], [anchor - step * 17, top]];
