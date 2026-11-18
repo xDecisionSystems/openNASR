@@ -502,3 +502,20 @@ deploy files, a short project README and a `pyproject.toml` with only the shared
 exactly the same 59 files and contents as the wheel built before the move; all five artifacts pass `twine check`. CI, the release
 workflow, the PyPI workflow, both Dockerfiles, Dependabot and Read the Docs were updated; the Docker job and the release workflow's
 build job run on the first push to `main` and are the final check of the paths.
+
+#### 2.15 progress (Class B/C/D/E polygons) and what is left
+
+Design change from the first sketch: the polygons are a **separate Parquet artifact**, not a table in the main DuckDB file
+(every table in that file must be modeled in the FAA schema catalog or the library refuses to open the cycle). The manifest gets an
+optional `class_airspace` block; readers ignore unknown keys, so the deployed 2.0.1 readers keep working on new builds.
+
+| Step | State |
+|------|-------|
+| C1 Contract: `BuildKeys.class_airspace`, `class_airspace_source_key`, `Manifest.class_airspace` (source zip, parquet, rows), `fetch_build` installs `class_airspace.parquet` with hash checks; tests | done (3917b5f) |
+| C2 `archiver/openNASR_archiver/classairspace.py` `build_class_airspace(zip, parquet)`: reads `Class_Airspace.shp` with pyshp, keeps FAA attributes as text, 2D WKB in `GEOMETRY_WKB`, repairs and counts invalid outlines, refuses implausible input; `pyshp` added to the archiver and core dev dependencies; tests with a synthetic shapefile | done |
+| C3 Provider: `RemoteCycle.airspace_url` found on the cycle page (link text "Class B,C,D,E Airspace Shape Files", `.../28DaySub/<date>/class_airspace_shape_files.zip`, same host rules as the CSV zip); a download helper with a size cap, atomic rename and SHA-256 into `<cache>/archives/` | open |
+| C4 Archiver: `publish_cycle` builds the parquet from the downloaded shapefile zip, uploads source zip + parquet, fills `Manifest.class_airspace`; `BUILDER_VERSION` becomes 2; `run_once`, `backfill` and `rebuild` pass the shapefile through; gate: refuse to publish when it is missing or fails `build_class_airspace` (alert `source_unavailable`/`validation_failed`); old b1 builds stay valid, and `backfill` re-publishes the four cycles as b2 | open |
+| C5 API: `CycleStore` passes `<cycle dir>/class_airspace.parquet` (if present) to `AirspaceIndex`; regions get `airspace_class`, `local_type`, `lower`, `upper` (value, unit, code as published); `AirspaceRegion` model and `docs/openapi.json` regenerated; `NOT_COVERED` text now names special-use airspace instead of Class B/C/D/E; an optional `alt` filter is a separate decision | open |
+| C6 Real-data check on 2026-10-29 (5,621 polygons: B 369, C 340, D 578, E 4,334), then release (tag), update both containers with `opennasr-update`, let the archiver publish the b2 builds, run `deploy/proxmox/observe.sh`; record in the lab docs | open |
+
+Real-data facts: the zip is 150 MB; `Class_Airspace.shp` is POLYGONZ; example record NAME 'HILLSBORO CLASS E5', LOCAL_TYPE CLASS_E5, UPPER_VAL -9998 (UPPER_DESC 'AA'), LOWER_VAL 700, LOWER_UOM FT, LOWER_CODE SFC.

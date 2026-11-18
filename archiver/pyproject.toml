@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Download FAA NASR cycles, build and validate DuckDB, publish to a bucket"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later" }
-dependencies = ["openNASR>=2.0", "openNASR-contract>=0.1"]
+dependencies = ["openNASR>=2.0", "openNASR-contract>=0.1", "pyshp>=2.3"]
 
 [project.optional-dependencies]
 s3 = ["boto3>=1.34"]
