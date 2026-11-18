@@ -235,9 +235,9 @@ a `.duckdb` file must not need any of these.
    Check first that DuckDB runs on the target host (it crashes on the devbox CPU).
 2. ~~Where does the archiver live?~~ **Decided:** a subproject of this super project;
    unrelated to WhoDatJet.
-3. ~~Who calls the API?~~ **Decided:** tailnet-only to start. Tailscale controls network
-   access; API keys remain as a second layer (per-caller, revocable). Public exposure is a
-   later, separate decision that adds rate limits, request-size limits and a public host.
+3. ~~Who calls the API?~~ **Decided:** tailnet-only access through NPMplus. The API
+   supports revocable per-caller keys, and the owner chose explicit no-key mode
+   for the current deployment. Public exposure would require a separate decision.
 4. ~~Is route accuracy "good enough for display" or "for analysis"?~~ **Decided: the
    question was mis-framed.** A flight plan is deterministic and maps directly to
    lat/lon. How an aircraft *flies* it is out of scope. The requirement is therefore
@@ -362,17 +362,18 @@ incomplete. Pool: 32,857 usable (70.5%), 0 internal errors.
 | 3.3 `S3Bucket` (boto3, optional `s3` extra; sha256 kept as object metadata; `S3Bucket.from_env` reads `OPENNASR_*`; verified against the real Garage server on 2026-11-16) | done |
 | 3.4 `run_once`: discover -> download -> publish the current cycle, then best-effort the upcoming one (not posted yet = silent; build failure = one alert). `FaaCycleProvider.for_date` fetches any named cycle; `backfill` publishes a range of the 28-day grid, skipping what the bucket already holds | done |
 | 3.5 Outage staging (the local cache), de-duplicated alerts persisted in a state file (fail once, resolve once), "no new cycle" alert after 28 + 3 days | done (notifier is log-only so far) |
-| 3.6 CLI (`run`, `status`, `publish`, `rebuild`), webhook alerts, systemd service + timer, Dockerfile, README. Unit files and the Dockerfile are **not yet exercised on a host** | partly done |
+| 3.6 CLI (`run`, `status`, `publish`, `rebuild`), webhook alerts, systemd service and timer, Dockerfile, README. The service and timer configuration are deployed on LXC 124. Dockerfile testing remains open. | systemd deployed |
 | 3.7 Fresh-machine test: a cache holding only the fetched `nasr.duckdb` + sidecar opens and resolves routes (synthetic test, and the real 2026-10-29 cycle). `openNASR-archiver rebuild` recreates the database from only the zip in the bucket and compares tables, schema and fingerprint: verified against Garage with the real cycle | done |
 
 Repo layout so far: the existing `openNASR/` package at the root is `core`; `contract/` and `archiver/`
-sit beside it. Moving core into `core/` is deferred until the API package exists, to keep history readable.
+sit beside it. Moving core into `core/` remains deferred.
 
 The bucket clients (`Bucket`, `LocalBucket`, `S3Bucket`) and the reader side (`list_builds`, `select_build`,
 `fetch_build`) live in `contract/` so the API can read a bucket without depending on the archiver. The manifest
 carries a `sidecar` reference; a reader verifies the database hash against the manifest before installing.
-Real cycle: zip 259 MB, DuckDB 55 MB. The DuckDB recorded was 1.5.6; per the fleet rule the archiver should build
-with the oldest DuckDB any reader runs, which is still to be pinned when the containers are defined.
+Real cycle: zip 259 MB, DuckDB 55 MB. The build used DuckDB 1.5.6, which is pinned
+on both live guests. The archiver should build with the oldest DuckDB version
+used by a fleet reader.
 
 ### Storage (Garage at s3.xds-lab.com, created 2026-11-16)
 
@@ -455,9 +456,17 @@ Docs for the lab: `IT-management-UCF/documentation/{hosts/opennasr-api,hosts/ope
 | Signed deployment baseline | Independently verified the Sigstore signature and seven asset hashes for [`v2.0.1`](https://github.com/xDecisionSystems/openNASR/releases/tag/v2.0.1). Both guests run that release. | done |
 | First production pass on `v2.0.1` | Manual run on November 17 at 10:38 p.m. ET exited 0 and logged `already_published 2026-10-29`. Four manifests remained in Garage, with no active archiver alerts. | done |
 | API and cached-cycle baseline | Gatus was green and the API defaulted to 2026-10-29. Explicit queries for 2026-10-29 and 2026-11-26 each resolved `KABQ.DOOKK3.TXO..KTYR` completely with eight points. The archive, DuckDB, and sidecar hashes matched the Garage manifests for both cycles. | done |
-| First timer-triggered pass on `v2.0.1` | Confirm last trigger, service exit status, and alert state. The timer was active and the scheduled pass was pending at the baseline check. | open |
+| First timer-triggered pass on `v2.0.1` | Record the timer's last trigger, the service run start and exit status, and any active alerts. The most recent check still showed no timer trigger. | open |
 | 2026-11-26 becomes effective | Confirm `/v1/cycles` and `/ready` select the prepublished 2026-11-26 cycle and a default-cycle route resolves. | open |
 | First publication of 2026-12-24 | Once the FAA posts the cycle, confirm the timer publishes its manifest, verify archive, DuckDB, and sidecar hashes, and resolve a route explicitly against it before it becomes the default. Check alert state. | waiting for FAA publication |
 
 For the next check, use the read-only timer, journal, and API commands in
 [HANDOVER.md](HANDOVER.md#quick-health-checks).
+
+The API selects its default from the newest cached cycle effective on the current
+UTC date. The November 26 rollover tests selection of a cached cycle. The
+December 24 checkpoint tests delivery of a newly published build as well as API
+resolution against that explicit cycle. For the integrity check, use
+`openNASR_contract.fetch_build` with a fresh temporary cache for the DuckDB and
+sidecar, then download the archive with read-only bucket access and compare its
+SHA-256 with the manifest's archive hash.

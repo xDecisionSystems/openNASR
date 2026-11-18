@@ -46,6 +46,7 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 - The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). **Workflow (owner's rule): commit directly to `main`. No feature branches, no PRs, no merge commits.** Tags are the only release step.
 - Added after the first handover: Python 3.10 test compatibility, a cache-preserving store refresh, hardened `max_segment_nm` limits, `NASR.close()`, the signed-release workflow (`.github/workflows/release.yml`) and the updater (`deploy/opennasr-update`, tested by `tests/test_deployment_update.py`).
+- The route-module split and validation-tool fix in `ee450d1` are on `main`. The live guests use the earlier signed `v2.0.1` tag at `d74c1a5`.
 - [`v2.0.1`](https://github.com/xDecisionSystems/openNASR/releases/tag/v2.0.1) is the current signed release. Its Sigstore manifest covers the four wheels, the updater, and both dependency locks. All seven hashes and the signature were verified independently. A `v*` tag starts the signed deployment release (`release.yml`). PyPI publishing remains pending and uses a separate manual workflow with owner approval. The owner said PyPI is lower priority.
 - The first `v2.0.0` tag was moved once: its release run failed after signing because the publish job had no checkout (`gh` needs `GH_REPO`), the fix was merged (PR #5), and the unreleased tag was re-created on the fixed commit. Cutting a release is therefore tested end to end. If a release run fails after tagging, nothing is published; fix on `main`, then delete and re-create the tag only if no release exists.
 
@@ -121,7 +122,12 @@ curl -s https://opennasr.xds-lab.com/ready
 curl -s https://opennasr.xds-lab.com/v1/cycles
 curl -s -X POST https://opennasr.xds-lab.com/v1/route/resolve -H 'content-type: application/json' -d '{"route":"KABQ.DOOKK3.TXO..KTYR"}'
 ssh root@100.100.10.10 'pct exec 124 -- systemctl list-timers openNASR-archiver.timer --all; pct exec 124 -- journalctl -u openNASR-archiver -n 10 --no-pager'
+ssh root@100.100.10.10 'pct exec 124 -- systemctl show openNASR-archiver.timer -p LastTriggerUSec -p NextElapseUSecRealtime; pct exec 124 -- systemctl show openNASR-archiver.service -p ExecMainStartTimestamp -p ExecMainStatus -p Result'
 ```
+
+Compare the timer trigger with the service start. The most recent service
+status can belong to a manual run. Active alert kinds are under `active` in
+`/var/lib/openNASR-archiver/state.json`.
 
 ### Secrets (names only; never print values)
 - `openNASR/.env` (gitignored, mode 600): `OPENNASR_S3_*`, `OPENNASR_ARCHIVER_S3_*`, `OPENNASR_API_S3_*`, `OPENNASR_ALERT_WEBHOOK_URL`.
