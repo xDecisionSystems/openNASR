@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).parents[1]
-sys.path[:0] = [str(ROOT / "contract"), str(ROOT / "api")]
+sys.path[:0] = [str(ROOT / "core"), str(ROOT / "contract"), str(ROOT / "api")]
 
 from openNASR_api import CycleStore, create_app  # noqa: E402
 

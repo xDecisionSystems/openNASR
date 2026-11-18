@@ -14,7 +14,7 @@ from openNASR.schemas import SCHEMA_SUFFIX, SchemaCatalog
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_DIR = ROOT / "openNASR" / "schema_manifests"
+MANIFEST_DIR = ROOT / "core" / "openNASR" / "schema_manifests"
 FIXTURE_DIR = ROOT / "tests" / "fixtures" / "schema_only"
 
 

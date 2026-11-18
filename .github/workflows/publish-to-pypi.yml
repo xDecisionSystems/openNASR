@@ -31,13 +31,13 @@ jobs:
           import tomllib
           from pathlib import Path
 
-          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          version = tomllib.loads(Path("core/pyproject.toml").read_text())["project"]["version"]
           expected = f"v{version}"
           actual = os.environ["RELEASE_TAG"]
           if actual != expected:
               raise SystemExit(f"release tag {actual!r} must be {expected!r}")
           PY
-      - run: python -m build
+      - run: python -m build --outdir dist core
       - run: python -m twine check dist/*
       - uses: actions/upload-artifact@v5
         with:

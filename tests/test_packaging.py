@@ -9,7 +9,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-PYPROJECT = Path(__file__).parents[1] / "pyproject.toml"
+PYPROJECT = Path(__file__).parents[1] / "core" / "pyproject.toml"
 
 
 def test_duckdb_is_a_required_dependency_capped_below_two():

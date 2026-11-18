@@ -21,15 +21,15 @@ is still available. PyPI is the authority on package-name availability.
 
 ## Release checklist
 
-1. Update `CHANGELOG.md` and set the release version in `pyproject.toml`.
+1. Update `CHANGELOG.md` and set the release version in `core/pyproject.toml`.
 2. Run the complete local gate from a clean checkout:
 
    ```bash
    python -m pytest
-   ruff format --check openNASR tests benchmarks tools
-   ruff check openNASR tests benchmarks tools
-   mypy openNASR
-   python -m build
+   ruff format --check core/openNASR contract archiver api tests benchmarks tools
+   ruff check core/openNASR contract archiver api tests benchmarks tools
+   MYPYPATH=contract:archiver:api mypy core/openNASR contract/openNASR_contract archiver/openNASR_archiver api/openNASR_api
+   python -m build --outdir dist core
    python -m twine check dist/*
    ```
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).parents[1]
-MANIFEST_DIR = ROOT / "openNASR" / "schema_manifests"
+MANIFEST_DIR = ROOT / "core" / "openNASR" / "schema_manifests"
 FILESTYPES = ROOT / "FILESTYPES.md"
 
 

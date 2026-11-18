@@ -18,7 +18,8 @@ It has three runnable parts:
 ## 2. Repository map (`/srv/projects/openNASR`, GitHub `xDecisionSystems/openNASR`)
 
 ```
-openNASR/            core library (package "openNASR", version 2.0.1). No I/O policy; depends on neither contract, archiver nor api.
+core/                the core library, moved here from the repo root on 2026-11-18 (owner decision): core/pyproject.toml, core/README.md, core/LICENSE and the package below. No I/O policy; depends on neither contract, archiver nor api.
+core/openNASR/       package "openNASR" (version 2.0.1). Shared tool settings (pytest, ruff, mypy) live in the root pyproject.toml, which has no [project].
   flightplan.py      import point for route resolution (re-exports the public API and the private names tests use)
   _route_common.py, _route_waypoints.py, _route_airways.py, _route_procedure_index.py,
   _route_procedures.py, _route_tokenizer.py, _route_resolver.py
@@ -56,11 +57,11 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 ```sh
 python3 -m venv .venv && . .venv/bin/activate
-pip install -e ".[dev,plot]"          # dev includes pytest, ruff, mypy, fastapi, httpx, uvicorn
-pytest                                 # 592 passed, 1 skipped, ~80 s. pytest config puts contract/, archiver/, api/ on the path.
-ruff format --check openNASR contract archiver api tests benchmarks tools
-ruff check          openNASR contract archiver api tests benchmarks tools      # line length 88
-MYPYPATH=contract:archiver:api mypy openNASR contract/openNASR_contract archiver/openNASR_archiver api/openNASR_api
+pip install -e "./core[dev,plot]"      # dev includes pytest, ruff, mypy, fastapi, httpx, uvicorn
+pytest                                 # ~620 passed, 1 skipped, ~90 s. Root pyproject puts core/, contract/, archiver/, api/ on the path.
+ruff format --check core/openNASR contract archiver api tests benchmarks tools
+ruff check          core/openNASR contract archiver api tests benchmarks tools      # line length 88
+MYPYPATH=contract:archiver:api mypy core/openNASR contract/openNASR_contract archiver/openNASR_archiver api/openNASR_api
 python tools/export_openapi.py         # REQUIRED after any API change, then commit docs/openapi.json
 ```
 
@@ -141,7 +142,7 @@ Both guests run signed `v2.0.1` with DuckDB 1.5.6 and retain `v2.0.0` for rollba
 
 1. **Phase 7 observation is in progress.** Run `deploy/proxmox/observe.sh --env-file .env` for every check below (read-only; `--zips` also re-hashes the archives; `tools/verify_bucket.py` does the bucket part alone). The manual production pass on `v2.0.1` exited 0 with `already_published 2026-10-29` and no active alerts. Verify the first timer-triggered pass, then check that the API defaults to 2026-11-26 when that prepublished cycle takes effect. When the FAA posts 2026-12-24, verify its Garage manifest, artifact hashes, and explicit-cycle API response. See [the observation checklist](REPLAN.md#8g-phase-7-observation).
 2. **API keys: owner decision (2026-11-18) is to keep the API open for now** (public FAA data, read-only, rate-limited, tailnet-only through NPMplus). Turn keys on when someone outside the owner's own machines needs access (see section 7 for the steps); then document who holds which key in the IT-management-UCF repo.
-3. **Refactors**: `flightplan.py` is a compatibility facade, and procedure lookup indexes now live in `_route_procedure_index.py`. The extraction preserved byte-identical results on 9,316 sampled routes. Moving core into a `core/` directory remains open. Verify future routing changes with `tools/route_corpus.py` and compare the same pool sample through the old and new code.
+3. **Refactors**: `flightplan.py` is a compatibility facade, and procedure lookup indexes now live in `_route_procedure_index.py`. The extraction preserved byte-identical results on 9,316 sampled routes. Verify future routing changes with `tools/route_corpus.py` and compare the same pool sample through the old and new code.
 4. **Backups: owner decision (2026-11-18) is no backup for now; revisit in a few months.** Garage is single-node, replication factor 1, with no copy. The zips are re-downloadable from the FAA only while the FAA keeps them, and the archiver can rebuild every database from a zip. Option noted for later: a nightly sync of the `opennasr` bucket to the `store` machine (its RAID6 is degraded).
 5. **Ambiguity: owner decision (2026-11-18) is to return every candidate.** When an identifier names several records the resolver still refuses to pick, but the `AmbiguousRecordError` diagnostic now carries `detail.candidates` (name, kind, type for navaids, lat, lon; procedure ambiguities list their candidates as plain lists). Done in `_route_resolver._error_diagnostic`; not yet in a release, so the live API (v2.0.1) does not return it.
 6. **Class B/C/D/E polygons: owner decision (2026-11-18) is to add the FAA shapefile data.** Source and design are in `REPLAN.md` section 2.15 (`class_airspace_shape_files.zip` on each cycle page, 5,621 polygons, 150 MB). Not built yet.

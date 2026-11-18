@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-README = Path(__file__).parents[1] / "README.md"
+README = Path(__file__).parents[1] / "core" / "README.md"
 USING_THE_LIBRARY = Path(__file__).parents[1] / "docs" / "using-the-library.md"
 
 

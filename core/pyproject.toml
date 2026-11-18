@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openNASR"
+version = "2.0.1"
+description = "Load, query, and plot FAA NASR subscription data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Adan E Vela", email = "adan.vela@ucf.edu" },
+]
+keywords = ["aviation", "FAA", "NASR", "navigation", "airspace"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "duckdb>=1.2.2,<2",
+    "numpy",
+    "pandas",
+    "platformdirs",
+    "shapely",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib"]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "fastapi>=0.110",
+    "httpx>=0.27",
+    "uvicorn>=0.29",
+    "tomli; python_version < '3.11'",
+]
+release = ["build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/xDecisionSystems/openNASR"
+Documentation = "https://opennasr.readthedocs.io/"
+Repository = "https://github.com/xDecisionSystems/openNASR.git"
+Issues = "https://github.com/xDecisionSystems/openNASR/issues"
+Changelog = "https://github.com/xDecisionSystems/openNASR/blob/main/CHANGELOG.md"
+
+[project.scripts]
+opennasr = "openNASR.cli:main"
+
+[tool.setuptools]
+packages = ["openNASR"]
+
+[tool.setuptools.package-data]
+openNASR = ["py.typed", "schema_manifests/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "contract", "archiver", "api"]
+# Keep temp directories only for failed tests. By default pytest keeps three runs of
+# every test directory (about 2 GB each here), which filled the 8 GB /tmp RAM disk.
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 1
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

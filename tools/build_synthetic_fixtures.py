@@ -10,7 +10,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_DIR = ROOT / "openNASR" / "schema_manifests"
+MANIFEST_DIR = ROOT / "core" / "openNASR" / "schema_manifests"
 FIXTURE_DIR = ROOT / "tests" / "fixtures"
 CORE_CYCLE_STEM = "28DaySubscription_Effective_2099-01-01"
 MALFORMED_CYCLE_STEM = "28DaySubscription_Effective_2099-01-02"

@@ -38,7 +38,7 @@ from openNASR.schemas import (
 
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
-MANIFEST_ROOT = Path(__file__).parents[1] / "openNASR" / "schema_manifests"
+MANIFEST_ROOT = Path(__file__).parents[1] / "core" / "openNASR" / "schema_manifests"
 SCHEMA_IDS = ("pre_2026_09", "nasr_2026_09")
 
 

@@ -492,3 +492,13 @@ Proposed design, not built yet:
 - Polygons are stored as a table in the same DuckDB file (WKB geometry plus the attributes), so the fetch, sidecar and update paths stay unchanged.
 - The API builds a shapely index from it, as it does for ARTCC boundaries, and `/v1/airspace/at` adds class B/C/D/E regions with their altitude limits (an altitude parameter can filter by floor and ceiling).
 - Open sub-questions for the owner: whether to filter by an `alt` parameter, and whether to keep older builds without the table.
+
+### Repository layout (changed 2026-11-18, owner decision)
+
+The core library moved from the repository root into `core/` (`core/openNASR`, `core/pyproject.toml`, `core/README.md`,
+`core/LICENSE`, `core/MANIFEST.in`), matching the layout planned in section 3. The root keeps shared tests, tools, docs,
+deploy files, a short project README and a `pyproject.toml` with only the shared pytest/ruff/mypy settings. Install with
+`pip install -e "./core[dev,plot]"`. History is preserved (`git mv`). Verified: 622 tests pass; the core wheel built from `core/` has
+exactly the same 59 files and contents as the wheel built before the move; all five artifacts pass `twine check`. CI, the release
+workflow, the PyPI workflow, both Dockerfiles, Dependabot and Read the Docs were updated; the Docker job and the release workflow's
+build job run on the first push to `main` and are the final check of the paths.

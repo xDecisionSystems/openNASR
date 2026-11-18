@@ -216,7 +216,7 @@ def test_nasr_reads_from_the_supplied_cache_dir_and_never_touches_package_data(
     cache_root = tmp_path / "cache"
     manager = CycleManager(cache_root)
     manager.import_archive(fixture_cycle_archive)
-    package_data_dir = Path(__file__).parents[1] / "openNASR" / "data"
+    package_data_dir = Path(__file__).parents[1] / "core" / "openNASR" / "data"
     before = set(package_data_dir.rglob("*")) if package_data_dir.exists() else set()
 
     nasr = NASR(cache_dir=cache_root)
