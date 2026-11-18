@@ -4,11 +4,14 @@ Read-only HTTP API over validated FAA NASR cycles. The headline endpoint resolve
 flight-plan route to an ordered list of latitude/longitude points, each with its source
 (`kind`, `via`, `segment`), plus GeoJSON and structured diagnostics. The full contract is
 [`docs/openapi.json`](../docs/openapi.json); the live service serves it at `/docs`.
+The explorer at `/` provides graphical tabs for airports, airspace, routes,
+arrivals, and departures. It can also supply an API key for a protected server.
 
 ```
 POST /v1/route/resolve   {"route": "KABQ.DOOKK3.TXO..KTYR"}        # or {"icao_message": "(FPL-...)"}
 GET  /v1/route/resolve?route=...&max_segment_nm=20                    # opt-in great-circle densify
 GET  /v1/airports/{id}  /v1/fixes/{id}  /v1/navaids/{id}  /v1/airways/{id}
+GET  /v1/arrivals/{id}  /v1/departures/{id}
 GET  /v1/airspace/at?lat=&lon=       # FAA boundaries and available class polygons
 GET  /v1/cycles   /health   /ready
 ```

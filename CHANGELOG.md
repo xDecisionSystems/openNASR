@@ -11,6 +11,10 @@ and versions follow Semantic Versioning.
 
 ### Added
 
+- The API's main page now provides a graphical explorer for airports, airspace,
+  routes, arrivals, and departures. Arrival and departure queries also have
+  dedicated HTTP endpoints with published procedure points.
+
 - Builder 2 publishes each cycle's FAA Class B/C/D/E shapefile ZIP and derived
   Parquet alongside the existing NASR artifacts.
 - `/v1/airspace/at` returns the available Class B/C/D/E polygons with their

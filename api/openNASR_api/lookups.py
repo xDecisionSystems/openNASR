@@ -11,7 +11,9 @@ from collections.abc import Callable
 import re
 from typing import Any
 
-from openNASR.query import QueryFilter
+from openNASR.arrivals import STAR_KEY
+from openNASR.departure import DEPARTURE_KEY
+from openNASR.query import QueryFilter, QueryTableNotFoundError
 
 MAX_ROWS = 5_000
 _AIRWAY = re.compile(r"^(?P<designation>[A-Z]+)(?P<identifier>[0-9][A-Z0-9]*)$")
@@ -120,3 +122,64 @@ def airways(query: Callable[..., Any], identifier: str) -> list[dict]:
         segments.sort(key=lambda r: int(r.get("POINT_SEQ", "0") or 0))
         result.append({"id": ident, "base": base, "segments": segments})
     return result
+
+
+def _procedure_rows(query, table, *filters):
+    try:
+        return _rows(query, table, *filters)
+    except QueryTableNotFoundError:
+        return []
+
+
+def _procedures(query, identifier, prefix, keys, code, name):
+    ident = identifier.strip().upper()
+    table = f"{prefix}_BASE"
+    bases = _procedure_rows(query, table, QueryFilter.eq(code, ident))
+    if not bases:
+        bases = _procedure_rows(query, table, QueryFilter.eq(name, ident))
+    stem = re.sub(r"\d+$", "", ident)
+    if not bases and stem and stem != ident:
+        bases = [
+            base
+            for base in _procedure_rows(query, table, QueryFilter.eq(name, stem))
+            if ident in base.get(code, "").split(".")
+        ]
+    if not bases:
+        raise NotFoundError(f"procedure {ident} is not in this cycle")
+
+    def sequence(value):
+        return int(value) if value and value.isdecimal() else 0
+
+    result = []
+    for base in bases:
+        procedure_id = base.get(code) or ident
+        filters = tuple(QueryFilter.eq(column, base.get(column, "")) for column in keys)
+        routes = _procedure_rows(query, f"{prefix}_RTE", *filters)
+        routes.sort(
+            key=lambda row: (
+                sequence(row.get("BODY_SEQ")),
+                sequence(row.get("POINT_SEQ")),
+            )
+        )
+        result.append(
+            {
+                "id": procedure_id,
+                "name": base.get(name, procedure_id),
+                "base": base,
+                "airports": _procedure_rows(query, f"{prefix}_APT", *filters),
+                "points": routes,
+            }
+        )
+    return result
+
+
+def arrivals(query: Callable[..., Any], identifier: str) -> list[dict]:
+    return _procedures(
+        query, identifier, "STAR", STAR_KEY, "STAR_COMPUTER_CODE", "ARRIVAL_NAME"
+    )
+
+
+def departures(query: Callable[..., Any], identifier: str) -> list[dict]:
+    return _procedures(
+        query, identifier, "DP", DEPARTURE_KEY, "DP_COMPUTER_CODE", "DP_NAME"
+    )

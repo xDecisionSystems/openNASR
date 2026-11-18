@@ -8,14 +8,16 @@ import hashlib
 import hmac
 import json
 import logging
+from pathlib import Path
 import re
 import time
 from typing import Annotated, Any
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openNASR.exceptions import ConfigurationError
@@ -202,6 +204,19 @@ class AirwaysResponse(BaseModel):
     airways: list[AirwayEntity]
 
 
+class ProcedureEntity(BaseModel):
+    id: str
+    name: str
+    base: dict[str, str]
+    airports: list[dict[str, str]]
+    points: list[dict[str, str]]
+
+
+class ProceduresResponse(BaseModel):
+    cycle: str
+    procedures: list[ProcedureEntity]
+
+
 class CycleInfo(BaseModel):
     effective_date: str
     in_effect: bool
@@ -284,6 +299,12 @@ def create_app(
             "check `complete` and `diagnostics`."
         ),
     )
+    frontend = Path(__file__).with_name("frontend")
+    app.mount("/ui", StaticFiles(directory=frontend), name="ui")
+
+    @app.get("/", include_in_schema=False)
+    def explorer() -> FileResponse:
+        return FileResponse(frontend / "index.html", media_type="text/html")
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):
@@ -491,6 +512,30 @@ def create_app(
         """An airway by designation, e.g. J74, with its segments in order."""
 
         return entity("airways", lookups.airways, identifier, cycle)
+
+    @app.get(
+        "/v1/arrivals/{identifier}",
+        response_model=ProceduresResponse,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def get_arrival(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
+        """Standard terminal arrivals by FAA name or computer code."""
+
+        return entity("procedures", lookups.arrivals, identifier, cycle)
+
+    @app.get(
+        "/v1/departures/{identifier}",
+        response_model=ProceduresResponse,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def get_departure(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
+        """Departure procedures by FAA name or computer code."""
+
+        return entity("procedures", lookups.departures, identifier, cycle)
 
     @app.get(
         "/v1/airspace/at",

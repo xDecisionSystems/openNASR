@@ -20,3 +20,7 @@ openNASR-api = "openNASR_api.cli:main"
 
 [tool.setuptools]
 packages = ["openNASR_api"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+openNASR_api = ["frontend/*.html", "frontend/*.css", "frontend/*.js"]

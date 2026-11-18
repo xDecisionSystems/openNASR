@@ -80,6 +80,8 @@ def test_the_document_is_valid_json_with_the_expected_paths():
         "/v1/fixes/{identifier}",
         "/v1/navaids/{identifier}",
         "/v1/airways/{identifier}",
+        "/v1/arrivals/{identifier}",
+        "/v1/departures/{identifier}",
         "/v1/cycles",
         "/health",
         "/ready",

@@ -259,6 +259,17 @@ def test_airspace_at_with_no_boundary_data_is_empty_and_says_what_is_not_covered
     assert "Class B/C/D/E" in data["not_covered"]
 
 
+def test_main_page_serves_the_explorer_and_its_assets(client):
+    page = client.get("/")
+    assert page.status_code == 200 and page.headers["content-type"].startswith(
+        "text/html"
+    )
+    for tab in ("Airports", "Airspace", "Routes", "Arrivals", "Departures"):
+        assert f">{tab}</button>" in page.text
+    for asset in ("explorer.css", "explorer.js"):
+        assert client.get(f"/ui/{asset}").status_code == 200
+
+
 @pytest.mark.parametrize(
     "params",
     [{"lat": 91, "lon": 0}, {"lat": 0, "lon": 181}, {"lat": "x", "lon": 0}, {"lat": 0}],
