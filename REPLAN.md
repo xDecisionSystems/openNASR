@@ -265,7 +265,7 @@ a `.duckdb` file must not need any of these.
 | 2.5 ICAO lat/lon waypoint tokens (`3800N07730W`, `37S078E`) resolve with range checks; FAA slash form (`4300N/05000W`) stays a diagnostic | done |
 | 2.7 Narrow DP/STAR records and bodies by the route's end airports (`STAR_APT`/`DP_APT`): done, resolved 15,987 -> 16,666 (+679). Runway-dependent bodies (`GRNCH-BRICE` vs `GRNCH-YAGGO` at MCO) are expected: the resolver returns the portion all bodies share (decided with the owner: arrivals branch by runway and airport configuration). Phase 4 must surface this as a diagnostic with `complete:false`; today `RouteResolver.path` returns the shared part silently | done |
 | 2.8 **DP/STAR rows are stored in flight order; the resolver reversed them.** Verified over a full cycle (airport at first point of 1,021/1,026 DP bodies, last point of 1,179/1,186 STAR bodies). Fixed, fixtures rewritten | done |
-| 2.6 Split `flightplan.py` into tokenizer / resolver / procedure and airway expanders | open |
+| 2.6 Split `flightplan.py` into layered modules (`_route_common`, `_route_waypoints`, `_route_airways`, `_route_procedures`, `_route_tokenizer`, `_route_resolver`; `flightplan.py` stays the import point). Verified identical on 9,316 real routes (coordinates, diagnostics, completeness) | done |
 
 ### Real-cycle baseline (2.4, cycle 2026-10-29, 46,580-route pool, 20 s DuckDB build, schema_id `nasr_2026_09`)
 

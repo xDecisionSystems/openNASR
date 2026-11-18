@@ -19,7 +19,9 @@ It has three runnable parts:
 
 ```
 openNASR/            core library (package "openNASR", version 2.0.1). No I/O policy; depends on neither contract, archiver nor api.
-  flightplan.py      route tokenizer + resolver (~1900 lines; splitting it is an open refactor)
+  flightplan.py      import point for route resolution (re-exports the public API and the private names tests use)
+  _route_common.py, _route_waypoints.py, _route_airways.py, _route_procedures.py, _route_tokenizer.py, _route_resolver.py
+                     the implementation, layered in that order (a module imports only from earlier ones). Flat files on purpose: the wheel lists only the top package
   routeresult.py     RouteResult / RoutePoint / RouteDiagnostic
   routejson.py       route_result_to_dict(): THE JSON shape, used by the API and the CLI
   geo.py             great-circle densify
@@ -133,7 +135,7 @@ Done since the first version of this document: PR merged and CI green; Gatus + H
 2. Both guests now run signed `v2.0.1`, with `v2.0.0` retained for rollback. The updater prunes superseded venvs, checks archiver bucket access before a switch, and installs hash-pinned dependencies from the signed manifest. Both guests kept DuckDB 1.5.6. For non-login `pct exec` shells, export `PATH="/usr/local/bin:/usr/local/sbin:$PATH"` so the updater can find Cosign.
 3. **Phase 7 observation**: watch the archiver through the next FAA cycle. 2026-11-26 is already published; the next new cycle (2026-12-24) should appear around early December. Check alerts, manifests and hashes.
 4. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
-5. **Refactors**: split `openNASR/flightplan.py` into tokenizer / resolver / procedure expander / airway expander (verify with `tools/route_corpus.py` and a pool run: usable must stay at 32,857); move core into a `core/` directory.
+5. **Refactors**: `flightplan.py` is already split (done 2026-11-18, verified identical on 9,316 real routes). Remaining: `_route_procedures.py` is still ~900 lines (its `_ProcedureIndex` could move out); move core into a `core/` directory. Verify any routing change with `tools/route_corpus.py` and by running the same pool sample through the old and new code (usable must stay at 70.3% of every 5th route, 70.5% of the full pool).
 6. **Dockerfiles (`archiver/Dockerfile`, `api/Dockerfile`) are not exercised.** Only the Proxmox LXC installer path has been run.
 7. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
 8. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.

@@ -52,11 +52,10 @@ OUTCOMES = {
 
 
 def _outcome(result) -> str:
-    codes = {
-        item.code
-        for item in result.diagnostics
-        if item.code != "procedure_geometry_unpublished"
-    }
+    # Only warnings decide the outcome; "info" notes (ignored speed/level or time
+    # groups, a departure ending at its computer-code fix) describe how a
+    # fully resolved route was read.
+    codes = {item.code for item in result.diagnostics if item.severity != "info"}
     if not codes:
         return "resolved"
     if codes == {"procedure_branches"}:
