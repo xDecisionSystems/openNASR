@@ -122,6 +122,35 @@
         "title": "AirportResponse",
         "type": "object"
       },
+      "AirspaceBoundary": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "rings": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/Position"
+              },
+              "type": "array"
+            },
+            "title": "Rings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "rings"
+        ],
+        "title": "AirspaceBoundary",
+        "type": "object"
+      },
       "AirspaceLayerResponse": {
         "properties": {
           "cycle": {
@@ -232,7 +261,7 @@
         "properties": {
           "artcc_boundaries": {
             "items": {
-              "$ref": "#/components/schemas/ArtccBoundary"
+              "$ref": "#/components/schemas/AirspaceBoundary"
             },
             "title": "Artcc Boundaries",
             "type": "array"
@@ -418,35 +447,6 @@
           "code"
         ],
         "title": "AltitudeLimit",
-        "type": "object"
-      },
-      "ArtccBoundary": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "level": {
-            "title": "Level",
-            "type": "string"
-          },
-          "rings": {
-            "items": {
-              "items": {
-                "$ref": "#/components/schemas/Position"
-              },
-              "type": "array"
-            },
-            "title": "Rings",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "level",
-          "rings"
-        ],
-        "title": "ArtccBoundary",
         "type": "object"
       },
       "CycleInfo": {
@@ -1227,7 +1227,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.5"
+    "version": "0.2.6"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1513,6 +1513,132 @@
           }
         ],
         "summary": "Airspace At",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/airspace/boundaries": {
+      "get": {
+        "description": "Return published outlines of one airspace type for a cycle.",
+        "operationId": "airspace_boundaries_v1_airspace_boundaries_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "ARTCC",
+              "enum": [
+                "ARTCC",
+                "FIR",
+                "CTA",
+                "UTA",
+                "CTA/FIR",
+                "B",
+                "C",
+                "D",
+                "E"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AirspaceBoundary"
+                  },
+                  "title": "Response Airspace Boundaries V1 Airspace Boundaries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Airspace Boundaries",
         "tags": [
           "lookup"
         ]

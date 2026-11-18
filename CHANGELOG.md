@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.6]
+
+### Added
+
+- Airspace opens with all ARTCC outlines and offers other airspace boundaries as overlays.
+
 ## [2.1.5]
 
 ### Added

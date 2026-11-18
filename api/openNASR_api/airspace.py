@@ -189,6 +189,32 @@ class AirspaceIndex:
             for index in sorted(self._hits(lat, lon) & self._artcc.keys())
         ]
 
+    def boundaries(self, kind: str) -> list[dict]:
+        boundaries = []
+        for wrapped, tree in self._trees.items():
+            if tree is None:
+                continue
+            for index, shape in zip(
+                self._members[wrapped], tree.geometries, strict=True
+            ):
+                region = self._regions[index]
+                if kind != (
+                    region.airspace_class if region.kind == "CLASS" else region.kind
+                ):
+                    continue
+                boundaries.append(
+                    {
+                        "id": region.id,
+                        "level": region.level,
+                        "rings": [
+                            map_coordinates(ring.coords)
+                            for polygon in _polygonal_parts(shape)
+                            for ring in (polygon.exterior, *polygon.interiors)
+                        ],
+                    }
+                )
+        return boundaries
+
     def artcc_extent(self, lat: float, lon: float) -> BaseGeometry:
         parts = []
         for index in self._hits(lat, lon) & self._artcc.keys():

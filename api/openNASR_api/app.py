@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 import re
 import time
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.5"
+API_VERSION = "0.2.6"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -283,7 +283,7 @@ class AirspaceRegion(BaseModel):
     upper: AltitudeLimit | None = None
 
 
-class ArtccBoundary(BaseModel):
+class AirspaceBoundary(BaseModel):
     id: str
     level: str
     rings: list[list[Position]]
@@ -293,7 +293,7 @@ class AirspaceResponse(BaseModel):
     cycle: str
     position: Position
     regions: list[AirspaceRegion]
-    artcc_boundaries: list[ArtccBoundary]
+    artcc_boundaries: list[AirspaceBoundary]
     not_covered: str
 
 
@@ -652,6 +652,26 @@ def create_app(
             "artcc_boundaries": index.artcc_boundaries(lat, lon),
             "not_covered": index.not_covered,
         }
+
+    @app.get(
+        "/v1/airspace/boundaries",
+        response_model=list[AirspaceBoundary],
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def airspace_boundaries(
+        kind: Literal[
+            "ARTCC", "FIR", "CTA", "UTA", "CTA/FIR", "B", "C", "D", "E"
+        ] = "ARTCC",
+        cycle: CycleParam = None,
+    ) -> list[dict]:
+        """Return published outlines of one airspace type for a cycle."""
+        try:
+            _, index = store.airspace(cycle)
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if cycle else 503, str(error)) from error
+        return index.boundaries(kind)
 
     @app.get(
         "/v1/airspace/layer",

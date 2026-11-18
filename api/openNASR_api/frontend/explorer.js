@@ -22,7 +22,7 @@ const views = {
       { name: "lat", label: "Latitude", example: "35.0402", min: -90, max: 90 },
       { name: "lon", label: "Longitude", example: "-106.609", min: -180, max: 180 },
     ],
-    caption: "Query a point to see the ARTCC boundaries that cover it.",
+    caption: "All ARTCC boundaries. Search a point to focus the map.",
   },
   flightplan: {
     title: "Resolve a flight plan",
@@ -156,6 +156,7 @@ function setView(name) {
   }));
   resetResult();
   if (savedResults.has(name)) showResult(savedResults.get(name));
+  else if (name === "airspace") loadAirspaceOverview();
 }
 
 function resetResult() {
@@ -339,23 +340,53 @@ function addAirportLayout(airport) {
   }
 }
 
+const boundaryLayers = [
+  ["FIR", "FIR", "#7fb5ff"], ["CTA", "CTA", "#f5be6d"],
+  ["UTA", "UTA", "#c5a4ff"], ["CTA/FIR", "CTA/FIR", "#ffa7d4"],
+  ["B", "Class B", "#82c8ff"], ["C", "Class C", "#e2a0ff"],
+  ["D", "Class D", "#f8e28a"], ["E", "Class E", "#aadb8c"],
+];
+
+async function loadAirspaceOverview() {
+  const active = new AbortController();
+  request = active;
+  const params = new URLSearchParams();
+  if (cycle.value) params.set("cycle", cycle.value);
+  try {
+    const boundaries = await api(`/v1/airspace/boundaries?${params}`, { signal: active.signal });
+    if (!active.signal.aborted) addAirspaceMap({ artcc_boundaries: boundaries });
+  } catch (error) {
+    if (!active.signal.aborted) setStatus(error.message, true);
+  }
+}
+
 function addAirspaceMap(data) {
-  plotPoints = [{ ...data.position, name: "Query point" }];
+  if (data.position) plotPoints = [{ ...data.position, name: "Query point" }];
   const boundaries = data.artcc_boundaries;
-  const caption = boundaries.length
+  const caption = !data.position ? "All ARTCC boundaries" : boundaries.length
     ? `ARTCC · ${boundaries.map((boundary) => [boundary.id, boundary.level].filter(Boolean).join(" ")).join(" · ")}`
     : "No ARTCC boundary covers this point.";
   byId("plot-caption").textContent = caption;
   canvas.setAttribute("aria-label", caption);
-  if (!boundaries.length) return;
-
-  const map = { boundaries, layers: new Map(), controller: new AbortController() };
+  const map = { overview: !data.position, boundaries, layers: new Map(), controller: new AbortController() };
   airspaceMap = map;
   const controls = byId("airspace-layers");
   controls.hidden = false;
   const message = element("p", "", "layer-status");
   message.setAttribute("role", "status");
-  for (const [key, name, color] of airspaceLayers) {
+  if (data.position) {
+    const overview = element("button", "Show all ARTCC");
+    overview.type = "button";
+    overview.addEventListener("click", () => {
+      savedResults.delete("airspace");
+      resetResult();
+      loadAirspaceOverview();
+    });
+    controls.append(overview);
+  }
+  const choices = data.position && boundaries.length ? [...boundaryLayers, ...airspaceLayers] : boundaryLayers;
+  for (const [key, name, color] of choices) {
+    const isBoundary = boundaryLayers.some(([kind]) => kind === key);
     const checkbox = element("input");
     checkbox.type = "checkbox";
     const label = element("label", name);
@@ -372,13 +403,24 @@ function addAirspaceMap(data) {
       if (!layer.selected || layer.data || layer.loading) return;
       layer.loading = true;
       label.setAttribute("aria-busy", "true");
-      const params = new URLSearchParams({ layer: key, cycle: data.cycle,
-        lat: data.position.lat, lon: data.position.lon });
+      const params = new URLSearchParams();
+      if (data.cycle || cycle.value) params.set("cycle", data.cycle || cycle.value);
+      let endpoint;
+      if (isBoundary) {
+        params.set("kind", key);
+        endpoint = "boundaries";
+      } else {
+        params.set("layer", key);
+        params.set("lat", data.position.lat);
+        params.set("lon", data.position.lon);
+        endpoint = "layer";
+      }
       try {
-        layer.data = await api(`/v1/airspace/layer?${params}`, { signal: map.controller.signal });
+        const response = await api(`/v1/airspace/${endpoint}?${params}`, { signal: map.controller.signal });
         if (airspaceMap !== map) return;
+        layer.data = isBoundary ? { points: [], lines: response.flatMap((boundary) => boundary.rings) } : response;
         if (layer.selected && !layer.data.points.length && !layer.data.lines.length) {
-          message.textContent = `No ${name.toLowerCase()} are available in these ARTCC boundaries.`;
+          message.textContent = `No ${name} outlines or features are available for this view.`;
         }
         drawPlot();
       } catch (error) {
@@ -394,6 +436,7 @@ function addAirspaceMap(data) {
     controls.append(label);
   }
   controls.append(message);
+  drawPlot();
 }
 
 function showResult(data) {
@@ -504,7 +547,7 @@ function drawPlot() {
   const points = [
     ...plotted.flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
   ].filter(available);
-  const reference = points[0]?.lon || 0;
+  const reference = airspaceMap?.overview ? 0 : points[0]?.lon || 0;
   const project = (point) => ({
     ...point,
     x: reference + ((point.lon - reference + 540) % 360) - 180,
@@ -557,11 +600,22 @@ function drawPlot() {
   const visible = new Map();
   if (airspaceMap) {
     const trace = (points) => {
-      points.forEach((point, index) => {
-        const [x, y] = xy(project(point).x, point.lat);
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
+      let previous;
+      for (const point of points) {
+        const lon = project(point).x;
+        const [x, y] = xy(lon, point.lat);
+        if (!previous) ctx.moveTo(x, y);
+        else if (Math.abs(lon - previous.lon) > 180) {
+          const offset = lon < previous.lon ? 360 : -360;
+          const seam = reference + offset / 2;
+          const fraction = (seam - previous.lon) / (lon + offset - previous.lon);
+          const lat = previous.lat + fraction * (point.lat - previous.lat);
+          ctx.lineTo(...xy(seam, lat));
+          ctx.moveTo(...xy(seam - offset, lat));
+          ctx.lineTo(x, y);
+        } else ctx.lineTo(x, y);
+        previous = { lon, lat: point.lat };
+      }
     };
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = printing ? "#12685e" : "#76dfca";
@@ -743,6 +797,7 @@ cycle.addEventListener("change", () => {
   request?.abort();
   savedResults.clear();
   resetResult();
+  if (currentView === "airspace") loadAirspaceOverview();
 });
 byId("example").addEventListener("click", () => {
   for (const field of views[currentView].fields) form.elements[field.name].value = field.example;
@@ -755,6 +810,7 @@ byId("apply-key").addEventListener("click", () => {
   request?.abort();
   savedResults.clear();
   resetResult();
+  if (currentView === "airspace") loadAirspaceOverview();
   loadCycles();
 });
 new ResizeObserver(drawPlot).observe(canvas.parentElement);
