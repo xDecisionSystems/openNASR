@@ -465,8 +465,9 @@ Docs for the lab: `IT-management-UCF/documentation/{hosts/opennasr-api,hosts/ope
 | 2026-11-26 becomes effective | Confirm `/v1/cycles` and `/ready` select the prepublished 2026-11-26 cycle and a default-cycle route resolves. | open |
 | First publication of 2026-12-24 | Once the FAA posts the cycle, confirm the timer publishes its manifest, verify archive, DuckDB, and sidecar hashes, and resolve a route explicitly against it before it becomes the default. Check alert state. | waiting for FAA publication |
 
-For the next check, use the read-only timer, journal, and API commands in
-[HANDOVER.md](HANDOVER.md#quick-health-checks).
+For each check run `deploy/proxmox/observe.sh --env-file .env` (read-only: API default cycle and a route on every cycle, timer last/next trigger, last service result, active alerts, deployed releases, Gatus, and every manifest's DuckDB and sidecar hashes; add `--zips` to also re-download and hash the archives). It exits 1 on any FAIL; "the timer has not fired yet" is a WARN until about 06:24 UTC on 2026-11-18. Baseline run 2026-11-18 04:30 UTC: all PASS.
+
+Bucket integrity alone: `python tools/verify_bucket.py --env-file .env [--cycle D] [--zips]`.
 
 The API selects its default from the newest cached cycle effective on the current
 UTC date. The November 26 rollover tests selection of a cached cycle. The
