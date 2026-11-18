@@ -18,7 +18,7 @@ It has three runnable parts:
 ## 2. Repository map (`/srv/projects/openNASR`, GitHub `xDecisionSystems/openNASR`)
 
 ```
-openNASR/            core library (package "openNASR", version 2.0.0). No I/O policy; depends on neither contract, archiver nor api.
+openNASR/            core library (package "openNASR", version 2.0.1). No I/O policy; depends on neither contract, archiver nor api.
   flightplan.py      route tokenizer + resolver (~1900 lines; splitting it is an open refactor)
   routeresult.py     RouteResult / RoutePoint / RouteDiagnostic
   routejson.py       route_result_to_dict(): THE JSON shape, used by the API and the CLI
@@ -42,7 +42,7 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 ## 3. Git state
 
-- The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). Day-to-day work now goes through branches and PRs; do not push to `main` directly.
+- The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). **Workflow (owner's rule): commit directly to `main`. No feature branches, no PRs, no merge commits.** Tags are the only release step.
 - Added after the first handover: Python 3.10 test compatibility, a cache-preserving store refresh, hardened `max_segment_nm` limits, `NASR.close()`, the signed-release workflow (`.github/workflows/release.yml`) and the updater (`deploy/opennasr-update`, tested by `tests/test_deployment_update.py`).
 - **`v2.0.0` is released** (annotated tag on `main`, signed GitHub release with the four wheels, `opennasr-update`, `manifest.json` and its Sigstore bundle; verified: hashes match the manifest, `cosign verify-blob` OK). A `v*` tag starts only the signed deployment release (`release.yml`). **Nothing is on PyPI**: `publish-to-pypi.yml` is manual-only (Actions tab, choose the tag, then the owner approves the `pypi` environment). The owner said PyPI is lower priority.
 - The first `v2.0.0` tag was moved once: its release run failed after signing because the publish job had no checkout (`gh` needs `GH_REPO`), the fix was merged (PR #5), and the unreleased tag was re-created on the fixed commit. Cutting a release is therefore tested end to end. If a release run fails after tagging, nothing is published; fix on `main`, then delete and re-create the tag only if no release exists.
@@ -141,6 +141,7 @@ Done since the first version of this document: PR merged and CI green; Gatus + H
 
 ## 9. Owner preferences and working agreements
 
+- **Commit straight to `main`.** The owner does not want PRs, feature branches or merge commits ("everything should just be committed"). `git config pull.ff only` is set so a pull never creates a merge commit.
 - **Do the work; do not keep re-asking.** The owner reacted badly to repeated, rephrased questions. Make a recommendation, state it, proceed. Ask only for decisions that are really theirs (hosts, keys, outward-facing actions).
 - **Outward-facing or hard-to-reverse actions need their go-ahead**: pushing to `main`, tagging/publishing, creating infrastructure, using admin tokens, sending messages. They have approved the infrastructure steps listed in section 7 only.
 - **Precise language matters.** They pushed back on calling normal FAA branching a "failure" and on "ambiguous". Prefer the outcome classes in section 6. Never present a guess as a resolved point; unsupported things become diagnostics.
