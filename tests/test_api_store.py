@@ -124,7 +124,8 @@ def test_publication_rolls_back_and_a_retry_reopens_the_database(
     database = tmp_path / "replacement.duckdb"
     database.write_bytes(bucket.get_bytes(original.duckdb.key))
     with duckdb.connect(database) as connection:
-        connection.execute("INSERT INTO APT_BASE (ARPT_ID) VALUES ('TST')")
+        # DuckDB can infer an integer type from the empty fixture column.
+        connection.execute("INSERT INTO APT_BASE (ARPT_ID) VALUES ('123')")
     database_bytes = database.read_bytes()
     database_hash = sha256(database_bytes).hexdigest()
     metadata = json.loads(bucket.get_bytes(original.sidecar.key))
@@ -138,6 +139,7 @@ def test_publication_rolls_back_and_a_retry_reopens_the_database(
         zip=replace(original.zip, key=keys.zip),
         duckdb=ArtifactRef(keys.duckdb, database_hash, len(database_bytes)),
         sidecar=ArtifactRef(keys.sidecar, sha256(sidecar).hexdigest(), len(sidecar)),
+        tables=metadata["tables"],
     )
     bucket.put_bytes(keys.manifest, newer.to_json().encode())
     bucket.put_bytes(keys.sidecar, sidecar)
@@ -160,7 +162,7 @@ def test_publication_rolls_back_and_a_retry_reopens_the_database(
     assert store.refresh().fetched == [CYCLE]
     assert store.manifest(CYCLE) == newer
     with store.lookup(CYCLE) as (_, query):
-        assert query("APT_BASE", fields=["ARPT_ID"]).rows == ({"ARPT_ID": "TST"},)
+        assert query("APT_BASE", fields=["ARPT_ID"]).rows == ({"ARPT_ID": "123"},)
 
 
 def test_a_bucket_error_preserves_the_cache_and_allows_retry(
