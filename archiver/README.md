@@ -4,6 +4,11 @@ Downloads the current FAA NASR cycle, builds and validates the DuckDB database, 
 the zip, database, sidecar and manifest to an S3 bucket. The manifest is uploaded last and is the
 "validated" marker. Keys never change once written.
 
+Builder 2 also requires the FAA Class B/C/D/E shapefile ZIP for the same cycle.
+The archiver publishes that source ZIP and its derived Parquet file before
+committing the manifest. Existing builder 1 manifests remain readable.
+Running `backfill` on an existing cycle produces a separate builder 2 manifest.
+
 ```
 openNASR-archiver run        # one pass (the timer runs this daily)
 openNASR-archiver status     # validated builds in the bucket

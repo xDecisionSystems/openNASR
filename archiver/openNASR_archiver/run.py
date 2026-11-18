@@ -120,11 +120,13 @@ def run_once(
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     grace_days: int = 3,
     keep_cycles: int = 2,
+    builder: int = BUILDER_VERSION,
     **publish_options,
 ) -> RunOutcome:
     notifier = notifier or LogNotifier()
     state = AlertState(state_path)
-    outcome = _attempt(manager, bucket, state, **publish_options)
+    options = {"builder": builder, **publish_options}
+    outcome = _attempt(manager, bucket, state, **options)
     if outcome.status == "failed":
         _fire(state, notifier, outcome.kind or "failed", outcome.detail)
     else:
@@ -136,8 +138,8 @@ def run_once(
         ):
             _resolve(state, notifier, kind)
         _check_overdue(state, notifier, now(), grace_days, outcome)
-        _handle_upcoming(manager, bucket, state, notifier, outcome, publish_options)
-        prune_cache(manager, bucket, keep=keep_cycles)
+        _handle_upcoming(manager, bucket, state, notifier, outcome, options)
+        prune_cache(manager, bucket, keep=keep_cycles, builder=builder)
     state.save()
     return outcome
 
@@ -156,6 +158,8 @@ def _attempt(manager, bucket, state, **publish_options) -> RunOutcome:
         result: PublishResult = publish_cycle(
             manager, effective_date, bucket, **publish_options
         )
+    except DownloadError as error:
+        return RunOutcome("failed", effective_date, SOURCE_UNAVAILABLE, str(error))
     except PublishError as error:
         return RunOutcome("failed", effective_date, VALIDATION_FAILED, str(error))
     except DuckDbBuildError as error:
@@ -169,7 +173,13 @@ def _attempt(manager, bucket, state, **publish_options) -> RunOutcome:
     )
 
 
-def prune_cache(manager: CycleManager, bucket: Bucket, *, keep: int = 2) -> list[date]:
+def prune_cache(
+    manager: CycleManager,
+    bucket: Bucket,
+    *,
+    keep: int = 2,
+    builder: int = BUILDER_VERSION,
+) -> list[date]:
     """Delete cached cycles older than the newest ``keep`` once they are published.
 
     A cycle that is not in the bucket is never removed: the cache is the staging
@@ -179,9 +189,13 @@ def prune_cache(manager: CycleManager, bucket: Bucket, *, keep: int = 2) -> list
 
     removed: list[date] = []
     try:
-        published = {build.effective_date for build in list_builds(bucket)}
+        published = {
+            build.effective_date
+            for build in list_builds(bucket)
+            if build.builder == builder
+        }
         for effective_date in sorted(manager.available_cycles())[: -keep or None]:
-            if keep == 0 or effective_date.isoformat() in published:
+            if effective_date.isoformat() in published:
                 manager.remove(effective_date)
                 removed.append(effective_date)
     except Exception:  # pruning is housekeeping; it must never fail a pass
@@ -193,9 +207,9 @@ def _upcoming(manager, bucket, current: date, publish_options) -> BackfillResult
     """Publish the cycle after ``current``, which the FAA posts ~20 days early."""
 
     upcoming = next_cycle_after(current)
-    return _one(
-        manager, bucket, upcoming, BUILDER_VERSION, False, set(), publish_options
-    )
+    options = dict(publish_options)
+    builder = options.pop("builder")
+    return _one(manager, bucket, upcoming, builder, False, set(), options)
 
 
 def _handle_upcoming(

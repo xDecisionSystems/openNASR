@@ -1,6 +1,7 @@
 """The archiver command line against a local bucket."""
 
 from datetime import date
+from functools import partial
 import json
 
 import pytest
@@ -28,6 +29,9 @@ def test_publish_status_and_rebuild_round_trip(cached, tmp_path, capsys, monkeyp
     from openNASR_archiver import publish as publish_module
 
     monkeypatch.setattr(publish_module, "REQUIRED_TABLES", ())
+    monkeypatch.setattr(
+        cli, "publish_cycle", partial(publish_module.publish_cycle, builder=1)
+    )
     common = ["--local-bucket", str(bucket_dir), "--cache-dir", str(cache)]
 
     assert _main(*common, "publish", effective_date) == 0
@@ -55,6 +59,7 @@ def test_rebuild_reports_a_difference(cached, tmp_path):
         CycleManager(cache),
         date.fromisoformat(effective_date),
         bucket,
+        builder=1,
         required_tables=(),
     )
     manifest = select_build(bucket)

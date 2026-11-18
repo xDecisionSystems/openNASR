@@ -128,6 +128,7 @@ def test_fetch_gets_validated_cycles_from_a_bucket_and_route_uses_them(
         CycleManager(source_cache),
         date.fromisoformat(nasr.effective_date),
         bucket,
+        builder=1,
         required_tables=(),
     )
     monkeypatch.setenv("OPENNASR_S3_BUCKET", "nasr")

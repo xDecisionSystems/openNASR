@@ -678,6 +678,12 @@ class CycleManager:
         if archive and archive_path.is_file():
             archive_path.unlink()
             removed_archive = True
+        if archive:
+            airspace = self.airspace_archive_path(effective_date)
+            if airspace.is_file():
+                airspace.unlink()
+                removed_archive = True
+            airspace.with_name(f"{airspace.name}.json").unlink(missing_ok=True)
         removed_duckdb = False
         if duckdb:
             database_path = self.duckdb_path(effective_date)
@@ -820,16 +826,19 @@ class CycleManager:
             raise
         return part_path
 
+    def airspace_archive_path(self, effective_date: date) -> Path:
+        return self.archives_dir / f"class_airspace_shape_files_{effective_date}.zip"
+
     def download_airspace(self, effective_date: date, *, force: bool = False) -> Path:
         """Cache the optional FAA Class B/C/D/E shapefile ZIP for one cycle."""
 
-        destination = (
-            self.archives_dir / f"class_airspace_shape_files_{effective_date}.zip"
-        )
+        destination = self.airspace_archive_path(effective_date)
         if destination.is_file() and not force:
             return destination
         if self.provider is None:
-            raise ValueError("A FAA cycle provider is required for downloads")
+            raise DownloadError(
+                f"FAA airspace archive unavailable for {effective_date}"
+            )
         part = None
         try:
             for_date = getattr(self.provider, "for_date", None)

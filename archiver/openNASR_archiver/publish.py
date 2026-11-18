@@ -11,13 +11,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Iterable
 
 from openNASR.cycles import CycleManager, sha256_file, validate_archive
-from openNASR_contract import ArtifactRef, Bucket, Manifest, build_keys
+from openNASR_contract import (
+    ArtifactRef,
+    Bucket,
+    ClassAirspace,
+    Manifest,
+    build_keys,
+    class_airspace_source_key,
+)
+
+from .classairspace import build_class_airspace
 
 
-BUILDER_VERSION = 1
+BUILDER_VERSION = 2
 ARCHIVER_VERSION = "0.1.0"
 
 REQUIRED_TABLES = (
@@ -69,11 +79,35 @@ def publish_cycle(
         existing = Manifest.from_json(bucket.get_bytes(keys.manifest))
         return PublishResult(existing, already_published=True)
 
+    airspace = manager.download_airspace(effective_date) if builder >= 2 else None
     result = manager.build_duckdb(effective_date)
     metadata = result.metadata
     required = REQUIRED_TABLES if required_tables is None else tuple(required_tables)
     _validate_build(metadata, result.database_path, required)
     db_sha = sha256_file(result.database_path)
+
+    class_airspace = None
+    if airspace is not None:
+        with TemporaryDirectory(dir=result.database_path.parent) as work:
+            parquet = Path(work) / "class_airspace.parquet"
+            try:
+                summary = build_class_airspace(airspace, parquet)
+            except Exception as error:
+                raise PublishError(
+                    f"Class airspace failed validation: {error}"
+                ) from error
+            source_sha = sha256_file(airspace)
+            source_key = class_airspace_source_key(
+                effective_date.isoformat(), zip_sha, source_sha
+            )
+            parquet_sha = sha256_file(parquet)
+            class_airspace = ClassAirspace(
+                ArtifactRef(source_key, source_sha, airspace.stat().st_size),
+                ArtifactRef(keys.class_airspace, parquet_sha, parquet.stat().st_size),
+                summary.rows,
+            )
+            bucket.put_file(source_key, airspace, source_sha)
+            bucket.put_file(keys.class_airspace, parquet, parquet_sha)
 
     bucket.put_file(keys.zip, archive, zip_sha)
     bucket.put_file(keys.duckdb, result.database_path, db_sha)
@@ -94,6 +128,7 @@ def publish_cycle(
         tables=dict(metadata.tables),
         created_at=datetime.now(timezone.utc).isoformat(),
         archiver_version=ARCHIVER_VERSION,
+        class_airspace=class_airspace,
     )
     bucket.put_bytes(keys.manifest, manifest.to_json().encode("utf-8"))
     return PublishResult(manifest, already_published=False)

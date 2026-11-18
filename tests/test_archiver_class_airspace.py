@@ -1,5 +1,7 @@
 """The FAA Class B/C/D/E shapefile zip becomes a Parquet file of polygons."""
 
+from datetime import date, datetime, timezone
+from shutil import copyfile
 from zipfile import ZipFile
 
 import pytest
@@ -7,6 +9,9 @@ import pytest
 shapefile = pytest.importorskip("shapefile")
 
 from openNASR_archiver import classairspace  # noqa: E402
+from openNASR.cycles import CycleManager  # noqa: E402
+from openNASR_archiver import backfill, publish_cycle, rebuild_from_bucket, run_once  # noqa: E402
+from openNASR_contract import LocalBucket, fetch_build, list_builds  # noqa: E402
 
 FIELDS = ("NAME", "UPPER_VAL", "LOWER_VAL", "CLASS", "SHAPE_Leng")
 
@@ -96,3 +101,68 @@ def test_too_few_or_missing_classes_are_refused(tmp_path):
     no_e = _zip(other, ["B", "C", "D", "D"])
     with pytest.raises(classairspace.ClassAirspaceError, match="Class E"):
         classairspace.build_class_airspace(no_e, tmp_path / "b.parquet")
+
+
+def test_airspace_build_retries_and_backfills_over_b1(
+    make_nasr_from_fixture, tmp_path, monkeypatch
+):
+    _, cache = make_nasr_from_fixture("schema_only/nasr_2026_09")
+    cycle = date(2026, 9, 3)
+    manager = CycleManager(cache)
+    bucket = LocalBucket(tmp_path / "bucket")
+    old = publish_cycle(manager, cycle, bucket, builder=1, required_tables=()).manifest
+    zip_path = manager.airspace_archive_path(cycle)
+    copyfile(_zip(tmp_path, ["B", "C", "D", "E"]), zip_path)
+
+    def fail_manifest(*args):
+        raise OSError("interrupted before commit")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(bucket, "put_bytes", fail_manifest)
+        (result,) = backfill(manager, bucket, [cycle], required_tables=())
+        assert result.status == "failed"
+        assert list_builds(bucket) == [old]
+    (result,) = backfill(manager, bucket, [cycle], required_tables=())
+    assert result.status == "published"
+    first, new = list_builds(bucket)
+    assert first == old
+    assert new.builder == 2 and new.class_airspace.rows == 4
+    output = tmp_path / "fetched"
+    fetch_build(bucket, new, output)
+    assert (output / "class_airspace.parquet").is_file()
+    rebuilt = rebuild_from_bucket(bucket, new, tmp_path / "rebuild")
+    assert rebuilt.ok and rebuilt.class_airspace_rows_match is True
+    manager.store_sha256_metadata(zip_path)
+    assert manager.remove(cycle).removed_archive
+    assert not zip_path.exists()
+    assert not zip_path.with_suffix(".zip.json").exists()
+
+
+@pytest.mark.parametrize("invalid", [False, True])
+def test_airspace_source_and_validation_errors_block_the_archiver(
+    make_nasr_from_fixture, tmp_path, invalid
+):
+    from types import SimpleNamespace
+
+    from openNASR.cycles import RemoteCycle
+
+    _, cache = make_nasr_from_fixture("schema_only/nasr_2026_09")
+    cycle = date(2026, 9, 3)
+    provider = SimpleNamespace(discover=lambda: RemoteCycle(cycle, "unused"))
+    manager = CycleManager(cache, provider=provider)
+    if invalid:
+        copyfile(_zip(tmp_path, ["B", "C", "D"]), manager.airspace_archive_path(cycle))
+    bucket = LocalBucket(tmp_path / "bucket")
+    alerts = []
+    outcome = run_once(
+        manager,
+        bucket,
+        tmp_path / "state.json",
+        notifier=SimpleNamespace(notify=lambda *event: alerts.append(event)),
+        now=lambda: datetime(2026, 9, 3, tzinfo=timezone.utc),
+        required_tables=(),
+    )
+    expected = "validation_failed" if invalid else "source_unavailable"
+    assert outcome.status == "failed" and outcome.kind == expected
+    assert alerts[0][:2] == (expected, "firing")
+    assert list(bucket.list_keys()) == []

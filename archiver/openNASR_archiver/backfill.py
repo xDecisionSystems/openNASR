@@ -75,6 +75,8 @@ def _one(manager, bucket, effective_date, builder, force, published, options):
         outcome = publish_cycle(
             manager, effective_date, bucket, builder=builder, **options
         )
+    except DownloadError as error:
+        return BackfillResult(effective_date, "unavailable", str(error))
     except (PublishError, DuckDbBuildError) as error:
         return BackfillResult(effective_date, "failed", str(error))
     except Exception as error:  # the bucket

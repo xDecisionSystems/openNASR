@@ -45,6 +45,7 @@ SOON = datetime(2026, 9, 10, tzinfo=timezone.utc)
 def _run(setup, notifier, **options):
     manager, bucket, state = setup
     options.setdefault("now", lambda: SOON)
+    options.setdefault("builder", 1)
     return run_once(
         manager, bucket, state, notifier=notifier, required_tables=(), **options
     )
@@ -102,6 +103,7 @@ def test_a_build_that_fails_validation_is_reported_and_not_published(setup):
         bucket,
         state,
         notifier=notifier,
+        builder=1,
         required_tables=("NO_SUCH_TABLE",),
     )
 
@@ -184,10 +186,13 @@ def test_old_published_cycles_are_pruned_but_unpublished_ones_are_kept(setup):
 
     from openNASR_archiver import run as run_module
 
-    assert run_module.prune_cache(manager, bucket, keep=1) == []  # newest is kept
+    assert run_module.prune_cache(manager, bucket, keep=0) == []  # b2 is pending
+    assert (
+        run_module.prune_cache(manager, bucket, keep=1, builder=1) == []
+    )  # newest is kept
     assert manager.available_cycles() == (CYCLE,)
 
-    removed = run_module.prune_cache(manager, bucket, keep=0)
+    removed = run_module.prune_cache(manager, bucket, keep=0, builder=1)
     assert removed == [CYCLE] and manager.available_cycles() == ()
 
 
@@ -200,5 +205,7 @@ def test_a_cycle_that_is_not_in_the_bucket_is_never_pruned(setup, monkeypatch):
     removed = []
     monkeypatch.setattr(manager, "remove", lambda d: removed.append(d))
 
-    assert run_module.prune_cache(manager, bucket, keep=1) == []  # older is unpublished
+    assert (
+        run_module.prune_cache(manager, bucket, keep=1, builder=1) == []
+    )  # older is unpublished
     assert removed == []

@@ -51,6 +51,7 @@ def test_backfill_reports_each_cycle_and_does_not_stop_on_a_missing_one(setup):
         manager,
         bucket,
         [date(2026, 8, 6), CYCLE, date(2026, 10, 1)],
+        builder=1,
         required_tables=(),
         progress=seen.append,
     )
@@ -65,14 +66,14 @@ def test_backfill_reports_each_cycle_and_does_not_stop_on_a_missing_one(setup):
 
 def test_backfill_skips_published_cycles_without_downloading(setup):
     manager, bucket = setup
-    backfill(manager, bucket, [CYCLE], required_tables=())
+    backfill(manager, bucket, [CYCLE], builder=1, required_tables=())
 
     class Exploding(OfflineProvider):
         def for_date(self, effective_date):
             raise AssertionError("must not contact the FAA for a published cycle")
 
     manager.provider = Exploding()
-    (result,) = backfill(manager, bucket, [CYCLE], required_tables=())
+    (result,) = backfill(manager, bucket, [CYCLE], builder=1, required_tables=())
 
     assert result.status == "already_published"
 
@@ -80,7 +81,9 @@ def test_backfill_skips_published_cycles_without_downloading(setup):
 def test_a_cycle_that_fails_validation_is_reported_failed(setup):
     manager, bucket = setup
 
-    (result,) = backfill(manager, bucket, [CYCLE], required_tables=("NO_SUCH",))
+    (result,) = backfill(
+        manager, bucket, [CYCLE], builder=1, required_tables=("NO_SUCH",)
+    )
 
     assert result.status == "failed"
     assert "required tables" in result.detail

@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 
 from openNASR.cycles import CycleManager, FaaCycleProvider
+from openNASR.exceptions import DownloadError
 from openNASR_contract import (
     Bucket,
     LocalBucket,
@@ -123,6 +124,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"schema {word(report.schema_id_match)}, "
             f"fingerprint {word(report.schema_fingerprint_match)}"
         )
+        if report.class_airspace_rows_match is not None:
+            print(f"class airspace rows {word(report.class_airspace_rows_match)}")
         return 0 if report.ok else 1
 
     if arguments.command == "backfill":
@@ -145,10 +148,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1 if any(r.status == "failed" for r in results) else 0
 
     if arguments.command == "publish":
-        manager = CycleManager(cache)
+        manager = CycleManager(cache, provider=FaaCycleProvider())
         try:
             result = publish_cycle(manager, date.fromisoformat(arguments.date), bucket)
-        except PublishError as error:
+        except (PublishError, DownloadError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 1
         print("already published" if result.already_published else "published")

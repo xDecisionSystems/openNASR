@@ -21,7 +21,9 @@ def test_publish_uploads_zip_database_then_manifest(cycle, tmp_path):
     manager, effective_date = cycle
     bucket = LocalBucket(tmp_path / "bucket")
 
-    result = publish_cycle(manager, effective_date, bucket, required_tables=())
+    result = publish_cycle(
+        manager, effective_date, bucket, builder=1, required_tables=()
+    )
 
     assert not result.already_published
     manifest = result.manifest
@@ -38,9 +40,13 @@ def test_publish_uploads_zip_database_then_manifest(cycle, tmp_path):
 def test_publishing_again_changes_nothing(cycle, tmp_path):
     manager, effective_date = cycle
     bucket = LocalBucket(tmp_path / "bucket")
-    first = publish_cycle(manager, effective_date, bucket, required_tables=())
+    first = publish_cycle(
+        manager, effective_date, bucket, builder=1, required_tables=()
+    )
 
-    second = publish_cycle(manager, effective_date, bucket, required_tables=())
+    second = publish_cycle(
+        manager, effective_date, bucket, builder=1, required_tables=()
+    )
 
     assert second.already_published
     assert second.manifest == first.manifest
@@ -52,7 +58,11 @@ def test_an_unrecognized_schema_is_not_published(make_nasr_from_fixture, tmp_pat
 
     with pytest.raises(PublishError, match="schema was not recognized"):
         publish_cycle(
-            CycleManager(cache_root), date(2026, 8, 6), bucket, required_tables=()
+            CycleManager(cache_root),
+            date(2026, 8, 6),
+            bucket,
+            builder=1,
+            required_tables=(),
         )
 
     assert list(bucket.list_keys()) == []
@@ -63,7 +73,9 @@ def test_missing_required_tables_block_publication(cycle, tmp_path):
     bucket = LocalBucket(tmp_path / "bucket")
 
     with pytest.raises(PublishError, match="required tables"):
-        publish_cycle(manager, effective_date, bucket, required_tables=("NO_SUCH",))
+        publish_cycle(
+            manager, effective_date, bucket, builder=1, required_tables=("NO_SUCH",)
+        )
 
     assert list(bucket.list_keys()) == []
 
@@ -89,11 +101,13 @@ def test_a_failed_upload_leaves_no_manifest_and_a_rerun_completes(cycle, tmp_pat
 
     bucket.put_file = failing
     with pytest.raises(OSError):
-        publish_cycle(manager, effective_date, bucket, required_tables=())
+        publish_cycle(manager, effective_date, bucket, builder=1, required_tables=())
     assert not any(key.endswith(".json") for key in bucket.list_keys())
 
     bucket.put_file = real_put_file
-    result = publish_cycle(manager, effective_date, bucket, required_tables=())
+    result = publish_cycle(
+        manager, effective_date, bucket, builder=1, required_tables=()
+    )
     assert not result.already_published
     assert result.manifest.keys().manifest in set(bucket.list_keys())
 

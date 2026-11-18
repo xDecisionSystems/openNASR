@@ -26,6 +26,7 @@ def bucket(make_nasr_from_fixture, tmp_path):
         CycleManager(cache_root),
         date.fromisoformat(nasr.effective_date),
         bucket,
+        builder=1,
         required_tables=(),
     )
     return bucket
