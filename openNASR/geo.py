@@ -43,25 +43,33 @@ def densify(points: Sequence[RoutePoint], max_segment_nm: float) -> list[RoutePo
     """Insert great-circle points so no leg is longer than ``max_segment_nm``.
 
     Inserted points have kind ``interpolated`` and no name. Raises
-    :class:`ValueError` rather than return more than :data:`MAX_POINTS`.
+    :class:`ValueError` for an invalid distance or output over :data:`MAX_POINTS`.
     """
 
-    result: list[RoutePoint] = []
+    if not math.isfinite(max_segment_nm) or max_segment_nm <= 0:
+        raise ValueError("max_segment_nm must be finite and greater than zero")
+    limit_error = (
+        f"max_segment_nm={max_segment_nm} would produce more than {MAX_POINTS} points"
+    )
+    if len(points) > MAX_POINTS:
+        raise ValueError(limit_error)
+    if not points:
+        return []
+
+    remaining = MAX_POINTS - len(points)
+    result = [points[0]]
     for before, after in zip(points, points[1:]):
-        result.append(before)
-        legs = math.ceil(
+        required = (
             distance_nm(before.lat, before.lon, after.lat, after.lon) / max_segment_nm
         )
+        if required > remaining + 1:
+            raise ValueError(limit_error)
+        legs = max(1, math.ceil(required))
+        remaining -= legs - 1
         for step in range(1, legs):
             lat, lon = intermediate(
                 before.lat, before.lon, after.lat, after.lon, step / legs
             )
             result.append(RoutePoint(lat, lon, "", "interpolated", None, after.segment))
-        if len(result) > MAX_POINTS:
-            raise ValueError(
-                f"max_segment_nm={max_segment_nm} would produce more than "
-                f"{MAX_POINTS} points"
-            )
-    if points:
-        result.append(points[-1])
+        result.append(after)
     return result

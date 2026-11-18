@@ -8,6 +8,7 @@ bucket.
 from __future__ import annotations
 
 from collections.abc import Collection
+from contextlib import AbstractContextManager, nullcontext
 import hashlib
 import json
 from pathlib import Path
@@ -19,6 +20,7 @@ from .manifest import ArtifactRef, Manifest, ManifestError
 
 DATABASE_NAME = "nasr.duckdb"
 SIDECAR_NAME = "nasr.duckdb.json"
+MANIFEST_NAME = "manifest.json"
 
 
 class FetchError(RuntimeError):
@@ -69,40 +71,84 @@ def select_build(
     return candidates[-1] if candidates else None
 
 
-def fetch_build(bucket: Bucket, manifest: Manifest, directory: Path) -> Path:
-    """Place a verified ``nasr.duckdb`` and its sidecar in ``directory``."""
+def fetch_build(
+    bucket: Bucket,
+    manifest: Manifest,
+    directory: Path,
+    *,
+    publication: AbstractContextManager[None] | None = None,
+) -> Path:
+    """Verify a complete build before replacing the cached files.
+
+    A live reader can supply a context manager to coordinate publication with
+    opening the cached build. Downloads and verification run outside it.
+    """
 
     directory.mkdir(parents=True, exist_ok=True)
-    _fetch(bucket, manifest.sidecar, directory / SIDECAR_NAME)
-    sidecar = json.loads((directory / SIDECAR_NAME).read_text(encoding="utf-8"))
-    if (
-        sidecar.get("database_sha256") != manifest.duckdb.sha256
-        or sidecar.get("effective_date") != manifest.effective_date
-    ):
-        (directory / SIDECAR_NAME).unlink()
-        raise FetchError("the sidecar does not describe the manifest's database")
-    return _fetch(bucket, manifest.duckdb, directory / DATABASE_NAME)
+    with tempfile.TemporaryDirectory(dir=directory, prefix=".fetch-") as temporary:
+        staged = Path(temporary)
+        _stage(bucket, manifest.sidecar, directory / SIDECAR_NAME, staged)
+        try:
+            sidecar = json.loads((staged / SIDECAR_NAME).read_text(encoding="utf-8"))
+        except ValueError as error:
+            raise FetchError("the sidecar is not valid JSON") from error
+        if (
+            not isinstance(sidecar, dict)
+            or sidecar.get("database_sha256") != manifest.duckdb.sha256
+            or sidecar.get("effective_date") != manifest.effective_date
+        ):
+            raise FetchError("the sidecar does not describe the manifest's database")
+        _stage(bucket, manifest.duckdb, directory / DATABASE_NAME, staged)
+        (staged / MANIFEST_NAME).write_text(manifest.to_json(), encoding="utf-8")
+
+        with publication if publication is not None else nullcontext():
+            _publish(staged, directory)
+    return directory / DATABASE_NAME
 
 
-def _fetch(bucket: Bucket, ref: ArtifactRef, destination: Path) -> Path:
-    if destination.is_file() and _sha256(destination) == ref.sha256:
-        return destination
-    with tempfile.NamedTemporaryFile(
-        dir=destination.parent, prefix=".fetch-", delete=False
-    ) as handle:
-        temporary = Path(handle.name)
+def _stage(bucket: Bucket, ref: ArtifactRef, cached: Path, directory: Path) -> None:
+    temporary = directory / cached.name
+    try:
+        temporary.hardlink_to(cached)
+    except FileNotFoundError:
+        pass
+    else:
+        if _sha256(temporary) == ref.sha256:
+            return
+        temporary.unlink()
     try:
         bucket.get_file(ref.key, temporary)
         if _sha256(temporary) != ref.sha256:
             raise FetchError(f"{ref.key} does not match its manifest hash")
-        temporary.replace(destination)
     except FetchError:
-        temporary.unlink(missing_ok=True)
         raise
     except Exception as error:
-        temporary.unlink(missing_ok=True)
         raise FetchError(f"could not fetch {ref.key}: {error}") from error
-    return destination
+
+
+def _publish(staged: Path, directory: Path) -> None:
+    names = (DATABASE_NAME, SIDECAR_NAME, MANIFEST_NAME)
+    previous = staged / "previous"
+    previous.mkdir()
+    for name in names:
+        try:
+            (previous / name).hardlink_to(directory / name)
+        except FileNotFoundError:
+            pass
+
+    installed = []
+    try:
+        for name in names:
+            (staged / name).replace(directory / name)
+            installed.append(name)
+    except OSError:
+        for name in reversed(installed):
+            backup = previous / name
+            if backup.exists():
+                backup.replace(directory / name)
+            else:
+                (directory / name).unlink()
+        raise
 
 
 def _sha256(path: Path) -> str:

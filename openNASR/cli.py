@@ -224,7 +224,6 @@ def _fetch(args, manager) -> int:
         manifest = newest[effective_date]
         directory = manager.cycles_dir / effective_date
         fetch_build(bucket, manifest, directory)
-        (directory / "manifest.json").write_text(manifest.to_json(), encoding="utf-8")
         print(f"fetched: {effective_date}")
     return ExitCode.SUCCESS
 

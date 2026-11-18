@@ -233,6 +233,11 @@ class NASR(dict):
             )
         )
 
+    def close(self) -> None:
+        """Release this instance's DuckDB connection."""
+
+        self.__tables.close()
+
     @property
     def yearDecimal(self):
         return timestampToYearDecimal(self.__useDate)

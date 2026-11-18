@@ -84,6 +84,14 @@ def test_geojson_and_table_formats(cache, capsys):
     assert len(rows) == 3 and "AABEE" in rows[1] and "origin" in rows[0]
 
 
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf"])
+def test_route_rejects_invalid_densification_distance(cache, capsys, value):
+    code, out, err = run(cache, capsys, "route", "BWI DCA", "--max-segment-nm", value)
+
+    assert code == cli.ExitCode.USAGE_ERROR and not out
+    assert "finite and greater than zero" in err
+
+
 def test_strict_exits_nonzero_for_an_incomplete_route_only(cache, capsys):
     ok, _, _ = run(cache, capsys, "route", "BWI AABEE DCA", "--strict")
     bad, out, _ = run(cache, capsys, "route", "BWI NOSUCHFIX DCA", "--strict")

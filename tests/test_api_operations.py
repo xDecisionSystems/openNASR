@@ -128,12 +128,19 @@ def test_densify_keeps_the_filed_points_and_adds_great_circle_points():
     assert intermediate(40, -100, 40, -90, 0.5)[1] == pytest.approx(-95.0, abs=0.01)
 
 
-def test_densify_refuses_to_build_an_enormous_path():
+def test_densify_checks_capacity_before_interpolating(monkeypatch):
     a = RoutePoint(0.0, 0.0, "A", "fix", None, "origin")
     b = RoutePoint(0.0, 179.0, "B", "fix", None, "destination")
 
+    def unexpected_interpolation(*args):
+        pytest.fail("point limit should be checked before interpolation")
+
+    monkeypatch.setattr("openNASR.geo.intermediate", unexpected_interpolation)
     with pytest.raises(ValueError, match=str(MAX_POINTS)):
-        densify([a, b] * 400, 1)
+        densify([a, b], 1)
+    with pytest.raises(ValueError, match=str(MAX_POINTS)):
+        densify([a] * (MAX_POINTS + 1), 1)
+    assert len(densify([a] * MAX_POINTS, 1)) == MAX_POINTS
 
 
 def test_the_api_densifies_only_when_asked(store):

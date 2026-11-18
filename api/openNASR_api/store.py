@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 import logging
@@ -14,8 +14,8 @@ import threading
 from openNASR.exceptions import TableNotFoundError
 from openNASR.flightplan import RouteResolver
 from openNASR.nasr import NASR
-from openNASR_contract import Bucket, FetchError, Manifest, fetch_build, select_build
-from openNASR_contract.fetch import list_builds
+from openNASR_contract import Bucket, FetchError, Manifest, fetch_build, list_builds
+from openNASR_contract.fetch import DATABASE_NAME, MANIFEST_NAME, SIDECAR_NAME
 
 from .airspace import AirspaceIndex
 
@@ -70,52 +70,73 @@ class CycleStore:
         self.max_loaded = max_loaded
         self._today = today
         self._loaded: OrderedDict[str, RouteResolver] = OrderedDict()
-        self._lookups: dict[str, tuple[NASR, threading.Lock]] = {}
+        self._lookups: dict[str, NASR] = {}
+        self._lookup_locks: dict[str, threading.Lock] = {}
         self._airspace: dict[str, AirspaceIndex] = {}
         self._lock = threading.Lock()
+        self._refresh_lock = threading.Lock()
 
     def _directory(self, effective_date: str) -> Path:
         return self.cache_dir / "cycles" / effective_date
 
     def refresh(self) -> RefreshReport:
-        """Fetch any validated cycle in the bucket that is not on disk yet."""
+        """Fetch new builds and repair incomplete cached builds."""
 
         report = RefreshReport()
         if self.bucket is None:
             return report
-        newest: dict[str, Manifest] = {}
-        for manifest in list_builds(self.bucket):
-            newest[manifest.effective_date] = manifest  # list is oldest-first
-        for effective_date, manifest in sorted(newest.items()):
-            if manifest.procedure_order != "flight_order":
-                continue
-            if select_build(self.bucket, effective_date=effective_date) is None:
-                continue
-            directory = self._directory(effective_date)
+        with self._refresh_lock:
             try:
-                if not (directory / "manifest.json").is_file() or (
-                    Manifest.from_json((directory / "manifest.json").read_text())
-                    != manifest
+                builds = list_builds(self.bucket)
+            except Exception as error:
+                LOGGER.error("could not list validated builds: %s", error)
+                report.failed["bucket"] = str(error)
+                return report
+
+            newest = {
+                manifest.effective_date: manifest
+                for manifest in builds
+                if manifest.procedure_order == "flight_order"
+            }
+            for effective_date, manifest in newest.items():
+                directory = self._directory(effective_date)
+                if self.manifest(effective_date) == manifest and self._has_artifacts(
+                    directory
                 ):
-                    fetch_build(self.bucket, manifest, directory)
-                    (directory / "manifest.json").write_text(
-                        manifest.to_json(), encoding="utf-8"
+                    continue
+                try:
+                    fetch_build(
+                        self.bucket,
+                        manifest,
+                        directory,
+                        publication=self._publication(effective_date),
                     )
-                    self._forget(effective_date)
                     report.fetched.append(effective_date)
-            except (FetchError, OSError, ValueError) as error:
-                LOGGER.error("could not fetch cycle %s: %s", effective_date, error)
-                report.failed[effective_date] = str(error)
+                except (FetchError, OSError, ValueError) as error:
+                    LOGGER.error("could not fetch cycle %s: %s", effective_date, error)
+                    report.failed[effective_date] = str(error)
         return report
 
-    def _forget(self, effective_date: str) -> None:
-        with self._lock:
+    @contextmanager
+    def _publication(self, effective_date: str) -> Iterator[None]:
+        with self._lookup_lock(effective_date), self._lock:
+            nasr = self._lookups.pop(effective_date, None)
+            if nasr is not None:
+                # DuckDB shares open databases by path within the process.
+                nasr.close()
+            yield
             self._loaded.pop(effective_date, None)
-            entry = self._lookups.pop(effective_date, None)
             self._airspace.pop(effective_date, None)
-        if entry is not None:
-            with entry[1]:  # wait for in-flight lookups before dropping it
-                pass
+
+    def _lookup_lock(self, effective_date: str) -> threading.Lock:
+        with self._lock:
+            return self._lookup_locks.setdefault(effective_date, threading.Lock())
+
+    @staticmethod
+    def _has_artifacts(directory: Path) -> bool:
+        return (directory / DATABASE_NAME).is_file() and (
+            directory / SIDECAR_NAME
+        ).is_file()
 
     def cycles(self) -> list[str]:
         """Effective dates present on disk, oldest first."""
@@ -123,15 +144,13 @@ class CycleStore:
         root = self.cache_dir / "cycles"
         if not root.is_dir():
             return []
-        return sorted(
-            path.name
-            for path in root.iterdir()
-            if (path / "nasr.duckdb").is_file()
-            and (path / "nasr.duckdb.json").is_file()
-        )
+        with self._lock:
+            return sorted(
+                path.name for path in root.iterdir() if self._has_artifacts(path)
+            )
 
     def manifest(self, effective_date: str) -> Manifest | None:
-        path = self._directory(effective_date) / "manifest.json"
+        path = self._directory(effective_date) / MANIFEST_NAME
         try:
             return Manifest.from_json(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -155,9 +174,8 @@ class CycleStore:
             if resolver is not None:
                 self._loaded.move_to_end(chosen)
                 return chosen, resolver
-            resolver = RouteResolver.from_nasr(
-                NASR(cycle=chosen, cache_dir=self.cache_dir)
-            )
+            with closing(NASR(cycle=chosen, cache_dir=self.cache_dir)) as nasr:
+                resolver = RouteResolver.from_nasr(nasr)
             self._loaded[chosen] = resolver
             while len(self._loaded) > self.max_loaded:
                 self._loaded.popitem(last=False)
@@ -173,11 +191,11 @@ class CycleStore:
             index = self._airspace.get(chosen)
             if index is not None:
                 return chosen, index
-            nasr = NASR(cycle=chosen, cache_dir=self.cache_dir)
-            try:
-                index = AirspaceIndex(nasr["ARB_BASE"], nasr["ARB_SEG"])
-            except TableNotFoundError:
-                index = AirspaceIndex(*(_empty_boundaries()))
+            with closing(NASR(cycle=chosen, cache_dir=self.cache_dir)) as nasr:
+                try:
+                    index = AirspaceIndex(nasr["ARB_BASE"], nasr["ARB_SEG"])
+                except TableNotFoundError:
+                    index = AirspaceIndex(*(_empty_boundaries()))
             self._airspace[chosen] = index
             return chosen, index
 
@@ -194,16 +212,12 @@ class CycleStore:
         chosen = effective_date or self.default_cycle()
         if chosen not in self.cycles():
             raise CycleUnavailableError(f"cycle {chosen} is not available")
-        with self._lock:
-            entry = self._lookups.get(chosen)
-            if entry is None:
-                entry = (
-                    NASR(cycle=chosen, cache_dir=self.cache_dir),
-                    threading.Lock(),
-                )
-                self._lookups[chosen] = entry
-        nasr, lock = entry
-        with lock:
+        with self._lookup_lock(chosen):
+            with self._lock:
+                nasr = self._lookups.get(chosen)
+                if nasr is None:
+                    nasr = NASR(cycle=chosen, cache_dir=self.cache_dir)
+                    self._lookups[chosen] = nasr
             yield chosen, nasr.query_table
 
     def describe(self) -> list[dict]:
