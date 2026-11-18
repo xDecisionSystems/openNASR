@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
       - run: python -m pip install ".[dev,plot,release]"
       - run: python -m pytest
         if: github.ref_type == 'tag'
@@ -37,6 +38,24 @@ jobs:
             python -m build --wheel --outdir "$PWD/dist" "$package"
           done
           python -m twine check dist/*
+          cd dist
+          core=(opennasr-*.whl)
+          contract=(opennasr_contract-*.whl)
+          for role in api archiver; do
+            service=(opennasr_"${role}"-*.whl)
+            extra=""
+            if [ "$role" = archiver ]; then extra="[s3]"; fi
+            printf '%s\n' \
+              "openNASR @ file://$PWD/${core[0]}" \
+              "openNASR-contract[s3] @ file://$PWD/${contract[0]}" \
+              "openNASR-${role}${extra} @ file://$PWD/${service[0]}" |
+              uv pip compile - --universal --python-version 3.10 \
+                --generate-hashes --only-binary :all: --no-header --no-annotate \
+                --no-emit-package openNASR --no-emit-package openNASR-contract \
+                --no-emit-package "openNASR-$role" --no-emit-package duckdb \
+                --output-file "$role-dependencies.txt" > /dev/null
+          done
+          cd ..
           cp deploy/opennasr-update dist/
           python - <<'PY'
           import hashlib
@@ -52,7 +71,7 @@ jobs:
                   assets[path.name] = hashlib.file_digest(asset, "sha256").hexdigest()
           version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
           manifest = {
-              "schema": 1,
+              "schema": 2,
               "version": f"v{version}",
               "commit": os.environ["GITHUB_SHA"],
               "repository": os.environ["GITHUB_REPOSITORY"],
@@ -60,6 +79,21 @@ jobs:
           }
           (dist / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
           PY
+      - name: Verify locked installs on the guest Python version
+        run: |
+          set -euo pipefail
+          cd dist
+          for role in api archiver; do
+            venv="$RUNNER_TEMP/opennasr-$role"
+            uv venv --python 3.13 --seed "$venv"
+            "$venv/bin/python" -m pip install --no-deps --only-binary=:all: \
+              --require-hashes -r "$role-dependencies.txt"
+            "$venv/bin/python" -m pip install --no-deps --only-binary=:all: \
+              'duckdb==1.5.6' opennasr-*.whl opennasr_contract-*.whl opennasr_"${role}"-*.whl
+            "$venv/bin/python" -m pip check
+            "$venv/bin/python" -c "import boto3, duckdb; assert duckdb.sql('SELECT 1').fetchone() == (1,)"
+            "$venv/bin/openNASR-$role" --help
+          done
       - uses: actions/upload-artifact@v5
         with:
           name: deployment-assets

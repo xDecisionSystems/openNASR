@@ -23,37 +23,45 @@ def updater():
     return module
 
 
-@pytest.mark.parametrize("failure", [None, "signature", "hash"])
-def test_verifies_signature_and_wheels(updater, tmp_path, monkeypatch, failure):
+@pytest.mark.parametrize(
+    "failure", [None, "signature", "hash", "lock", "missing lock", "legacy"]
+)
+def test_verifies_signature_and_installation(updater, tmp_path, monkeypatch, failure):
     tag = "v2.0.0"
     names = [
         "opennasr-2.0.0-py3-none-any.whl",
         "opennasr_contract-0.1.0-py3-none-any.whl",
         "opennasr_api-0.1.0-py3-none-any.whl",
     ]
+    lock = "api-dependencies.txt"
+    payloads = {name: name.encode() for name in names}
+    if failure not in ("missing lock", "legacy"):
+        payloads[lock] = b"locked dependencies"
     downloads = {
         "manifest.json": json.dumps(
             {
-                "schema": 1,
+                "schema": 1 if failure == "legacy" else 2,
                 "version": tag,
                 "repository": updater.REPOSITORY,
                 "assets": {
-                    name: hashlib.sha256(name.encode()).hexdigest() for name in names
+                    name: hashlib.sha256(contents).hexdigest()
+                    for name, contents in payloads.items()
                 },
             }
         ).encode(),
         "manifest.json.sigstore.json": b"bundle",
-        **{name: name.encode() for name in names},
+        **payloads,
     }
     verified = False
 
     def download(url, path):
         assert url == f"{updater.GITHUB}/releases/download/{tag}/{path.name}"
-        if path.suffix == ".whl":
+        if path.name in payloads:
             assert verified
         path.write_bytes(
             b"corrupt"
-            if failure == "hash" and path.name == names[0]
+            if (failure == "hash" and path.name == names[0])
+            or (failure == "lock" and path.name == lock)
             else downloads[path.name]
         )
 
@@ -72,13 +80,20 @@ def test_verifies_signature_and_wheels(updater, tmp_path, monkeypatch, failure):
     monkeypatch.setattr(updater.subprocess, "run", verify)
     if failure == "signature":
         with pytest.raises(subprocess.CalledProcessError):
-            updater.verified_wheels(tag, "api", tmp_path)
+            updater.verified_installation(tag, "api", tmp_path)
         assert not list(tmp_path.glob("*.whl"))
-    elif failure == "hash":
+    elif failure in ("hash", "lock"):
         with pytest.raises(ValueError, match="SHA-256 mismatch"):
-            updater.verified_wheels(tag, "api", tmp_path)
+            updater.verified_installation(tag, "api", tmp_path)
+    elif failure == "missing lock":
+        with pytest.raises(ValueError, match="Missing api-dependencies.txt"):
+            updater.verified_installation(tag, "api", tmp_path)
     else:
-        requirements = updater.verified_wheels(tag, "api", tmp_path)
+        requirements, lock_path = updater.verified_installation(tag, "api", tmp_path)
+        if failure == "legacy":
+            assert lock_path is None
+        else:
+            assert lock_path.read_bytes() == payloads[lock]
         assert [requirement.split(" @ ")[0] for requirement in requirements] == [
             "opennasr",
             "opennasr_contract[s3]",
@@ -122,7 +137,10 @@ def test_archiver_install_checks_bucket_access_as_service_user(
     pin = tmp_path / "duckdb-version"
     pin.write_text("1.5.6\n")
     monkeypatch.setattr(updater, "DUCKDB_VERSION_FILE", pin)
-    monkeypatch.setattr(updater, "verified_wheels", lambda *args: [])
+    lock = tmp_path / "archiver-dependencies.txt"
+    monkeypatch.setattr(
+        updater, "verified_installation", lambda *args: (["archiver-wheel"], lock)
+    )
     commands = []
 
     def run(command, *, check, **kwargs):
@@ -146,6 +164,14 @@ def test_archiver_install_checks_bucket_access_as_service_user(
     assert probe[-2].name == "openNASR-archiver"
     assert probe[-1] == "status"
     assert all(command[0] != "systemctl" for command in commands)
+    _, install_dependencies, install_wheels, *_ = commands
+    assert (
+        "--require-hashes" in install_dependencies and install_dependencies[-1] == lock
+    )
+    assert "--no-deps" in install_wheels and install_wheels[-2:] == [
+        "duckdb==1.5.6",
+        "archiver-wheel",
+    ]
 
 
 @pytest.mark.parametrize(

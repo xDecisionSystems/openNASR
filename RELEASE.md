@@ -56,8 +56,9 @@ is still available. PyPI is the authority on package-name availability.
 ## Signed deployment releases
 
 The tag also starts `release.yml`. It tests the tag, builds the four project
-wheels, and publishes them with `opennasr-update`, `manifest.json`, and the
-Sigstore bundle. The manifest records the tag, commit, and asset hashes.
+wheels, and publishes them with `opennasr-update`, dependency locks for the API
+and archiver, `manifest.json`, and the Sigstore bundle. The manifest records
+the tag, commit, and asset hashes.
 Protect release tags with a GitHub tag ruleset. The PyPI workflow never runs from a tag push; it is started by hand (step 6).
 
 ### Update an existing systemd guest
@@ -76,8 +77,11 @@ opennasr-update --role archiver --version v2.0.0
 
 The updater pins the signature to the release workflow in this repository at
 the exact tag and verifies the selected project wheels before installing them.
-Pip resolves third-party dependencies separately, and DuckDB stays pinned to
-the version recorded by the guest installer. The update probes DuckDB in a
+For release manifests with dependency locks, pip installs the role's exact
+third-party wheel versions with hash checking. DuckDB uses the version
+recorded by the guest installer and is installed separately. The original
+`v2.0.0` release predates locks and still resolves its other dependencies at
+install time. The update probes DuckDB in a
 new virtual environment before changing the service's systemd executable.
 The API restarts and must pass `/ready`. Use `--ready-url` if the guest listens
 on a different port. Before switching the archiver, the updater runs its

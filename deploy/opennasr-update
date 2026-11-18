@@ -38,7 +38,7 @@ def digest(path):
     return checksum.hexdigest()
 
 
-def verified_wheels(tag, role, directory):
+def verified_installation(tag, role, directory):
     base = f"{GITHUB}/releases/download/{tag}"
     manifest = directory / "manifest.json"
     bundle = directory / "manifest.json.sigstore.json"
@@ -59,8 +59,25 @@ def verified_wheels(tag, role, directory):
         check=True,
     )
     data = json.loads(manifest.read_bytes())
-    if (data["schema"], data["version"], data["repository"]) != (1, tag, REPOSITORY):
-        raise ValueError("Manifest repository, schema or tag does not match")
+    if (data["version"], data["repository"]) != (tag, REPOSITORY):
+        raise ValueError("Manifest repository or tag does not match")
+    schema = data["schema"]
+    legacy = schema == 1 and tag == "v2.0.0"
+    if schema != 2 and not legacy:
+        raise ValueError(f"Unsupported deployment manifest schema {schema}")
+    assets = data["assets"]
+
+    def fetch_verified(name):
+        expected = assets.get(name)
+        if expected is None:
+            raise ValueError(f"Missing {name} in the signed manifest")
+        path = directory / name
+        download(f"{base}/{name}", path)
+        if digest(path) != expected:
+            raise ValueError(f"SHA-256 mismatch for {name}")
+        return path
+
+    lock = None if legacy else fetch_verified(f"{role}-dependencies.txt")
     requirements = []
     for name, extras in (
         ("opennasr", ""),
@@ -69,19 +86,16 @@ def verified_wheels(tag, role, directory):
     ):
         matches = [
             asset
-            for asset in data["assets"]
+            for asset in assets
             if re.fullmatch(rf"{name}-[A-Za-z0-9_.+-]+-py3-none-any\.whl", asset)
         ]
         if len(matches) != 1:
             raise ValueError(
                 f"Expected exactly one platform-independent wheel for {name}"
             )
-        wheel = directory / matches[0]
-        download(f"{base}/{wheel.name}", wheel)
-        if digest(wheel) != data["assets"][wheel.name]:
-            raise ValueError(f"SHA-256 mismatch for {wheel.name}")
+        wheel = fetch_verified(matches[0])
         requirements.append(f"{name}{extras} @ {wheel.as_uri()}")
-    return requirements
+    return requirements, lock
 
 
 def systemctl(*args):
@@ -93,13 +107,29 @@ def install(tag, role):
     releases = APP / "releases"
     releases.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="opennasr-assets-") as temporary:
-        requirements = verified_wheels(tag, role, Path(temporary))
+        requirements, lock = verified_installation(tag, role, Path(temporary))
         target = Path(tempfile.mkdtemp(prefix=f"{role}-{tag}-", dir=releases))
         try:
             subprocess.run([sys.executable, "-m", "venv", str(target)], check=True)
             python = target / "bin/python"
+            pip = [python, "-m", "pip", "install"]
+            if lock is None:
+                print(f"{tag} does not contain a dependency lock", file=sys.stderr)
+            else:
+                subprocess.run(
+                    [
+                        *pip,
+                        "--no-deps",
+                        "--only-binary=:all:",
+                        "--require-hashes",
+                        "-r",
+                        lock,
+                    ],
+                    check=True,
+                )
+                pip += ["--no-deps", "--only-binary=:all:"]
             subprocess.run(
-                [python, "-m", "pip", "install", f"duckdb=={duckdb}", *requirements],
+                [*pip, f"duckdb=={duckdb}", *requirements],
                 check=True,
             )
             subprocess.run([python, "-m", "pip", "check"], check=True)
