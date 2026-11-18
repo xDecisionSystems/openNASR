@@ -1714,6 +1714,31 @@ def _resolve_route_path(
     return tuple(output)
 
 
+ROUTE_TABLES = (
+    "APT_BASE",
+    "FIX_BASE",
+    "NAV_BASE",
+    "AWY_BASE",
+    "AWY_SEG_ALT",
+    "DP_BASE",
+    "DP_RTE",
+    "DP_APT",
+    "STAR_BASE",
+    "STAR_RTE",
+    "STAR_APT",
+)
+"""The only tables route resolution reads; a loader need not read any others."""
+
+
+class _CycleTables(dict):
+    """Route tables for one cycle, with what the resolver reads off a facade."""
+
+    def __init__(self, tables, effective_date: str, procedure_order: str | None):
+        super().__init__(tables)
+        self.effective_date = effective_date
+        self.procedure_order = procedure_order
+
+
 class RouteResolver:
     """Resolve multiple routes against one indexed NASR table snapshot.
 
@@ -1722,6 +1747,14 @@ class RouteResolver:
     must construct a new resolver; automatic invalidation is intentionally
     not attempted for mutable pandas inputs.
     """
+
+    @classmethod
+    def from_nasr(cls, nasr) -> "RouteResolver":
+        """Build a resolver from a ``NASR`` facade, loading only the route tables."""
+
+        available = set(nasr)
+        tables = {name: nasr[name] for name in ROUTE_TABLES if name in available}
+        return cls(_CycleTables(tables, nasr.effective_date, nasr.procedure_order))
 
     def __init__(self, nasr: Mapping[str, DataFrame]) -> None:
         self._cycle = getattr(nasr, "effective_date", None)

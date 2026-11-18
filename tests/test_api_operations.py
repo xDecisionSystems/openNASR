@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from openNASR.routeresult import RoutePoint
 from openNASR_api import CycleStore, create_app
-from openNASR_api.geo import MAX_POINTS, densify, distance_nm, intermediate
+from openNASR.geo import MAX_POINTS, densify, distance_nm, intermediate
 from openNASR_api.limits import RateLimiter
 
 KEY = "operations-test-key"

@@ -21,33 +21,9 @@ from .airspace import AirspaceIndex
 
 LOGGER = logging.getLogger("openNASR_api")
 
-ROUTE_TABLES = (
-    "APT_BASE",
-    "FIX_BASE",
-    "NAV_BASE",
-    "AWY_BASE",
-    "AWY_SEG_ALT",
-    "DP_BASE",
-    "DP_RTE",
-    "DP_APT",
-    "STAR_BASE",
-    "STAR_RTE",
-    "STAR_APT",
-)
-"""The only tables route resolution reads; others are never loaded."""
-
 
 class CycleUnavailableError(LookupError):
     """Raised when no usable cycle matches a request."""
-
-
-class CycleTables(dict):
-    """Tables for one cycle, carrying what the resolver reads off the facade."""
-
-    def __init__(self, tables, effective_date: str, procedure_order: str | None):
-        super().__init__(tables)
-        self.effective_date = effective_date
-        self.procedure_order = procedure_order
 
 
 def _empty_boundaries():
@@ -179,9 +155,9 @@ class CycleStore:
             if resolver is not None:
                 self._loaded.move_to_end(chosen)
                 return chosen, resolver
-            nasr = NASR(cycle=chosen, cache_dir=self.cache_dir)
-            tables = {name: nasr[name] for name in ROUTE_TABLES if name in set(nasr)}
-            resolver = RouteResolver(CycleTables(tables, chosen, nasr.procedure_order))
+            resolver = RouteResolver.from_nasr(
+                NASR(cycle=chosen, cache_dir=self.cache_dir)
+            )
             self._loaded[chosen] = resolver
             while len(self._loaded) > self.max_loaded:
                 self._loaded.popitem(last=False)

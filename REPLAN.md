@@ -410,3 +410,17 @@ testing (builds then failed with "No space left on device"); caches must live on
 | 4.9 `api/deploy/openNASR-api.service`, `api.env.example`, `api/Dockerfile`, `api/README.md`. **Not yet run on a host** | done (untested on a host) |
 
 **Phase 4 exit criterion met** (API v1 + supporting endpoints, API keys, OpenAPI published, contract tests); deployment is Phase 6.
+
+## 8e. Phase 5 (local mode) - done
+
+| Task | Status |
+|------|--------|
+| 5.1 One serialization of a route result for both modes: `openNASR.routejson.route_result_to_dict` (+ `openNASR.geo`, `RouteResolver.from_nasr`, `ROUTE_TABLES` now in core); the API builds its response from it | done |
+| 5.2 `opennasr route` (json / geojson / table, `--icao-message`, `--cycle`, `--max-segment-nm`, `--strict`, stdin) | done |
+| 5.3 `opennasr serve` (the same FastAPI app on the local cache; session key printed, or `--no-auth` on loopback only) | done |
+| 5.4 `opennasr fetch` (validated cycles from the bucket with hash checks, else FAA direct); `CycleManager.servable_cycles()` counts database-only cycles | done |
+| 5.5 Contract parity: the same six request bodies (complete, unknown fix, ignored group, densified, named cycle, ICAO message) give identical JSON from the CLI and the API; docs in `docs/local-mode.md` | done |
+
+Checked on the real cycle: `fetch latest` from Garage, `route` (table, geojson, stdin, `--strict` exit 1 for the branching arrival),
+and `serve --no-auth` answering a route and an airspace lookup. **Phase 5 exit criterion met.** Next: Phase 6 (deploy), which
+needs the host, network, key and proxy decisions listed in the Phase 4 summary.

@@ -19,11 +19,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openNASR.exceptions import ConfigurationError
 from openNASR.icaomessage import IcaoFlightPlan, IcaoMessageError
-from openNASR.routeresult import RoutePoint, RouteResult
+from openNASR.routejson import route_result_to_dict
+from openNASR.routeresult import RouteResult
 
 from . import lookups
 from .airspace import NOT_COVERED
-from .geo import densify
 from .limits import RateLimiter
 from .store import CycleStore, CycleUnavailableError
 
@@ -237,65 +237,15 @@ class Ready(BaseModel):
     default_cycle: str
 
 
-def _geojson(result: RouteResult, points: list[RoutePoint]) -> dict[str, Any]:
-    coordinates = [[p.lon, p.lat] for p in points]  # GeoJSON is lon, lat
-    geometry = (
-        {"type": "LineString", "coordinates": coordinates}
-        if len(coordinates) >= 2
-        else None
-    )
-    return {
-        "type": "Feature",
-        "geometry": geometry,
-        "properties": {
-            "route": result.route,
-            "cycle": result.cycle,
-            "complete": result.complete,
-        },
-    }
-
-
 def _response(
     result: RouteResult,
     extracted: IcaoFlightPlan | None = None,
     max_segment_nm: float | None = None,
 ) -> RouteResponse:
-    points = list(result.waypoints)
-    if max_segment_nm is not None:
-        try:
-            points = densify(points, max_segment_nm)
-        except ValueError as error:
-            raise HTTPException(422, str(error)) from error
-    return RouteResponse(
-        input=InputEcho(
-            mode="icao_message" if extracted else "route",
-            extracted=Extracted(
-                message_type=extracted.message_type,
-                aircraft_id=extracted.aircraft_id,
-                departure=extracted.departure,
-                destination=extracted.destination,
-                route_field=extracted.route_field,
-            )
-            if extracted
-            else None,
-        ),
-        route=result.route,
-        cycle=result.cycle,
-        complete=result.complete,
-        points=[Point(**vars(p)) for p in points],
-        geojson=_geojson(result, points),
-        diagnostics=[
-            Diagnostic(
-                code=d.code,
-                severity=d.severity,
-                message=d.message,
-                token=d.token,
-                position=d.position,
-                detail=d.detail,
-            )
-            for d in result.diagnostics
-        ],
-    )
+    try:
+        return RouteResponse(**route_result_to_dict(result, extracted, max_segment_nm))
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
 
 
 def key_id(key: str) -> str:
@@ -311,6 +261,7 @@ def create_app(
     rate_limit_per_minute: int = 120,
     rate_limit_burst: int | None = None,
     limiter: RateLimiter | None = None,
+    require_auth: bool = True,
 ) -> FastAPI:
     """Build the app. ``api_keys`` are the accepted ``X-API-Key`` values."""
 
@@ -367,6 +318,8 @@ def create_app(
             HTTPAuthorizationCredentials | None, Depends(_bearer)
         ] = None,
     ) -> None:
+        if not require_auth:
+            return  # local mode on a loopback address only (the CLI enforces that)
         supplied = x_api_key or (credentials.credentials if credentials else None)
         if supplied is None or not any(
             hmac.compare_digest(supplied.encode(), key) for key in keys

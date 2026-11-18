@@ -23,6 +23,9 @@ and versions follow Semantic Versioning.
 
 ### Fixed
 
+- `opennasr route`, `opennasr serve` and `opennasr fetch` (local mode): the same route resolution and JSON as
+  the HTTP API, run from the local cycle cache; see `docs/local-mode.md`.
+
 - New packages in this repository: `contract/` (bucket layout, manifest, bucket clients, reader),
   `archiver/` (publish, backfill, run loop, alerts, CLI) and `api/` (FastAPI service). Route results now
   carry per-point provenance (`RouteResult.waypoints`), ICAO FPL messages can be resolved, and ignored

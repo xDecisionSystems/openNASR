@@ -591,6 +591,21 @@ class CycleManager:
         }
         return tuple(sorted(archive_dates | extracted_dates))
 
+    def servable_cycles(self) -> tuple[date, ...]:
+        """Cycles that can be opened: cached sources and fetched database-only ones."""
+
+        dates = set(self.available_cycles())
+        if self.cycles_dir.is_dir():
+            for path in self.cycles_dir.iterdir():
+                if (path / "nasr.duckdb").is_file() and (
+                    path / "nasr.duckdb.json"
+                ).is_file():
+                    try:
+                        dates.add(date.fromisoformat(path.name))
+                    except ValueError:
+                        continue
+        return tuple(sorted(dates))
+
     def latest(self) -> Cycle:
         """Return the newest cached cycle.
 
