@@ -40,11 +40,11 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 `archiver` and `api` must never import each other. `core` must not import either.
 
-## 3. Git state (important)
+## 3. Git state
 
-- All work is on branch **`phase0-housekeeping`**, **about 40 commits ahead of `main`**, pushed to origin. **No PR is open for it** (the only open PR is an unrelated Dependabot one).
-- **GitHub CI has never run on this work**: `.github/workflows/ci.yml` triggers on push to `main` and on pull requests. I edited it (ruff paths, mypy with `MYPYPATH`, dev extras with fastapi/httpx/uvicorn) but only ran the equivalent commands locally. The matrix is Python 3.10 / 3.12 / 3.14; I only ran 3.13. **First job: open a PR and make CI green.**
-- Never pushed to `main`, never tagged, nothing published to PyPI.
+- The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). Day-to-day work now goes through branches and PRs; do not push to `main` directly.
+- Added after the first handover: Python 3.10 test compatibility, a cache-preserving store refresh, hardened `max_segment_nm` limits, `NASR.close()`, the signed-release workflow (`.github/workflows/release.yml`) and the updater (`deploy/opennasr-update`, tested by `tests/test_deployment_update.py`).
+- **No tag and no GitHub release exist yet.** Pushing a `v*` tag starts *both* `release.yml` (signed deployment assets) *and* `publish-to-pypi.yml` (public, irreversible PyPI upload of 2.0.0). Do not tag without the owner's explicit go-ahead.
 
 ## 4. Build, test, lint (all green at handover)
 
@@ -107,6 +107,7 @@ Run with `python tools/route_path_validation.py --full-file benchmarks/data/exam
 - Published through NPMplus: proxy host **id 30** `opennasr.xds-lab.com` -> `http://10.10.20.125:8000`, certificate 1, HTTPS forced. DNS is the Cloudflare wildcard `*.xds-lab.com` -> a tailnet-only address, so only tailnet clients can reach it.
 - **The API runs with no keys** (`OPENNASR_API_AUTH=none`, the owner's decision "no key for now"). It warns at startup, refuses to start without keys unless that is set, and rate-limits 600/min per client address (first `X-Forwarded-For` hop). To enable keys: set `OPENNASR_API_KEYS=a,b` in `api.env`, remove `OPENNASR_API_AUTH`, `systemctl restart openNASR-api`.
 - Bucket `opennasr` holds four cycles on the current FAA schema `nasr_2026_09`: 2026-09-03, 2026-10-01, 2026-10-29, 2026-11-26 (the last is the upcoming one). **Owner decision: backfill the current format only; nothing older.**
+- **Monitoring (added 2026-11-17/18):** Gatus check `private-sites_opennasr-api` (`/ready` every 2 min: HTTP 200, `status == ready`, certificate > 48 h; Slack after two failures, recovery notice) and a Homepage tile in the Research group; see the lab's `changes/2026-11-17-opennasr-monitoring.md` for the rollback files. The archiver itself has no Gatus check; it alerts to Slack on its own.
 - Alerts: Slack via `OPENNASR_ALERT_WEBHOOK_URL`; fire once, resolve once, state in `/var/lib/openNASR-archiver/state.json`. Kinds: source_unavailable, validation_failed, build_failed, bucket_unavailable, no_new_cycle (28+3 days), upcoming_cycle_failed.
 - Garage keys (created 2026-11-16 via the Garage CLI in LXC 121): `opennasr-archiver` read+write, `opennasr-api` read-only, neither can create buckets.
 
@@ -125,17 +126,17 @@ ssh root@100.100.10.10 'pct exec 124 -- /opt/openNASR/venv/bin/openNASR-archiver
 
 ## 8. Not done / next steps, in suggested order
 
-1. **Open a PR for `phase0-housekeeping` and get CI green** (see section 3). Expect to fix 3.10/3.12/3.14 differences.
-2. **Monitoring**: add a Gatus check (with Slack alert) and a Homepage entry for `opennasr.xds-lab.com`, as was done for WhoDatJet (Gatus is LXC 118, Homepage LXC 119; the previous change record documents the config backups and restart commands). The owner has approved this kind of change before; confirm first.
-3. **Signed releases + an updater.** Containers are currently updated by hand: build wheels, copy them to proxopotamus, `pct push`, `pip install --find-links ... --upgrade`, restart. The in-place update sequence is **not scripted and not tested** (only fresh installs are). WhoDatJet has a cosign/Sigstore release workflow and `whodatjet-update` to copy the pattern from (repo `xDecisionSystems/WhoDatJet`; it is a separate, unrelated project: share nothing at runtime).
-4. **Phase 7 observation**: watch the archiver through the next FAA cycle. 2026-11-26 is already published; the next new cycle (2026-12-24) should appear around early December. Check alerts, manifests and hashes.
-5. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
-6. **Refactors**: split `openNASR/flightplan.py` into tokenizer / resolver / procedure expander / airway expander; move core into a `core/` directory (deferred to keep history readable).
-7. **The Dockerfiles (`archiver/Dockerfile`, `api/Dockerfile`) are not exercised.** Only the Proxmox LXC installer path has been run.
-8. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
-9. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
-10. Class B/C/D/E polygons would need a different FAA data source (shapefiles), not the CSV.
-11. Publishing openNASR 2.0.0 to PyPI (`RELEASE.md`) has not been done; no tag exists.
+Done since the first version of this document: PR merged and CI green; Gatus + Homepage monitoring for the API; signed-release workflow and updater written.
+
+1. **Cut the first release, only when the owner says so** (`v2.0.0`, which also publishes to PyPI; see section 3). Then bootstrap `opennasr-update` into LXC 124 and 125 (install a trusted `cosign` in each guest first, then `opennasr-update --role api --version v2.0.0`; it verifies the signed manifest and wheel hashes, probes DuckDB in a fresh venv, restarts the API, checks `/ready`, and rolls back on failure). **The updater has unit tests but has never run on a real guest**; exercise the update and `--rollback` on the API first, then the archiver.
+2. Updater gaps worth closing: old release venvs under `/opt/openNASR/releases/` are never removed (~270 MB each; the API rootfs is only 8 G); the archiver update is not health-checked until its next timer run; third-party dependencies are not pinned at update time.
+3. **Phase 7 observation**: watch the archiver through the next FAA cycle. 2026-11-26 is already published; the next new cycle (2026-12-24) should appear around early December. Check alerts, manifests and hashes.
+4. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
+5. **Refactors**: split `openNASR/flightplan.py` into tokenizer / resolver / procedure expander / airway expander (verify with `tools/route_corpus.py` and a pool run: usable must stay at 32,857); move core into a `core/` directory.
+6. **Dockerfiles (`archiver/Dockerfile`, `api/Dockerfile`) are not exercised.** Only the Proxmox LXC installer path has been run.
+7. **Backups**: Garage is single-node, replication factor 1, no backup. The zips are re-downloadable from the FAA only while the FAA keeps them.
+8. **Pending owner discussion**: what counts as "ambiguous" (the `ZFP` NDB-vs-VOR/DME class). The owner said "we can discuss later". Do not change that behaviour unasked.
+9. Class B/C/D/E polygons would need a different FAA data source (shapefiles), not the CSV.
 
 ## 9. Owner preferences and working agreements
 
