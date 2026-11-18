@@ -440,7 +440,9 @@ containers are not joined to Tailscale.
 | 6.5 No-key mode: refuses to start without keys unless `OPENNASR_API_AUTH=none`; warns at start; rate limit per client address (first `X-Forwarded-For` hop), 600/min | done |
 | 6.6 Archiver cache pruning (keep the 2 newest, only cycles already published) so the 24 G disk cannot fill | done |
 | 6.7 Packaging fix: schema manifests moved to `openNASR/schema_manifests/` and shipped in the wheel (they were read from `tests/` and did not exist in an installed package); core version set to 2.0.0 | done |
-| 6.8 Gatus + Homepage entries and Slack alerts for the API; signed releases and an updater; a `rebuild-all` run; API keys | open |
+| 6.8 Gatus + Homepage entry and Slack alert for the API | done (2026-11-17/18) |
+| 6.9 Signed releases + updater: `v2.0.0` released; LXC 124/125 updated with `opennasr-update`; rollback and roll-forward verified on the API | done |
+| 6.10 PyPI publishing (manual workflow, owner approval; lower priority); API keys; pruning of old release venvs | open |
 
 Docs for the lab: `IT-management-UCF/documentation/{hosts/opennasr-api,hosts/opennasr-archiver,services/opennasr}.md` and the
 2026-11-18 change record. **Next:** monitoring, signed releases + updater (so the containers can be upgraded without hand-pushing wheels),

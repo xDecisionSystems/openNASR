@@ -44,7 +44,8 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 - The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). Day-to-day work now goes through branches and PRs; do not push to `main` directly.
 - Added after the first handover: Python 3.10 test compatibility, a cache-preserving store refresh, hardened `max_segment_nm` limits, `NASR.close()`, the signed-release workflow (`.github/workflows/release.yml`) and the updater (`deploy/opennasr-update`, tested by `tests/test_deployment_update.py`).
-- A `v*` tag starts only the signed deployment release (`release.yml`). Publishing to PyPI is a separate manual workflow (`publish-to-pypi.yml`, started from the Actions tab, with a required reviewer on the `pypi` environment); the owner said PyPI is lower priority, so it has not been run.
+- **`v2.0.0` is released** (annotated tag on `main`, signed GitHub release with the four wheels, `opennasr-update`, `manifest.json` and its Sigstore bundle; verified: hashes match the manifest, `cosign verify-blob` OK). A `v*` tag starts only the signed deployment release (`release.yml`). **Nothing is on PyPI**: `publish-to-pypi.yml` is manual-only (Actions tab, choose the tag, then the owner approves the `pypi` environment). The owner said PyPI is lower priority.
+- The first `v2.0.0` tag was moved once: its release run failed after signing because the publish job had no checkout (`gh` needs `GH_REPO`), the fix was merged (PR #5), and the unreleased tag was re-created on the fixed commit. Cutting a release is therefore tested end to end. If a release run fails after tagging, nothing is published; fix on `main`, then delete and re-create the tag only if no release exists.
 
 ## 4. Build, test, lint (all green at handover)
 
@@ -126,9 +127,9 @@ ssh root@100.100.10.10 'pct exec 124 -- /opt/openNASR/venv/bin/openNASR-archiver
 
 ## 8. Not done / next steps, in suggested order
 
-Done since the first version of this document: PR merged and CI green; Gatus + Homepage monitoring for the API; signed-release workflow and updater written.
+Done since the first version of this document: PR merged and CI green; Gatus + Homepage monitoring for the API; `v2.0.0` released and signed; both containers updated from it with the real updater (update, rollback and roll-forward exercised on the API).
 
-1. **Release `v2.0.0`** once the release PR is merged (annotated tag on `main`; see `RELEASE.md`). Then bootstrap `opennasr-update` into LXC 124 and 125 (install a trusted `cosign` in each guest first, then `opennasr-update --role api --version v2.0.0`; it verifies the signed manifest and wheel hashes, probes DuckDB in a fresh venv, restarts the API, checks `/ready`, and rolls back on failure). **The updater has unit tests but has never run on a real guest**; exercise the update and `--rollback` on the API first, then the archiver.
+1. **Releases and updates are done and proven.** LXC 124 and 125 run the signed `v2.0.0` through `/usr/local/sbin/opennasr-update` (needs the pinned `cosign` v3.1.4 at `/usr/local/bin/cosign`; call the updater by full path, it is not on `PATH` in a non-login `pct exec`). Verified live on the API: update (43 s), a no-op re-run, `--rollback`, and a second `--rollback` that rolls forward. For the next release: tag `vX.Y.Z` on `main` after CI is green, wait for the release run, then run the updater in each container (API first).
 2. Updater gaps worth closing: old release venvs under `/opt/openNASR/releases/` are never removed (~270 MB each; the API rootfs is only 8 G); the archiver update is not health-checked until its next timer run; third-party dependencies are not pinned at update time.
 3. **Phase 7 observation**: watch the archiver through the next FAA cycle. 2026-11-26 is already published; the next new cycle (2026-12-24) should appear around early December. Check alerts, manifests and hashes.
 4. **API keys** when the owner asks (see section 7). Document who holds which key in the IT-management-UCF repo.
