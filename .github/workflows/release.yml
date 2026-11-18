@@ -89,4 +89,6 @@ jobs:
       - name: Publish deployment assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --verify-tag
+          GH_REPO: ${{ github.repository }}
+        # This job has no checkout, so gh must be told the repository explicitly.
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --verify-tag --repo "$GITHUB_REPOSITORY"
