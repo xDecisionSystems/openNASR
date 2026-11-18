@@ -95,6 +95,7 @@ install -m 0755 opennasr-update /usr/local/sbin/opennasr-update
 Then run the command for the applicable guest.
 
 ```sh
+export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
 /usr/local/sbin/opennasr-update --role api --version v2.0.1
 /usr/local/sbin/opennasr-update --role archiver --version v2.0.1
 ```
