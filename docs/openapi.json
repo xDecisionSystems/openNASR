@@ -1807,7 +1807,7 @@
     },
     "/v1/airspace/layer": {
       "get": {
-        "description": "Airports, fixes, navaids, or published route legs inside the ARTCCs that cover a point.",
+        "description": "Map features inside the ARTCCs that cover a point.",
         "operationId": "airspace_layer_v1_airspace_layer_get",
         "parameters": [
           {

@@ -729,7 +729,7 @@ def create_app(
         lon: Annotated[float, Query(ge=-180, le=180)],
         cycle: CycleParam = None,
     ) -> dict[str, Any]:
-        """Airports, fixes, navaids, or published route legs inside the ARTCCs that cover a point."""
+        """Map features inside the ARTCCs that cover a point."""
 
         try:
             chosen, features = store.map_layer(layer, lat, lon, cycle)
