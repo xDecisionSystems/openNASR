@@ -13,7 +13,7 @@ const views = {
     title: "Find an airport",
     help: "Enter an FAA or ICAO airport identifier.",
     fields: [{ name: "identifier", label: "Airport identifier", example: "KABQ" }],
-    caption: "Query an airport to plot its position.",
+    caption: "Query an airport to plot its published runways and helipads.",
   },
   airspace: {
     title: "Find airspace at a point",
@@ -150,7 +150,9 @@ function resetResult() {
   partialRoute = false;
   const procedures = currentView === "arrivals" || currentView === "departures";
   canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
-  byId("plot-title").textContent = procedures ? "Procedure branches" : "Coordinate plot";
+  byId("plot-title").textContent = {
+    airports: "Airport layout", arrivals: "Procedure branches", departures: "Procedure branches",
+  }[currentView] || "Coordinate plot";
   byId("plot-legend").hidden = true;
   byId("plot-legend").replaceChildren();
   byId("plot-note").textContent = "WGS 84";
@@ -239,6 +241,53 @@ function addProcedureBranches(procedure, multipleProcedures) {
   results.append(section);
 }
 
+function addAirportLayout(airport) {
+  const endsByRunway = new Map();
+  for (const end of airport.runway_ends) {
+    const lat = Number(end.LAT_DECIMAL);
+    const lon = Number(end.LONG_DECIMAL);
+    if (!end.LAT_DECIMAL?.trim() || !end.LONG_DECIMAL?.trim()
+      || !Number.isFinite(lat) || Math.abs(lat) > 90
+      || !Number.isFinite(lon) || Math.abs(lon) > 180) continue;
+    if (!endsByRunway.has(end.RWY_ID)) endsByRunway.set(end.RWY_ID, new Map());
+    endsByRunway.get(end.RWY_ID).set(end.RWY_END_ID, { lat, lon, name: end.RWY_END_ID });
+  }
+
+  const runwayRows = [];
+  const padRows = [];
+  for (const row of airport.runways) {
+    const id = row.RWY_ID || "";
+    const ends = endsByRunway.get(id);
+    const pad = /^H(?:\d+[A-Z]?|-?[A-Z])$/i.test(id);
+    const points = pad ? [ends?.get(id)] : id.split("/").map((end) => ends?.get(end));
+    const canPlot = points.every(Boolean) && (pad || (points.length === 2
+      && (points[0].lat !== points[1].lat || points[0].lon !== points[1].lon)));
+    if (canPlot) {
+      plotBranches.push({ points, kind: pad ? "pad" : "runway", color: pad ? "#ffc277" : "#b8f6e7", visible: true });
+    }
+    (pad ? padRows : runwayRows).push([
+      id, row.RWY_LEN, row.RWY_WIDTH, row.SURFACE_TYPE_CODE,
+      canPlot ? "Plotted" : "Geometry unavailable",
+    ]);
+  }
+  const columns = ["Identifier", "Length (ft)", "Width (ft)", "Surface", "Map"];
+  results.append(table("Runways", columns, runwayRows), table("Helipads", columns, padRows));
+
+  const runwayCount = plotBranches.filter((branch) => branch.kind === "runway").length;
+  const padCount = plotBranches.length - runwayCount;
+  if (!plotBranches.length && airport.position) {
+    plotPoints = [{ ...airport.position, name: airport.icao_id || airport.id }];
+  }
+  const unavailable = airport.runways.length - plotBranches.length;
+  const label = [
+    `${runwayCount} of ${runwayRows.length} runways and ${padCount} of ${padRows.length} helipads plotted.`,
+    unavailable ? "Some records lack usable geometry." : "",
+    plotPoints.length ? "Showing the airport reference point." : "",
+  ].filter(Boolean).join(" ");
+  byId("plot-caption").textContent = label;
+  canvas.setAttribute("aria-label", label);
+}
+
 function showResult(data) {
   byId("result-cycle").textContent = `Cycle ${data.cycle}`;
   results.replaceChildren();
@@ -251,11 +300,8 @@ function showResult(data) {
         ["Airport", airport.icao_id || airport.id], ["City", [base.CITY, base.STATE_CODE].filter(Boolean).join(", ")],
         ["Position", coordinates(airport.position)], ["Elevation", base.ELEV && `${base.ELEV} ft`],
       ]),
-      table("Runways", ["Runway", "Length (ft)", "Width (ft)", "Surface"], airport.runways.map(
-        (row) => [row.RWY_ID, row.RWY_LEN, row.RWY_WIDTH, row.SURFACE_TYPE_CODE],
-      )),
     );
-    plotPoints = airport.position ? [{ ...airport.position, name: airport.icao_id || airport.id }] : [];
+    addAirportLayout(airport);
   } else if (currentView === "airspace") {
     results.append(
       table("Matching regions", ["Region", "Type", "Lower", "Upper"], data.regions.map(
@@ -288,7 +334,7 @@ function showResult(data) {
   const raw = element("details", null, "raw");
   raw.append(element("summary", "View response JSON"), element("pre", JSON.stringify(data, null, 2)));
   results.append(raw);
-  if (plotPoints.length) {
+  if (plotPoints.length && currentView !== "airports") {
     const label = plotPoints.length === 1
       ? `${plotPoints[0].name || "Position"} · ${coordinates(plotPoints[0])}`
       : `${plotPoints.length} waypoints${partialRoute ? " · partial route" : ""}`;
@@ -325,19 +371,21 @@ function drawPlot() {
   const centerX = points.length ? (west + east) / 2 : -98;
   const centerY = points.length ? (south + north) / 2 : 38;
   const longitudeFactor = Math.max(.17, Math.cos(centerY * Math.PI / 180));
+  const minimumSpan = currentView === "airports" ? .003 : 1;
   const scale = points.length ? Math.min(
-    (width - 2 * padding) / Math.max((east - west) * longitudeFactor, 1),
-    (height - 2 * padding) / Math.max(north - south, 1),
+    (width - 2 * padding) / Math.max((east - west) * longitudeFactor, minimumSpan),
+    (height - 2 * padding) / Math.max(north - south, minimumSpan),
   ) : Math.max(4, width / 90);
   const xy = (lon, lat) => [
     width / 2 + (lon - centerX) * scale * longitudeFactor,
     height / 2 - (lat - centerY) * scale,
   ];
-  const gridStep = (pixels) => [0.25, 0.5, 1, 2, 5, 10, 20, 30].find(
+  const gridStep = (pixels) => [.0005, .001, .002, .005, .01, .02, .05, .1, .25, .5, 1, 2, 5, 10, 20, 30].find(
     (step) => step * pixels >= 54,
   ) || 60;
   const lonStep = gridStep(scale * longitudeFactor);
   const latStep = gridStep(scale);
+  const degreeLabel = (value) => `${Number(value.toFixed(4))}°`;
   ctx.strokeStyle = "#355264";
   ctx.fillStyle = "#8dafbd";
   ctx.font = "10px system-ui";
@@ -346,14 +394,14 @@ function drawPlot() {
   for (let lon = Math.ceil(lonStart / lonStep) * lonStep; lon <= lonEnd; lon += lonStep) {
     const [x] = xy(lon, centerY);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-    if (x > 26 && x < width - 40) ctx.fillText(`${((lon + 540) % 360) - 180}°`, x + 4, 13);
+    if (x > 26 && x < width - 60) ctx.fillText(degreeLabel(((lon + 540) % 360) - 180), x + 4, 13);
   }
   const latStart = centerY - height / (2 * scale);
   const latEnd = centerY + height / (2 * scale);
   for (let lat = Math.ceil(latStart / latStep) * latStep; lat <= latEnd; lat += latStep) {
     const [, y] = xy(centerX, lat);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-    if (y > 26 && y < height - 22) ctx.fillText(`${lat}°`, 5, y - 4);
+    if (y > 26 && y < height - 22) ctx.fillText(degreeLabel(lat), 5, y - 4);
   }
   // Dashes indicate a partial result whose published geometry has gaps.
   ctx.lineWidth = 2;
@@ -361,6 +409,7 @@ function drawPlot() {
   const visible = new Map();
   for (const branch of plotted.filter((item) => item.visible)) {
     ctx.strokeStyle = branch.color;
+    ctx.lineWidth = branch.kind === "runway" ? 5 : 2;
     ctx.beginPath();
     let connected = false;
     for (const waypoint of branch.points) {
@@ -373,7 +422,7 @@ function drawPlot() {
       if (connected) ctx.lineTo(x, y);
       else ctx.moveTo(x, y);
       connected = true;
-      visible.set(JSON.stringify([point.name, point.lat, point.lon]), point);
+      visible.set(JSON.stringify([point.name, point.lat, point.lon]), { ...point, kind: branch.kind });
     }
     ctx.stroke();
   }
@@ -381,6 +430,12 @@ function drawPlot() {
   const shown = [...visible.values()];
   shown.forEach((point) => {
     const [x, y] = xy(point.x, point.lat);
+    if (point.kind === "pad") {
+      ctx.strokeStyle = "#ffc277";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - 5, y - 5, 10, 10);
+      return;
+    }
     ctx.fillStyle = "#b8f6e7";
     ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
   });
@@ -413,6 +468,7 @@ function drawPlot() {
     }
     const right = left + textWidth;
     labels.push({ left, right, top });
+    ctx.fillStyle = point.kind === "pad" ? "#ffc277" : "#b8f6e7";
     ctx.fillText(point.name, left, top + 10);
   }
 }

@@ -14,6 +14,8 @@ and versions follow Semantic Versioning.
 - Arrival and departure lookups return separate published branches with
   waypoint positions. The explorer plots and labels each branch and lets
   users show or hide individual branches.
+- The Airport tab plots runway centerlines and labels their ends, marks and
+  labels helipads, and identifies records with unavailable geometry.
 
 ## [2.1.0]
 
