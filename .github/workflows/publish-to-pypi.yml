@@ -1,9 +1,10 @@
 name: Publish to PyPI
 
+# Publishing to PyPI is deliberate and separate from the signed deployment release
+# (release.yml). Start it from the Actions tab and choose the release tag as the
+# ref; the build job below refuses a ref that is not v<version>.
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read

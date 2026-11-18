@@ -7,6 +7,8 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-18
+
 ### Breaking (2.0)
 
 - `NASR` serves every cycle from a read-only DuckDB artifact; CSV storage was
