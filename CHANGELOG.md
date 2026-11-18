@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.10]
+
+### Changed
+
+- Every explorer tab rotates its Try example at random.
+
 ## [2.1.9]
 
 ### Added

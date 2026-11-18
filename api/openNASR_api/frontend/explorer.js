@@ -10,42 +10,48 @@ const tabs = [...document.querySelectorAll("[role=tab]")];
 
 const views = {
   airports: {
+    examples: [["KABQ"], ["KDEN"], ["KSEA"], ["KJFK"]],
     title: "Find an airport",
     help: "Enter an FAA or ICAO airport identifier.",
-    fields: [{ name: "identifier", label: "Airport identifier", example: "KABQ" }],
+    fields: [{ name: "identifier", label: "Airport identifier" }],
     caption: "Query an airport to plot its runways, helipads, and ILS localizers.",
   },
   airspace: {
+    examples: [["35.0402", "-106.609"], ["39.8561", "-104.6737"], ["47.4502", "-122.3088"], ["40.6413", "-73.7781"]],
     title: "Find airspace at a point",
     help: "Enter latitude and longitude in decimal degrees.",
     fields: [
-      { name: "lat", label: "Latitude", example: "35.0402", min: -90, max: 90 },
-      { name: "lon", label: "Longitude", example: "-106.609", min: -180, max: 180 },
+      { name: "lat", label: "Latitude", min: -90, max: 90 },
+      { name: "lon", label: "Longitude", min: -180, max: 180 },
     ],
     caption: "All ARTCC boundaries. Search a point to focus the map.",
   },
   flightplan: {
+    examples: [["KABQ.DOOKK3.TXO..KTYR"], ["KDEN..KCOS"], ["KSEA..KPDX"], ["KJFK..KBOS"]],
     title: "Resolve a flight plan",
     help: "Enter an FAA route string to see its waypoints and diagnostics.",
-    fields: [{ name: "route", label: "Flight plan route", example: "KABQ.DOOKK3.TXO..KTYR", multiline: true }],
+    fields: [{ name: "route", label: "Flight plan route", multiline: true }],
     caption: "Resolved waypoints will appear here in flight order.",
   },
   routes: {
+    examples: [["J74"], ["V12"], ["V16"]],
     title: "Find a jetway or airway",
     help: "Enter a published route designation such as J74 or V12.",
-    fields: [{ name: "identifier", label: "Route designation", example: "J74" }],
+    fields: [{ name: "identifier", label: "Route designation" }],
     caption: "Query a jetway or airway to plot its published segments.",
   },
   arrivals: {
+    examples: [["GRNCH5"], ["MIERA.MIERA2"], ["HYDRR.HYDRR1"]],
     title: "Find an arrival",
     help: "Enter a STAR name or computer code.",
-    fields: [{ name: "identifier", label: "Arrival identifier", example: "GRNCH5" }],
+    fields: [{ name: "identifier", label: "Arrival identifier" }],
     caption: "Query an arrival to plot its published branches.",
   },
   departures: {
+    examples: [["DOOKK3"], ["LARGO3.ABQ"], ["CHILY4.CHILY"]],
     title: "Find a departure",
     help: "Enter a departure procedure name or computer code.",
-    fields: [{ name: "identifier", label: "Departure identifier", example: "DOOKK3" }],
+    fields: [{ name: "identifier", label: "Departure identifier" }],
     caption: "Query a departure to plot its published branches.",
   },
 };
@@ -74,6 +80,7 @@ const airspaceLayers = [
   ["ndbs", "NDB", "#ffa47b"],
   ["other-navaids", "Other navaids", "#d7b7fc"],
 ];
+const currentExamples = new Map();
 const savedInputs = new Map();
 const savedResults = new Map();
 
@@ -120,6 +127,17 @@ function setStatus(message, failed = false) {
   status.classList.toggle("error", failed);
 }
 
+function pickExample(view) {
+  const previous = currentExamples.get(view);
+  const options = views[view].examples.filter((example) => example !== previous);
+  const example = options[Math.floor(Math.random() * options.length)];
+  currentExamples.set(view, example);
+  byId("example").textContent = `Try ${example.join(", ")}`;
+  views[view].fields.forEach((field, index) => {
+    form.elements[field.name].placeholder = example[index];
+  });
+}
+
 function setView(name) {
   if (!views[name]) return;
   if (byId("fields").children.length) savedInputs.set(currentView, new FormData(form));
@@ -134,7 +152,6 @@ function setView(name) {
   byId("query-panel").setAttribute("aria-labelledby", `tab-${name}`);
   byId("query-title").textContent = view.title;
   byId("query-help").textContent = view.help;
-  byId("example").textContent = `Try ${view.fields.map((field) => field.example).join(", ")}`;
   byId("plot-caption").textContent = view.caption;
   byId("fields").replaceChildren(...view.fields.map((field) => {
     const group = element("div");
@@ -143,7 +160,6 @@ function setView(name) {
     const input = element(field.multiline ? "textarea" : "input");
     input.id = label.htmlFor;
     input.name = field.name;
-    input.placeholder = field.example;
     input.value = savedInputs.get(name)?.get(field.name) || "";
     input.required = true;
     input.spellcheck = false;
@@ -159,6 +175,7 @@ function setView(name) {
     group.append(label, input);
     return group;
   }));
+  pickExample(name);
   resetResult();
   if (savedResults.has(name)) showResult(savedResults.get(name));
   else if (name === "airspace") loadAirspaceOverview();
@@ -866,8 +883,12 @@ cycle.addEventListener("change", () => {
   if (currentView === "airspace") loadAirspaceOverview();
 });
 byId("example").addEventListener("click", () => {
-  for (const field of views[currentView].fields) form.elements[field.name].value = field.example;
+  const example = currentExamples.get(currentView);
+  views[currentView].fields.forEach((field, index) => {
+    form.elements[field.name].value = example[index];
+  });
   form.requestSubmit();
+  pickExample(currentView);
 });
 byId("apply-key").addEventListener("click", () => {
   apiKey = byId("api-key").value.trim();
