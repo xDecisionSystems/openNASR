@@ -480,3 +480,15 @@ SHA-256 with the manifest's archive hash.
 ### 2.14 Ambiguity returns every candidate (owner decision, 2026-11-18)
 
 An ambiguous identifier (about 68 of 46,580 pool routes, e.g. `ZFP` as NDB and VOR/DME) stays unresolved, but its diagnostic now carries `detail.candidates`: name, kind, navaid type and coordinates of each record, so the caller decides. `_Waypoint.subtype` holds the navaid type. Needs a release to reach the live API.
+
+### 2.15 Class B/C/D/E airspace polygons (owner decision, 2026-11-18: add the FAA shapefile data)
+
+Findings (checked against the real 2026-10-29 page and file):
+- Each cycle page links `https://nfdc.faa.gov/webContent/28DaySub/<date>/class_airspace_shape_files.zip` ("Class B,C,D,E Airspace Shape Files"), next to the CSV zip the archiver already reads. It is downloadable for the current (2026-10-29) and the upcoming (2026-11-26) cycle. 150 MB.
+- It holds one shapefile, `Shape_Files/Class_Airspace.shp`: 5,621 POLYGONZ records (CLASS B 369, C 340, D 578, E 4,334; LOCAL_TYPE such as CLASS_E5, CLASS_D). Fields include IDENT, NAME, UPPER_VAL/UPPER_UOM/UPPER_CODE, LOWER_VAL/LOWER_UOM/LOWER_CODE, CLASS, LOCAL_TYPE, MIL_CODE, SECTOR, WKHR_CODE.
+
+Proposed design, not built yet:
+- Archiver downloads the shapefile zip as a second input of the same cycle; the manifest records its SHA-256 (new key, layout/builder bump so older builds stay valid).
+- Polygons are stored as a table in the same DuckDB file (WKB geometry plus the attributes), so the fetch, sidecar and update paths stay unchanged.
+- The API builds a shapely index from it, as it does for ARTCC boundaries, and `/v1/airspace/at` adds class B/C/D/E regions with their altitude limits (an altitude parameter can filter by floor and ceiling).
+- Open sub-questions for the owner: whether to filter by an `alt` parameter, and whether to keep older builds without the table.
