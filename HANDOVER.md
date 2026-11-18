@@ -12,7 +12,7 @@ It has three runnable parts:
 |---|---|---|
 | **Archiver** | `archiver/`, deployed in LXC 124 | Daily: fetch the FAA cycle (current + upcoming), build a DuckDB file, validate, upload zip + db + sidecar + manifest to S3. |
 | **Bucket** | Garage S3, bucket `opennasr` | Immutable, content-addressed keys; the manifest is uploaded last and is the "validated" marker. |
-| **API** | `api/`, deployed in LXC 125 | Read-only FastAPI service; fetches verified cycles from the bucket. Live at `https://opennasr.xds-lab.com`. |
+| **API** | `api/`, deployed in LXC 125 | Read-only FastAPI service; fetches verified cycles from the bucket. Live at `https://nasr.xds-lab.com`. |
 | **Local mode** | core CLI | `opennasr route | serve | fetch` give the same JSON as the API. |
 
 ## 2. Repository map (`/srv/projects/openNASR`, GitHub `xDecisionSystems/openNASR`)
@@ -111,7 +111,7 @@ Run with `python tools/route_path_validation.py --full-file benchmarks/data/exam
 | Run | `openNASR-archiver.timer` daily 06:15 UTC +<=20 min; service is a oneshot | `openNASR-api.service`, port 8000 |
 | Disk / RAM | 24 G / 2 GB | 8 G / 3 GB (`MemoryMax=3G`) |
 
-- Published through NPMplus: proxy host **id 30** `opennasr.xds-lab.com` -> `http://10.10.20.125:8000`, certificate 1, HTTPS forced. DNS is the Cloudflare wildcard `*.xds-lab.com` -> a tailnet-only address, so only tailnet clients can reach it.
+- Published through NPMplus: proxy host **id 30** `nasr.xds-lab.com` -> `http://10.10.20.125:8000`, certificate 1, HTTPS forced. DNS is the Cloudflare wildcard `*.xds-lab.com` -> a tailnet-only address, so only tailnet clients can reach it.
 - **The API runs with no keys** (`OPENNASR_API_AUTH=none`, the owner's decision "no key for now"). It warns at startup, refuses to start without keys unless that is set, and rate-limits 600/min per client address (first `X-Forwarded-For` hop). To enable keys: set `OPENNASR_API_KEYS=a,b` in `api.env`, remove `OPENNASR_API_AUTH`, `systemctl restart openNASR-api`.
 - Bucket `opennasr` holds four cycles on the current FAA schema `nasr_2026_09`: 2026-09-03, 2026-10-01, 2026-10-29, 2026-11-26 (the last is the upcoming one). **Owner decision: backfill the current format only; nothing older.**
 - **Monitoring (added 2026-11-17/18):** Gatus check `private-sites_opennasr-api` (`/ready` every 2 min: HTTP 200, `status == ready`, certificate > 48 h; Slack after two failures, recovery notice) and a Homepage tile in the Research group; see the lab's `changes/2026-11-17-opennasr-monitoring.md` for the rollback files. The archiver itself has no Gatus check; it alerts to Slack on its own.
@@ -121,9 +121,9 @@ Run with `python tools/route_path_validation.py --full-file benchmarks/data/exam
 ### Quick health checks
 
 ```sh
-curl -s https://opennasr.xds-lab.com/ready
-curl -s https://opennasr.xds-lab.com/v1/cycles
-curl -s -X POST https://opennasr.xds-lab.com/v1/route/resolve -H 'content-type: application/json' -d '{"route":"KABQ.DOOKK3.TXO..KTYR"}'
+curl -s https://nasr.xds-lab.com/ready
+curl -s https://nasr.xds-lab.com/v1/cycles
+curl -s -X POST https://nasr.xds-lab.com/v1/route/resolve -H 'content-type: application/json' -d '{"route":"KABQ.DOOKK3.TXO..KTYR"}'
 ssh root@100.100.10.10 'pct exec 124 -- systemctl list-timers openNASR-archiver.timer --all; pct exec 124 -- journalctl -u openNASR-archiver -n 10 --no-pager'
 ssh root@100.100.10.10 'pct exec 124 -- systemctl show openNASR-archiver.timer -p LastTriggerUSec -p NextElapseUSecRealtime; pct exec 124 -- systemctl show openNASR-archiver.service -p ExecMainStartTimestamp -p ExecMainStatus -p Result'
 ```

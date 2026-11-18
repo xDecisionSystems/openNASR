@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Read-only Phase 7 check of the production deployment. Changes nothing.
 #
-#   observe.sh [--proxmox root@100.100.10.10] [--url https://opennasr.xds-lab.com]
+#   observe.sh [--proxmox root@100.100.10.10] [--url https://nasr.xds-lab.com]
 #              [--archiver-ct 124] [--api-ct 125] [--route "KABQ.DOOKK3.TXO..KTYR"]
 #              [--env-file .env] [--zips]
 #
@@ -10,7 +10,7 @@
 set -uo pipefail
 export LC_ALL=C
 
-PROXMOX=root@100.100.10.10; URL=https://opennasr.xds-lab.com
+PROXMOX=root@100.100.10.10; URL=https://nasr.xds-lab.com
 ARCHIVER=124; API=125; ROUTE="KABQ.DOOKK3.TXO..KTYR"; ENVFILE=""; ZIPS=""
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/../.." && pwd)"
 while [ $# -gt 0 ]; do

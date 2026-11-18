@@ -441,7 +441,7 @@ containers are not joined to Tailscale.
 | 6.1 Host installer `deploy/proxmox/install.sh` + in-container `deploy/guest/guest-setup.sh`: unprivileged Debian 13 LXC, venv from local wheels, **DuckDB probed by running it** (1.5.6 kept on the Xeon E5-2620; 2.x is not a candidate while core caps `duckdb<2`), systemd units, health check | done |
 | 6.2 LXC 125 `opennasr-api` (10.10.20.125) created from scratch twice (the first run found the packaging bug below); real routes answered | done |
 | 6.3 LXC 124 `opennasr-archiver` (10.10.20.124): first real pass fetched the FAA cycle and found it already published; timer 06:15 UTC | done |
-| 6.4 NPMplus proxy host id 30 `opennasr.xds-lab.com`, cert 1, HTTPS forced; verified | done |
+| 6.4 NPMplus proxy host id 30 `nasr.xds-lab.com`, cert 1, HTTPS forced; verified | done |
 | 6.5 No-key mode: refuses to start without keys unless `OPENNASR_API_AUTH=none`; warns at start; rate limit per client address (first `X-Forwarded-For` hop), 600/min | done |
 | 6.6 Archiver cache pruning keeps the two newest cached cycles and removes older cycles once published | done |
 | 6.7 Packaging fix: schema manifests moved to `openNASR/schema_manifests/` and shipped in the wheel (they were read from `tests/` and did not exist in an installed package); core version set to 2.0.0 | done |
