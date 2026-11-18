@@ -207,9 +207,13 @@ def main():
         if args.rollback:
             replacement = previous.read_text(encoding="utf-8")
         else:
+            marker = f"# openNASR release {args.version}\n"
+            if read_override(override).startswith(marker):
+                print(f"{role} is already configured for {args.version}")
+                return
             executable = install(args.version, role)
             command = f"{executable} run" if role == "archiver" else str(executable)
-            replacement = f"[Service]\nExecStart=\nExecStart={command}\n"
+            replacement = f"{marker}[Service]\nExecStart=\nExecStart={command}\n"
         switch(role, unit, args.ready_url, override, previous, replacement)
     print(f"{role} {'rolled back' if args.rollback else f'updated to {args.version}'}")
 

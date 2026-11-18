@@ -6,8 +6,11 @@ from importlib.util import module_from_spec, spec_from_loader
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="systemd guest updater")
 
 
 @pytest.fixture
