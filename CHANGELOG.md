@@ -7,6 +7,13 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.5]
+
+### Added
+
+- Drag a box with Zoom area to focus any explorer plot on the selected area.
+- Plot layer checkboxes appear below the plot on every tab.
+
 ## [2.1.4]
 
 ### Added

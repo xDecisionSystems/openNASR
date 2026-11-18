@@ -166,6 +166,7 @@ function resetResult() {
   plotPoints = [];
   plotBranches = [];
   partialRoute = false;
+  setAreaSelection(false);
   plotZoom = 1;
   plotPan = { x: 0, y: 0 };
   airportCaption = "";
@@ -764,25 +765,84 @@ for (const [id, factor] of [["zoom-in", 1.5], ["zoom-out", 1 / 1.5]]) {
   });
 }
 byId("zoom-reset").addEventListener("click", () => {
+  setAreaSelection(false);
   plotZoom = 1;
   plotPan = { x: 0, y: 0 };
   drawPlot();
 });
-let dragPosition = null;
+const areaButton = byId("zoom-area");
+const zoomBox = byId("zoom-box");
+let selectingArea = false;
+let drag = null;
+
+function setAreaSelection(enabled) {
+  selectingArea = enabled;
+  drag = null;
+  zoomBox.hidden = true;
+  areaButton.setAttribute("aria-pressed", String(enabled));
+  canvas.parentElement.classList.toggle("selecting", enabled);
+}
+
+function plotPosition(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+    y: Math.max(0, Math.min(rect.height, event.clientY - rect.top)),
+  };
+}
+
+function selectionBounds(start, end) {
+  return {
+    left: Math.min(start.x, end.x), top: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y),
+  };
+}
+
+areaButton.addEventListener("click", () => setAreaSelection(!selectingArea));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && selectingArea) setAreaSelection(false);
+});
 canvas.addEventListener("pointerdown", (event) => {
-  if (event.button !== 0) return;
-  dragPosition = { x: event.clientX, y: event.clientY };
+  if (event.button !== 0 || drag) return;
+  drag = { id: event.pointerId, start: plotPosition(event) };
   canvas.setPointerCapture(event.pointerId);
 });
 canvas.addEventListener("pointermove", (event) => {
-  if (!dragPosition) return;
-  plotPan.x += event.clientX - dragPosition.x;
-  plotPan.y += event.clientY - dragPosition.y;
-  dragPosition = { x: event.clientX, y: event.clientY };
+  if (drag?.id !== event.pointerId) return;
+  const point = plotPosition(event);
+  if (selectingArea) {
+    const box = selectionBounds(drag.start, point);
+    for (const [property, value] of Object.entries(box)) zoomBox.style[property] = `${value}px`;
+    zoomBox.hidden = false;
+    return;
+  }
+  plotPan.x += point.x - drag.start.x;
+  plotPan.y += point.y - drag.start.y;
+  drag.start = point;
   drawPlot();
 });
-canvas.addEventListener("pointerup", () => { dragPosition = null; });
-canvas.addEventListener("pointercancel", () => { dragPosition = null; });
+canvas.addEventListener("pointerup", (event) => {
+  if (drag?.id !== event.pointerId) return;
+  const start = drag.start;
+  drag = null;
+  if (!selectingArea) return;
+
+  const box = selectionBounds(start, plotPosition(event));
+  zoomBox.hidden = true;
+  if (box.width < 8 || box.height < 8) return;
+  const { width, height } = canvas.getBoundingClientRect();
+  const factor = Math.min(32 / plotZoom, width / box.width, height / box.height);
+  plotPan.x = (plotPan.x + width / 2 - box.left - box.width / 2) * factor;
+  plotPan.y = (plotPan.y + height / 2 - box.top - box.height / 2) * factor;
+  plotZoom *= factor;
+  setAreaSelection(false);
+  drawPlot();
+});
+canvas.addEventListener("lostpointercapture", (event) => {
+  if (drag?.id !== event.pointerId) return;
+  drag = null;
+  zoomBox.hidden = true;
+});
 byId("ils-wedges").addEventListener("change", drawPlot);
 window.addEventListener("beforeprint", () => { printing = true; drawPlot(); });
 window.addEventListener("afterprint", () => { printing = false; drawPlot(); });

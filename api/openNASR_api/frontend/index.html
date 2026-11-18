@@ -57,17 +57,21 @@
       <section class="card plot-card" aria-labelledby="plot-title">
         <div class="plot-header">
           <h2 id="plot-title">Coordinate plot</h2>
-          <label class="ils-toggle" id="ils-toggle" hidden><input id="ils-wedges" type="checkbox" checked> ILS wedges</label>
           <span id="plot-note">WGS 84</span>
         </div>
         <div class="plot">
           <canvas id="plot" role="img" aria-label="Latitude and longitude grid"></canvas>
+          <div id="zoom-box" hidden></div>
           <div class="zoom-controls" aria-label="Plot zoom">
             <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
             <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+            <button type="button" id="zoom-area" aria-pressed="false">Zoom area</button>
             <button type="button" id="zoom-reset" aria-label="Fit plot">Fit</button>
           </div>
           <p class="plot-caption" id="plot-caption">Query an airport to plot its runways, helipads, and ILS localizers.</p>
+        </div>
+        <div id="ils-toggle" class="plot-legend airspace-layers" hidden>
+          <label><input id="ils-wedges" type="checkbox" checked> ILS wedges</label>
         </div>
         <div id="plot-legend" class="plot-legend" aria-label="Visible procedure branches" hidden></div>
         <div id="airspace-layers" class="plot-legend airspace-layers" role="group" aria-label="Airspace map layers" hidden></div>
