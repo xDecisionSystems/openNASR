@@ -19,7 +19,7 @@ It has three runnable parts:
 
 ```
 core/                the core library, moved here from the repo root on 2026-11-18 (owner decision): core/pyproject.toml, core/README.md, core/LICENSE and the package below. No I/O policy; depends on neither contract, archiver nor api.
-core/openNASR/       package "openNASR" (version 2.1.1 on main). Shared tool settings (pytest, ruff, mypy) live in the root pyproject.toml, which has no [project].
+core/openNASR/       package "openNASR" (version 2.1.2 on main). Shared tool settings (pytest, ruff, mypy) live in the root pyproject.toml, which has no [project].
   flightplan.py      import point for route resolution (re-exports the public API and the private names tests use)
   _route_common.py, _route_waypoints.py, _route_airways.py, _route_procedure_index.py,
   _route_procedures.py, _route_tokenizer.py, _route_resolver.py
@@ -49,7 +49,7 @@ REPLAN.md            plan, phase tables, decisions log, findings with numbers
 
 - The long-running branch `phase0-housekeeping` was **merged to `main` as PR #2 on 2026-11-18**. GitHub CI passes on `main` (Python 3.10/3.12/3.14 matrix, lint, mypy, package build). **Workflow (owner's rule): commit directly to `main`. No feature branches, no PRs, no merge commits.** Tags are the only release step.
 - Added after the first handover: Python 3.10 test compatibility, a cache-preserving store refresh, hardened `max_segment_nm` limits, `NASR.close()`, the signed-release workflow (`.github/workflows/release.yml`) and the updater (`deploy/opennasr-update`, tested by `tests/test_deployment_update.py`).
-- [`v2.1.1`](https://github.com/xDecisionSystems/openNASR/releases/tag/v2.1.1) is the current signed release, tagged at `40c3f81`. The API uses it and the archiver still uses `v2.0.1`. A `v*` tag starts the signed deployment workflow. PyPI publishing is manual and remains off by owner decision.
+- [`v2.1.2`](https://github.com/xDecisionSystems/openNASR/releases/tag/v2.1.2) is the current signed release, tagged at `f0d7939`. The API uses it and the archiver still uses `v2.0.1`. A `v*` tag starts the signed deployment workflow. PyPI publishing is manual and remains off by owner decision.
 - The first `v2.0.0` tag was moved once: its release run failed after signing because the publish job had no checkout (`gh` needs `GH_REPO`), the fix was merged (PR #5), and the unreleased tag was re-created on the fixed commit. Cutting a release is therefore tested end to end. If a release run fails after tagging, nothing is published; fix on `main`, then delete and re-create the tag only if no release exists.
 
 ## 4. Build, test, lint (all green at handover)
@@ -105,7 +105,7 @@ Run with `python tools/route_path_validation.py --full-file benchmarks/data/exam
 | | Archiver | API |
 |---|---|---|
 | LXC | 124 `opennasr-archiver`, VLAN 20 `10.10.20.124` | 125 `opennasr-api`, VLAN 20 `10.10.20.125` |
-| Install | Signed `v2.0.1` under `/opt/openNASR/releases/`, user `opennasr` | Signed `v2.1.1` under the same release directory, user `opennasr` |
+| Install | Signed `v2.0.1` under `/opt/openNASR/releases/`, user `opennasr` | Signed `v2.1.2` under the same release directory, user `opennasr` |
 | Settings | `/etc/openNASR/archiver.env` (mode 640) | `/etc/openNASR/api.env` (mode 640) |
 | Run | `openNASR-archiver.timer` daily 06:15 UTC +<=20 min; service is a oneshot | `openNASR-api.service`, port 8000 |
 | Disk / RAM | 24 G / 2 GB | 8 G / 3 GB (`MemoryMax=3G`) |
@@ -137,14 +137,14 @@ status can belong to a manual run. Active alert kinds are under `active` in
 
 ## 8. Next steps
 
-The API runs signed `v2.1.1` with `v2.1.0` as its rollback target. The runway, helipad, arrival, and departure plots were verified in production. The archiver runs signed `v2.0.1` with `v2.0.0` as its rollback target. Both use DuckDB 1.5.6. For non-login `pct exec` shells, export `PATH="/usr/local/bin:/usr/local/sbin:$PATH"` so the updater can find Cosign. See [RELEASE.md](RELEASE.md) for the rollout procedure.
+The API runs signed `v2.1.2` with `v2.1.1` as its rollback target. The ILS transmitter locations and course wedges were verified in the Airport tab and its printed output. The archiver runs signed `v2.0.1` with `v2.0.0` as its rollback target. Both use DuckDB 1.5.6. For non-login `pct exec` shells, export `PATH="/usr/local/bin:/usr/local/sbin:$PATH"` so the updater can find Cosign. See [RELEASE.md](RELEASE.md) for the rollout procedure.
 
 1. **Phase 7 observation is in progress.** Run `deploy/proxmox/observe.sh --env-file .env` for every check below (read-only; `--zips` also re-hashes the archives; `tools/verify_bucket.py` does the bucket part alone). The manual production pass on `v2.0.1` exited 0 with `already_published 2026-10-29` and no active alerts. Verify the first timer-triggered pass, then check that the API defaults to 2026-11-26 when that prepublished cycle takes effect. When the FAA posts 2026-12-24, verify its Garage manifest, artifact hashes, and explicit-cycle API response. See [the observation checklist](REPLAN.md#8g-phase-7-observation).
 2. **API keys: owner decision (2026-11-18) is to keep the API open for now** (public FAA data, read-only, rate-limited, tailnet-only through NPMplus). Turn keys on when someone outside the owner's own machines needs access (see section 7 for the steps); then document who holds which key in the IT-management-UCF repo.
 3. **Refactors**: `flightplan.py` is a compatibility facade, and procedure lookup indexes now live in `_route_procedure_index.py`. The extraction preserved byte-identical results on 9,316 sampled routes. Verify future routing changes with `tools/route_corpus.py` and compare the same pool sample through the old and new code.
 4. **Backups: owner decision (2026-11-18) is no backup for now; revisit in a few months.** Garage is single-node, replication factor 1, with no copy. The zips are re-downloadable from the FAA only while the FAA keeps them, and the archiver can rebuild every database from a zip. Option noted for later: a nightly sync of the `opennasr` bucket to the `store` machine (its RAID6 is degraded).
 5. **Ambiguity:** the API's `AmbiguousRecordError` diagnostic carries `detail.candidates` in `v2.1.0`.
-6. **Class B/C/D/E polygons:** signed `v2.1.1` is deployed on the API guest, and all five tabs at [nasr.xds-lab.com](https://nasr.xds-lab.com/) were verified with production queries. The archiver upgrade and builder 2 Garage backfill remain pending, so live airspace queries still use builder 1 datasets. [Rollout procedure](RELEASE.md#roll-out-builder-2)
+6. **Class B/C/D/E polygons:** signed `v2.1.2` is deployed on the API guest. All five tabs at [nasr.xds-lab.com](https://nasr.xds-lab.com/) were verified with production queries. The archiver upgrade and builder 2 Garage backfill remain pending, so live airspace queries still use builder 1 datasets. [Rollout procedure](RELEASE.md#roll-out-builder-2)
 7. **PyPI: owner decision (2026-11-18) is to leave it off for now.** `pip install openNASR` still returns 1.5.0. The manual `publish-to-pypi.yml` workflow stays unused; revisit when someone else needs `pip install`.
 
 Docker deployment smoke coverage is complete. CI builds both images and runs
