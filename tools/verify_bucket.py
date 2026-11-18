@@ -1,8 +1,7 @@
 """Verify every validated build in the bucket against its manifest (read-only).
 
-For each build this fetches the DuckDB file and sidecar into a throwaway
-directory (``fetch_build`` checks both SHA-256 hashes) and, with ``--zips``,
-downloads the archive and compares its size and SHA-256 with the manifest.
+For each build this verifies the DuckDB file, sidecar and optional airspace
+Parquet. With ``--zips`` it also verifies the source archives.
 
     python tools/verify_bucket.py --env-file .env [--cycle 2026-12-24] [--zips]
 
@@ -57,15 +56,25 @@ def verify_build(
             problems.append(f"{label}: {error}")
         if check_zip:
             archive = directory / "archive.zip"
-            try:
-                bucket.get_file(manifest.zip.key, archive)
-            except Exception as error:
-                problems.append(f"{label}: cannot read {manifest.zip.key}: {error}")
-            else:
-                if archive.stat().st_size != manifest.zip.size:
-                    problems.append(f"{label}: archive size differs from the manifest")
-                if _sha256(archive) != manifest.zip.sha256:
-                    problems.append(f"{label}: archive hash differs from the manifest")
+            sources = [("archive", manifest.zip)]
+            if manifest.class_airspace is not None:
+                sources.append(
+                    ("class airspace archive", manifest.class_airspace.source)
+                )
+            for kind, source in sources:
+                try:
+                    bucket.get_file(source.key, archive)
+                except Exception as error:
+                    problems.append(f"{label}: cannot read {source.key}: {error}")
+                else:
+                    if archive.stat().st_size != source.size:
+                        problems.append(
+                            f"{label}: {kind} size differs from the manifest"
+                        )
+                    if _sha256(archive) != source.sha256:
+                        problems.append(
+                            f"{label}: {kind} hash differs from the manifest"
+                        )
     return problems
 
 

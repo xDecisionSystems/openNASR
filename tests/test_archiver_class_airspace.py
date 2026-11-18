@@ -14,6 +14,7 @@ from openNASR.cycles import CycleManager  # noqa: E402
 from openNASR_api import CycleStore, create_app  # noqa: E402
 from openNASR_archiver import backfill, publish_cycle, rebuild_from_bucket, run_once  # noqa: E402
 from openNASR_contract import LocalBucket, fetch_build, list_builds  # noqa: E402
+from tools.verify_bucket import verify_build  # noqa: E402
 
 FIELDS = (
     "IDENT",
@@ -185,6 +186,13 @@ def test_airspace_build_retries_and_backfills_over_b1(
     assert (output / "class_airspace.parquet").is_file()
     rebuilt = rebuild_from_bucket(bucket, new, tmp_path / "rebuild")
     assert rebuilt.ok and rebuilt.class_airspace_rows_match is True
+    assert verify_build(bucket, new, check_zip=True) == []
+    (bucket.root / new.class_airspace.source.key).write_bytes(b"damaged")
+    assert verify_build(bucket, new) == []
+    assert any(
+        "class airspace archive hash differs" in problem
+        for problem in verify_build(bucket, new, check_zip=True)
+    )
     manager.store_sha256_metadata(zip_path)
     assert manager.remove(cycle).removed_archive
     assert not zip_path.exists()

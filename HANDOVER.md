@@ -19,7 +19,7 @@ It has three runnable parts:
 
 ```
 core/                the core library, moved here from the repo root on 2026-11-18 (owner decision): core/pyproject.toml, core/README.md, core/LICENSE and the package below. No I/O policy; depends on neither contract, archiver nor api.
-core/openNASR/       package "openNASR" (version 2.0.1). Shared tool settings (pytest, ruff, mypy) live in the root pyproject.toml, which has no [project].
+core/openNASR/       package "openNASR" (version 2.1.0 on main). Shared tool settings (pytest, ruff, mypy) live in the root pyproject.toml, which has no [project].
   flightplan.py      import point for route resolution (re-exports the public API and the private names tests use)
   _route_common.py, _route_waypoints.py, _route_airways.py, _route_procedure_index.py,
   _route_procedures.py, _route_tokenizer.py, _route_resolver.py
@@ -145,7 +145,7 @@ Both guests run signed `v2.0.1` with DuckDB 1.5.6 and retain `v2.0.0` for rollba
 3. **Refactors**: `flightplan.py` is a compatibility facade, and procedure lookup indexes now live in `_route_procedure_index.py`. The extraction preserved byte-identical results on 9,316 sampled routes. Verify future routing changes with `tools/route_corpus.py` and compare the same pool sample through the old and new code.
 4. **Backups: owner decision (2026-11-18) is no backup for now; revisit in a few months.** Garage is single-node, replication factor 1, with no copy. The zips are re-downloadable from the FAA only while the FAA keeps them, and the archiver can rebuild every database from a zip. Option noted for later: a nightly sync of the `opennasr` bucket to the `store` machine (its RAID6 is degraded).
 5. **Ambiguity: owner decision (2026-11-18) is to return every candidate.** When an identifier names several records the resolver still refuses to pick, but the `AmbiguousRecordError` diagnostic now carries `detail.candidates` (name, kind, type for navaids, lat, lon; procedure ambiguities list their candidates as plain lists). Done in `_route_resolver._error_diagnostic`; not yet in a release, so the live API (v2.0.1) does not return it.
-6. **Class B/C/D/E polygons:** the download, conversion, publication, and API lookup are implemented on `main` (C1–C5). A local publication and fetch verified all 5,621 polygons for 2026-10-29. Signed release, guest update, and Garage backfill remain pending. [Progress and remaining steps](REPLAN.md#215-progress-class-bcde-polygons-and-what-is-left)
+6. **Class B/C/D/E polygons:** the download, conversion, publication, and API lookup are implemented on `main` (C1–C5). A local publication and fetch verified all 5,621 polygons for 2026-10-29. The next release is prepared as `v2.1.0`. The signed tag, guest update, and Garage backfill remain pending. [Rollout procedure](RELEASE.md#roll-out-builder-2)
 7. **PyPI: owner decision (2026-11-18) is to leave it off for now.** `pip install openNASR` still returns 1.5.0. The manual `publish-to-pypi.yml` workflow stays unused; revisit when someone else needs `pip install`.
 
 Docker deployment smoke coverage is complete. CI builds both images and runs

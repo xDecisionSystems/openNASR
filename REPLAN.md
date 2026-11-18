@@ -519,3 +519,8 @@ optional `class_airspace` block; readers ignore unknown keys, so the deployed 2.
 | C6 The local API loaded the real 2026-10-29 data (B 369, C 340, D 578, E 4,334) and returned the expected class at test points near Dallas/Fort Worth, Albuquerque, Santa Monica, and Hillsboro, alongside ARTCC boundaries. Pending: sign the release, update both containers, backfill the four published cycles as builder 2 in Garage, and verify the rollout. | locally verified |
 
 Real-data facts: the zip is 150 MB; `Class_Airspace.shp` is POLYGONZ; example record NAME 'HILLSBORO CLASS E5', LOCAL_TYPE CLASS_E5, UPPER_VAL -9998 (UPPER_DESC 'AA'), LOWER_VAL 700, LOWER_UOM FT, LOWER_CODE SFC.
+
+Release preparation sets core to 2.1.0 and the API, archiver, and bucket
+contract to 0.2.0. All four existing cycle pages advertise their shapefile
+archive. The read-only bucket verifier checks both source archives when
+`--zips` is selected. [Builder 2 rollout procedure](RELEASE.md#roll-out-builder-2)

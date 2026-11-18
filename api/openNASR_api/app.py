@@ -28,7 +28,7 @@ from .airspace import AltitudeLimit
 from .limits import RateLimiter
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.1.0"
+API_VERSION = "0.2.0"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")

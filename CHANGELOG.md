@@ -7,6 +7,30 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.0]
+
+### Added
+
+- Builder 2 publishes each cycle's FAA Class B/C/D/E shapefile ZIP and derived
+  Parquet alongside the existing NASR artifacts.
+- `/v1/airspace/at` returns the available Class B/C/D/E polygons with their
+  published lower and upper altitude limits. Cycle data from builder 1 remains
+  usable for the existing boundary queries.
+- Ambiguous route identifiers include all matching candidates in their
+  diagnostic details.
+
+### Changed
+
+- The core package and its build metadata now live under `core/` in the
+  repository. The installed package is still imported as `openNASR`.
+- Route resolution uses separate modules behind the existing `flightplan.py`
+  import interface.
+
+### Fixed
+
+- Route validation excludes informational diagnostics when classifying
+  malformed routes.
+
 ## [2.0.1]
 
 ### Changed

@@ -22,6 +22,7 @@ is still available. PyPI is the authority on package-name availability.
 ## Release checklist
 
 1. Update `CHANGELOG.md` and set the release version in `core/pyproject.toml`.
+   Update component versions and dependency minimums when their contracts change.
 2. Run the complete local gate from a clean checkout:
 
    ```bash
@@ -33,13 +34,13 @@ is still available. PyPI is the authority on package-name availability.
    python -m twine check dist/*
    ```
 
-3. Merge the release changes and confirm CI passes on `main`.
+3. Push the release changes to `main` and confirm CI passes.
 4. Create and push an annotated tag whose name exactly matches the package
    version:
 
    ```bash
-   git tag -a v2.0.1 -m "openNASR 2.0.1"
-   git push origin v2.0.1
+   git tag -a v2.1.0 -m "openNASR 2.1.0"
+   git push origin v2.1.0
    ```
 
    The tag starts only the **signed deployment release** (`release.yml`): it
@@ -70,7 +71,7 @@ manifest format.
 
 ```sh
 set -eu
-tag=v2.0.1
+tag=v2.1.0
 repo=https://github.com/xDecisionSystems/openNASR
 cd "$(mktemp -d)"
 for asset in manifest.json manifest.json.sigstore.json opennasr-update; do
@@ -96,8 +97,8 @@ Then run the command for the applicable guest.
 
 ```sh
 export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
-/usr/local/sbin/opennasr-update --role api --version v2.0.1
-/usr/local/sbin/opennasr-update --role archiver --version v2.0.1
+/usr/local/sbin/opennasr-update --role api --version v2.1.0
+/usr/local/sbin/opennasr-update --role archiver --version v2.1.0
 ```
 
 The updater pins the signature to the release workflow in this repository at
@@ -123,3 +124,17 @@ archiver state stay in their existing locations. The original installer venv
 remains on disk. After a successful switch, the updater removes superseded
 release venvs for that role while keeping the active and rollback venvs. It
 defers cleanup when an archiver run is in progress.
+
+### Roll out builder 2
+
+Update the API guest first. Verify readiness and routing against its cached
+builder 1 cycles, then update the archiver guest. After the update, use the
+active archiver executable with its service account and environment file to
+backfill September 3 through November 26, 2026. The backfill writes separate
+builder 2 manifests and keeps the existing builder 1 manifests.
+
+Verify all four builder 2 manifests with `tools/verify_bucket.py --zips`,
+using the read-only API credentials and a disk-backed scratch directory.
+After the API's refresh, check `/v1/airspace/at` for the October 29 cycle at
+35.0402, -106.609. It should return Albuquerque Class C alongside the existing
+boundaries. Check routing and readiness again.

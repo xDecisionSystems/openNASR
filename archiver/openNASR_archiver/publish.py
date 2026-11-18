@@ -28,7 +28,7 @@ from .classairspace import build_class_airspace
 
 
 BUILDER_VERSION = 2
-ARCHIVER_VERSION = "0.1.0"
+ARCHIVER_VERSION = "0.2.0"
 
 REQUIRED_TABLES = (
     "APT_BASE",
