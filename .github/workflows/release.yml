@@ -1,0 +1,92 @@
+name: Signed deployment release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[dev,plot,release]"
+      - run: python -m pytest
+        if: github.ref_type == 'tag'
+      - name: Build deployment assets
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          if os.environ["GITHUB_REF_TYPE"] == "tag" and os.environ["GITHUB_REF_NAME"] != f"v{version}":
+              raise SystemExit(f"Expected release tag v{version}")
+          PY
+          for package in . contract archiver api; do
+            python -m build --wheel --outdir "$PWD/dist" "$package"
+          done
+          python -m twine check dist/*
+          cp deploy/opennasr-update dist/
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import tomllib
+          from pathlib import Path
+
+          dist = Path("dist")
+          assets = {}
+          for path in sorted(dist.iterdir()):
+              with path.open("rb") as asset:
+                  assets[path.name] = hashlib.file_digest(asset, "sha256").hexdigest()
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          manifest = {
+              "schema": 1,
+              "version": f"v{version}",
+              "commit": os.environ["GITHUB_SHA"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "assets": assets,
+          }
+          (dist / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@v5
+        with:
+          name: deployment-assets
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: deployment-assets
+          path: dist/
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532
+      - name: Sign and verify the manifest
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes --bundle dist/manifest.json.sigstore.json dist/manifest.json
+          cosign verify-blob --bundle dist/manifest.json.sigstore.json \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com dist/manifest.json
+      - name: Publish deployment assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --verify-tag
