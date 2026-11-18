@@ -913,6 +913,21 @@ function plotPosition(event) {
   };
 }
 
+canvas.addEventListener("dblclick", (event) => {
+  if (selectingArea || event.button !== 0) return;
+  const factor = event.shiftKey ? 1 / 1.5 : 1.5;
+  const nextZoom = Math.max(.25, Math.min(32, plotZoom * factor));
+  const scale = nextZoom / plotZoom;
+  const { width, height } = canvas.getBoundingClientRect();
+  const point = plotPosition(event);
+  const x = point.x - width / 2;
+  const y = point.y - height / 2;
+  plotPan.x = x + (plotPan.x - x) * scale;
+  plotPan.y = y + (plotPan.y - y) * scale;
+  plotZoom = nextZoom;
+  drawPlot();
+});
+
 function selectionBounds(start, end) {
   return {
     left: Math.min(start.x, end.x), top: Math.min(start.y, end.y),

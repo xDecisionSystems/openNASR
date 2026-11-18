@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.9]
+
+### Added
+
+- Double-click any plot to zoom in, or Shift-double-click to zoom out at the pointer.
+
 ## [2.1.8]
 
 ### Added
