@@ -176,6 +176,57 @@ def switch(role, unit, ready_url, override, previous, replacement):
         raise
 
 
+def service_property(unit, name):
+    return subprocess.check_output(
+        ["systemctl", "show", unit, f"--property={name}", "--value"], text=True
+    ).strip()
+
+
+def prune_releases(role, unit, override, previous):
+    """Remove superseded updater venvs after a successful switch."""
+    if role == "archiver" and service_property(unit, "ActiveState") not in (
+        "inactive",
+        "failed",
+    ):
+        print("Archiver is running; leaving old releases on disk")
+        return
+
+    releases = APP / "releases"
+    if not releases.is_dir() or releases.is_symlink():
+        return
+
+    commands = []
+    for state in (read_override(override), previous.read_text(encoding="utf-8")):
+        if state:
+            command = re.search(r"^ExecStart=(/\S+)(?:[ \t]+run)?$", state, re.M)
+            if command is None:
+                return
+            commands.append(command[1])
+
+    # Include the effective command in case systemd has other drop-ins.
+    effective = re.findall(r"\bpath=(/[^ ;]+)", service_property(unit, "ExecStart"))
+    if not effective:
+        return
+    commands.extend(effective)
+    protected = {Path(command).parent.parent.resolve() for command in commands}
+
+    for path in sorted(releases.iterdir()):
+        tag, separator, suffix = path.name.removeprefix(f"{role}-").rpartition("-")
+        if (
+            not path.name.startswith(f"{role}-")
+            or not separator
+            or not TAG_PATTERN.fullmatch(tag)
+            or not re.fullmatch(r"[a-z0-9_]{8}", suffix)
+            or path.is_symlink()
+            or path.resolve() in protected
+            or not (path / "pyvenv.cfg").is_file()
+            or not (path / f"bin/openNASR-{role}").is_file()
+        ):
+            continue
+        shutil.rmtree(path)
+        print(f"Removed superseded release {path.name}")
+
+
 @contextmanager
 def update_lock():
     with (APP / ".update.lock").open("a") as lock:
@@ -215,6 +266,10 @@ def main():
             command = f"{executable} run" if role == "archiver" else str(executable)
             replacement = f"{marker}[Service]\nExecStart=\nExecStart={command}\n"
         switch(role, unit, args.ready_url, override, previous, replacement)
+        try:
+            prune_releases(role, unit, override, previous)
+        except (OSError, subprocess.CalledProcessError) as error:
+            print(f"Could not finish pruning old releases: {error}", file=sys.stderr)
     print(f"{role} {'rolled back' if args.rollback else f'updated to {args.version}'}")
 
 

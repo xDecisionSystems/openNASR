@@ -87,4 +87,6 @@ or `opennasr-update --role archiver --rollback` on the applicable guest.
 The updater also restores the previous API executable if the readiness check
 fails. Rollback switches code only. Service configuration, cached data, and
 archiver state stay in their existing locations. The original installer venv
-and staged release venvs remain on disk.
+remains on disk. After a successful switch, the updater removes superseded
+release venvs for that role while keeping the active and rollback venvs. It
+defers cleanup when an archiver run is in progress.

@@ -112,3 +112,53 @@ def test_switch_restores_previous_executable_after_failed_readiness(
     updater.switch("api", unit, "ready", override, previous, previous.read_text())
     assert not override.exists()
     assert previous.read_text() == "first"
+
+
+@pytest.mark.parametrize(
+    "role, state",
+    [("api", "active"), ("archiver", "inactive"), ("archiver", "activating")],
+)
+def test_pruning_preserves_active_and_rollback_releases(
+    updater, tmp_path, monkeypatch, role, state
+):
+    monkeypatch.setattr(updater, "APP", tmp_path)
+    releases = tmp_path / "releases"
+
+    def make_release(name, service_role=role):
+        directory = releases / name
+        (directory / "bin").mkdir(parents=True)
+        (directory / "pyvenv.cfg").touch()
+        (directory / f"bin/openNASR-{service_role}").touch()
+        return directory
+
+    current = make_release(f"{role}-v2.0.3-12345678")
+    previous = make_release(f"{role}-v2.0.2-12345678")
+    effective = make_release(f"{role}-v2.0.1-12345678")
+    stale = make_release(f"{role}-v2.0.0-12345678")
+    other_role = "archiver" if role == "api" else "api"
+    other = make_release(f"{other_role}-v2.0.0-12345678", other_role)
+    unrelated = make_release(f"{role}-unknown-12345678")
+    link = releases / f"{role}-v2.0.0-23456789"
+    link.symlink_to(unrelated, target_is_directory=True)
+    old = tmp_path / "previous"
+    active = tmp_path / "override"
+    command_suffix = " run" if role == "archiver" else ""
+    for state_file, path in ((old, previous), (active, current)):
+        state_file.write_text(
+            f"[Service]\nExecStart=\nExecStart={path}/bin/openNASR-{role}{command_suffix}\n"
+        )
+    properties = {
+        "ActiveState": state,
+        "ExecStart": f"{{ path={effective}/bin/openNASR-{role} ; argv[]= ... }}",
+    }
+    monkeypatch.setattr(
+        updater, "service_property", lambda unit, name: properties[name]
+    )
+
+    updater.prune_releases(role, f"openNASR-{role}.service", active, old)
+
+    assert stale.exists() == (state == "activating")
+    assert all(
+        path.exists() for path in (current, previous, effective, other, unrelated)
+    )
+    assert link.is_symlink()
