@@ -69,6 +69,10 @@ const airspaceLayers = [
   ["departures", "Departures", "#87ddbf"],
   ["arrivals", "Arrivals", "#ffa7d4"],
   ["airways", "Jetways / airways", "#9bbaff"],
+  ["fixes", "Fixes", "#f3f1ac"],
+  ["vors", "VOR / VORTAC", "#80e9f8"],
+  ["ndbs", "NDB", "#ffa47b"],
+  ["other-navaids", "Other navaids", "#d7b7fc"],
 ];
 const savedInputs = new Map();
 const savedResults = new Map();

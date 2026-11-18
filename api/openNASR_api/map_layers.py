@@ -19,7 +19,16 @@ from openNASR.plotting import PlottingIndex
 from .airspace import map_coordinates
 from .lookups import _survey_position, procedure_branches
 
-LayerName = Literal["airports", "departures", "arrivals", "airways"]
+LayerName = Literal[
+    "airports",
+    "departures",
+    "arrivals",
+    "airways",
+    "fixes",
+    "vors",
+    "ndbs",
+    "other-navaids",
+]
 Coordinate = tuple[float, float]
 _WEST = box(-180, -90, 180, 90)
 _EAST = box(180, -90, 360, 90)
@@ -67,6 +76,36 @@ def _procedure_legs(
                 previous = current
 
 
+def _point_features(nasr: NASR, layer: LayerName) -> Iterator[tuple[str, Point]]:
+    table = {"airports": "APT_BASE", "fixes": "FIX_BASE"}.get(layer, "NAV_BASE")
+    frame = nasr.get(table)
+    if frame is None:
+        return
+    for row in frame.fillna("").to_dict(orient="records"):
+        if table == "APT_BASE":
+            if row.get("SITE_TYPE_CODE") != "A":
+                continue
+            name = row.get("ICAO_ID") or row.get("ARPT_ID", "")
+        elif table == "FIX_BASE":
+            name = row.get("FIX_ID", "")
+        else:
+            nav_type = row.get("NAV_TYPE", "").strip().upper()
+            if not nav_type:
+                continue
+            if nav_type in {"VOR", "VOR/DME", "VORTAC"}:
+                group = "vors"
+            elif nav_type in {"NDB", "NDB/DME", "MARINE NDB"}:
+                group = "ndbs"
+            else:
+                group = "other-navaids"
+            if layer != group:
+                continue
+            name = row.get("NAV_ID", "")
+        point = _survey_position(row)
+        if point:
+            yield name, Point(point["lon"], point["lat"])
+
+
 class MapLayer:
     """Spatial index over one cycle's airport points or published route legs."""
 
@@ -78,16 +117,8 @@ class MapLayer:
     def from_nasr(
         cls, nasr: NASR, layer: LayerName, resolver: RouteResolver | None
     ) -> MapLayer:
-        if layer == "airports":
-            airports = nasr.get("APT_BASE")
-            features = []
-            if airports is not None:
-                for row in airports.fillna("").to_dict(orient="records"):
-                    point = _survey_position(row)
-                    if point and row.get("SITE_TYPE_CODE") == "A":
-                        name = row.get("ICAO_ID") or row.get("ARPT_ID", "")
-                        features.append((name, Point(point["lon"], point["lat"])))
-            return cls(features)
+        if layer in {"airports", "fixes", "vors", "ndbs", "other-navaids"}:
+            return cls(_point_features(nasr, layer))
         legs: Iterable[tuple[Coordinate, Coordinate]]
         if layer == "airways":
             tables = {

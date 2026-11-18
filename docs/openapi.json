@@ -1269,7 +1269,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.7"
+    "version": "0.2.8"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1807,7 +1807,7 @@
     },
     "/v1/airspace/layer": {
       "get": {
-        "description": "Airports or published route legs inside the ARTCCs that cover a point.",
+        "description": "Airports, fixes, navaids, or published route legs inside the ARTCCs that cover a point.",
         "operationId": "airspace_layer_v1_airspace_layer_get",
         "parameters": [
           {
@@ -1819,7 +1819,11 @@
                 "airports",
                 "departures",
                 "arrivals",
-                "airways"
+                "airways",
+                "fixes",
+                "vors",
+                "ndbs",
+                "other-navaids"
               ],
               "title": "Layer",
               "type": "string"

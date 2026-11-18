@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.7"
+API_VERSION = "0.2.8"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -729,7 +729,7 @@ def create_app(
         lon: Annotated[float, Query(ge=-180, le=180)],
         cycle: CycleParam = None,
     ) -> dict[str, Any]:
-        """Airports or published route legs inside the ARTCCs that cover a point."""
+        """Airports, fixes, navaids, or published route legs inside the ARTCCs that cover a point."""
 
         try:
             chosen, features = store.map_layer(layer, lat, lon, cycle)

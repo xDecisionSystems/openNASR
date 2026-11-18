@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.8]
+
+### Added
+
+- Airspace maps can overlay fixes, VOR-family stations, NDBs, and other navaids.
+
 ## [2.1.7]
 
 ### Added
