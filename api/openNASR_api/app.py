@@ -283,17 +283,22 @@ class AirspaceRegion(BaseModel):
     upper: AltitudeLimit | None = None
 
 
-class AirspaceBoundary(BaseModel):
+class ArtccBoundary(BaseModel):
     id: str
     level: str
     rings: list[list[Position]]
+
+
+class AirspaceBoundariesResponse(BaseModel):
+    cycle: str
+    boundaries: list[ArtccBoundary]
 
 
 class AirspaceResponse(BaseModel):
     cycle: str
     position: Position
     regions: list[AirspaceRegion]
-    artcc_boundaries: list[AirspaceBoundary]
+    artcc_boundaries: list[ArtccBoundary]
     not_covered: str
 
 
@@ -655,7 +660,7 @@ def create_app(
 
     @app.get(
         "/v1/airspace/boundaries",
-        response_model=list[AirspaceBoundary],
+        response_model=AirspaceBoundariesResponse,
         responses=ERRORS,
         dependencies=secured,
         tags=["lookup"],
@@ -665,13 +670,13 @@ def create_app(
             "ARTCC", "FIR", "CTA", "UTA", "CTA/FIR", "B", "C", "D", "E"
         ] = "ARTCC",
         cycle: CycleParam = None,
-    ) -> list[dict]:
+    ) -> dict[str, Any]:
         """Return published outlines of one airspace type for a cycle."""
         try:
-            _, index = store.airspace(cycle)
+            chosen, index = store.airspace(cycle)
         except CycleUnavailableError as error:
             raise HTTPException(404 if cycle else 503, str(error)) from error
-        return index.boundaries(kind)
+        return {"cycle": chosen, "boundaries": index.boundaries(kind)}
 
     @app.get(
         "/v1/airspace/layer",

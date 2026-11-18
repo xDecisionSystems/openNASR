@@ -122,33 +122,25 @@
         "title": "AirportResponse",
         "type": "object"
       },
-      "AirspaceBoundary": {
+      "AirspaceBoundariesResponse": {
         "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "level": {
-            "title": "Level",
-            "type": "string"
-          },
-          "rings": {
+          "boundaries": {
             "items": {
-              "items": {
-                "$ref": "#/components/schemas/Position"
-              },
-              "type": "array"
+              "$ref": "#/components/schemas/ArtccBoundary"
             },
-            "title": "Rings",
+            "title": "Boundaries",
             "type": "array"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
           }
         },
         "required": [
-          "id",
-          "level",
-          "rings"
+          "cycle",
+          "boundaries"
         ],
-        "title": "AirspaceBoundary",
+        "title": "AirspaceBoundariesResponse",
         "type": "object"
       },
       "AirspaceLayerResponse": {
@@ -261,7 +253,7 @@
         "properties": {
           "artcc_boundaries": {
             "items": {
-              "$ref": "#/components/schemas/AirspaceBoundary"
+              "$ref": "#/components/schemas/ArtccBoundary"
             },
             "title": "Artcc Boundaries",
             "type": "array"
@@ -447,6 +439,35 @@
           "code"
         ],
         "title": "AltitudeLimit",
+        "type": "object"
+      },
+      "ArtccBoundary": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "rings": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/Position"
+              },
+              "type": "array"
+            },
+            "title": "Rings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "rings"
+        ],
+        "title": "ArtccBoundary",
         "type": "object"
       },
       "CycleInfo": {
@@ -1569,11 +1590,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/AirspaceBoundary"
-                  },
-                  "title": "Response Airspace Boundaries V1 Airspace Boundaries Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/AirspaceBoundariesResponse"
                 }
               }
             },

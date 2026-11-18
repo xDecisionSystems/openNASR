@@ -353,8 +353,8 @@ async function loadAirspaceOverview() {
   const params = new URLSearchParams();
   if (cycle.value) params.set("cycle", cycle.value);
   try {
-    const boundaries = await api(`/v1/airspace/boundaries?${params}`, { signal: active.signal });
-    if (!active.signal.aborted) addAirspaceMap({ artcc_boundaries: boundaries });
+    const data = await api(`/v1/airspace/boundaries?${params}`, { signal: active.signal });
+    if (!active.signal.aborted) addAirspaceMap({ cycle: data.cycle, artcc_boundaries: data.boundaries });
   } catch (error) {
     if (!active.signal.aborted) setStatus(error.message, true);
   }
@@ -418,7 +418,7 @@ function addAirspaceMap(data) {
       try {
         const response = await api(`/v1/airspace/${endpoint}?${params}`, { signal: map.controller.signal });
         if (airspaceMap !== map) return;
-        layer.data = isBoundary ? { points: [], lines: response.flatMap((boundary) => boundary.rings) } : response;
+        layer.data = isBoundary ? { points: [], lines: response.boundaries.flatMap((boundary) => boundary.rings) } : response;
         if (layer.selected && !layer.data.points.length && !layer.data.lines.length) {
           message.textContent = `No ${name} outlines or features are available for this view.`;
         }
