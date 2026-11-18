@@ -93,24 +93,67 @@
       },
       "AirspaceRegion": {
         "properties": {
+          "airspace_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FAA class B, C, D or E",
+            "title": "Airspace Class"
+          },
           "id": {
             "description": "FAA location id, e.g. ZAB",
             "title": "Id",
             "type": "string"
           },
           "kind": {
-            "description": "ARTCC | FIR | CTA | UTA | CTA/FIR",
+            "description": "ARTCC | FIR | CTA | UTA | CTA/FIR | CLASS",
             "title": "Kind",
             "type": "string"
           },
           "level": {
-            "description": "low | high | unlimited",
+            "description": "low | high | unlimited, or empty for CLASS",
             "title": "Level",
             "type": "string"
+          },
+          "local_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Type"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AltitudeLimit"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AltitudeLimit"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -203,6 +246,30 @@
           "airways"
         ],
         "title": "AirwaysResponse",
+        "type": "object"
+      },
+      "AltitudeLimit": {
+        "description": "Altitude value, unit and reference code as published by the FAA.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "unit",
+          "code"
+        ],
+        "title": "AltitudeLimit",
         "type": "object"
       },
       "CycleInfo": {
@@ -947,7 +1014,7 @@
     },
     "/v1/airspace/at": {
       "get": {
-        "description": "The ARTCC, FIR, CTA and UTA regions that contain a point.\n\nClass B/C/D/E airspace and special-use airspace are not in the FAA CSV\ndata as polygons, so they are not searched; `not_covered` says so.",
+        "description": "The FAA regions whose horizontal boundaries contain a point.\n\nIncludes ARTCC, FIR, CTA and UTA boundaries, plus Class B/C/D/E\npolygons when available for the selected cycle. Class regions include\nFAA altitude limits as published.",
         "operationId": "airspace_at_v1_airspace_at_get",
         "parameters": [
           {

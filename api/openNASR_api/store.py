@@ -15,7 +15,12 @@ from openNASR.exceptions import TableNotFoundError
 from openNASR.flightplan import RouteResolver
 from openNASR.nasr import NASR
 from openNASR_contract import Bucket, FetchError, Manifest, fetch_build, list_builds
-from openNASR_contract.fetch import DATABASE_NAME, MANIFEST_NAME, SIDECAR_NAME
+from openNASR_contract.fetch import (
+    CLASS_AIRSPACE_NAME,
+    DATABASE_NAME,
+    MANIFEST_NAME,
+    SIDECAR_NAME,
+)
 
 from .airspace import AirspaceIndex
 
@@ -100,8 +105,13 @@ class CycleStore:
             }
             for effective_date, manifest in newest.items():
                 directory = self._directory(effective_date)
-                if self.manifest(effective_date) == manifest and self._has_artifacts(
-                    directory
+                if (
+                    self.manifest(effective_date) == manifest
+                    and self._has_artifacts(directory)
+                    and (
+                        manifest.class_airspace is None
+                        or (directory / CLASS_AIRSPACE_NAME).is_file()
+                    )
                 ):
                     continue
                 try:
@@ -182,7 +192,7 @@ class CycleStore:
             return chosen, resolver
 
     def airspace(self, effective_date: str | None = None) -> tuple[str, AirspaceIndex]:
-        """The ARTCC/FIR/CTA boundary index for a cycle, built on first use."""
+        """The boundary and optional class-polygon index for a cycle."""
 
         chosen = effective_date or self.default_cycle()
         if chosen not in self.cycles():
@@ -191,11 +201,19 @@ class CycleStore:
             index = self._airspace.get(chosen)
             if index is not None:
                 return chosen, index
+            manifest = self.manifest(chosen)
+            path = self._directory(chosen) / CLASS_AIRSPACE_NAME
+            class_airspace = (
+                path
+                if manifest and manifest.class_airspace and path.is_file()
+                else None
+            )
             with closing(NASR(cycle=chosen, cache_dir=self.cache_dir)) as nasr:
                 try:
-                    index = AirspaceIndex(nasr["ARB_BASE"], nasr["ARB_SEG"])
+                    base, segments = nasr["ARB_BASE"], nasr["ARB_SEG"]
                 except TableNotFoundError:
-                    index = AirspaceIndex(*(_empty_boundaries()))
+                    base, segments = _empty_boundaries()
+            index = AirspaceIndex(base, segments, class_airspace)
             self._airspace[chosen] = index
             return chosen, index
 

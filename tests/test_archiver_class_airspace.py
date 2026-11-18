@@ -5,15 +5,29 @@ from shutil import copyfile
 from zipfile import ZipFile
 
 import pytest
+from fastapi.testclient import TestClient
 
 shapefile = pytest.importorskip("shapefile")
 
 from openNASR_archiver import classairspace  # noqa: E402
 from openNASR.cycles import CycleManager  # noqa: E402
+from openNASR_api import CycleStore, create_app  # noqa: E402
 from openNASR_archiver import backfill, publish_cycle, rebuild_from_bucket, run_once  # noqa: E402
 from openNASR_contract import LocalBucket, fetch_build, list_builds  # noqa: E402
 
-FIELDS = ("NAME", "UPPER_VAL", "LOWER_VAL", "CLASS", "SHAPE_Leng")
+FIELDS = (
+    "IDENT",
+    "NAME",
+    "CLASS",
+    "LOCAL_TYPE",
+    "UPPER_VAL",
+    "UPPER_UOM",
+    "UPPER_CODE",
+    "LOWER_VAL",
+    "LOWER_UOM",
+    "LOWER_CODE",
+    "SHAPE_Leng",
+)
 
 
 def _square(x, y, size=1.0):
@@ -35,7 +49,19 @@ def _zip(tmp_path, classes):
         writer.field(name, "C", 40)
     for index, airspace_class in enumerate(classes):
         writer.polyz(_square(index * 2.0, 0.0))
-        writer.record(f"AREA {index}", "10000", "700", airspace_class, "1.0")
+        writer.record(
+            f"ID{index}",
+            f"AREA {index}",
+            airspace_class,
+            f"CLASS_{airspace_class}",
+            "10000",
+            "FT",
+            "MSL",
+            "700",
+            "FT",
+            "SFC",
+            "1.0",
+        )
     writer.close()
     archive = tmp_path / "shapes.zip"
     with ZipFile(archive, "w") as output:
@@ -111,6 +137,12 @@ def test_airspace_build_retries_and_backfills_over_b1(
     manager = CycleManager(cache)
     bucket = LocalBucket(tmp_path / "bucket")
     old = publish_cycle(manager, cycle, bucket, builder=1, required_tables=()).manifest
+    store = CycleStore(tmp_path / "api", bucket, today=lambda: cycle)
+    assert store.refresh().fetched == [cycle.isoformat()]
+    client = TestClient(create_app(store, [], require_auth=False))
+    endpoint = "/v1/airspace/at?lat=0.5&lon=0.5"
+    before = client.get(endpoint).json()
+    assert "Class B/C/D/E" in before["not_covered"] and before["regions"] == []
     zip_path = manager.airspace_archive_path(cycle)
     copyfile(_zip(tmp_path, ["B", "C", "D", "E"]), zip_path)
 
@@ -127,6 +159,27 @@ def test_airspace_build_retries_and_backfills_over_b1(
     first, new = list_builds(bucket)
     assert first == old
     assert new.builder == 2 and new.class_airspace.rows == 4
+    assert store.refresh().fetched == [cycle.isoformat()]
+    after = client.get(endpoint).json()
+    assert (
+        "Special-use" in after["not_covered"]
+        and "Class B/C/D/E" not in after["not_covered"]
+    )
+    assert after["regions"] == [
+        {
+            "id": "ID0",
+            "name": "AREA 0",
+            "kind": "CLASS",
+            "level": "",
+            "airspace_class": "B",
+            "local_type": "CLASS_B",
+            "lower": {"value": "700", "unit": "FT", "code": "SFC"},
+            "upper": {"value": "10000", "unit": "FT", "code": "MSL"},
+        }
+    ]
+    (store.cache_dir / "cycles" / cycle.isoformat() / "class_airspace.parquet").unlink()
+    assert store.refresh().fetched == [cycle.isoformat()]
+    assert client.get(endpoint).json() == after
     output = tmp_path / "fetched"
     fetch_build(bucket, new, output)
     assert (output / "class_airspace.parquet").is_file()

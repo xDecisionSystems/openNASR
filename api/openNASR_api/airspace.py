@@ -1,36 +1,45 @@
-"""Which controlled regions contain a point, from the FAA boundary tables.
-
-Only ``ARB_BASE``/``ARB_SEG`` carry polygons: ARTCC low and high boundaries and
-the FIR, CTA and UTA regions beyond them. The FAA CSV data holds no Class
-B/C/D/E polygons (``CLS_ARSP`` only says which class an airport has), so those
-cannot be answered here. Arcs are approximated by their published vertices.
-"""
+"""Point lookups against FAA boundary tables and optional class polygons."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 import logging
+from pathlib import Path
 
+import duckdb
+from numpy import ndarray
 from pandas import DataFrame
-from shapely import STRtree, unary_union
+from shapely import STRtree, from_wkb, transform, unary_union
 from shapely.geometry import Point, Polygon
 from shapely.geometry.base import BaseGeometry
 from shapely.validation import make_valid
 
 LOGGER = logging.getLogger("openNASR_api")
 
-NOT_COVERED = (
-    "Class B/C/D/E airspace, special-use airspace and MOAs are not in the FAA "
-    "CSV data as polygons; only ARTCC, FIR, CTA and UTA boundaries are searched."
-)
+NOT_COVERED = "Special-use airspace, including MOAs, is not searched."
+NO_CLASS_AIRSPACE = "Class B/C/D/E polygons are unavailable for this cycle."
+
+
+@dataclass(frozen=True)
+class AltitudeLimit:
+    """Altitude value, unit and reference code as published by the FAA."""
+
+    value: str
+    unit: str
+    code: str
 
 
 @dataclass(frozen=True)
 class Region:
     id: str
     name: str
-    kind: str  # ARTCC | FIR | CTA | UTA | CTA/FIR
-    level: str  # low | high | unlimited
+    kind: str  # ARTCC | FIR | CTA | UTA | CTA/FIR | CLASS
+    level: str  # low | high | unlimited; empty for CLASS
+    airspace_class: str | None = None
+    local_type: str | None = None
+    lower: AltitudeLimit | None = None
+    upper: AltitudeLimit | None = None
 
 
 def _rings(points: list[tuple[float, float]]) -> list[list[tuple[float, float]]]:
@@ -58,17 +67,25 @@ def _polygonal_parts(geometry: BaseGeometry) -> list[Polygon]:
     return parts
 
 
-class AirspaceIndex:
-    """A spatial index over one cycle's ARTCC/FIR/CTA/UTA boundaries."""
+def _shift_longitudes(coordinates: ndarray) -> ndarray:
+    shifted = coordinates.copy()
+    shifted[:, 0] %= 360
+    return shifted
 
-    def __init__(self, base: DataFrame, segments: DataFrame) -> None:
+
+class AirspaceIndex:
+    """A spatial index over one cycle's boundaries and class polygons."""
+
+    def __init__(
+        self, base: DataFrame, segments: DataFrame, class_airspace: Path | None = None
+    ) -> None:
         names = {
             str(row["LOCATION_ID"]).strip().upper(): str(row.get("LOCATION_NAME", ""))
             for row in base.to_dict(orient="records")
         }
         self._regions: list[Region] = []
-        self._wraps: list[bool] = []
-        shapes = []
+        shapes: dict[bool, list[BaseGeometry]] = {False: [], True: []}
+        self._members: dict[bool, list[int]] = {False: [], True: []}
         skipped = 0
         ordered = segments.assign(
             _seq=segments["POINT_SEQ"].map(lambda v: int(str(v) or 0))
@@ -111,29 +128,75 @@ class AirspaceIndex:
                     level=str(altitude).strip().lower(),
                 )
             )
-            shapes.append(shape)
-            self._wraps.append(wraps)
+            shapes[wraps].append(shape)
+            self._members[wraps].append(len(self._regions) - 1)
         if skipped:
             LOGGER.info("airspace index skipped %d unusable boundaries", skipped)
-        self._plain = [i for i, wraps in enumerate(self._wraps) if not wraps]
-        self._wrapped = [i for i, wraps in enumerate(self._wraps) if wraps]
+        self.not_covered = NOT_COVERED
+        if class_airspace is None:
+            self.not_covered += f" {NO_CLASS_AIRSPACE}"
+        else:
+            for region, geometry in _class_regions(class_airspace):
+                self._regions.append(region)
+                for part in _polygonal_parts(geometry):
+                    west, _, east, _ = part.bounds
+                    wraps = east - west > 180
+                    shape = transform(part, _shift_longitudes) if wraps else part
+                    shapes[wraps].append(shape)
+                    self._members[wraps].append(len(self._regions) - 1)
         self._trees = {
-            False: STRtree([shapes[i] for i in self._plain]) if self._plain else None,
-            True: STRtree([shapes[i] for i in self._wrapped])
-            if self._wrapped
-            else None,
+            wrapped: STRtree(group) if group else None
+            for wrapped, group in shapes.items()
         }
 
     def __len__(self) -> int:
         return len(self._regions)
 
     def at(self, lat: float, lon: float) -> list[Region]:
-        found: list[Region] = []
-        for wrapped, members in ((False, self._plain), (True, self._wrapped)):
-            tree = self._trees[wrapped]
+        found: set[int] = set()
+        for wrapped, tree in self._trees.items():
             if tree is None:
                 continue
             x = lon + 360 if wrapped and lon < 0 else lon
             for hit in tree.query(Point(x, lat), predicate="intersects"):
-                found.append(self._regions[members[hit]])
-        return sorted(found, key=lambda r: (r.id, r.level, r.kind))
+                found.add(self._members[wrapped][hit])
+        regions = (self._regions[index] for index in sorted(found))
+        return sorted(regions, key=lambda r: (r.id, r.level, r.kind))
+
+
+def _class_regions(path: Path) -> Iterator[tuple[Region, BaseGeometry]]:
+    with duckdb.connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT IDENT, NAME, CLASS, LOCAL_TYPE, LOWER_VAL, LOWER_UOM, LOWER_CODE,
+                   UPPER_VAL, UPPER_UOM, UPPER_CODE, GEOMETRY_WKB
+            FROM read_parquet(?)
+            """,
+            [str(path)],
+        ).fetchall()
+    for (
+        ident,
+        name,
+        category,
+        local_type,
+        lower_value,
+        lower_unit,
+        lower_code,
+        upper_value,
+        upper_unit,
+        upper_code,
+        wkb,
+    ) in rows:
+        yield (
+            Region(
+                id=ident,
+                name=name,
+                kind="CLASS",
+                level="",
+                airspace_class=category,
+                local_type=local_type,
+                lower=AltitudeLimit(lower_value, lower_unit, lower_code),
+                upper=AltitudeLimit(upper_value, upper_unit, upper_code),
+            ),
+            from_wkb(wkb),
+        )

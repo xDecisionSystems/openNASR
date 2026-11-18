@@ -9,7 +9,7 @@ flight-plan route to an ordered list of latitude/longitude points, each with its
 POST /v1/route/resolve   {"route": "KABQ.DOOKK3.TXO..KTYR"}        # or {"icao_message": "(FPL-...)"}
 GET  /v1/route/resolve?route=...&max_segment_nm=20                    # opt-in great-circle densify
 GET  /v1/airports/{id}  /v1/fixes/{id}  /v1/navaids/{id}  /v1/airways/{id}
-GET  /v1/airspace/at?lat=&lon=       # ARTCC / FIR / CTA / UTA containing a point
+GET  /v1/airspace/at?lat=&lon=       # FAA boundaries and available class polygons
 GET  /v1/cycles   /health   /ready
 ```
 
@@ -20,8 +20,11 @@ JSON line per request with a short key label, never the key or the route text.
 
 A route that cannot be fully resolved is still a 200: read `complete` and `diagnostics`. Branches that
 depend on runway or airport configuration return only the shared portion and a `procedure_branches`
-warning. Class B/C/D/E airspace is not in the FAA CSV data as polygons, so `/v1/airspace/at` does not
-search it (the response says so).
+warning. `/v1/airspace/at` searches ARTCC, FIR, CTA and UTA boundaries. Cycles with
+the FAA shapefile derivative also return Class B/C/D/E polygons with their
+published lower and upper altitude values, units, and codes. The lookup uses
+horizontal coordinates and returns all matching layers. The response's
+`not_covered` field describes gaps for the selected cycle.
 
 ## Install
 

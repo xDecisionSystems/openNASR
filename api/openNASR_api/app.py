@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from dataclasses import asdict
 import hashlib
 import hmac
 import json
@@ -23,7 +24,7 @@ from openNASR.routejson import route_result_to_dict
 from openNASR.routeresult import RouteResult
 
 from . import lookups
-from .airspace import NOT_COVERED
+from .airspace import AltitudeLimit
 from .limits import RateLimiter
 from .store import CycleStore, CycleUnavailableError
 
@@ -216,8 +217,14 @@ class CyclesResponse(BaseModel):
 class AirspaceRegion(BaseModel):
     id: str = Field(description="FAA location id, e.g. ZAB")
     name: str
-    kind: str = Field(description="ARTCC | FIR | CTA | UTA | CTA/FIR")
-    level: str = Field(description="low | high | unlimited")
+    kind: str = Field(description="ARTCC | FIR | CTA | UTA | CTA/FIR | CLASS")
+    level: str = Field(description="low | high | unlimited, or empty for CLASS")
+    airspace_class: str | None = Field(
+        default=None, description="FAA class B, C, D or E"
+    )
+    local_type: str | None = None
+    lower: AltitudeLimit | None = None
+    upper: AltitudeLimit | None = None
 
 
 class AirspaceResponse(BaseModel):
@@ -488,6 +495,7 @@ def create_app(
     @app.get(
         "/v1/airspace/at",
         response_model=AirspaceResponse,
+        response_model_exclude_none=True,
         responses=ERRORS,
         dependencies=secured,
         tags=["lookup"],
@@ -497,10 +505,11 @@ def create_app(
         lon: Annotated[float, Query(ge=-180, le=180)],
         cycle: CycleParam = None,
     ) -> dict[str, Any]:
-        """The ARTCC, FIR, CTA and UTA regions that contain a point.
+        """The FAA regions whose horizontal boundaries contain a point.
 
-        Class B/C/D/E airspace and special-use airspace are not in the FAA CSV
-        data as polygons, so they are not searched; `not_covered` says so.
+        Includes ARTCC, FIR, CTA and UTA boundaries, plus Class B/C/D/E
+        polygons when available for the selected cycle. Class regions include
+        FAA altitude limits as published.
         """
 
         try:
@@ -510,8 +519,8 @@ def create_app(
         return {
             "cycle": chosen,
             "position": {"lat": lat, "lon": lon},
-            "regions": [vars(region) for region in index.at(lat, lon)],
-            "not_covered": NOT_COVERED,
+            "regions": [asdict(region) for region in index.at(lat, lon)],
+            "not_covered": index.not_covered,
         }
 
     @app.get(

@@ -2,8 +2,9 @@
 
 import pandas as pd
 import pytest
+from shapely.geometry import MultiPolygon, Polygon, box
 
-from openNASR_api.airspace import AirspaceIndex
+from openNASR_api.airspace import AirspaceIndex, Region
 
 
 def _square(location, altitude, kind, west, south, east, north):
@@ -93,3 +94,25 @@ def test_unusable_boundaries_are_skipped_not_fatal():
 
     assert len(AirspaceIndex(base, rows)) == 0
     assert AirspaceIndex(base, rows).at(1, 1) == []
+
+
+def test_class_multipolygon_crosses_the_dateline_without_losing_other_parts(
+    tmp_path, monkeypatch
+):
+    region = Region("TEST", "Test", "CLASS", "", airspace_class="E")
+    outline = MultiPolygon(
+        [
+            Polygon([(170, 10), (-170, 10), (-170, 20), (170, 20)]),
+            box(-102, 30, -100, 32),
+        ]
+    )
+    monkeypatch.setattr(
+        "openNASR_api.airspace._class_regions", lambda path: [(region, outline)]
+    )
+    base = pd.DataFrame(columns=["LOCATION_ID"])
+    segments = pd.DataFrame(columns=["POINT_SEQ", "LOCATION_ID", "ALTITUDE", "TYPE"])
+    class_index = AirspaceIndex(base, segments, tmp_path / "class_airspace.parquet")
+
+    assert class_index.at(15, 175) == class_index.at(15, -175) == [region]
+    assert class_index.at(31, -101) == [region]
+    assert class_index.at(15, 0) == []
