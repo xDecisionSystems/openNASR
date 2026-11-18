@@ -132,3 +132,78 @@ def test_manifest_rejects_non_json_and_non_objects():
     for text in ("not json", "[]", b"\xff\xfe"):
         with pytest.raises(ManifestError):
             Manifest.from_json(text)
+
+
+AIR_SHA = "e" * 64
+PARQUET_SHA = "f" * 64
+
+
+def _with_airspace(**changes):
+    from openNASR_contract import ClassAirspace, class_airspace_source_key
+
+    keys = build_keys("2026-10-29", ZIP_SHA, 1)
+    airspace = ClassAirspace(
+        source=ArtifactRef(
+            class_airspace_source_key("2026-10-29", ZIP_SHA, AIR_SHA),
+            AIR_SHA,
+            150_000_000,
+        ),
+        parquet=ArtifactRef(keys.class_airspace, PARQUET_SHA, 40_000_000),
+        rows=5621,
+    )
+    fields = {"class_airspace": airspace}
+    fields.update(changes)
+    return _manifest(**fields)
+
+
+def test_class_airspace_keys_follow_the_documented_layout():
+    from openNASR_contract import class_airspace_source_key
+
+    keys = build_keys("2026-10-29", ZIP_SHA, 2)
+
+    assert keys.class_airspace == f"2026/2026-10-29_{ZIP_SHA}.b2.class_airspace.parquet"
+    assert (
+        class_airspace_source_key("2026-10-29", ZIP_SHA, AIR_SHA)
+        == f"2026/2026-10-29_{ZIP_SHA}.class_airspace_{AIR_SHA}.zip"
+    )
+    with pytest.raises(BucketKeyError):
+        class_airspace_source_key("2026-10-29", ZIP_SHA, "short")
+
+
+def test_a_manifest_with_class_airspace_round_trips():
+    original = _with_airspace()
+
+    again = Manifest.from_json(original.to_json())
+
+    assert again == original
+    assert again.class_airspace.rows == 5621
+
+
+def test_a_manifest_written_before_class_airspace_still_loads():
+    value = json.loads(_manifest().to_json())
+    del value["class_airspace"]  # an older archiver never wrote the key
+
+    assert Manifest.from_dict(value).class_airspace is None
+    assert Manifest.from_dict({**value, "class_airspace": None}).class_airspace is None
+
+
+def test_class_airspace_keys_must_match_the_build():
+    from openNASR_contract import ClassAirspace
+
+    good = _with_airspace().class_airspace
+    wrong_source = ClassAirspace(
+        ArtifactRef("2026/other.zip", AIR_SHA, 1), good.parquet, 1
+    )
+    wrong_parquet = ClassAirspace(
+        good.source, ArtifactRef("2026/other.parquet", PARQUET_SHA, 1), 1
+    )
+
+    for bad in (wrong_source, wrong_parquet):
+        with pytest.raises(ManifestError, match="class airspace keys"):
+            _manifest(class_airspace=bad)
+    with pytest.raises(ManifestError, match="row count"):
+        _manifest(class_airspace=ClassAirspace(good.source, good.parquet, -1))
+    value = json.loads(_with_airspace().to_json())
+    value["class_airspace"] = "nope"
+    with pytest.raises(ManifestError):
+        Manifest.from_dict(value)

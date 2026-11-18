@@ -7,7 +7,13 @@ import json
 import re
 from typing import Any, Mapping
 
-from .keys import LAYOUT_VERSION, BucketKeyError, BuildKeys, build_keys
+from .keys import (
+    LAYOUT_VERSION,
+    BucketKeyError,
+    BuildKeys,
+    build_keys,
+    class_airspace_source_key,
+)
 
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -22,6 +28,15 @@ class ArtifactRef:
     key: str
     sha256: str
     size: int
+
+
+@dataclass(frozen=True)
+class ClassAirspace:
+    """Class B/C/D/E polygons derived from the FAA shapefile for this cycle."""
+
+    source: ArtifactRef  # the FAA class_airspace_shape_files.zip
+    parquet: ArtifactRef  # the derived polygons, one row per FAA record
+    rows: int
 
 
 @dataclass(frozen=True)
@@ -45,6 +60,7 @@ class Manifest:
     created_at: str
     archiver_version: str
     layout_version: int = LAYOUT_VERSION
+    class_airspace: ClassAirspace | None = None
 
     def keys(self) -> BuildKeys:
         return build_keys(self.effective_date, self.zip.sha256, self.builder)
@@ -72,6 +88,28 @@ class Manifest:
             expected = self.keys()
         except BucketKeyError as error:
             raise ManifestError(str(error)) from error
+        if self.class_airspace is not None:
+            extra = self.class_airspace
+            for name, ref in (("source", extra.source), ("parquet", extra.parquet)):
+                if not _SHA.match(ref.sha256) or ref.size < 0:
+                    raise ManifestError(
+                        f"class airspace {name} hash or size is invalid"
+                    )
+            if extra.rows < 0:
+                raise ManifestError("class airspace row count must not be negative")
+            try:
+                source_key = class_airspace_source_key(
+                    self.effective_date, self.zip.sha256, extra.source.sha256
+                )
+            except BucketKeyError as error:
+                raise ManifestError(str(error)) from error
+            if (
+                extra.source.key != source_key
+                or extra.parquet.key != expected.class_airspace
+            ):
+                raise ManifestError(
+                    "class airspace keys do not match the layout for this build"
+                )
         if (
             self.zip.key != expected.zip
             or self.duckdb.key != expected.duckdb
@@ -96,6 +134,7 @@ class Manifest:
             "tables": dict(sorted(self.tables.items())),
             "created_at": self.created_at,
             "archiver_version": self.archiver_version,
+            "class_airspace": _airspace_dict(self.class_airspace),
         }
 
     def to_json(self) -> str:
@@ -144,6 +183,7 @@ class Manifest:
                 tables=dict(tables),
                 created_at=_str(value["created_at"], "created_at"),
                 archiver_version=_str(value["archiver_version"], "archiver_version"),
+                class_airspace=_airspace(value.get("class_airspace")),
             )
         except ManifestError:
             raise
@@ -178,4 +218,26 @@ def _ref(value: Any, name: str) -> ArtifactRef:
         key=_str(value.get("key"), f"{name}.key"),
         sha256=_str(value.get("sha256"), f"{name}.sha256"),
         size=_int(value.get("size"), f"{name}.size"),
+    )
+
+
+def _airspace_dict(value: ClassAirspace | None) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    return {
+        "source": _ref_dict(value.source),
+        "parquet": _ref_dict(value.parquet),
+        "rows": value.rows,
+    }
+
+
+def _airspace(value: Any) -> ClassAirspace | None:
+    if value is None:  # builds made before Class B/C/D/E polygons have none
+        return None
+    if not isinstance(value, Mapping):
+        raise ManifestError("class_airspace must be an object or null")
+    return ClassAirspace(
+        source=_ref(value.get("source"), "class_airspace.source"),
+        parquet=_ref(value.get("parquet"), "class_airspace.parquet"),
+        rows=_int(value.get("rows"), "class_airspace.rows"),
     )

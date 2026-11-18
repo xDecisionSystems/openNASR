@@ -12,15 +12,19 @@ from .keys import (
     BucketKeyError,
     BuildKeys,
     build_keys,
+    class_airspace_source_key,
     parse_manifest_key,
 )
 from .manifest import (
     ArtifactRef,
+    ClassAirspace,
     Manifest,
     ManifestError,
 )
 
 __all__ = [
+    "ClassAirspace",
+    "class_airspace_source_key",
     "FetchError",
     "fetch_build",
     "list_builds",

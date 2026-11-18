@@ -21,6 +21,7 @@ from .manifest import ArtifactRef, Manifest, ManifestError
 DATABASE_NAME = "nasr.duckdb"
 SIDECAR_NAME = "nasr.duckdb.json"
 MANIFEST_NAME = "manifest.json"
+CLASS_AIRSPACE_NAME = "class_airspace.parquet"
 
 
 class FetchError(RuntimeError):
@@ -99,6 +100,13 @@ def fetch_build(
         ):
             raise FetchError("the sidecar does not describe the manifest's database")
         _stage(bucket, manifest.duckdb, directory / DATABASE_NAME, staged)
+        if manifest.class_airspace is not None:
+            _stage(
+                bucket,
+                manifest.class_airspace.parquet,
+                directory / CLASS_AIRSPACE_NAME,
+                staged,
+            )
         (staged / MANIFEST_NAME).write_text(manifest.to_json(), encoding="utf-8")
 
         with publication if publication is not None else nullcontext():
@@ -127,7 +135,11 @@ def _stage(bucket: Bucket, ref: ArtifactRef, cached: Path, directory: Path) -> N
 
 
 def _publish(staged: Path, directory: Path) -> None:
-    names = (DATABASE_NAME, SIDECAR_NAME, MANIFEST_NAME)
+    names = tuple(
+        name
+        for name in (DATABASE_NAME, SIDECAR_NAME, CLASS_AIRSPACE_NAME, MANIFEST_NAME)
+        if (staged / name).exists()
+    )
     previous = staged / "previous"
     previous.mkdir()
     for name in names:

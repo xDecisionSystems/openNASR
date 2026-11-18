@@ -113,3 +113,65 @@ def test_a_reposted_cycle_resolves_to_the_newest_build(published):
     bucket.put_bytes(second.keys().manifest, second.to_json().encode())
 
     assert select_build(bucket, effective_date=first.effective_date) == second
+
+
+def _publish_with_airspace(published):
+    """Add a Class B/C/D/E parquet and a matching manifest next to the build."""
+
+    import dataclasses
+    import hashlib
+
+    from openNASR_contract import ArtifactRef, ClassAirspace, class_airspace_source_key
+
+    bucket, manifest = published
+    keys = manifest.keys()
+    parquet = b"parquet bytes"
+    source = b"faa shapefile zip"
+    parquet_sha = hashlib.sha256(parquet).hexdigest()
+    source_sha = hashlib.sha256(source).hexdigest()
+    source_key = class_airspace_source_key(
+        manifest.effective_date, manifest.zip.sha256, source_sha
+    )
+    bucket.put_bytes(keys.class_airspace, parquet)
+    bucket.put_bytes(source_key, source)
+    extended = dataclasses.replace(
+        manifest,
+        class_airspace=ClassAirspace(
+            ArtifactRef(source_key, source_sha, len(source)),
+            ArtifactRef(keys.class_airspace, parquet_sha, len(parquet)),
+            3,
+        ),
+    )
+    # the manifest key is the same, so replace the stored manifest
+    (bucket.root / keys.manifest).write_text(extended.to_json(), encoding="utf-8")
+    return bucket, extended
+
+
+def test_fetching_a_build_with_class_airspace_installs_the_parquet(published, tmp_path):
+    bucket, manifest = _publish_with_airspace(published)
+
+    fetch_build(bucket, manifest, tmp_path / "cycle")
+
+    assert (
+        tmp_path / "cycle" / "class_airspace.parquet"
+    ).read_bytes() == b"parquet bytes"
+    assert (tmp_path / "cycle" / "nasr.duckdb").is_file()
+
+
+def test_a_corrupted_parquet_is_never_installed(published, tmp_path):
+    bucket, manifest = _publish_with_airspace(published)
+    (bucket.root / manifest.class_airspace.parquet.key).write_bytes(b"damaged")
+
+    with pytest.raises(FetchError, match="does not match"):
+        fetch_build(bucket, manifest, tmp_path / "cycle")
+
+    assert not (tmp_path / "cycle" / "class_airspace.parquet").exists()
+    assert not (tmp_path / "cycle" / "nasr.duckdb").exists()
+
+
+def test_a_build_without_class_airspace_installs_no_parquet(published, tmp_path):
+    bucket, manifest = published
+
+    fetch_build(bucket, manifest, tmp_path / "cycle")
+
+    assert not (tmp_path / "cycle" / "class_airspace.parquet").exists()
