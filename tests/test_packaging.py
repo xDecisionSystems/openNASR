@@ -2,8 +2,12 @@
 
 from importlib.metadata import metadata, requires
 from pathlib import Path
-import tomllib
+import sys
 
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 PYPROJECT = Path(__file__).parents[1] / "pyproject.toml"
 

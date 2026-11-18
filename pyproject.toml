@@ -37,7 +37,15 @@ dependencies = [
 
 [project.optional-dependencies]
 plot = ["matplotlib"]
-dev = ["pytest", "ruff", "mypy", "fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.29"]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "fastapi>=0.110",
+    "httpx>=0.27",
+    "uvicorn>=0.29",
+    "tomli; python_version < '3.11'",
+]
 release = ["build", "twine"]
 
 [project.urls]
