@@ -193,8 +193,12 @@ Plan:
    and without transitions, dotted procedure forms, lat/lon waypoints, ICAO-format
    speed/level groups (`N0450F350`), oceanic tracks.
 3. Report the resolution rate per cycle in CI.
-4. Split `flightplan.py` into tokenizer / resolver / procedure expander / airway
-   expander so each can be tested alone.
+4. Split route resolution into separate layers behind the `flightplan.py` facade.
+   Done, including separate modules for procedure indexing and expansion.
+   Extracting the procedure index produced byte-identical serialized results
+   for all 9,316 sampled routes (every fifth route in the pool, cycle
+   2026-10-29). The sample had 3,580 fully resolved routes and 2,978 resolved
+   with procedure branches before and after the extraction.
 
 ## 8. Phases
 

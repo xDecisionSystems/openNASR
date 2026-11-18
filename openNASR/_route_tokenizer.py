@@ -21,10 +21,10 @@ from ._route_common import (
     _RouteToken,
     _text,
 )
+from ._route_procedure_index import _ProcedureIndex
 from ._route_procedures import (
     _is_published_dotted_procedure,
     _procedure_path,
-    _ProcedureIndex,
 )
 from ._route_waypoints import _WaypointResolver
 from .exceptions import (

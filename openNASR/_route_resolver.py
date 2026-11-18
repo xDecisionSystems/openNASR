@@ -19,13 +19,13 @@ from ._route_common import (
     _RouteToken,
     _Waypoint,
 )
+from ._route_procedure_index import _ProcedureIndex
 from ._route_procedures import (
     _departure_airway_join,
     _is_departure_procedure,
     _next_route_token_index,
     _previous_route_token_index,
     _procedure_path,
-    _ProcedureIndex,
     _route_end_airports,
 )
 from ._route_tokenizer import _recognized_unsupported_content, _tokenize_flight_plan
