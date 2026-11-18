@@ -7,6 +7,14 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.1]
+
+### Added
+
+- Arrival and departure lookups return separate published branches with
+  waypoint positions. The explorer plots and labels each branch and lets
+  users show or hide individual branches.
+
 ## [2.1.0]
 
 ### Added

@@ -695,6 +695,42 @@
         "title": "Problem",
         "type": "object"
       },
+      "ProcedureBranch": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "string"
+          },
+          "transition": {
+            "title": "Transition",
+            "type": "string"
+          },
+          "waypoints": {
+            "items": {
+              "$ref": "#/components/schemas/ProcedureWaypoint"
+            },
+            "title": "Waypoints",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "sequence",
+          "transition",
+          "waypoints"
+        ],
+        "title": "ProcedureBranch",
+        "type": "object"
+      },
       "ProcedureEntity": {
         "properties": {
           "airports": {
@@ -713,6 +749,13 @@
             },
             "title": "Base",
             "type": "object"
+          },
+          "branches": {
+            "items": {
+              "$ref": "#/components/schemas/ProcedureBranch"
+            },
+            "title": "Branches",
+            "type": "array"
           },
           "id": {
             "title": "Id",
@@ -738,9 +781,51 @@
           "name",
           "base",
           "airports",
-          "points"
+          "points",
+          "branches"
         ],
         "title": "ProcedureEntity",
+        "type": "object"
+      },
+      "ProcedureWaypoint": {
+        "properties": {
+          "issue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Position"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "sequence",
+          "position",
+          "issue"
+        ],
+        "title": "ProcedureWaypoint",
         "type": "object"
       },
       "ProceduresResponse": {
@@ -913,7 +998,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "openapi": "3.1.0",
   "paths": {

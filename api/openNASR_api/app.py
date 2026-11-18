@@ -30,7 +30,7 @@ from .airspace import AltitudeLimit
 from .limits import RateLimiter
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.0"
+API_VERSION = "0.2.1"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -204,12 +204,28 @@ class AirwaysResponse(BaseModel):
     airways: list[AirwayEntity]
 
 
+class ProcedureWaypoint(BaseModel):
+    name: str
+    sequence: str
+    position: Position | None
+    issue: str | None
+
+
+class ProcedureBranch(BaseModel):
+    kind: str
+    name: str
+    sequence: str
+    transition: str
+    waypoints: list[ProcedureWaypoint]
+
+
 class ProcedureEntity(BaseModel):
     id: str
     name: str
     base: dict[str, str]
     airports: list[dict[str, str]]
     points: list[dict[str, str]]
+    branches: list[ProcedureBranch]
 
 
 class ProceduresResponse(BaseModel):
@@ -455,10 +471,23 @@ def create_app(
             raise HTTPException(422, "route must not be blank")
         return resolve(route, cycle, None, max_segment_nm)
 
-    def entity(kind: str, fetch, identifier: str, cycle: str | None) -> dict[str, Any]:
+    def entity(
+        kind: str,
+        fetch,
+        identifier: str,
+        cycle: str | None,
+        *,
+        include_branches: bool = False,
+    ) -> dict[str, Any]:
         try:
             with store.lookup(cycle) as (chosen, query):
                 found = fetch(query, identifier)
+                if include_branches:
+                    _, resolver = store.resolver(chosen)
+                    for procedure in found:
+                        procedure["branches"] = lookups.procedure_branches(
+                            procedure["points"], resolver.procedure_waypoint
+                        )
         except CycleUnavailableError as error:
             raise HTTPException(404 if cycle else 503, str(error)) from error
         except lookups.NotFoundError as error:
@@ -523,7 +552,9 @@ def create_app(
     def get_arrival(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
         """Standard terminal arrivals by FAA name or computer code."""
 
-        return entity("procedures", lookups.arrivals, identifier, cycle)
+        return entity(
+            "procedures", lookups.arrivals, identifier, cycle, include_branches=True
+        )
 
     @app.get(
         "/v1/departures/{identifier}",
@@ -535,7 +566,9 @@ def create_app(
     def get_departure(identifier: str, cycle: CycleParam = None) -> dict[str, Any]:
         """Departure procedures by FAA name or computer code."""
 
-        return entity("procedures", lookups.departures, identifier, cycle)
+        return entity(
+            "procedures", lookups.departures, identifier, cycle, include_branches=True
+        )
 
     @app.get(
         "/v1/airspace/at",

@@ -34,13 +34,13 @@ const views = {
     title: "Find an arrival",
     help: "Enter a STAR name or computer code.",
     fields: [{ name: "identifier", label: "Arrival identifier", example: "GRNCH5" }],
-    caption: "Published arrival branches and their point sequences appear below.",
+    caption: "Query an arrival to plot its published branches.",
   },
   departures: {
     title: "Find a departure",
     help: "Enter a departure procedure name or computer code.",
     fields: [{ name: "identifier", label: "Departure identifier", example: "DOOKK3" }],
-    caption: "Published departure branches and their point sequences appear below.",
+    caption: "Query a departure to plot its published branches.",
   },
 };
 
@@ -49,6 +49,7 @@ let apiKey = "";
 let request = null;
 let cycleRequest = 0;
 let plotPoints = [];
+let plotBranches = [];
 let partialRoute = false;
 const savedInputs = new Map();
 const savedResults = new Map();
@@ -145,7 +146,13 @@ function resetResult() {
   results.replaceChildren(element("p", "Results will appear here after a query.", "empty"));
   byId("result-cycle").textContent = "";
   plotPoints = [];
+  plotBranches = [];
   partialRoute = false;
+  const procedures = currentView === "arrivals" || currentView === "departures";
+  canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
+  byId("plot-title").textContent = procedures ? "Procedure branches" : "Coordinate plot";
+  byId("plot-legend").hidden = true;
+  byId("plot-legend").replaceChildren();
   byId("plot-note").textContent = "WGS 84";
   canvas.setAttribute("aria-label", "Latitude and longitude grid");
   byId("plot-caption").textContent = views[currentView].caption;
@@ -190,6 +197,47 @@ function facts(values) {
 
 const coordinates = (point) => point ? `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}` : "";
 const altitude = (limit) => limit ? [limit.value, limit.unit, limit.code].filter(Boolean).join(" ") : "";
+const branchColors = ["#76dfca", "#ffc277", "#91bdff", "#ff9fca", "#d6ed91", "#bfb1ff", "#ffa299", "#76c8ef"];
+const branchName = (branch) => branch.name || branch.transition || branch.kind || "Published branch";
+
+function addProcedureBranches(procedure, multipleProcedures) {
+  const section = element("section", null, "result-block");
+  section.append(
+    element("h3", procedure.name === procedure.id ? procedure.id : `${procedure.id} · ${procedure.name}`, "result-title"),
+    facts([["ARTCC", procedure.base.ARTCC], ["Airports", [...new Set(
+      procedure.airports.map((row) => row.ARPT_ID).filter(Boolean),
+    )].join(", ") || procedure.base.SERVED_ARPT]]),
+  );
+  for (const branch of procedure.branches) {
+    const label = branchName(branch);
+    const repeated = procedure.branches.some((other) => other !== branch && branchName(other) === label);
+    const legendLabel = [multipleProcedures ? procedure.id : "", label, repeated ? branch.sequence : ""]
+      .filter(Boolean).join(" · ");
+    const points = branch.waypoints.map((waypoint) => waypoint.position
+      ? { ...waypoint.position, name: waypoint.name } : null);
+    const color = branchColors[plotBranches.length % branchColors.length];
+    const plotBranch = { points, color, visible: true };
+    plotBranches.push(plotBranch);
+    const button = element("button", legendLabel);
+    const swatch = element("span", null, "branch-color");
+    swatch.style.backgroundColor = color;
+    swatch.setAttribute("aria-hidden", "true");
+    button.prepend(swatch);
+    button.type = "button";
+    button.setAttribute("aria-pressed", "true");
+    button.addEventListener("click", () => {
+      plotBranch.visible = !plotBranch.visible;
+      button.setAttribute("aria-pressed", String(plotBranch.visible));
+      drawPlot();
+    });
+    byId("plot-legend").append(button);
+    section.append(table(legendLabel, ["Sequence", "Waypoint", "Position"], branch.waypoints.map(
+      (point) => [point.sequence, point.name, point.position ? coordinates(point.position) : point.issue],
+    )));
+  }
+  if (!procedure.branches.length) section.append(element("p", "No published waypoints.", "empty"));
+  results.append(section);
+}
 
 function showResult(data) {
   byId("result-cycle").textContent = `Cycle ${data.cycle}`;
@@ -229,19 +277,13 @@ function showResult(data) {
       data.diagnostics.map((note) => [note.severity, note.token, note.message])));
   } else {
     for (const procedure of data.procedures) {
-      const section = element("section", null, "result-block");
-      section.append(
-        element("h3", procedure.name === procedure.id ? procedure.id : `${procedure.id} · ${procedure.name}`, "result-title"),
-        facts([["ARTCC", procedure.base.ARTCC], ["Airports", [...new Set(
-          procedure.airports.map((row) => row.ARPT_ID).filter(Boolean),
-        )].join(", ") || procedure.base.SERVED_ARPT]]),
-        table("Published points", ["Branch", "Transition", "Sequence", "Point"], procedure.points.map(
-          (row) => [[row.ROUTE_PORTION_TYPE, row.ROUTE_NAME].filter(Boolean).join(" · "),
-            row.TRANSITION_COMPUTER_CODE, row.POINT_SEQ, row.POINT],
-        )),
-      );
-      results.append(section);
+      addProcedureBranches(procedure, data.procedures.length > 1);
     }
+    byId("plot-legend").hidden = !plotBranches.length;
+    const label = plotBranches.length ? `${plotBranches.length} published branches · Select a branch to hide or show it.`
+      : "No published branches to plot.";
+    byId("plot-caption").textContent = label;
+    canvas.setAttribute("aria-label", label);
   }
   const raw = element("details", null, "raw");
   raw.append(element("summary", "View response JSON"), element("pre", JSON.stringify(data, null, 2)));
@@ -267,12 +309,15 @@ function drawPlot() {
   ctx.scale(pixelRatio, pixelRatio);
   const width = rect.width, height = rect.height;
   const padding = 34;
-  const points = plotPoints.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+  const available = (point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lon);
+  const plotted = plotBranches.length ? plotBranches : [{ points: plotPoints, color: "#76dfca", visible: true }];
+  const points = plotted.flatMap((branch) => branch.points).filter(available);
   const reference = points[0]?.lon || 0;
-  const outline = points.map((point) => ({
+  const project = (point) => ({
     ...point,
     x: reference + ((point.lon - reference + 540) % 360) - 180,
-  }));
+  });
+  const outline = points.map(project);
   const west = Math.min(...outline.map((point) => point.x));
   const east = Math.max(...outline.map((point) => point.x));
   const south = Math.min(...outline.map((point) => point.lat));
@@ -311,32 +356,62 @@ function drawPlot() {
     if (y > 26 && y < height - 22) ctx.fillText(`${lat}°`, 5, y - 4);
   }
   // Dashes indicate a partial result whose published geometry has gaps.
-  ctx.strokeStyle = "#76dfca";
   ctx.lineWidth = 2;
   ctx.setLineDash(partialRoute ? [5, 5] : []);
-  ctx.beginPath();
-  outline.forEach((point, index) => {
-    const [x, y] = xy(point.x, point.lat);
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-  outline.forEach((point) => {
+  const visible = new Map();
+  for (const branch of plotted.filter((item) => item.visible)) {
+    ctx.strokeStyle = branch.color;
+    ctx.beginPath();
+    let connected = false;
+    for (const waypoint of branch.points) {
+      if (!available(waypoint)) {
+        connected = false;
+        continue;
+      }
+      const point = project(waypoint);
+      const [x, y] = xy(point.x, point.lat);
+      if (connected) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+      connected = true;
+      visible.set(JSON.stringify([point.name, point.lat, point.lon]), point);
+    }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  const shown = [...visible.values()];
+  shown.forEach((point) => {
     const [x, y] = xy(point.x, point.lat);
     ctx.fillStyle = "#b8f6e7";
     ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
   });
   const labels = [];
-  const labelOrder = [outline[0], outline.at(-1), ...outline.slice(1, -1)];
+  const labelOrder = [shown[0], shown.at(-1), ...shown.slice(1, -1)];
   for (const point of new Set(labelOrder)) {
     if (!point?.name) continue;
     const [x, y] = xy(point.x, point.lat);
     const textWidth = ctx.measureText(point.name).width;
-    const left = x + 7 + textWidth < width ? x + 7 : x - textWidth - 7;
-    const top = Math.max(17, y - 17);
+    const anchor = x + 7 + textWidth < width ? x + 7 : x - textWidth - 7;
+    let left = anchor;
+    let top = Math.max(17, y - 17);
+    const collides = (tx, ty) => labels.some((label) => tx < label.right + 4
+      && tx + textWidth + 4 > label.left && Math.abs(ty - label.top) < 13);
+    if (collides(left, top)) {
+      if (!plotBranches.length) continue;
+      for (let step = 1; step <= 10; step++) {
+        const candidates = [[anchor, top + step * 13], [anchor, top - step * 13],
+          [anchor + step * 17, top], [anchor - step * 17, top]];
+        const free = candidates.find(([tx, ty]) => tx >= 4 && tx + textWidth <= width - 4
+          && ty >= 17 && ty <= height - 32 && !collides(tx, ty));
+        if (free) {
+          [left, top] = free;
+          ctx.strokeStyle = "#7294a2";
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(left, top + 7); ctx.stroke();
+          break;
+        }
+      }
+    }
     const right = left + textWidth;
-    if (labels.some((label) => left < label.right + 4 && right + 4 > label.left
-        && Math.abs(top - label.top) < 13)) continue;
     labels.push({ left, right, top });
     ctx.fillText(point.name, left, top + 10);
   }

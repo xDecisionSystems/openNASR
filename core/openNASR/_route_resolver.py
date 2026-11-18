@@ -372,6 +372,33 @@ class RouteResolver:
 
         return tuple((point.lat, point.lon) for point in self._points(flight_plan))
 
+    def procedure_waypoint(
+        self, identifier: str, point_type: str
+    ) -> tuple[float, float]:
+        """Locate a published procedure point in this resolver's cycle."""
+
+        identifier = identifier.strip().upper()
+        point_type = point_type.strip().upper()
+        is_navaid = point_type.startswith(("VOR", "NDB")) or point_type in {
+            "DME",
+            "TACAN",
+        }
+        preferred = (
+            ("NAV_BASE", "FIX_BASE", "APT_BASE")
+            if is_navaid
+            else ("FIX_BASE", "NAV_BASE", "APT_BASE")
+        )
+        try:
+            point = self._waypoints.resolve(identifier, preferred_tables=preferred)
+        except AmbiguousRecordError as error:
+            matches = [
+                p for p in error.candidates if is_navaid and p.subtype == point_type
+            ]
+            if len(matches) != 1:
+                raise
+            point = matches[0]
+        return point.latitude, point.longitude
+
     def _points(self, flight_plan: str) -> tuple[RoutePoint, ...]:
 
         unsupported = (

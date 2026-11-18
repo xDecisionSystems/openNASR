@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from openNASR.exceptions import RecordNotFoundError
 from openNASR.query import QueryTableNotFoundError
 from openNASR_api import lookups
 
@@ -146,3 +147,41 @@ def test_procedure_lookup_without_source_tables_is_not_found():
 
     with pytest.raises(lookups.NotFoundError):
         lookups.arrivals(query, "TEST")
+
+
+def test_plot_data_preserves_each_branch_and_unresolved_waypoints():
+    def locate(name, point_type):
+        assert point_type == "WP"
+        if name == "MISSING":
+            raise RecordNotFoundError(entity_type="waypoint", identifier=name)
+        return {"SHARED": (1, 2), "LEFT": (3, 4), "RIGHT": (5, 6)}[name]
+
+    def row(branch, sequence, point):
+        return {
+            "ROUTE_PORTION_TYPE": "BODY",
+            "ROUTE_NAME": branch,
+            "BODY_SEQ": "1",
+            "POINT_SEQ": sequence,
+            "POINT": point,
+            "POINT_TYPE": "WP",
+        }
+
+    first, second = lookups.procedure_branches(
+        [
+            row("A", "10", "SHARED"),
+            row("B", "10", "SHARED"),
+            row("A", "20", "MISSING"),
+            row("B", "20", "RIGHT"),
+            row("A", "30", "LEFT"),
+        ],
+        locate,
+    )
+    assert [point["name"] for point in first["waypoints"]] == [
+        "SHARED",
+        "MISSING",
+        "LEFT",
+    ]
+    assert first["waypoints"][1]["position"] is None
+    assert "MISSING" in first["waypoints"][1]["issue"]
+    assert [point["name"] for point in second["waypoints"]] == ["SHARED", "RIGHT"]
+    assert second["waypoints"][-1]["position"] == {"lat": 5, "lon": 6}

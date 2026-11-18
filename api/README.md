@@ -6,6 +6,9 @@ flight-plan route to an ordered list of latitude/longitude points, each with its
 [`docs/openapi.json`](../docs/openapi.json); the live service serves it at `/docs`.
 The explorer at `/` provides graphical tabs for airports, airspace, routes,
 arrivals, and departures. It can also supply an API key for a protected server.
+Arrival and departure results plot each published body and transition, with
+waypoint labels and controls to show or hide branches. Waypoints without a
+resolved position remain in the branch table, and the plot leaves a gap there.
 
 ```
 POST /v1/route/resolve   {"route": "KABQ.DOOKK3.TXO..KTYR"}        # or {"icao_message": "(FPL-...)"}

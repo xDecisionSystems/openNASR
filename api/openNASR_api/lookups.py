@@ -13,6 +13,7 @@ from typing import Any
 
 from openNASR.arrivals import STAR_KEY
 from openNASR.departure import DEPARTURE_KEY
+from openNASR.exceptions import AmbiguousRecordError, RecordNotFoundError
 from openNASR.query import QueryFilter, QueryTableNotFoundError
 
 MAX_ROWS = 5_000
@@ -183,3 +184,49 @@ def departures(query: Callable[..., Any], identifier: str) -> list[dict]:
     return _procedures(
         query, identifier, "DP", DEPARTURE_KEY, "DP_COMPUTER_CODE", "DP_NAME"
     )
+
+
+def procedure_branches(
+    rows: list[dict[str, str]],
+    locate: Callable[[str, str], tuple[float, float]],
+) -> list[dict]:
+    """Keep each published body and transition separate, with ordered positions."""
+
+    branches: dict[tuple[str, str, str, str], list[dict]] = {}
+    for row in rows:
+        key = (
+            row.get("ROUTE_PORTION_TYPE", ""),
+            row.get("ROUTE_NAME", ""),
+            row.get("BODY_SEQ", ""),
+            row.get("TRANSITION_COMPUTER_CODE", ""),
+        )
+        name = row.get("POINT", "").strip()
+        position = None
+        issue = None
+        if name:
+            try:
+                lat, lon = locate(name, row.get("POINT_TYPE", ""))
+                position = {"lat": lat, "lon": lon}
+            except (AmbiguousRecordError, RecordNotFoundError) as error:
+                issue = str(error)
+        else:
+            issue = "No waypoint identifier was published."
+        branches.setdefault(key, []).append(
+            {
+                "name": name,
+                "sequence": row.get("POINT_SEQ", ""),
+                "position": position,
+                "issue": issue,
+            }
+        )
+
+    return [
+        {
+            "kind": kind,
+            "name": name,
+            "sequence": sequence,
+            "transition": transition,
+            "waypoints": waypoints,
+        }
+        for (kind, name, sequence, transition), waypoints in branches.items()
+    ]
