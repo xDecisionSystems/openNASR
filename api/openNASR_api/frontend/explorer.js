@@ -792,6 +792,7 @@ function drawPlot() {
   for (const point of new Set(labelOrder)) {
     if (!point?.name) continue;
     const [x, y] = xy(point.x, point.lat);
+    if (x < 0 || x >= width || y < 0 || y >= height) continue;
     const textWidth = ctx.measureText(point.name).width;
     const anchor = x + 7 + textWidth < width ? x + 7 : x - textWidth - 7;
     let left = anchor;

@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.11]
+
+### Fixed
+
+- Plots hide labels for points outside the visible map.
+
 ## [2.1.10]
 
 ### Changed
