@@ -279,3 +279,30 @@ def test_airport_search_accepts_codes_city_and_expanded_names(term):
     ]
     (match,) = lookups.search_airports(rows, term)
     assert (match["id"], match["faa_id"]) == ("KABQ", "ABQ")
+
+
+def test_airport_search_orders_by_nearest_selected_airport_then_longest_runway():
+    rows = [
+        {
+            "ARPT_ID": ident,
+            "SITE_NO": ident,
+            "CITY": "Test",
+            "LAT_DECIMAL": "0",
+            "LONG_DECIMAL": lon,
+        }
+        for ident, lon in (
+            ("FIRST", "0"),
+            ("SECOND", "10"),
+            ("SMALL", "10.1"),
+            ("LARGE", "10.1"),
+            ("FAR", "4"),
+        )
+    ]
+    lengths = {("LARGE", ""): 7000, ("SMALL", ""): 3000, ("FAR", ""): 12000}
+    ranked = lookups.search_airports(rows, "Test", ("FIRST", "SECOND"), lengths)
+    assert [row["id"] for row in ranked] == ["LARGE", "SMALL", "FAR"]
+    assert [row["longest_runway_ft"] for row in ranked] == [7000, 3000, 12000]
+    assert ranked[0]["distance_nm"] == pytest.approx(6.0)
+    assert (
+        lookups.search_airports(rows, "Test", runway_lengths=lengths)[0]["id"] == "FAR"
+    )

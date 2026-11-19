@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.26"
+API_VERSION = "0.2.27"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -185,6 +185,8 @@ class AirportMatch(BaseModel):
     name: str
     city: str
     state: str
+    distance_nm: float | None = None
+    longest_runway_ft: int | None = None
 
 
 class AirportSearchResponse(BaseModel):
@@ -624,18 +626,38 @@ def create_app(
     def airport_search(
         q: Annotated[str, Query(min_length=1, max_length=80)],
         cycle: CycleParam = None,
+        near: Annotated[list[str] | None, Query()] = None,
     ) -> dict[str, Any]:
         """Find airports by identifier, name, or city."""
         try:
             with store.lookup_nasr(cycle) as (chosen, nasr):
                 frame = nasr.get("APT_BASE")
-                fields = ["ARPT_ID", "ICAO_ID", "ARPT_NAME", "CITY", "STATE_CODE"]
+                fields = [
+                    "ARPT_ID",
+                    "ICAO_ID",
+                    "ARPT_NAME",
+                    "CITY",
+                    "STATE_CODE",
+                    "SITE_NO",
+                    "SITE_TYPE_CODE",
+                    "LAT_DECIMAL",
+                    "LONG_DECIMAL",
+                ]
                 rows = (
                     frame.reindex(columns=fields).fillna("").to_dict(orient="records")
                     if frame is not None
                     else []
                 )
-                airports = lookups.search_airports(rows, q)
+                runways = nasr.get("APT_RWY")
+                runway_fields = ["SITE_NO", "SITE_TYPE_CODE", "RWY_ID", "RWY_LEN"]
+                lengths = lookups.longest_runways(
+                    runways.reindex(columns=runway_fields)
+                    .fillna("")
+                    .to_dict(orient="records")
+                    if runways is not None
+                    else []
+                )
+                airports = lookups.search_airports(rows, q, tuple(near or ()), lengths)
         except CycleUnavailableError as error:
             raise HTTPException(404 if cycle else 503, str(error)) from error
         return {"cycle": chosen, "airports": airports}

@@ -17,6 +17,7 @@ from openNASR.arrivals import STAR_KEY
 from openNASR.cfcn import xy2ll
 from openNASR.departure import DEPARTURE_KEY
 from openNASR.exceptions import AmbiguousRecordError, RecordNotFoundError
+from openNASR.geo import distance_nm
 from openNASR.ils import localizer_true_bearing, localizer_wedge_xy
 from openNASR.query import QueryFilter, QueryTableNotFoundError
 
@@ -117,18 +118,47 @@ def _airport_search_text(value: str) -> str:
     return " ".join(_AIRPORT_WORDS.get(word, word) for word in words)
 
 
-def search_airports(rows, text: str) -> list[dict]:
+def longest_runways(rows: list[dict[str, str]]) -> dict[tuple[str, str], int]:
+    lengths: dict[tuple[str, str], int] = {}
+    for row in rows:
+        runway = row.get("RWY_ID", "").strip().upper()
+        length = row.get("RWY_LEN", "").strip()
+        if (
+            not runway
+            or re.fullmatch(r"H(?:\d+[A-Z]?|-?[A-Z])", runway)
+            or not length.isdecimal()
+        ):
+            continue
+        key = (row.get("SITE_NO", ""), row.get("SITE_TYPE_CODE", ""))
+        lengths[key] = max(int(length), lengths.get(key, 0))
+    return lengths
+
+
+def search_airports(
+    rows: list[dict[str, str]],
+    text: str,
+    selected: tuple[str, ...] = (),
+    runway_lengths: dict[tuple[str, str], int] | None = None,
+) -> list[dict]:
     term = text.strip().upper()
     if not term:
         return []
     text_term = _airport_search_text(term)
+    selected_ids = {identifier.upper() for identifier in selected}
+    origins = [
+        point
+        for row in rows
+        if selected_ids.intersection((row.get("ICAO_ID", ""), row.get("ARPT_ID", "")))
+        and (point := _survey_position(row))
+    ]
+    lengths = runway_lengths or {}
     matches = []
     for row in rows:
         identifiers = (row.get("ICAO_ID", "").upper(), row.get("ARPT_ID", "").upper())
         identifier = identifiers[0] or identifiers[1]
         name = row.get("ARPT_NAME", "")
         city = row.get("CITY", "")
-        if not identifier:
+        if not identifier or selected_ids.intersection(identifiers):
             continue
         if term in identifiers:
             rank = 0
@@ -141,8 +171,23 @@ def search_airports(rows, text: str) -> list[dict]:
             rank = 2
         else:
             continue
+        longest = lengths.get((row.get("SITE_NO", ""), row.get("SITE_TYPE_CODE", "")))
+        position = _survey_position(row) if origins else None
+        distance = (
+            min(
+                distance_nm(
+                    origin["lat"], origin["lon"], position["lat"], position["lon"]
+                )
+                for origin in origins
+            )
+            if position
+            else None
+        )
+        order = distance if distance is not None else float("inf") if origins else rank
         matches.append(
             (
+                order,
+                -(longest or 0),
                 rank,
                 identifier,
                 {
@@ -151,12 +196,14 @@ def search_airports(rows, text: str) -> list[dict]:
                     "name": name,
                     "city": city,
                     "state": row.get("STATE_CODE", ""),
+                    "distance_nm": round(distance, 1) if distance is not None else None,
+                    "longest_runway_ft": longest,
                 },
             )
         )
-    matches.sort(key=lambda match: (match[0], match[1]))
+    matches.sort(key=lambda match: match[:4])
     unique: dict[str, dict] = {}
-    for _, identifier, match in matches:
+    for _, _, _, identifier, match in matches:
         unique.setdefault(identifier, match)
         if len(unique) == 20:
             break

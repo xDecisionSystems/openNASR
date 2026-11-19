@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.27]
+
+### Changed
+
+- Airport matches sort by distance to the nearest selected airport, then longest runway.
+
 ## [2.1.26]
 
 ### Changed

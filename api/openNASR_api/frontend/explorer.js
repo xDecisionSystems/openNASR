@@ -730,13 +730,16 @@ async function searchAirports(text, active) {
   matches.hidden = true;
   const selectedCycle = selectedAirports.values().next().value?.cycle || cycle.value;
   const params = new URLSearchParams({ q: text });
+  for (const id of selectedAirports.keys()) params.append("near", id);
   if (selectedCycle) params.set("cycle", selectedCycle);
   const data = await api(`/v1/airports/search?${params}`, { signal: active.signal });
   if (active.signal.aborted) return;
   for (const match of data.airports) {
     const place = [match.city, match.state].filter(Boolean).join(", ");
     const code = match.faa_id && match.faa_id !== match.id ? `${match.id} / ${match.faa_id}` : match.id;
-    const button = element("button", [code, match.name, place].filter(Boolean).join(" · "));
+    const distance = match.distance_nm == null ? "" : `${match.distance_nm.toFixed(1)} NM`;
+    const runway = match.longest_runway_ft ? `${match.longest_runway_ft.toLocaleString()} ft runway` : "";
+    const button = element("button", [code, match.name, place, distance, runway].filter(Boolean).join(" · "));
     button.type = "button";
     button.dataset.airport = match.id;
     button.disabled = selectedAirports.has(match.id);
