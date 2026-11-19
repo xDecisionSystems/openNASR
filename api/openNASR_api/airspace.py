@@ -11,7 +11,7 @@ from typing import Any
 import duckdb
 from numpy import ndarray
 from pandas import DataFrame
-from shapely import STRtree, from_wkb, transform, unary_union
+from shapely import STRtree, clip_by_rect, from_wkb, get_parts, transform, unary_union
 from shapely.affinity import translate
 from shapely.geometry import Point, Polygon, box
 from shapely.geometry.base import BaseGeometry
@@ -198,6 +198,44 @@ class AirspaceIndex:
                         "rings": rings,
                     }
                 )
+        return boundaries
+
+    def boundaries_in_view(
+        self, west: float, south: float, span: float, north: float
+    ) -> list[dict]:
+        """Clip boundary lines to a viewport without adding artificial edges."""
+        boundaries = []
+        for wrapped, tree in self._trees.items():
+            if tree is None:
+                continue
+            origin = 0 if wrapped else -180
+            start = origin + (west - origin) % 360
+            end = min(start + span, origin + 360)
+            intervals = [(start, end)]
+            if start + span > origin + 360:
+                intervals.append((origin, start + span - 360))
+            for left, right in intervals:
+                area = box(left, south, right, north)
+                for hit in tree.query(area, predicate="intersects"):
+                    region = self._regions[self._members[wrapped][hit]]
+                    lines = clip_by_rect(
+                        tree.geometries[hit].boundary, left, south, right, north
+                    )
+                    rings = [
+                        map_coordinates(line.coords)
+                        for line in get_parts(lines)
+                        if line.geom_type in {"LineString", "LinearRing"}
+                        and not line.is_empty
+                    ]
+                    if rings:
+                        boundaries.append(
+                            {
+                                "id": region.id,
+                                "level": region.level,
+                                "kind": region.airspace_class or region.kind,
+                                "rings": rings,
+                            }
+                        )
         return boundaries
 
     def artcc_boundaries(self, lat: float, lon: float) -> list[dict]:

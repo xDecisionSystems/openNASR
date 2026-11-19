@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.17]
+
+### Added
+
+- Airport maps can show airspace outlines in the current view as users pan and zoom.
+
 ## [2.1.16]
 
 ### Added

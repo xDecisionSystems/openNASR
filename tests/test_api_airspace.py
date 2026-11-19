@@ -163,3 +163,18 @@ def test_class_multipolygon_crosses_the_dateline_without_losing_other_parts(
     assert class_index.at(15, 175) == class_index.at(15, -175) == [region]
     assert class_index.at(31, -101) == [region]
     assert class_index.at(15, 0) == []
+
+
+def test_viewport_clips_outlines_without_drawing_viewport_edges(index):
+    (boundary,) = index.boundaries_in_view(-111, 34, 2, 36)
+    assert boundary["kind"] == "ARTCC"
+    (line,) = boundary["rings"]
+    assert {(p["lon"], p["lat"]) for p in line} == {(-110, 34), (-110, 36)}
+    assert index.boundaries_in_view(-107, 34, 2, 36) == []
+
+
+def test_viewport_follows_boundary_across_antimeridian(index):
+    (boundary,) = index.boundaries_in_view(175, 9, 10, 11)
+    assert boundary["id"] == "ZPP"
+    (line,) = boundary["rings"]
+    assert {(p["lon"], p["lat"]) for p in line} == {(175, 10), (-180, 10), (-175, 10)}

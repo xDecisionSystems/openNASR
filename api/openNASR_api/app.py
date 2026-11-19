@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.16"
+API_VERSION = "0.2.17"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -301,6 +301,11 @@ class AirspaceBoundariesResponse(BaseModel):
 
 class MatchingBoundary(ArtccBoundary):
     kind: str
+
+
+class AirspaceViewportResponse(BaseModel):
+    cycle: str
+    boundaries: list[MatchingBoundary]
 
 
 class AirspaceResponse(BaseModel):
@@ -704,6 +709,32 @@ def create_app(
             "artcc_boundaries": index.artcc_boundaries(lat, lon),
             "boundaries": index.boundaries_at(lat, lon) if include_boundaries else None,
             "not_covered": index.not_covered,
+        }
+
+    @app.get(
+        "/v1/airspace/viewport",
+        response_model=AirspaceViewportResponse,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def airspace_viewport(
+        west: Annotated[float, Query(ge=-180, le=180)],
+        south: Annotated[float, Query(ge=-90, le=90)],
+        span: Annotated[float, Query(gt=0, le=360)],
+        north: Annotated[float, Query(ge=-90, le=90)],
+        cycle: CycleParam = None,
+    ) -> dict[str, Any]:
+        """Published airspace boundary lines within a map viewport."""
+        if south >= north:
+            raise HTTPException(422, "south must be below north")
+        try:
+            chosen, index = store.airspace(cycle)
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if cycle else 503, str(error)) from error
+        return {
+            "cycle": chosen,
+            "boundaries": index.boundaries_in_view(west, south, span, north),
         }
 
     @app.get(

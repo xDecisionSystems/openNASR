@@ -322,6 +322,27 @@
         "title": "AirspaceResponse",
         "type": "object"
       },
+      "AirspaceViewportResponse": {
+        "properties": {
+          "boundaries": {
+            "items": {
+              "$ref": "#/components/schemas/MatchingBoundary"
+            },
+            "title": "Boundaries",
+            "type": "array"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "boundaries"
+        ],
+        "title": "AirspaceViewportResponse",
+        "type": "object"
+      },
       "AirwayEntity": {
         "properties": {
           "base": {
@@ -1317,7 +1338,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.16"
+    "version": "0.2.17"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2000,6 +2021,151 @@
           }
         ],
         "summary": "Airspace Layer",
+        "tags": [
+          "lookup"
+        ]
+      }
+    },
+    "/v1/airspace/viewport": {
+      "get": {
+        "description": "Published airspace boundary lines within a map viewport.",
+        "operationId": "airspace_viewport_v1_airspace_viewport_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "west",
+            "required": true,
+            "schema": {
+              "maximum": 180,
+              "minimum": -180,
+              "title": "West",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "south",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "title": "South",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "span",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 360,
+              "title": "Span",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "north",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "title": "North",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirspaceViewportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Airspace Viewport",
         "tags": [
           "lookup"
         ]

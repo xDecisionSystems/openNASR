@@ -68,6 +68,7 @@ let plotPan = { x: 0, y: 0 };
 let printing = false;
 let airportCaption = "";
 let airportBoundaries = [];
+let airportViewport = null;
 let airspaceMap = null;
 let airportProcedureRequest = null;
 const ilsPlotNote = "ILS course wedges are illustrative · 700 ft at the runway end · ±2.5° · 20 NM.";
@@ -195,6 +196,9 @@ function resetResult() {
   plotPan = { x: 0, y: 0 };
   airportCaption = "";
   airportBoundaries = [];
+  clearTimeout(airportViewport?.timer);
+  airportViewport?.request?.abort();
+  airportViewport = null;
   airspaceMap?.controller.abort();
   airspaceMap = null;
   airportProcedureRequest?.abort();
@@ -420,6 +424,22 @@ function addAirportProcedureLayers(airport, selectedCycle) {
       }
     });
   }
+  const viewportCheckbox = element("input");
+  viewportCheckbox.type = "checkbox";
+  const viewportLabel = element("label", "Airspace in view");
+  viewportLabel.prepend(viewportCheckbox);
+  controls.append(viewportLabel);
+  const viewportMessage = element("p", "", "layer-status");
+  viewportMessage.setAttribute("role", "status");
+  messages.push(viewportMessage);
+  viewportCheckbox.addEventListener("change", () => {
+    clearTimeout(airportViewport?.timer);
+    airportViewport?.request?.abort();
+    airportViewport = viewportCheckbox.checked
+      ? { cycle: selectedCycle, message: viewportMessage, boundaries: [] } : null;
+    viewportMessage.textContent = "";
+    drawPlot();
+  });
   const identifier = encodeURIComponent(airport.icao_id || airport.id);
   for (const [kind, name, color] of airspaceLayers.filter(([kind]) => kind === "arrivals" || kind === "departures")) {
     const checkbox = element("input");
@@ -655,6 +675,45 @@ function showResult(data) {
   drawPlot();
 }
 
+function updateAirportViewport(west, south, east, north) {
+  const viewport = airportViewport;
+  if (!viewport) return;
+  const normalizedWest = ((west + 180) % 360 + 360) % 360 - 180;
+  const bounds = {
+    west: normalizedWest.toFixed(5),
+    south: Math.max(-90, south).toFixed(5),
+    span: Math.min(360, east - west).toFixed(5),
+    north: Math.min(90, north).toFixed(5),
+  };
+  const params = new URLSearchParams({ ...bounds, cycle: viewport.cycle });
+  const key = params.toString();
+  if (key === viewport.key) return;
+  viewport.key = key;
+  clearTimeout(viewport.timer);
+  viewport.request?.abort();
+  if (Number(bounds.south) >= Number(bounds.north) || Number(bounds.span) <= 0) {
+    viewport.boundaries = [];
+    viewport.message.textContent = "";
+    return;
+  }
+  viewport.timer = setTimeout(async () => {
+    const active = new AbortController();
+    viewport.request = active;
+    try {
+      const data = await api(`/v1/airspace/viewport?${params}`, { signal: active.signal });
+      if (active.signal.aborted || airportViewport !== viewport) return;
+      viewport.boundaries = data.boundaries;
+      viewport.message.textContent = data.boundaries.length ? "" : "No airspace outlines in view.";
+      drawPlot();
+    } catch (error) {
+      if (active.signal.aborted || airportViewport !== viewport) return;
+      viewport.boundaries = [];
+      viewport.message.textContent = error.message;
+      drawPlot();
+    }
+  }, 220);
+}
+
 function drawPlot() {
   const rect = canvas.getBoundingClientRect();
   const pixelRatio = window.devicePixelRatio || 1;
@@ -725,6 +784,7 @@ function drawPlot() {
   }
   const latStart = centerY - height / (2 * scale);
   const latEnd = centerY + height / (2 * scale);
+  updateAirportViewport(lonStart, latStart, lonEnd, latEnd);
   for (let lat = Math.ceil(latStart / latStep) * latStep; lat <= latEnd; lat += latStep) {
     const [, y] = xy(centerX, lat);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
@@ -734,7 +794,8 @@ function drawPlot() {
   ctx.lineWidth = 2;
   ctx.setLineDash(partialRoute ? [5, 5] : []);
   const visible = new Map();
-  if (airspaceMap || airportBoundaries.length) {
+  const viewportBoundaries = airportViewport?.boundaries || [];
+  if (airspaceMap || airportBoundaries.length || viewportBoundaries.length) {
     const trace = (points) => {
       let previous;
       for (const point of points) {
@@ -754,7 +815,7 @@ function drawPlot() {
       }
     };
     ctx.lineWidth = 1.5;
-    for (const boundary of boundaries) {
+    for (const boundary of [...boundaries, ...viewportBoundaries]) {
       const color = boundaryLayers.find(([kind]) => kind === boundary.kind)?.[2];
       ctx.strokeStyle = printing ? (color ? "#524485" : "#12685e") : color || "#76dfca";
       ctx.beginPath();
