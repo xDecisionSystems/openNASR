@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.18]
+
+### Fixed
+
+- Airspace overlays reduce outline detail at wider views.
+
 ## [2.1.17]
 
 ### Added

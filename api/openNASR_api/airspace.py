@@ -79,6 +79,10 @@ def map_coordinates(coordinates: Any) -> list[dict[str, float]]:
     return [{"lon": (x + 180) % 360 - 180, "lat": y} for x, y in coordinates]
 
 
+def _display_ring(ring: BaseGeometry, tolerance: float) -> list[dict[str, float]]:
+    return map_coordinates(ring.simplify(tolerance, preserve_topology=False).coords)
+
+
 class AirspaceIndex:
     """A spatial index over one cycle's boundaries and class polygons."""
 
@@ -185,7 +189,14 @@ class AirspaceIndex:
             for hit in tree.query(point, predicate="intersects"):
                 region = self._regions[self._members[wrapped][hit]]
                 rings = [
-                    map_coordinates(ring.coords)
+                    _display_ring(
+                        ring,
+                        max(
+                            polygon.bounds[2] - polygon.bounds[0],
+                            polygon.bounds[3] - polygon.bounds[1],
+                        )
+                        / 3000,
+                    )
                     for polygon in _polygonal_parts(tree.geometries[hit])
                     if polygon.intersects(point)
                     for ring in (polygon.exterior, *polygon.interiors)
@@ -204,6 +215,7 @@ class AirspaceIndex:
         self, west: float, south: float, span: float, north: float
     ) -> list[dict]:
         """Clip boundary lines to a viewport without adding artificial edges."""
+        tolerance = max(span, north - south) / 3000
         boundaries = []
         for wrapped, tree in self._trees.items():
             if tree is None:
@@ -216,13 +228,13 @@ class AirspaceIndex:
                 intervals.append((origin, start + span - 360))
             for left, right in intervals:
                 area = box(left, south, right, north)
-                for hit in tree.query(area, predicate="intersects"):
+                for hit in tree.query(area):
                     region = self._regions[self._members[wrapped][hit]]
                     lines = clip_by_rect(
                         tree.geometries[hit].boundary, left, south, right, north
                     )
                     rings = [
-                        map_coordinates(line.coords)
+                        _display_ring(line, tolerance)
                         for line in get_parts(lines)
                         if line.geom_type in {"LineString", "LinearRing"}
                         and not line.is_empty

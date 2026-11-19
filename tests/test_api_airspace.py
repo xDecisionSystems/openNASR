@@ -177,4 +177,4 @@ def test_viewport_follows_boundary_across_antimeridian(index):
     (boundary,) = index.boundaries_in_view(175, 9, 10, 11)
     assert boundary["id"] == "ZPP"
     (line,) = boundary["rings"]
-    assert {(p["lon"], p["lat"]) for p in line} == {(175, 10), (-180, 10), (-175, 10)}
+    assert {(p["lon"], p["lat"]) for p in line} == {(175, 10), (-175, 10)}
