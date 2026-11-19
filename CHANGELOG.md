@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.26]
+
+### Changed
+
+- Plots keep their view when layers change and have no fixed zoom bounds.
+
 ## [2.1.25]
 
 ### Fixed

@@ -59,6 +59,7 @@ let plotPoints = [];
 let plotBranches = [];
 let partialRoute = false;
 let plotZoom = 1;
+let plotFit = null;
 let plotPan = { x: 0, y: 0 };
 let printing = false;
 let airportCaption = "";
@@ -221,6 +222,7 @@ function resetResult() {
   partialRoute = false;
   setAreaSelection(false);
   plotZoom = 1;
+  plotFit = null;
   plotPan = { x: 0, y: 0 };
   airportCaption = "";
   airportBoundaries = [];
@@ -237,7 +239,6 @@ function resetResult() {
   const procedures = currentView === "arrivals" || currentView === "departures";
   canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
   canvas.closest(".plot-card").classList.toggle("airspace-plot", currentView === "airspace");
-  canvas.closest(".plot-card").classList.remove("ils-plot");
   byId("plot-title").textContent = {
     airports: "Airport layout", airspace: "ARTCC boundaries", arrivals: "Procedure branches", departures: "Procedure branches",
   }[currentView] || "Coordinate plot";
@@ -410,8 +411,6 @@ function addAirportProcedureLayers(airports, selectedCycle) {
     controls.append(label);
     checkbox.addEventListener("change", () => {
       for (const branch of localizers) branch.visible = checkbox.checked;
-      canvas.closest(".plot-card").classList.toggle("ils-plot",
-        checkbox.checked && localizers.some((branch) => branch.wedge.length));
       drawPlot();
     });
   }
@@ -826,10 +825,10 @@ function updateBoundaryViewport(viewport, west, south, east, north, kinds = []) 
   if (!viewport) return;
   const normalizedWest = ((west + 180) % 360 + 360) % 360 - 180;
   const bounds = {
-    west: normalizedWest.toFixed(5),
-    south: Math.max(-90, south).toFixed(5),
-    span: Math.min(360, east - west).toFixed(5),
-    north: Math.min(90, north).toFixed(5),
+    west: normalizedWest.toFixed(12),
+    south: Math.max(-90, south).toFixed(12),
+    span: Math.min(360, east - west).toFixed(12),
+    north: Math.min(90, north).toFixed(12),
   };
   const params = new URLSearchParams({ ...bounds, cycle: viewport.cycle });
   for (const kind of kinds) params.append("kind", kind);
@@ -962,50 +961,74 @@ function drawPlot() {
     canvas.setAttribute("aria-label", note.textContent);
   }
   const boundaries = airspaceMap?.boundaries || airportBoundaries;
-  const boundaryRings = boundaries.flatMap((boundary) => boundary.rings);
-  const points = [
-    ...plotted.filter((branch) => currentView !== "airports" || branch.visible).flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
-  ].filter(available);
-  // Keep both sides of the Aleutians west of the contiguous U.S.
-  const reference = airspaceMap ? -120 : points[0]?.lon || 0;
+  let fit = plotFit;
+  if (!fit) {
+    const points = plotted.filter((branch) => branch.visible).flatMap((branch) => branch.points)
+      .concat(wedges.flatMap((branch) => branch.wedge), boundaries.flatMap((boundary) => boundary.rings.flat()))
+      .filter(available);
+    for (const layer of airspaceMap?.layers.values() || []) {
+      if (!layer.selected || !layer.data) continue;
+      for (const point of layer.data.points) if (available(point)) points.push(point);
+      for (const line of layer.data.lines) {
+        for (const point of line) if (available(point)) points.push(point);
+      }
+    }
+    // Keep both sides of the Aleutians west of the contiguous U.S.
+    const reference = airspaceMap ? -120 : points[0]?.lon || 0;
+    let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
+    for (const point of points) {
+      const lon = reference + ((point.lon - reference + 540) % 360) - 180;
+      west = Math.min(west, lon);
+      east = Math.max(east, lon);
+      south = Math.min(south, point.lat);
+      north = Math.max(north, point.lat);
+    }
+    const baseX = points.length ? (west + east) / 2 : -98;
+    const baseY = points.length ? (south + north) / 2 : 38;
+    const longitudeFactor = Math.max(.17, Math.cos(baseY * Math.PI / 180));
+    const minimumSpan = currentView === "airports" ? .003 : 1;
+    const baseScale = points.length ? Math.min(
+      Math.max(1, width - 2 * padding) / Math.max((east - west) * longitudeFactor, minimumSpan),
+      Math.max(1, height - 2 * padding) / Math.max(north - south, minimumSpan),
+    ) : Math.max(4, width / 90);
+    fit = { reference, baseX, baseY, longitudeFactor, baseScale };
+    if (points.length) plotFit = fit;
+  }
+  const { reference, baseX, baseY, longitudeFactor, baseScale } = fit;
   const project = (point) => ({
     ...point,
     x: reference + ((point.lon - reference + 540) % 360) - 180,
   });
-  const outline = points.map(project);
-  const west = Math.min(...outline.map((point) => point.x));
-  const east = Math.max(...outline.map((point) => point.x));
-  const south = Math.min(...outline.map((point) => point.lat));
-  const north = Math.max(...outline.map((point) => point.lat));
-  const baseX = points.length ? (west + east) / 2 : -98;
-  const baseY = points.length ? (south + north) / 2 : 38;
-  const longitudeFactor = Math.max(.17, Math.cos(baseY * Math.PI / 180));
-  const minimumSpan = currentView === "airports" ? .003 : 1;
-  const scale = plotZoom * (points.length ? Math.min(
-    (width - 2 * padding) / Math.max((east - west) * longitudeFactor, minimumSpan),
-    (height - 2 * padding) / Math.max(north - south, minimumSpan),
-  ) : Math.max(4, width / 90));
+  const scale = plotZoom * baseScale;
   const centerX = baseX - plotPan.x / (scale * longitudeFactor);
   const centerY = baseY + plotPan.y / scale;
   const xy = (lon, lat) => [
     width / 2 + (lon - centerX) * scale * longitudeFactor,
     height / 2 - (lat - centerY) * scale,
   ];
-  const gridStep = (pixels) => [.0005, .001, .002, .005, .01, .02, .05, .1, .25, .5, 1, 2, 5, 10, 20, 30].find(
-    (step) => step * pixels >= 54,
-  ) || 60;
+  const gridStep = (pixels) => {
+    const target = 54 / pixels;
+    const magnitude = 10 ** Math.floor(Math.log10(target));
+    return ([1, 2, 5, 10].find((step) => step * magnitude >= target) || 10) * magnitude;
+  };
   const lonStep = gridStep(scale * longitudeFactor);
   const latStep = gridStep(scale);
-  const degreeLabel = (value) => `${Number(value.toFixed(4))}°`;
+  const degreeLabel = (value, step) => {
+    const precision = Math.max(0, Math.min(15, -Math.floor(Math.log10(step))));
+    return `${Number(value.toFixed(precision))}°`;
+  };
   ctx.strokeStyle = printing ? "#c5d1d8" : "#355264";
   ctx.fillStyle = printing ? "#425c6e" : "#8dafbd";
   ctx.font = "10px system-ui";
   const lonStart = centerX - width / (2 * scale * longitudeFactor);
   const lonEnd = centerX + width / (2 * scale * longitudeFactor);
-  for (let lon = Math.ceil(lonStart / lonStep) * lonStep; lon <= lonEnd; lon += lonStep) {
+  const firstLon = Math.ceil(lonStart / lonStep) * lonStep;
+  for (let tick = 0; tick <= Math.ceil(width / 54); tick++) {
+    const lon = firstLon + tick * lonStep;
+    if (!Number.isFinite(lon) || lon > lonEnd) break;
     const [x] = xy(lon, centerY);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-    if (x > 26 && x < width - 60) ctx.fillText(degreeLabel(((lon + 540) % 360) - 180), x + 4, 13);
+    if (x > 26 && x < width - 60) ctx.fillText(degreeLabel(((lon + 180) % 360 + 360) % 360 - 180, lonStep), x + 4, 13);
   }
   const latStart = centerY - height / (2 * scale);
   const latEnd = centerY + height / (2 * scale);
@@ -1023,10 +1046,13 @@ function drawPlot() {
       classViewport.boundaries = [];
     }
   }
-  for (let lat = Math.ceil(latStart / latStep) * latStep; lat <= latEnd; lat += latStep) {
+  const firstLat = Math.ceil(latStart / latStep) * latStep;
+  for (let tick = 0; tick <= Math.ceil(height / 54); tick++) {
+    const lat = firstLat + tick * latStep;
+    if (!Number.isFinite(lat) || lat > latEnd) break;
     const [, y] = xy(centerX, lat);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-    if (y > 26 && y < height - 22) ctx.fillText(degreeLabel(lat), 5, y - 4);
+    if (y > 26 && y < height - 22) ctx.fillText(degreeLabel(lat, latStep), 5, y - 4);
   }
   // Dashes indicate a partial result whose published geometry has gaps.
   ctx.lineWidth = 2;
@@ -1285,15 +1311,24 @@ byId("apply-key").addEventListener("click", () => {
   loadCycles();
 });
 new ResizeObserver(drawPlot).observe(canvas.parentElement);
-for (const [id, factor] of [["zoom-in", 1.5], ["zoom-out", 1 / 1.5]]) {
-  byId(id).addEventListener("click", () => {
-    plotZoom = Math.max(.25, Math.min(32, plotZoom * factor));
-    drawPlot();
-  });
+function zoomPlot(factor, x = 0, y = 0) {
+  const nextZoom = plotZoom * factor;
+  const scale = nextZoom * (plotFit?.baseScale || 1);
+  const nextX = (plotPan.x - x) * factor;
+  const nextY = (plotPan.y - y) * factor;
+  if (!Number.isFinite(scale) || !Number.isFinite(1 / scale)
+    || !Number.isFinite(nextX) || !Number.isFinite(nextY)) return;
+  plotZoom = nextZoom;
+  plotPan = { x: nextX, y: nextY };
+  drawPlot();
 }
+
+byId("zoom-in").addEventListener("click", () => zoomPlot(1.5));
+byId("zoom-out").addEventListener("click", () => zoomPlot(1 / 1.5));
 byId("zoom-reset").addEventListener("click", () => {
   setAreaSelection(false);
   plotZoom = 1;
+  plotFit = null;
   plotPan = { x: 0, y: 0 };
   drawPlot();
 });
@@ -1321,16 +1356,9 @@ function plotPosition(event) {
 canvas.addEventListener("dblclick", (event) => {
   if (selectingArea || event.button !== 0) return;
   const factor = event.shiftKey ? 1 / 1.5 : 1.5;
-  const nextZoom = Math.max(.25, Math.min(32, plotZoom * factor));
-  const scale = nextZoom / plotZoom;
   const { width, height } = canvas.getBoundingClientRect();
   const point = plotPosition(event);
-  const x = point.x - width / 2;
-  const y = point.y - height / 2;
-  plotPan.x = (plotPan.x - x) * scale;
-  plotPan.y = (plotPan.y - y) * scale;
-  plotZoom = nextZoom;
-  drawPlot();
+  zoomPlot(factor, point.x - width / 2, point.y - height / 2);
 });
 
 function selectionBounds(start, end) {
@@ -1373,12 +1401,9 @@ canvas.addEventListener("pointerup", (event) => {
   zoomBox.hidden = true;
   if (box.width < 8 || box.height < 8) return;
   const { width, height } = canvas.getBoundingClientRect();
-  const factor = Math.min(32 / plotZoom, width / box.width, height / box.height);
-  plotPan.x = (plotPan.x + width / 2 - box.left - box.width / 2) * factor;
-  plotPan.y = (plotPan.y + height / 2 - box.top - box.height / 2) * factor;
-  plotZoom *= factor;
+  const factor = Math.min(width / box.width, height / box.height);
   setAreaSelection(false);
-  drawPlot();
+  zoomPlot(factor, box.left + box.width / 2 - width / 2, box.top + box.height / 2 - height / 2);
 });
 canvas.addEventListener("lostpointercapture", (event) => {
   if (drag?.id !== event.pointerId) return;

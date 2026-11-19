@@ -71,7 +71,6 @@ canvas:active { cursor: grabbing; }
 .plot-caption { position: absolute; bottom: 8px; left: 16px; right: 16px; pointer-events: none; }
 .procedure-plot .plot { min-height: 410px; }
 .airspace-plot .plot { min-height: 420px; }
-.ils-plot .plot { min-height: 360px; }
 .plot-legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border-top: 1px solid #36515e; }
 .plot-legend[hidden] { display: none; }
 .plot-legend button { display: inline-flex; gap: 6px; align-items: center; border: 1px solid #56717d; border-radius: 5px; background: #203f50; color: #e8f5f5; padding: 3px 7px; font-size: .77rem; }
