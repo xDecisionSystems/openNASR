@@ -226,12 +226,15 @@ class CycleStore:
     def lookup(
         self, effective_date: str | None = None
     ) -> Iterator[tuple[str, Callable]]:
-        """Yield ``(cycle, query_table)`` with exclusive use of the cycle's connection.
+        """Yield the bounded query function with exclusive use of its connection."""
+        with self.lookup_nasr(effective_date) as (chosen, nasr):
+            yield chosen, nasr.query_table
 
-        A DuckDB connection is not safe across threads, so lookups on one
-        cycle take turns; route resolution does not use this connection.
-        """
-
+    @contextmanager
+    def lookup_nasr(
+        self, effective_date: str | None = None
+    ) -> Iterator[tuple[str, NASR]]:
+        """Yield the cycle and its NASR connection under the per-cycle lock."""
         chosen = effective_date or self.default_cycle()
         if chosen not in self.cycles():
             raise CycleUnavailableError(f"cycle {chosen} is not available")
@@ -241,7 +244,7 @@ class CycleStore:
                 if nasr is None:
                     nasr = NASR(cycle=chosen, cache_dir=self.cache_dir)
                     self._lookups[chosen] = nasr
-            yield chosen, nasr.query_table
+            yield chosen, nasr
 
     def map_layer(
         self,

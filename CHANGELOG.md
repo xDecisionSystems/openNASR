@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.23]
+
+### Added
+
+- Search for airports and plot multiple matches using removable selection tags.
+
 ## [2.1.22]
 
 ### Changed

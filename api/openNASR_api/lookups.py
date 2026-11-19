@@ -100,6 +100,47 @@ def _localizers(
     return localizers
 
 
+def search_airports(rows, text: str) -> list[dict]:
+    term = text.strip().upper()
+    if not term:
+        return []
+    matches = []
+    for row in rows:
+        identifiers = (row.get("ICAO_ID", "").upper(), row.get("ARPT_ID", "").upper())
+        identifier = identifiers[0] or identifiers[1]
+        name = row.get("ARPT_NAME", "")
+        city = row.get("CITY", "")
+        if not identifier:
+            continue
+        if term in identifiers:
+            rank = 0
+        elif any(code.startswith(term) for code in identifiers):
+            rank = 1
+        elif term in name.upper() or term in city.upper():
+            rank = 2
+        else:
+            continue
+        matches.append(
+            (
+                rank,
+                identifier,
+                {
+                    "id": identifier,
+                    "name": name,
+                    "city": city,
+                    "state": row.get("STATE_CODE", ""),
+                },
+            )
+        )
+    matches.sort(key=lambda match: (match[0], match[1]))
+    unique = {}
+    for _, identifier, match in matches:
+        unique.setdefault(identifier, match)
+        if len(unique) == 20:
+            break
+    return list(unique.values())
+
+
 def airport(query: Callable[..., Any], identifier: str) -> dict:
     ident = identifier.strip().upper()
     base = _rows(query, "APT_BASE", QueryFilter.eq("ARPT_ID", ident))

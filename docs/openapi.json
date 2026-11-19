@@ -105,6 +105,34 @@
         "title": "AirportMapPoint",
         "type": "object"
       },
+      "AirportMatch": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "city",
+          "state"
+        ],
+        "title": "AirportMatch",
+        "type": "object"
+      },
       "AirportProceduresResponse": {
         "properties": {
           "branches": {
@@ -141,6 +169,27 @@
           "airport"
         ],
         "title": "AirportResponse",
+        "type": "object"
+      },
+      "AirportSearchResponse": {
+        "properties": {
+          "airports": {
+            "items": {
+              "$ref": "#/components/schemas/AirportMatch"
+            },
+            "title": "Airports",
+            "type": "array"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "airports"
+        ],
+        "title": "AirportSearchResponse",
         "type": "object"
       },
       "AirspaceBoundariesResponse": {
@@ -1352,7 +1401,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.22"
+    "version": "0.2.23"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1407,6 +1456,118 @@
         "summary": "Ready",
         "tags": [
           "service"
+        ]
+      }
+    },
+    "/v1/airports/search": {
+      "get": {
+        "description": "Find airports by identifier, name, or city.",
+        "operationId": "airport_search_v1_airports_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirportSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Airport Search",
+        "tags": [
+          "lookup"
         ]
       }
     },

@@ -12,8 +12,8 @@ const views = {
   airports: {
     examples: [["KABQ"], ["KDEN"], ["KSEA"], ["KJFK"]],
     title: "Find an airport",
-    help: "Enter an FAA or ICAO airport identifier.",
-    fields: [{ name: "identifier", label: "Airport identifier" }],
+    help: "Search by identifier, airport name, or city.",
+    fields: [{ name: "identifier", label: "Airport search" }],
     caption: "Query an airport to plot its runways, helipads, and ILS localizers.",
   },
   airspace: {
@@ -80,6 +80,7 @@ const airspaceLayers = [
 const currentExamples = new Map();
 const savedInputs = new Map();
 const savedResults = new Map();
+const selectedAirports = new Map();
 
 function element(tag, text, cssClass) {
   const item = document.createElement(tag);
@@ -140,6 +141,9 @@ function setView(name) {
   if (byId("fields").children.length) savedInputs.set(currentView, new FormData(form));
   request?.abort();
   currentView = name;
+  byId("airport-tags").hidden = name !== "airports" || !selectedAirports.size;
+  byId("airport-matches").replaceChildren();
+  byId("airport-matches").hidden = true;
   const view = views[name];
   for (const tab of tabs) {
     const active = tab.dataset.tab === name;
@@ -203,7 +207,8 @@ function setView(name) {
   }));
   pickExample(name);
   resetResult();
-  if (savedResults.has(name)) showResult(savedResults.get(name));
+  if (name === "airports" && selectedAirports.size) renderSelectedAirports();
+  else if (savedResults.has(name)) showResult(savedResults.get(name));
 }
 
 function resetResult() {
@@ -326,6 +331,7 @@ function addProcedureBranches(procedure, multipleProcedures) {
 }
 
 function addAirportLayout(airport) {
+  const firstBranch = plotBranches.length;
   const endsByRunway = new Map();
   for (const end of airport.runway_ends) {
     const lat = Number(end.LAT_DECIMAL);
@@ -357,16 +363,17 @@ function addAirportLayout(airport) {
   const columns = ["Identifier", "Length (ft)", "Width (ft)", "Surface", "Map"];
   results.append(table("Runways", columns, runwayRows), table("Helipads", columns, padRows));
 
-  const runwayCount = plotBranches.filter((branch) => branch.kind === "runway").length;
-  const padCount = plotBranches.length - runwayCount;
-  const unavailable = airport.runways.length - plotBranches.length;
-  if (!plotBranches.length && airport.position) {
+  const airportBranches = plotBranches.slice(firstBranch);
+  const runwayCount = airportBranches.filter((branch) => branch.kind === "runway").length;
+  const padCount = airportBranches.length - runwayCount;
+  const unavailable = airport.runways.length - airportBranches.length;
+  if ((!airportBranches.length || selectedAirports.size > 1) && airport.position) {
     plotBranches.push({
       points: [{ ...airport.position, name: airport.icao_id || airport.id }],
-      color: "#b8f6e7", visible: true,
+      kind: "airport-reference", color: "#b8f6e7", visible: true,
     });
   }
-  const hasReference = plotBranches.some((branch) => !branch.kind);
+  const hasReference = !airportBranches.length && airport.position;
   airportCaption = [
     `${runwayCount} of ${runwayRows.length} runways and ${padCount} of ${padRows.length} helipads plotted.`,
     unavailable ? "Some records lack usable geometry." : "",
@@ -389,7 +396,7 @@ function addAirportLayout(airport) {
   results.append(table("ILS localizers", ["Identifier", "Runway", "Transmitter position", "Course wedge"], localizers));
 }
 
-function addAirportProcedureLayers(airport, selectedCycle) {
+function addAirportProcedureLayers(airports, selectedCycle) {
   const controller = new AbortController();
   airportProcedureRequest = controller;
   const controls = byId("airport-procedure-layers");
@@ -409,7 +416,8 @@ function addAirportProcedureLayers(airport, selectedCycle) {
     });
   }
   const messages = [];
-  if (airport.position) {
+  const positions = airports.map((airport) => airport.position).filter(Boolean);
+  if (positions.length) {
     const checkbox = element("input");
     checkbox.type = "checkbox";
     const label = element("label", "Airspace");
@@ -428,12 +436,17 @@ function addAirportProcedureLayers(airport, selectedCycle) {
       }
       checkbox.disabled = true;
       label.setAttribute("aria-busy", "true");
-      const params = new URLSearchParams({ cycle: selectedCycle,
-        lat: airport.position.lat, lon: airport.position.lon, include_boundaries: true });
       try {
-        const data = await api(`/v1/airspace/at?${params}`, { signal: controller.signal });
+        const responses = await Promise.all(positions.map(({ lat, lon }) => {
+          const params = new URLSearchParams({ cycle: selectedCycle, lat, lon, include_boundaries: true });
+          return api(`/v1/airspace/at?${params}`, { signal: controller.signal });
+        }));
         if (controller.signal.aborted) return;
-        boundaries = data.boundaries;
+        const unique = new Map();
+        for (const boundary of responses.flatMap((response) => response.boundaries)) {
+          unique.set(JSON.stringify(boundary), boundary);
+        }
+        boundaries = [...unique.values()];
         airportBoundaries = boundaries;
         if (!boundaries.length) message.textContent = "No published boundaries contain this airport.";
         drawPlot();
@@ -463,7 +476,6 @@ function addAirportProcedureLayers(airport, selectedCycle) {
     viewportMessage.textContent = "";
     drawPlot();
   });
-  const identifier = encodeURIComponent(airport.icao_id || airport.id);
   for (const [kind, name, color] of airspaceLayers.filter(([kind]) => kind === "arrivals" || kind === "departures")) {
     const checkbox = element("input");
     checkbox.type = "checkbox";
@@ -488,9 +500,12 @@ function addAirportProcedureLayers(airport, selectedCycle) {
       label.setAttribute("aria-busy", "true");
       try {
         const params = new URLSearchParams({ cycle: selectedCycle });
-        const data = await api(`/v1/airports/${identifier}/procedures/${kind}?${params}`, { signal: controller.signal });
+        const responses = await Promise.all(airports.map((airport) => {
+          const identifier = encodeURIComponent(airport.icao_id || airport.id);
+          return api(`/v1/airports/${identifier}/procedures/${kind}?${params}`, { signal: controller.signal });
+        }));
         if (controller.signal.aborted) return;
-        branches = data.branches.map((branch) => ({
+        branches = responses.flatMap((data) => data.branches).map((branch) => ({
           kind: "airport-procedure", color, visible: checkbox.checked,
           points: branch.waypoints.map((waypoint) => waypoint.position
             ? { ...waypoint.position, name: waypoint.name } : null),
@@ -656,27 +671,101 @@ function addAirspaceMap(data) {
   loadOtherAirspace();
 }
 
-function showResult(data) {
-  byId("result-cycle").textContent = `Cycle ${data.cycle}`;
+function renderSelectedAirports() {
+  resetResult();
+  const tags = byId("airport-tags");
+  tags.replaceChildren();
+  tags.hidden = selectedAirports.size === 0;
+  for (const [id] of selectedAirports) {
+    const tag = element("span", id, "airport-tag");
+    const remove = element("button", "×");
+    remove.type = "button";
+    remove.setAttribute("aria-label", `Remove ${id}`);
+    remove.addEventListener("click", () => {
+      selectedAirports.delete(id);
+      renderSelectedAirports();
+      (tags.querySelector("button") || byId("query-identifier")).focus();
+    });
+    tag.append(remove);
+    tags.append(tag);
+  }
+  for (const match of byId("airport-matches").querySelectorAll("button")) {
+    match.disabled = selectedAirports.has(match.dataset.airport);
+  }
+  if (!selectedAirports.size) return;
+
+  const entries = [...selectedAirports.values()];
+  const airports = entries.map(({ airport }) => airport);
+  const selectedCycle = entries[0].cycle;
   results.replaceChildren();
-  if (currentView === "airports") {
-    const airport = data.airport;
+  byId("result-cycle").textContent = `Cycle ${selectedCycle}`;
+  byId("plot-title").textContent = airports.length === 1
+    ? `${airports[0].icao_id || airports[0].id} airport layout` : "Airport layouts";
+  const print = element("button", airports.length === 1 ? "Print airport" : "Print airports", "print-airport");
+  print.type = "button";
+  print.addEventListener("click", () => window.print());
+  results.append(print);
+  for (const airport of airports) {
     const base = airport.base;
-    const print = element("button", "Print airport", "print-airport");
-    print.type = "button";
-    print.addEventListener("click", () => window.print());
-    byId("plot-title").textContent = `${airport.icao_id || airport.id} airport layout`;
     results.append(
       element("h3", base.ARPT_NAME || airport.icao_id || airport.id, "result-title"),
       facts([
         ["Airport", airport.icao_id || airport.id], ["City", [base.CITY, base.STATE_CODE].filter(Boolean).join(", ")],
         ["Position", coordinates(airport.position)], ["Elevation", base.ELEV && `${base.ELEV} ft`],
       ]),
-      print,
     );
     addAirportLayout(airport);
-    addAirportProcedureLayers(airport, data.cycle);
-  } else if (currentView === "flightplan") {
+  }
+  if (airports.length > 1) airportCaption = `${airports.length} selected airports.`;
+  addAirportProcedureLayers(airports, selectedCycle);
+  const raw = element("details", null, "raw");
+  raw.append(element("summary", "View response JSON"),
+    element("pre", JSON.stringify(entries.length === 1 ? entries[0] : { cycle: selectedCycle, airports }, null, 2)));
+  results.append(raw);
+  drawPlot();
+}
+
+async function searchAirports(text, active) {
+  const matches = byId("airport-matches");
+  matches.replaceChildren();
+  matches.hidden = true;
+  const selectedCycle = selectedAirports.values().next().value?.cycle || cycle.value;
+  const params = new URLSearchParams({ q: text });
+  if (selectedCycle) params.set("cycle", selectedCycle);
+  const data = await api(`/v1/airports/search?${params}`, { signal: active.signal });
+  if (active.signal.aborted) return;
+  for (const match of data.airports) {
+    const place = [match.city, match.state].filter(Boolean).join(", ");
+    const button = element("button", [match.id, match.name, place].filter(Boolean).join(" · "));
+    button.type = "button";
+    button.dataset.airport = match.id;
+    button.disabled = selectedAirports.has(match.id);
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        const selected = await api(`/v1/airports/${encodeURIComponent(match.id)}?cycle=${data.cycle}`, {
+          signal: active.signal,
+        });
+        if (active.signal.aborted) return;
+        selectedAirports.set(match.id, selected);
+        renderSelectedAirports();
+        byId("query-identifier").focus();
+      } catch (error) {
+        if (active.signal.aborted) return;
+        button.disabled = false;
+        setStatus(error.message, true);
+      }
+    });
+    matches.append(button);
+  }
+  matches.hidden = !data.airports.length;
+  setStatus(data.airports.length ? "Select an airport to add it." : "No airports match your search.");
+}
+
+function showResult(data) {
+  byId("result-cycle").textContent = `Cycle ${data.cycle}`;
+  results.replaceChildren();
+  if (currentView === "flightplan") {
     plotPoints = data.points;
     partialRoute = !data.complete;
     results.append(
@@ -975,8 +1064,11 @@ function drawPlot() {
     ctx.beginPath(); ctx.arc(x, y, point.kind === "map-airport" ? 2 : 3.5, 0, Math.PI * 2); ctx.fill();
   });
   const labels = [];
-  const labelOrder = airspaceMap ? [shown.at(-1), ...shown.slice(0, -1)]
-    : [shown[0], shown.at(-1), ...shown.slice(1, -1)];
+  const labelOrder = currentView === "airports" && selectedAirports.size > 1
+    ? [...shown.filter((point) => point.kind === "airport-reference"),
+      ...shown.filter((point) => point.kind !== "airport-reference")]
+    : airspaceMap ? [shown.at(-1), ...shown.slice(0, -1)]
+      : [shown[0], shown.at(-1), ...shown.slice(1, -1)];
   for (const point of new Set(labelOrder)) {
     if (!point?.name) continue;
     const [x, y] = xy(point.x, point.lat);
@@ -1021,6 +1113,20 @@ async function submit(event) {
   const values = Object.fromEntries(new FormData(form));
   const params = new URLSearchParams();
   if (cycle.value) params.set("cycle", cycle.value);
+  if (queriedView === "airports") {
+    const text = values.identifier.trim();
+    if (!text) return;
+    setStatus("Searching…");
+    byId("submit").disabled = true;
+    try {
+      await searchAirports(text, activeRequest);
+    } catch (error) {
+      if (!activeRequest.signal.aborted) setStatus(error.message, true);
+    } finally {
+      if (request === activeRequest) byId("submit").disabled = false;
+    }
+    return;
+  }
   let url, options = { signal: activeRequest.signal };
   if (currentView === "flightplan") {
     const body = { route: values.route.trim() };
@@ -1065,6 +1171,11 @@ form.addEventListener("submit", submit);
 cycle.addEventListener("change", () => {
   request?.abort();
   savedResults.clear();
+  selectedAirports.clear();
+  for (const id of ["airport-tags", "airport-matches"]) {
+    byId(id).replaceChildren();
+    byId(id).hidden = true;
+  }
   resetResult();
   if (currentView === "airspace") loadAirspaceOverview();
 });
@@ -1082,6 +1193,11 @@ byId("apply-key").addEventListener("click", () => {
   byId("apply-key").closest("details").open = false;
   request?.abort();
   savedResults.clear();
+  selectedAirports.clear();
+  for (const id of ["airport-tags", "airport-matches"]) {
+    byId(id).replaceChildren();
+    byId(id).hidden = true;
+  }
   resetResult();
   if (currentView === "airspace") loadAirspaceOverview();
   loadCycles();

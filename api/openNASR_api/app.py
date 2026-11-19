@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.22"
+API_VERSION = "0.2.23"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -177,6 +177,18 @@ class AirportEntity(BaseModel):
     runways: list[dict[str, str]]
     runway_ends: list[dict[str, str]]
     localizers: list[Localizer]
+
+
+class AirportMatch(BaseModel):
+    id: str
+    name: str
+    city: str
+    state: str
+
+
+class AirportSearchResponse(BaseModel):
+    cycle: str
+    airports: list[AirportMatch]
 
 
 class AirportResponse(BaseModel):
@@ -599,6 +611,32 @@ def create_app(
         except lookups.NotFoundError as error:
             raise HTTPException(404, str(error)) from error
         return {"cycle": chosen, "branches": branches}
+
+    @app.get(
+        "/v1/airports/search",
+        response_model=AirportSearchResponse,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def airport_search(
+        q: Annotated[str, Query(min_length=1, max_length=80)],
+        cycle: CycleParam = None,
+    ) -> dict[str, Any]:
+        """Find airports by identifier, name, or city."""
+        try:
+            with store.lookup_nasr(cycle) as (chosen, nasr):
+                frame = nasr.get("APT_BASE")
+                fields = ["ARPT_ID", "ICAO_ID", "ARPT_NAME", "CITY", "STATE_CODE"]
+                rows = (
+                    frame.reindex(columns=fields).fillna("").to_dict(orient="records")
+                    if frame is not None
+                    else []
+                )
+                airports = lookups.search_airports(rows, q)
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if cycle else 503, str(error)) from error
+        return {"cycle": chosen, "airports": airports}
 
     @app.get(
         "/v1/airports/{identifier}",

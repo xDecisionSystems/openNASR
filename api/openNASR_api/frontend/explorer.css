@@ -131,3 +131,11 @@ footer span { border-left: 1px solid #bdccd0; padding-left: 12px; }
   .result-block h3 { break-after: avoid; }
   tr { break-inside: avoid; }
 }
+
+.airport-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.airport-tags[hidden], .airport-matches[hidden] { display: none; }
+.airport-tag { display: inline-flex; gap: 6px; align-items: center; padding: 2px 7px; border-radius: 14px; background: #e3eef1; color: #233b46; }
+.airport-tag button { padding: 0 3px; border: 0; background: transparent; color: inherit; }
+.airport-matches { display: grid; gap: 4px; margin-top: 12px; max-height: 16rem; overflow-y: auto; }
+.airport-matches button { text-align: left; padding: 5px 8px; background: #f6fafb; border: 1px solid #b8c8ce; border-radius: 5px; color: #233b46; }
+.airport-matches button:hover:not(:disabled) { background: #e3eef1; }
