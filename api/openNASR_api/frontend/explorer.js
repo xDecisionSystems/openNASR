@@ -216,6 +216,7 @@ function resetResult() {
   clearTimeout(airportViewport?.timer);
   airportViewport?.request?.abort();
   airportViewport = null;
+  clearTimeout(airspaceMap?.classViewport.timer);
   airspaceMap?.controller.abort();
   airspaceMap = null;
   airportProcedureRequest?.abort();
@@ -558,6 +559,7 @@ function addAirspaceMap(data) {
   controls.hidden = false;
   const message = element("p", "", "layer-status");
   message.setAttribute("role", "status");
+  map.classViewport = { cycle: data.cycle, artcc: data.artcc, message, boundaries: [], controller: map.controller };
   const classLayers = boundaryLayers.filter(([kind]) => kind.length === 1);
   const choices = data.artcc ? [...classLayers, ...airspaceLayers] : classLayers;
   const other = byId("query-other-airspace");
@@ -606,24 +608,17 @@ function addAirspaceMap(data) {
       layer.selected = checkbox.checked;
       message.textContent = "";
       drawPlot();
-      if (!layer.selected || layer.data || layer.loading) return;
+      if (isBoundary || !layer.selected || layer.data || layer.loading) return;
       layer.loading = true;
       label.setAttribute("aria-busy", "true");
       const params = new URLSearchParams();
       if (data.cycle || cycle.value) params.set("cycle", data.cycle || cycle.value);
-      let endpoint;
-      if (isBoundary) {
-        params.set("kind", key);
-        endpoint = "boundaries";
-      } else {
-        params.set("layer", key);
-        params.set("artcc", data.artcc);
-        endpoint = "layer";
-      }
+      params.set("layer", key);
+      params.set("artcc", data.artcc);
       try {
-        const response = await api(`/v1/airspace/${endpoint}?${params}`, { signal: map.controller.signal });
+        const response = await api(`/v1/airspace/layer?${params}`, { signal: map.controller.signal });
         if (airspaceMap !== map) return;
-        layer.data = isBoundary ? { points: [], lines: response.boundaries.flatMap((boundary) => boundary.rings) } : response;
+        layer.data = response;
         if (layer.selected && !layer.data.points.length && !layer.data.lines.length) {
           message.textContent = `No ${name} outlines or features are available for this view.`;
         }
@@ -720,8 +715,7 @@ function showResult(data) {
   drawPlot();
 }
 
-function updateAirportViewport(west, south, east, north) {
-  const viewport = airportViewport;
+function updateBoundaryViewport(viewport, west, south, east, north, kinds = []) {
   if (!viewport) return;
   const normalizedWest = ((west + 180) % 360 + 360) % 360 - 180;
   const bounds = {
@@ -731,6 +725,8 @@ function updateAirportViewport(west, south, east, north) {
     north: Math.min(90, north).toFixed(5),
   };
   const params = new URLSearchParams({ ...bounds, cycle: viewport.cycle });
+  for (const kind of kinds) params.append("kind", kind);
+  if (viewport.artcc) params.set("artcc", viewport.artcc);
   const key = params.toString();
   if (key === viewport.key) return;
   viewport.key = key;
@@ -744,14 +740,15 @@ function updateAirportViewport(west, south, east, north) {
   viewport.timer = setTimeout(async () => {
     const active = new AbortController();
     viewport.request = active;
+    const signal = viewport.controller ? AbortSignal.any([active.signal, viewport.controller.signal]) : active.signal;
     try {
-      const data = await api(`/v1/airspace/viewport?${params}`, { signal: active.signal });
-      if (active.signal.aborted || airportViewport !== viewport) return;
+      const data = await api(`/v1/airspace/viewport?${params}`, { signal });
+      if (signal.aborted) return;
       viewport.boundaries = data.boundaries;
       viewport.message.textContent = data.boundaries.length ? "" : "No airspace outlines in view.";
       drawPlot();
     } catch (error) {
-      if (active.signal.aborted || airportViewport !== viewport) return;
+      if (signal.aborted) return;
       viewport.boundaries = [];
       viewport.message.textContent = error.message;
       drawPlot();
@@ -829,7 +826,20 @@ function drawPlot() {
   }
   const latStart = centerY - height / (2 * scale);
   const latEnd = centerY + height / (2 * scale);
-  updateAirportViewport(lonStart, latStart, lonEnd, latEnd);
+  updateBoundaryViewport(airportViewport, lonStart, latStart, lonEnd, latEnd);
+  const classViewport = airspaceMap?.classViewport;
+  if (classViewport) {
+    const kinds = ["B", "C", "D", "E"].filter((kind) => airspaceMap.layers.get(kind)?.selected);
+    if (kinds.length) {
+      updateBoundaryViewport(classViewport, lonStart, latStart, lonEnd, latEnd, kinds);
+      classViewport.boundaries = classViewport.boundaries.filter((boundary) => kinds.includes(boundary.kind));
+    } else if (classViewport.key) {
+      clearTimeout(classViewport.timer);
+      classViewport.request?.abort();
+      classViewport.key = null;
+      classViewport.boundaries = [];
+    }
+  }
   for (let lat = Math.ceil(latStart / latStep) * latStep; lat <= latEnd; lat += latStep) {
     const [, y] = xy(centerX, lat);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
@@ -839,7 +849,7 @@ function drawPlot() {
   ctx.lineWidth = 2;
   ctx.setLineDash(partialRoute ? [5, 5] : []);
   const visible = new Map();
-  const viewportBoundaries = airportViewport?.boundaries || [];
+  const viewportBoundaries = airportViewport?.boundaries || classViewport?.boundaries || [];
   if (airspaceMap || airportBoundaries.length || viewportBoundaries.length) {
     const trace = (points) => {
       let previous;

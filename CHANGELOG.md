@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.21]
+
+### Changed
+
+- ARTCC class airspace overlays fetch only the selected classes in the current map view and ARTCC.
+
 ## [2.1.20]
 
 ### Changed

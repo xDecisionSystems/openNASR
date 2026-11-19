@@ -178,3 +178,13 @@ def test_viewport_follows_boundary_across_antimeridian(index):
     assert boundary["id"] == "ZPP"
     (line,) = boundary["rings"]
     assert {(p["lon"], p["lat"]) for p in line} == {(175, 10), (-175, 10)}
+
+
+def test_viewport_filters_by_kind_and_clips_to_selected_artcc(index):
+    bounds = (-112, 29, 24, 42)
+    unscoped = index.boundaries_in_view(*bounds, kinds={"FIR"})
+    assert [boundary["id"] for boundary in unscoped] == ["ZBB"]
+    (scoped,) = index.boundaries_in_view(*bounds, kinds={"FIR"}, artcc="ZAA")
+    assert scoped["id"] == "ZBB"
+    assert all(point["lon"] == -100 for line in scoped["rings"] for point in line)
+    assert index.boundaries_in_view(*bounds, kinds={"FIR"}, artcc="ZZZ") == []

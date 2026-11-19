@@ -212,14 +212,32 @@ class AirspaceIndex:
         return boundaries
 
     def boundaries_in_view(
-        self, west: float, south: float, span: float, north: float
+        self,
+        west: float,
+        south: float,
+        span: float,
+        north: float,
+        *,
+        kinds: set[str] | None = None,
+        artcc: str | None = None,
     ) -> list[dict]:
         """Clip boundary lines to a viewport without adding artificial edges."""
         tolerance = max(span, north - south) / 3000
+        extent = self.artcc_extent(None, None, artcc=artcc) if artcc else None
+        if extent is not None and extent.is_empty:
+            return []
         boundaries = []
         for wrapped, tree in self._trees.items():
             if tree is None:
                 continue
+            mask = extent
+            if wrapped and extent is not None:
+                mask = unary_union(
+                    [
+                        extent.intersection(box(0, -90, 180, 90)),
+                        translate(extent.intersection(box(-180, -90, 0, 90)), xoff=360),
+                    ]
+                )
             origin = 0 if wrapped else -180
             start = origin + (west - origin) % 360
             end = min(start + span, origin + 360)
@@ -230,12 +248,18 @@ class AirspaceIndex:
                 area = box(left, south, right, north)
                 for hit in tree.query(area):
                     region = self._regions[self._members[wrapped][hit]]
+                    kind = region.airspace_class or region.kind
+                    if kinds and kind not in kinds:
+                        continue
                     lines = clip_by_rect(
                         tree.geometries[hit].boundary, left, south, right, north
                     )
+                    if mask is not None and not lines.is_empty:
+                        lines = lines.intersection(mask)
                     rings = [
                         _display_ring(line, tolerance)
-                        for line in get_parts(lines)
+                        for geometry in get_parts(lines)
+                        for line in get_parts(geometry)
                         if line.geom_type in {"LineString", "LinearRing"}
                         and not line.is_empty
                     ]
