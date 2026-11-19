@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.14]
+
+### Fixed
+
+- The Airspace overview keeps Alaska and the Aleutians west of the contiguous U.S.
+
 ## [2.1.13]
 
 ### Fixed

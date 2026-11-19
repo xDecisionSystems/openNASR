@@ -639,7 +639,8 @@ function drawPlot() {
   const points = [
     ...plotted.filter((branch) => currentView !== "airports" || branch.visible).flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
   ].filter(available);
-  const reference = airspaceMap?.overview ? 0 : points[0]?.lon || 0;
+  // Keep both sides of the Aleutians west of the contiguous U.S.
+  const reference = airspaceMap?.overview ? -120 : points[0]?.lon || 0;
   const project = (point) => ({
     ...point,
     x: reference + ((point.lon - reference + 540) % 360) - 180,
