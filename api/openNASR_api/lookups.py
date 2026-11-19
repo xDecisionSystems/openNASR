@@ -133,7 +133,7 @@ def search_airports(rows, text: str) -> list[dict]:
             )
         )
     matches.sort(key=lambda match: (match[0], match[1]))
-    unique = {}
+    unique: dict[str, dict] = {}
     for _, identifier, match in matches:
         unique.setdefault(identifier, match)
         if len(unique) == 20:
