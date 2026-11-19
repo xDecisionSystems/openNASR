@@ -290,9 +290,23 @@ class AirspaceIndex:
                 )
         return boundaries
 
-    def artcc_extent(self, lat: float, lon: float) -> BaseGeometry:
+    def artcc_names(self) -> dict[str, str]:
+        return {
+            self._regions[index].id: self._regions[index].name for index in self._artcc
+        }
+
+    def artcc_extent(
+        self, lat: float | None, lon: float | None, *, artcc: str | None = None
+    ) -> BaseGeometry:
+        if artcc is not None:
+            indices = {
+                index for index in self._artcc if self._regions[index].id == artcc
+            }
+        else:
+            assert lat is not None and lon is not None
+            indices = self._hits(lat, lon) & self._artcc.keys()
         parts = []
-        for index in self._hits(lat, lon) & self._artcc.keys():
+        for index in indices:
             shape = self._artcc[index]
             if shape.bounds[2] <= 180:
                 parts.append(shape)

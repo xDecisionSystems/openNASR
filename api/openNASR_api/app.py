@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.18"
+API_VERSION = "0.2.19"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -297,6 +297,7 @@ class ArtccBoundary(BaseModel):
 class AirspaceBoundariesResponse(BaseModel):
     cycle: str
     boundaries: list[ArtccBoundary]
+    centers: dict[str, str] | None = None
 
 
 class MatchingBoundary(ArtccBoundary):
@@ -740,6 +741,7 @@ def create_app(
     @app.get(
         "/v1/airspace/boundaries",
         response_model=AirspaceBoundariesResponse,
+        response_model_exclude_none=True,
         responses=ERRORS,
         dependencies=secured,
         tags=["lookup"],
@@ -755,7 +757,11 @@ def create_app(
             chosen, index = store.airspace(cycle)
         except CycleUnavailableError as error:
             raise HTTPException(404 if cycle else 503, str(error)) from error
-        return {"cycle": chosen, "boundaries": index.boundaries(kind)}
+        return {
+            "cycle": chosen,
+            "boundaries": index.boundaries(kind),
+            "centers": index.artcc_names() if kind == "ARTCC" else None,
+        }
 
     @app.get(
         "/v1/airspace/layer",
@@ -766,14 +772,18 @@ def create_app(
     )
     def airspace_layer(
         layer: LayerName,
-        lat: Annotated[float, Query(ge=-90, le=90)],
-        lon: Annotated[float, Query(ge=-180, le=180)],
+        lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
+        lon: Annotated[float | None, Query(ge=-180, le=180)] = None,
         cycle: CycleParam = None,
+        artcc: Annotated[str | None, Query(pattern=r"^[A-Z0-9]{3}$")] = None,
     ) -> dict[str, Any]:
-        """Map features inside the ARTCCs that cover a point."""
-
+        """Map features in a selected ARTCC or the ARTCCs covering a point."""
+        if artcc is None and (lat is None or lon is None):
+            raise HTTPException(422, "provide an ARTCC code or both coordinates")
+        if artcc is not None and (lat is not None or lon is not None):
+            raise HTTPException(422, "provide either an ARTCC code or coordinates")
         try:
-            chosen, features = store.map_layer(layer, lat, lon, cycle)
+            chosen, features = store.map_layer(layer, lat, lon, cycle, artcc=artcc)
         except CycleUnavailableError as error:
             raise HTTPException(404 if cycle else 503, str(error)) from error
         return {"cycle": chosen, **features}

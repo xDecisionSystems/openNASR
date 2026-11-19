@@ -264,7 +264,7 @@ def test_main_page_serves_the_explorer_and_its_assets(client):
     assert page.status_code == 200 and page.headers["content-type"].startswith(
         "text/html"
     )
-    for tab in ("Airports", "Airspace", "Routes", "Arrivals", "Departures"):
+    for tab in ("Airports", "ARTCC", "Flight Plan", "Routes", "Arrivals", "Departures"):
         assert f">{tab}</button>" in page.text
     assert page.headers["cache-control"] == "no-cache"
     version = client.get("/openapi.json").json()["info"]["version"]

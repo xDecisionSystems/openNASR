@@ -17,14 +17,9 @@ const views = {
     caption: "Query an airport to plot its runways, helipads, and ILS localizers.",
   },
   airspace: {
-    examples: [["35.0402", "-106.609"], ["39.8561", "-104.6737"], ["47.4502", "-122.3088"], ["40.6413", "-73.7781"]],
-    title: "Find airspace at a point",
-    help: "Enter latitude and longitude in decimal degrees.",
-    fields: [
-      { name: "lat", label: "Latitude", min: -90, max: 90 },
-      { name: "lon", label: "Longitude", min: -180, max: 180 },
-    ],
-    caption: "All ARTCC boundaries. Search a point to focus the map.",
+    title: "Select an ARTCC",
+    help: "",
+    caption: "All ARTCC boundaries.",
   },
   flightplan: {
     examples: [["KABQ.DOOKK3.TXO..KTYR"], ["KDEN..KCOS"], ["KSEA..KPDX"], ["KJFK..KBOS"]],
@@ -155,6 +150,20 @@ function setView(name) {
   byId("query-title").textContent = view.title;
   byId("query-help").textContent = view.help;
   byId("plot-caption").textContent = view.caption;
+  byId("submit").hidden = name === "airspace";
+  byId("example").hidden = name === "airspace";
+  if (name === "airspace") {
+    const label = element("label", "ARTCC");
+    label.htmlFor = "query-artcc";
+    const select = element("select");
+    select.id = label.htmlFor;
+    select.name = "artcc";
+    byId("fields").replaceChildren(label, select);
+    resetResult();
+    loadAirspaceOverview();
+    return;
+  }
+
   byId("fields").replaceChildren(...view.fields.map((field) => {
     const group = element("div");
     const label = element("label", field.label);
@@ -180,7 +189,6 @@ function setView(name) {
   pickExample(name);
   resetResult();
   if (savedResults.has(name)) showResult(savedResults.get(name));
-  else if (name === "airspace") loadAirspaceOverview();
 }
 
 function resetResult() {
@@ -259,7 +267,6 @@ function facts(values) {
 }
 
 const coordinates = (point) => point ? `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}` : "";
-const altitude = (limit) => limit ? [limit.value, limit.unit, limit.code].filter(Boolean).join(" ") : "";
 const branchColors = ["#76dfca", "#ffc277", "#91bdff", "#ff9fca", "#d6ed91", "#bfb1ff", "#ffa299", "#76c8ef"];
 const branchName = (branch) => branch.name || branch.transition || branch.kind || "Published branch";
 
@@ -506,37 +513,43 @@ async function loadAirspaceOverview() {
   if (cycle.value) params.set("cycle", cycle.value);
   try {
     const data = await api(`/v1/airspace/boundaries?${params}`, { signal: active.signal });
-    if (!active.signal.aborted) addAirspaceMap({ cycle: data.cycle, artcc_boundaries: data.boundaries });
+    if (active.signal.aborted) return;
+    const select = byId("query-artcc");
+    const previous = select.value || savedInputs.get("airspace")?.get("artcc");
+    const names = Object.entries(data.centers).sort(([a], [b]) => a.localeCompare(b));
+    select.replaceChildren(new Option("All ARTCC", ""),
+      ...names.map(([id, name]) => new Option(name
+        ? `${id}: ${name.toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase())}` : id, id)));
+    if (Object.hasOwn(data.centers, previous)) select.value = previous;
+    const render = () => {
+      resetResult();
+      const artcc = select.value;
+      const selected = select.selectedOptions[0];
+      const boundaries = artcc ? data.boundaries.filter((boundary) => boundary.id === artcc) : data.boundaries;
+      addAirspaceMap({ cycle: data.cycle, artcc, label: selected.textContent, artcc_boundaries: boundaries });
+      results.replaceChildren(table("Published ARTCC boundaries", ["Center", "Altitude level"],
+        boundaries.map((boundary) => [boundary.id, boundary.level])));
+      byId("result-cycle").textContent = `Cycle ${data.cycle}`;
+    };
+    select.onchange = render;
+    render();
   } catch (error) {
     if (!active.signal.aborted) setStatus(error.message, true);
   }
 }
 
 function addAirspaceMap(data) {
-  if (data.position) plotPoints = [{ ...data.position, name: "Query point" }];
   const boundaries = data.artcc_boundaries;
-  const caption = !data.position ? "All ARTCC boundaries" : boundaries.length
-    ? `ARTCC · ${boundaries.map((boundary) => [boundary.id, boundary.level].filter(Boolean).join(" ")).join(" · ")}`
-    : "No ARTCC boundary covers this point.";
+  const caption = data.artcc ? data.label : "All ARTCC boundaries";
   byId("plot-caption").textContent = caption;
   canvas.setAttribute("aria-label", caption);
-  const map = { overview: !data.position, boundaries, layers: new Map(), controller: new AbortController() };
+  const map = { overview: !data.artcc, boundaries, layers: new Map(), controller: new AbortController() };
   airspaceMap = map;
   const controls = byId("airspace-layers");
   controls.hidden = false;
   const message = element("p", "", "layer-status");
   message.setAttribute("role", "status");
-  if (data.position) {
-    const overview = element("button", "Show all ARTCC");
-    overview.type = "button";
-    overview.addEventListener("click", () => {
-      savedResults.delete("airspace");
-      resetResult();
-      loadAirspaceOverview();
-    });
-    controls.append(overview);
-  }
-  const choices = data.position && boundaries.length ? [...boundaryLayers, ...airspaceLayers] : boundaryLayers;
+  const choices = data.artcc ? [...boundaryLayers, ...airspaceLayers] : boundaryLayers;
   for (const [key, name, color] of choices) {
     const isBoundary = boundaryLayers.some(([kind]) => kind === key);
     const checkbox = element("input");
@@ -563,8 +576,7 @@ function addAirspaceMap(data) {
         endpoint = "boundaries";
       } else {
         params.set("layer", key);
-        params.set("lat", data.position.lat);
-        params.set("lon", data.position.lon);
+        params.set("artcc", data.artcc);
         endpoint = "layer";
       }
       try {
@@ -611,14 +623,6 @@ function showResult(data) {
     );
     addAirportLayout(airport);
     addAirportProcedureLayers(airport, data.cycle);
-  } else if (currentView === "airspace") {
-    results.append(
-      table("Matching regions", ["Region", "Type", "Lower", "Upper"], data.regions.map(
-        (row) => [row.name || row.id, row.local_type || [row.kind, row.level].filter(Boolean).join(" · "), altitude(row.lower), altitude(row.upper)],
-      )),
-      element("p", data.not_covered, "coverage"),
-    );
-    addAirspaceMap(data);
   } else if (currentView === "flightplan") {
     plotPoints = data.points;
     partialRoute = !data.complete;
@@ -940,6 +944,7 @@ function drawPlot() {
 
 async function submit(event) {
   event.preventDefault();
+  if (currentView === "airspace") return;
   request?.abort();
   const activeRequest = new AbortController();
   request = activeRequest;
@@ -955,10 +960,6 @@ async function submit(event) {
     url = "/v1/route/resolve";
     options = { ...options, method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body) };
-  } else if (currentView === "airspace") {
-    params.set("lat", values.lat);
-    params.set("lon", values.lon);
-    url = `/v1/airspace/at?${params}`;
   } else if (currentView === "routes") {
     url = `/v1/airways/${encodeURIComponent(values.identifier.trim())}?${params}`;
   } else {

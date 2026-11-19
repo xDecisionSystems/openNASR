@@ -244,13 +244,19 @@ class CycleStore:
             yield chosen, nasr.query_table
 
     def map_layer(
-        self, layer: LayerName, lat: float, lon: float, effective_date: str | None
+        self,
+        layer: LayerName,
+        lat: float | None,
+        lon: float | None,
+        effective_date: str | None,
+        *,
+        artcc: str | None = None,
     ) -> tuple[str, dict]:
         chosen = effective_date or self.default_cycle()
         key = (chosen, layer)
         with self._lookup_lock(chosen):
             _, airspace = self.airspace(chosen)
-            extent = airspace.artcc_extent(lat, lon)
+            extent = airspace.artcc_extent(lat, lon, artcc=artcc)
             if extent.is_empty:
                 return chosen, {"points": [], "lines": []}
             with self._lock:

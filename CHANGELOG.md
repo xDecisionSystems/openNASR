@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.19]
+
+### Changed
+
+- The ARTCC tab lists centers by FAA code and name and focuses the map on selection.
+
 ## [2.1.18]
 
 ### Fixed

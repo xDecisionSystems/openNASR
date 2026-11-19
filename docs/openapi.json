@@ -152,6 +152,20 @@
             "title": "Boundaries",
             "type": "array"
           },
+          "centers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Centers"
+          },
           "cycle": {
             "title": "Cycle",
             "type": "string"
@@ -1338,7 +1352,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.18"
+    "version": "0.2.19"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1886,7 +1900,7 @@
     },
     "/v1/airspace/layer": {
       "get": {
-        "description": "Map features inside the ARTCCs that cover a point.",
+        "description": "Map features in a selected ARTCC or the ARTCCs covering a point.",
         "operationId": "airspace_layer_v1_airspace_layer_get",
         "parameters": [
           {
@@ -1911,23 +1925,37 @@
           {
             "in": "query",
             "name": "lat",
-            "required": true,
+            "required": false,
             "schema": {
-              "maximum": 90,
-              "minimum": -90,
-              "title": "Lat",
-              "type": "number"
+              "anyOf": [
+                {
+                  "maximum": 90,
+                  "minimum": -90,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
             }
           },
           {
             "in": "query",
             "name": "lon",
-            "required": true,
+            "required": false,
             "schema": {
-              "maximum": 180,
-              "minimum": -180,
-              "title": "Lon",
-              "type": "number"
+              "anyOf": [
+                {
+                  "maximum": 180,
+                  "minimum": -180,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lon"
             }
           },
           {
@@ -1947,6 +1975,23 @@
               ],
               "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
               "title": "Cycle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "artcc",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Z0-9]{3}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Artcc"
             }
           }
         ],
