@@ -119,7 +119,7 @@ footer span { border-left: 1px solid #bdccd0; padding-left: 12px; }
 @media print {
   body { background: white; }
   .shell { width: 100%; }
-  .topbar, .intro, .tabs, .query-card, .print-airport, #ils-toggle, #zoom-box, .zoom-controls, .raw, footer { display: none; }
+  .topbar, .intro, .tabs, .query-card, .print-airport, #airport-procedure-layers, #zoom-box, .zoom-controls, .raw, footer { display: none; }
   .workspace { display: block; }
   .card { box-shadow: none; }
   .plot-card { break-inside: avoid; background: white; color: var(--ink); border-color: var(--line); }

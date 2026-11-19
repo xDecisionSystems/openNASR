@@ -203,8 +203,6 @@ function resetResult() {
   canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
   canvas.closest(".plot-card").classList.toggle("airspace-plot", currentView === "airspace");
   canvas.closest(".plot-card").classList.remove("ils-plot");
-  byId("ils-toggle").hidden = true;
-  byId("ils-wedges").checked = true;
   byId("plot-title").textContent = {
     airports: "Airport layout", airspace: "ARTCC boundaries", arrivals: "Procedure branches", departures: "Procedure branches",
   }[currentView] || "Coordinate plot";
@@ -353,17 +351,13 @@ function addAirportLayout(airport) {
     if (row.position || row.wedge.length) {
       plotBranches.push({
         points: row.position ? [{ ...row.position, name }] : [],
-        wedge: row.wedge, kind: "localizer", color: "#ffc0ee", visible: true,
+        wedge: row.wedge, kind: "localizer", color: "#ffc0ee", visible: false,
       });
     }
     return [row.id, row.runway_end, coordinates(row.position),
-      row.wedge.length ? "Plotted" : "Geometry unavailable"];
+      row.wedge.length ? "Available" : "Geometry unavailable"];
   });
   results.append(table("ILS localizers", ["Identifier", "Runway", "Transmitter position", "Course wedge"], localizers));
-  if (airport.localizers.some((row) => row.wedge.length)) {
-    canvas.closest(".plot-card").classList.add("ils-plot");
-    byId("ils-toggle").hidden = false;
-  }
 }
 
 function addAirportProcedureLayers(airport, selectedCycle) {
@@ -371,6 +365,21 @@ function addAirportProcedureLayers(airport, selectedCycle) {
   airportProcedureRequest = controller;
   const controls = byId("airport-procedure-layers");
   controls.hidden = false;
+  const localizers = plotBranches.filter((branch) => branch.kind === "localizer");
+  if (localizers.length) {
+    const checkbox = element("input");
+    checkbox.type = "checkbox";
+    const label = element("label", "ILS");
+    label.prepend(checkbox);
+    controls.append(label);
+    checkbox.addEventListener("change", () => {
+      for (const branch of localizers) branch.visible = checkbox.checked;
+      canvas.closest(".plot-card").classList.toggle("ils-plot",
+        checkbox.checked && localizers.some((branch) => branch.wedge.length));
+      drawPlot();
+    });
+  }
+  const messages = [];
   const identifier = encodeURIComponent(airport.icao_id || airport.id);
   for (const [kind, name, color] of airspaceLayers.filter(([kind]) => kind === "arrivals" || kind === "departures")) {
     const checkbox = element("input");
@@ -417,8 +426,10 @@ function addAirportProcedureLayers(airport, selectedCycle) {
         label.removeAttribute("aria-busy");
       }
     });
-    controls.append(label, message);
+    controls.append(label);
+    messages.push(message);
   }
+  controls.append(...messages);
 }
 
 const boundaryLayers = [
@@ -617,17 +628,16 @@ function drawPlot() {
   const padding = 34;
   const available = (point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lon);
   const plotted = plotBranches.length ? plotBranches : [{ points: plotPoints, color: "#76dfca", visible: true }];
-  const showWedges = printing || byId("ils-wedges").checked;
-  const wedges = showWedges ? plotted.filter((branch) => branch.wedge?.length) : [];
+  const wedges = plotted.filter((branch) => branch.visible && branch.wedge?.length);
   const note = byId("plot-caption");
-  if (!byId("ils-toggle").hidden) {
+  if (currentView === "airports" && airportCaption) {
     const caption = wedges.length ? `${airportCaption} ${ilsPlotNote}` : airportCaption;
     if (note.textContent !== caption) note.textContent = caption;
     canvas.setAttribute("aria-label", note.textContent);
   }
   const boundaryRings = airspaceMap?.boundaries.flatMap((boundary) => boundary.rings) || [];
   const points = [
-    ...plotted.filter((branch) => branch.kind !== "airport-procedure" || branch.visible).flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
+    ...plotted.filter((branch) => currentView !== "airports" || branch.visible).flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
   ].filter(available);
   const reference = airspaceMap?.overview ? 0 : points[0]?.lon || 0;
   const project = (point) => ({
@@ -1002,7 +1012,6 @@ canvas.addEventListener("lostpointercapture", (event) => {
   drag = null;
   zoomBox.hidden = true;
 });
-byId("ils-wedges").addEventListener("change", drawPlot);
 window.addEventListener("beforeprint", () => { printing = true; drawPlot(); });
 window.addEventListener("afterprint", () => { printing = false; drawPlot(); });
 setView(currentView);

@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.12]
+
+### Changed
+
+- Airport map checkboxes share a wrapping row. ILS toggles wedges and transmitter locations together and starts off.
+
 ## [2.1.11]
 
 ### Fixed
