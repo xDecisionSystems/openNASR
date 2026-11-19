@@ -266,8 +266,12 @@ def test_main_page_serves_the_explorer_and_its_assets(client):
     )
     for tab in ("Airports", "Airspace", "Routes", "Arrivals", "Departures"):
         assert f">{tab}</button>" in page.text
+    assert page.headers["cache-control"] == "no-cache"
+    version = client.get("/openapi.json").json()["info"]["version"]
     for asset in ("explorer.css", "explorer.js"):
-        assert client.get(f"/ui/{asset}").status_code == 200
+        url = f"/ui/{asset}?v={version}"
+        assert f'"{url}"' in page.text
+        assert client.get(url).status_code == 200
 
 
 @pytest.mark.parametrize(

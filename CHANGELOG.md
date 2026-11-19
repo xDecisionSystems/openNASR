@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.13]
+
+### Fixed
+
+- The explorer revalidates its HTML and loads versioned assets to avoid mixing releases.
+
 ## [2.1.12]
 
 ### Changed

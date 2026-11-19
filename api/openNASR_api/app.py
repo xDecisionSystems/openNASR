@@ -15,7 +15,7 @@ from typing import Annotated, Any, Literal
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.12"
+API_VERSION = "0.2.13"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -371,8 +371,11 @@ def create_app(
     app.mount("/ui", StaticFiles(directory=frontend), name="ui")
 
     @app.get("/", include_in_schema=False)
-    def explorer() -> FileResponse:
-        return FileResponse(frontend / "index.html", media_type="text/html")
+    def explorer() -> HTMLResponse:
+        html = (frontend / "index.html").read_text(encoding="utf-8")
+        for asset in ("explorer.css", "explorer.js"):
+            html = html.replace(f'/ui/{asset}"', f'/ui/{asset}?v={API_VERSION}"')
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):
