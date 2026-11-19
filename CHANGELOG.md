@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.20]
+
+### Changed
+
+- The ARTCC tab groups FIR, CTA, UTA, and CTA/FIR in an Other Airspace dropdown.
+
 ## [2.1.19]
 
 ### Changed

@@ -158,7 +158,16 @@ function setView(name) {
     const select = element("select");
     select.id = label.htmlFor;
     select.name = "artcc";
-    byId("fields").replaceChildren(label, select);
+    const otherLabel = element("label", "Other Airspace");
+    otherLabel.htmlFor = "query-other-airspace";
+    const other = element("select");
+    other.id = otherLabel.htmlFor;
+    other.name = "other-airspace";
+    other.append(new Option("None", ""), ...boundaryLayers
+      .filter(([kind]) => kind.length > 1)
+      .map(([kind, name]) => new Option(name, kind)));
+    other.value = savedInputs.get(name)?.get(other.name) || "";
+    byId("fields").replaceChildren(label, select, otherLabel, other);
     resetResult();
     loadAirspaceOverview();
     return;
@@ -549,7 +558,39 @@ function addAirspaceMap(data) {
   controls.hidden = false;
   const message = element("p", "", "layer-status");
   message.setAttribute("role", "status");
-  const choices = data.artcc ? [...boundaryLayers, ...airspaceLayers] : boundaryLayers;
+  const classLayers = boundaryLayers.filter(([kind]) => kind.length === 1);
+  const choices = data.artcc ? [...classLayers, ...airspaceLayers] : classLayers;
+  const other = byId("query-other-airspace");
+  let otherRequest;
+  const loadOtherAirspace = async () => {
+    otherRequest?.abort();
+    map.layers.delete("other-airspace");
+    other.removeAttribute("aria-busy");
+    message.textContent = "";
+    drawPlot();
+    if (!other.value) return;
+    const kind = other.value;
+    const active = new AbortController();
+    otherRequest = active;
+    const signal = AbortSignal.any([active.signal, map.controller.signal]);
+    other.setAttribute("aria-busy", "true");
+    try {
+      const params = new URLSearchParams({ kind, cycle: data.cycle });
+      const response = await api(`/v1/airspace/boundaries?${params}`, { signal });
+      if (signal.aborted) return;
+      const lines = response.boundaries.flatMap((boundary) => boundary.rings);
+      const color = boundaryLayers.find(([key]) => key === kind)[2];
+      map.layers.set("other-airspace", { color, selected: true, data: { lines, points: [] } });
+      if (!lines.length) message.textContent = `No ${kind} boundaries are available for this cycle.`;
+      drawPlot();
+    } catch (error) {
+      if (!signal.aborted) message.textContent = error.message;
+    } finally {
+      if (otherRequest === active && airspaceMap === map) other.removeAttribute("aria-busy");
+    }
+  };
+  other.onchange = loadOtherAirspace;
+  other.removeAttribute("aria-busy");
   for (const [key, name, color] of choices) {
     const isBoundary = boundaryLayers.some(([kind]) => kind === key);
     const checkbox = element("input");
@@ -600,7 +641,7 @@ function addAirspaceMap(data) {
     controls.append(label);
   }
   controls.append(message);
-  drawPlot();
+  loadOtherAirspace();
 }
 
 function showResult(data) {
