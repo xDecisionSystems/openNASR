@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.25]
+
+### Fixed
+
+- Airport search matches common FAA name abbreviations and punctuation variants.
+
 ## [2.1.24]
 
 ### Changed

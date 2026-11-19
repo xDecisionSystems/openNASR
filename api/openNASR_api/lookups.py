@@ -100,10 +100,28 @@ def _localizers(
     return localizers
 
 
+_AIRPORT_WORDS = {
+    "INTL": "INTERNATIONAL",
+    "MUNI": "MUNICIPAL",
+    "RGNL": "REGIONAL",
+    "MEML": "MEMORIAL",
+    "ARPT": "AIRPORT",
+}
+_AIRPORT_TOKENS = re.compile(r"[A-Z0-9]+")
+
+
+def _airport_search_text(value: str) -> str:
+    words = _AIRPORT_TOKENS.findall(value.upper())
+    if words and words[-1] in {"ARPT", "AIRPORT"}:
+        words.pop()
+    return " ".join(_AIRPORT_WORDS.get(word, word) for word in words)
+
+
 def search_airports(rows, text: str) -> list[dict]:
     term = text.strip().upper()
     if not term:
         return []
+    text_term = _airport_search_text(term)
     matches = []
     for row in rows:
         identifiers = (row.get("ICAO_ID", "").upper(), row.get("ARPT_ID", "").upper())
@@ -116,7 +134,10 @@ def search_airports(rows, text: str) -> list[dict]:
             rank = 0
         elif any(code.startswith(term) for code in identifiers):
             rank = 1
-        elif term in name.upper() or term in city.upper():
+        elif text_term and (
+            text_term in _airport_search_text(name)
+            or text_term in _airport_search_text(city)
+        ):
             rank = 2
         else:
             continue
@@ -126,6 +147,7 @@ def search_airports(rows, text: str) -> list[dict]:
                 identifier,
                 {
                     "id": identifier,
+                    "faa_id": identifiers[1],
                     "name": name,
                     "city": city,
                     "state": row.get("STATE_CODE", ""),

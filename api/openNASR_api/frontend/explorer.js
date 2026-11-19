@@ -12,7 +12,7 @@ const views = {
   airports: {
     examples: [["KABQ"], ["KDEN"], ["KSEA"], ["KJFK"]],
     title: "Find an airport",
-    help: "Search by identifier, airport name, or city.",
+    help: "Search by ICAO or FAA code, city, or airport name.",
     fields: [{ name: "identifier", label: "Airport search" }],
     caption: "Query an airport to plot its runways, helipads, and ILS localizers.",
   },
@@ -736,7 +736,8 @@ async function searchAirports(text, active) {
   if (active.signal.aborted) return;
   for (const match of data.airports) {
     const place = [match.city, match.state].filter(Boolean).join(", ");
-    const button = element("button", [match.id, match.name, place].filter(Boolean).join(" · "));
+    const code = match.faa_id && match.faa_id !== match.id ? `${match.id} / ${match.faa_id}` : match.id;
+    const button = element("button", [code, match.name, place].filter(Boolean).join(" · "));
     button.type = "button";
     button.dataset.airport = match.id;
     button.disabled = selectedAirports.has(match.id);

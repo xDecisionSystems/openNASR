@@ -257,3 +257,25 @@ def test_plot_data_preserves_each_branch_and_unresolved_waypoints():
     assert "MISSING" in first["waypoints"][1]["issue"]
     assert [point["name"] for point in second["waypoints"]] == ["SHARED", "RIGHT"]
     assert second["waypoints"][-1]["position"] == {"lat": 5, "lon": 6}
+
+
+@pytest.mark.parametrize(
+    "term",
+    [
+        "KABQ",
+        "abq",
+        "Albuquerque",
+        "Albuquerque International Sunport Airport",
+    ],
+)
+def test_airport_search_accepts_codes_city_and_expanded_names(term):
+    rows = [
+        {
+            "ICAO_ID": "KABQ",
+            "ARPT_ID": "ABQ",
+            "CITY": "ALBUQUERQUE",
+            "ARPT_NAME": "ALBUQUERQUE INTL SUNPORT",
+        }
+    ]
+    (match,) = lookups.search_airports(rows, term)
+    assert (match["id"], match["faa_id"]) == ("KABQ", "ABQ")
