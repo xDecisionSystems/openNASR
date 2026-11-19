@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.22]
+
+### Changed
+
+- The ARTCC and Other Airspace menus support multiple selections.
+
 ## [2.1.21]
 
 ### Changed

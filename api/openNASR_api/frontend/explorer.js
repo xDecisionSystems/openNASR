@@ -158,16 +158,22 @@ function setView(name) {
     const select = element("select");
     select.id = label.htmlFor;
     select.name = "artcc";
+    select.multiple = true;
+    select.size = 5;
     const otherLabel = element("label", "Other Airspace");
     otherLabel.htmlFor = "query-other-airspace";
     const other = element("select");
     other.id = otherLabel.htmlFor;
     other.name = "other-airspace";
-    other.append(new Option("None", ""), ...boundaryLayers
+    other.multiple = true;
+    other.size = 4;
+    other.append(...boundaryLayers
       .filter(([kind]) => kind.length > 1)
       .map(([kind, name]) => new Option(name, kind)));
-    other.value = savedInputs.get(name)?.get(other.name) || "";
-    byId("fields").replaceChildren(label, select, otherLabel, other);
+    const previousOther = savedInputs.get(name)?.getAll(other.name) || [];
+    for (const option of other.options) option.selected = previousOther.includes(option.value);
+    const hint = element("p", "Use Ctrl or ⌘ to select or clear multiple options. With no center selected, the map shows all ARTCCs.", "empty");
+    byId("fields").replaceChildren(label, select, otherLabel, other, hint);
     resetResult();
     loadAirspaceOverview();
     return;
@@ -525,18 +531,19 @@ async function loadAirspaceOverview() {
     const data = await api(`/v1/airspace/boundaries?${params}`, { signal: active.signal });
     if (active.signal.aborted) return;
     const select = byId("query-artcc");
-    const previous = select.value || savedInputs.get("airspace")?.get("artcc");
+    const previous = select.options.length ? [...select.selectedOptions].map((option) => option.value)
+      : savedInputs.get("airspace")?.getAll("artcc") || [];
     const names = Object.entries(data.centers).sort(([a], [b]) => a.localeCompare(b));
-    select.replaceChildren(new Option("All ARTCC", ""),
-      ...names.map(([id, name]) => new Option(name
+    select.replaceChildren(...names.map(([id, name]) => new Option(name
         ? `${id}: ${name.toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase())}` : id, id)));
-    if (Object.hasOwn(data.centers, previous)) select.value = previous;
+    for (const option of select.options) option.selected = previous.includes(option.value);
     const render = () => {
       resetResult();
-      const artcc = select.value;
-      const selected = select.selectedOptions[0];
-      const boundaries = artcc ? data.boundaries.filter((boundary) => boundary.id === artcc) : data.boundaries;
-      addAirspaceMap({ cycle: data.cycle, artcc, label: selected.textContent, artcc_boundaries: boundaries });
+      const selected = [...select.selectedOptions];
+      const artcc = selected.map((option) => option.value);
+      const label = selected.length === 1 ? selected[0].textContent : artcc.join(", ");
+      const boundaries = artcc.length ? data.boundaries.filter((boundary) => artcc.includes(boundary.id)) : data.boundaries;
+      addAirspaceMap({ cycle: data.cycle, artcc, label, artcc_boundaries: boundaries });
       results.replaceChildren(table("Published ARTCC boundaries", ["Center", "Altitude level"],
         boundaries.map((boundary) => [boundary.id, boundary.level])));
       byId("result-cycle").textContent = `Cycle ${data.cycle}`;
@@ -550,10 +557,10 @@ async function loadAirspaceOverview() {
 
 function addAirspaceMap(data) {
   const boundaries = data.artcc_boundaries;
-  const caption = data.artcc ? data.label : "All ARTCC boundaries";
+  const caption = data.artcc.length ? data.label : "All ARTCC boundaries";
   byId("plot-caption").textContent = caption;
   canvas.setAttribute("aria-label", caption);
-  const map = { overview: !data.artcc, boundaries, layers: new Map(), controller: new AbortController() };
+  const map = { boundaries, layers: new Map(), controller: new AbortController() };
   airspaceMap = map;
   const controls = byId("airspace-layers");
   controls.hidden = false;
@@ -561,32 +568,42 @@ function addAirspaceMap(data) {
   message.setAttribute("role", "status");
   map.classViewport = { cycle: data.cycle, artcc: data.artcc, message, boundaries: [], controller: map.controller };
   const classLayers = boundaryLayers.filter(([kind]) => kind.length === 1);
-  const choices = data.artcc ? [...classLayers, ...airspaceLayers] : classLayers;
+  const choices = data.artcc.length ? [...classLayers, ...airspaceLayers] : classLayers;
   const other = byId("query-other-airspace");
   let otherRequest;
   const loadOtherAirspace = async () => {
     otherRequest?.abort();
-    map.layers.delete("other-airspace");
+    for (const [kind] of boundaryLayers) {
+      if (kind.length > 1) map.layers.delete(kind);
+    }
     other.removeAttribute("aria-busy");
     message.textContent = "";
     drawPlot();
-    if (!other.value) return;
-    const kind = other.value;
+    const kinds = [...other.selectedOptions].map((option) => option.value);
+    if (!kinds.length) return;
     const active = new AbortController();
     otherRequest = active;
     const signal = AbortSignal.any([active.signal, map.controller.signal]);
     other.setAttribute("aria-busy", "true");
     try {
-      const params = new URLSearchParams({ kind, cycle: data.cycle });
-      const response = await api(`/v1/airspace/boundaries?${params}`, { signal });
+      const outcomes = await Promise.allSettled(kinds.map(async (kind) => {
+        const params = new URLSearchParams({ kind, cycle: data.cycle });
+        const response = await api(`/v1/airspace/boundaries?${params}`, { signal });
+        return { kind, lines: response.boundaries.flatMap((boundary) => boundary.rings) };
+      }));
       if (signal.aborted) return;
-      const lines = response.boundaries.flatMap((boundary) => boundary.rings);
-      const color = boundaryLayers.find(([key]) => key === kind)[2];
-      map.layers.set("other-airspace", { color, selected: true, data: { lines, points: [] } });
-      if (!lines.length) message.textContent = `No ${kind} boundaries are available for this cycle.`;
+      const unavailable = [];
+      outcomes.forEach((outcome, index) => {
+        if (outcome.status === "rejected" || !outcome.value.lines.length) {
+          unavailable.push(kinds[index]);
+          return;
+        }
+        const { kind, lines } = outcome.value;
+        const color = boundaryLayers.find(([key]) => key === kind)[2];
+        map.layers.set(kind, { color, selected: true, data: { lines, points: [] } });
+      });
+      if (unavailable.length) message.textContent = `No outlines loaded for ${unavailable.join(", ")}.`;
       drawPlot();
-    } catch (error) {
-      if (!signal.aborted) message.textContent = error.message;
     } finally {
       if (otherRequest === active && airspaceMap === map) other.removeAttribute("aria-busy");
     }
@@ -614,7 +631,7 @@ function addAirspaceMap(data) {
       const params = new URLSearchParams();
       if (data.cycle || cycle.value) params.set("cycle", data.cycle || cycle.value);
       params.set("layer", key);
-      params.set("artcc", data.artcc);
+      for (const id of data.artcc) params.append("artcc", id);
       try {
         const response = await api(`/v1/airspace/layer?${params}`, { signal: map.controller.signal });
         if (airspaceMap !== map) return;
@@ -726,7 +743,7 @@ function updateBoundaryViewport(viewport, west, south, east, north, kinds = []) 
   };
   const params = new URLSearchParams({ ...bounds, cycle: viewport.cycle });
   for (const kind of kinds) params.append("kind", kind);
-  if (viewport.artcc) params.set("artcc", viewport.artcc);
+  for (const id of viewport.artcc || []) params.append("artcc", id);
   const key = params.toString();
   if (key === viewport.key) return;
   viewport.key = key;
@@ -784,7 +801,7 @@ function drawPlot() {
     ...plotted.filter((branch) => currentView !== "airports" || branch.visible).flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
   ].filter(available);
   // Keep both sides of the Aleutians west of the contiguous U.S.
-  const reference = airspaceMap?.overview ? -120 : points[0]?.lon || 0;
+  const reference = airspaceMap ? -120 : points[0]?.lon || 0;
   const project = (point) => ({
     ...point,
     x: reference + ((point.lon - reference + 540) % 360) - 180,

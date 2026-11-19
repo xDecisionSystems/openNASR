@@ -250,7 +250,7 @@ class CycleStore:
         lon: float | None,
         effective_date: str | None,
         *,
-        artcc: str | None = None,
+        artcc: str | list[str] | None = None,
     ) -> tuple[str, dict]:
         chosen = effective_date or self.default_cycle()
         key = (chosen, layer)

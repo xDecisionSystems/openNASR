@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.21"
+API_VERSION = "0.2.22"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -726,7 +726,9 @@ def create_app(
         north: Annotated[float, Query(ge=-90, le=90)],
         cycle: CycleParam = None,
         kind: Annotated[list[Literal["B", "C", "D", "E"]] | None, Query()] = None,
-        artcc: Annotated[str | None, Query(pattern=r"^[A-Z0-9]{3}$")] = None,
+        artcc: Annotated[
+            list[Annotated[str, Field(pattern=r"^[A-Z0-9]{3}$")]] | None, Query()
+        ] = None,
     ) -> dict[str, Any]:
         """Published airspace boundary lines within a map viewport."""
         if south >= north:
@@ -779,7 +781,9 @@ def create_app(
         lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
         lon: Annotated[float | None, Query(ge=-180, le=180)] = None,
         cycle: CycleParam = None,
-        artcc: Annotated[str | None, Query(pattern=r"^[A-Z0-9]{3}$")] = None,
+        artcc: Annotated[
+            list[Annotated[str, Field(pattern=r"^[A-Z0-9]{3}$")]] | None, Query()
+        ] = None,
     ) -> dict[str, Any]:
         """Map features in a selected ARTCC or the ARTCCs covering a point."""
         if artcc is None and (lat is None or lon is None):

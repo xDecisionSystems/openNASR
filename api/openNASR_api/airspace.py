@@ -219,7 +219,7 @@ class AirspaceIndex:
         north: float,
         *,
         kinds: set[str] | None = None,
-        artcc: str | None = None,
+        artcc: str | list[str] | None = None,
     ) -> list[dict]:
         """Clip boundary lines to a viewport without adding artificial edges."""
         tolerance = max(span, north - south) / 3000
@@ -320,11 +320,16 @@ class AirspaceIndex:
         }
 
     def artcc_extent(
-        self, lat: float | None, lon: float | None, *, artcc: str | None = None
+        self,
+        lat: float | None,
+        lon: float | None,
+        *,
+        artcc: str | list[str] | None = None,
     ) -> BaseGeometry:
         if artcc is not None:
+            centers = {artcc} if isinstance(artcc, str) else set(artcc)
             indices = {
-                index for index in self._artcc if self._regions[index].id == artcc
+                index for index in self._artcc if self._regions[index].id in centers
             }
         else:
             assert lat is not None and lon is not None
