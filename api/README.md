@@ -42,3 +42,10 @@ down. Put a TLS reverse proxy (NPMplus) in front; the service itself speaks plai
 must choose a working DuckDB version for the CPU (REPLAN.md, "DuckDB version selection").
 
 On proxopotamus use `deploy/proxmox/install.sh --role api`. Set `OPENNASR_API_KEYS` for key auth, or `OPENNASR_API_AUTH=none` to run without keys on a private network (it logs a warning).
+
+To query a map layer by shape, send `POST /v1/airspace/layer` with a GeoJSON
+`Polygon` or `MultiPolygon` in `boundary`, a `layer` such as `airports`,
+`fixes`, or `airways`, and an optional `cycle`. Coordinates use longitude
+followed by latitude. Close each ring by repeating its first position. Split
+boundaries that cross the antimeridian into a MultiPolygon. The response
+includes points inside or on the boundary and lines clipped to the shape.

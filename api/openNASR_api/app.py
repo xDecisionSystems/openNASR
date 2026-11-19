@@ -20,6 +20,8 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from shapely.geometry import shape
+
 from openNASR.exceptions import ConfigurationError
 from openNASR.icaomessage import IcaoFlightPlan, IcaoMessageError
 from openNASR.routejson import route_result_to_dict
@@ -31,7 +33,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.32"
+API_VERSION = "0.2.33"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -347,6 +349,32 @@ class AirspaceLayerResponse(BaseModel):
     cycle: str
     points: list[AirportMapPoint]
     lines: list[list[Position]]
+
+
+BoundaryPosition = tuple[
+    Annotated[float, Field(ge=-180, le=180)],
+    Annotated[float, Field(ge=-90, le=90)],
+]
+BoundaryRing = Annotated[list[BoundaryPosition], Field(min_length=4, max_length=10_000)]
+BoundaryRings = Annotated[list[BoundaryRing], Field(min_length=1)]
+
+
+class BoundaryPolygon(BaseModel):
+    type: Literal["Polygon"]
+    coordinates: BoundaryRings
+
+
+class BoundaryMultiPolygon(BaseModel):
+    type: Literal["MultiPolygon"]
+    coordinates: Annotated[list[BoundaryRings], Field(min_length=1)]
+
+
+class BoundaryLayerRequest(BaseModel):
+    layer: LayerName
+    boundary: Annotated[
+        BoundaryPolygon | BoundaryMultiPolygon, Field(discriminator="type")
+    ]
+    cycle: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 class Health(BaseModel):
@@ -862,6 +890,37 @@ def create_app(
             "boundaries": index.boundaries(kind),
             "centers": index.artcc_names() if kind == "ARTCC" else None,
         }
+
+    @app.post(
+        "/v1/airspace/layer",
+        response_model=AirspaceLayerResponse,
+        response_model_exclude_none=True,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def airspace_layer_in_boundary(request: BoundaryLayerRequest) -> dict[str, Any]:
+        """Return points inside a GeoJSON boundary and lines clipped to it."""
+        boundary = request.boundary
+        polygons = (
+            [boundary.coordinates]
+            if isinstance(boundary, BoundaryPolygon)
+            else boundary.coordinates
+        )
+        if sum(len(ring) for polygon in polygons for ring in polygon) > 10_000:
+            raise HTTPException(422, "boundary must have at most 10,000 positions")
+        if any(ring[0] != ring[-1] for polygon in polygons for ring in polygon):
+            raise HTTPException(422, "boundary rings must be closed")
+        extent = shape(boundary.model_dump())
+        if extent.is_empty or not extent.is_valid:
+            raise HTTPException(422, "boundary must be a valid Polygon or MultiPolygon")
+        try:
+            chosen, features = store.map_layer(
+                request.layer, None, None, request.cycle, boundary=extent
+            )
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if request.cycle else 503, str(error)) from error
+        return {"cycle": chosen, **features}
 
     @app.get(
         "/v1/airspace/layer",

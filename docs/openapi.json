@@ -648,6 +648,148 @@
         "title": "ArtccBoundary",
         "type": "object"
       },
+      "BoundaryLayerRequest": {
+        "properties": {
+          "boundary": {
+            "discriminator": {
+              "mapping": {
+                "MultiPolygon": "#/components/schemas/BoundaryMultiPolygon",
+                "Polygon": "#/components/schemas/BoundaryPolygon"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoundaryPolygon"
+              },
+              {
+                "$ref": "#/components/schemas/BoundaryMultiPolygon"
+              }
+            ],
+            "title": "Boundary"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "layer": {
+            "enum": [
+              "airports",
+              "departures",
+              "arrivals",
+              "airways",
+              "fixes",
+              "vors",
+              "ndbs",
+              "other-navaids"
+            ],
+            "title": "Layer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer",
+          "boundary"
+        ],
+        "title": "BoundaryLayerRequest",
+        "type": "object"
+      },
+      "BoundaryMultiPolygon": {
+        "properties": {
+          "coordinates": {
+            "items": {
+              "items": {
+                "items": {
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "maximum": 180.0,
+                      "minimum": -180.0,
+                      "type": "number"
+                    },
+                    {
+                      "maximum": 90.0,
+                      "minimum": -90.0,
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array"
+                },
+                "maxItems": 10000,
+                "minItems": 4,
+                "type": "array"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Coordinates",
+            "type": "array"
+          },
+          "type": {
+            "const": "MultiPolygon",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "BoundaryMultiPolygon",
+        "type": "object"
+      },
+      "BoundaryPolygon": {
+        "properties": {
+          "coordinates": {
+            "items": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "maximum": 180.0,
+                    "minimum": -180.0,
+                    "type": "number"
+                  },
+                  {
+                    "maximum": 90.0,
+                    "minimum": -90.0,
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "maxItems": 10000,
+              "minItems": 4,
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Coordinates",
+            "type": "array"
+          },
+          "type": {
+            "const": "Polygon",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "BoundaryPolygon",
+        "type": "object"
+      },
       "CycleInfo": {
         "properties": {
           "effective_date": {
@@ -1460,7 +1602,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.32"
+    "version": "0.2.33"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2308,6 +2450,94 @@
           }
         ],
         "summary": "Airspace Layer",
+        "tags": [
+          "lookup"
+        ]
+      },
+      "post": {
+        "description": "Return points inside a GeoJSON boundary and lines clipped to it.",
+        "operationId": "airspace_layer_in_boundary_v1_airspace_layer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoundaryLayerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirspaceLayerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown identifier or cycle"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No cycle is available yet"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Airspace Layer In Boundary",
         "tags": [
           "lookup"
         ]

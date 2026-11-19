@@ -11,6 +11,8 @@ import logging
 from pathlib import Path
 import threading
 
+from shapely.geometry.base import BaseGeometry
+
 from openNASR.exceptions import TableNotFoundError
 from openNASR.flightplan import RouteResolver
 from openNASR.nasr import NASR
@@ -254,12 +256,17 @@ class CycleStore:
         effective_date: str | None,
         *,
         artcc: str | list[str] | None = None,
+        boundary: BaseGeometry | None = None,
     ) -> tuple[str, dict]:
         chosen = effective_date or self.default_cycle()
         key = (chosen, layer)
         with self._lookup_lock(chosen):
-            _, airspace = self.airspace(chosen)
-            extent = airspace.artcc_extent(lat, lon, artcc=artcc)
+            extent = boundary
+            if extent is None:
+                _, airspace = self.airspace(chosen)
+                extent = airspace.artcc_extent(lat, lon, artcc=artcc)
+            elif chosen not in self.cycles():
+                raise CycleUnavailableError(f"cycle {chosen} is not available")
             if extent.is_empty:
                 return chosen, {"points": [], "lines": []}
             with self._lock:

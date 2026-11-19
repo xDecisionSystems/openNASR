@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.33]
+
+### Added
+
+- Query map layers with a GeoJSON Polygon or MultiPolygon.
+
 ## [2.1.32]
 
 ### Added

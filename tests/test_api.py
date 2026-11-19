@@ -282,3 +282,28 @@ def test_airspace_at_validates_the_position(client, params):
     assert (
         client.get("/v1/airspace/at", params=params, headers=HEADERS).status_code == 422
     )
+
+
+def test_airspace_layer_can_query_a_geojson_boundary(client):
+    boundary = {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [-76.8, 39.05],
+                [-76.5, 39.05],
+                [-76.5, 39.3],
+                [-76.8, 39.3],
+                [-76.8, 39.05],
+            ]
+        ],
+    }
+    body = {"layer": "airports", "boundary": boundary, "cycle": CYCLE}
+    response = client.post("/v1/airspace/layer", headers=HEADERS, json=body)
+    assert response.status_code == 200, response.text
+    assert {point["name"] for point in response.json()["points"]} == {"KBWI"}
+    assert client.post("/v1/airspace/layer", json=body).status_code == 401
+
+    boundary["coordinates"][0][-1] = [-76.8, 39.1]
+    assert (
+        client.post("/v1/airspace/layer", headers=HEADERS, json=body).status_code == 422
+    )
