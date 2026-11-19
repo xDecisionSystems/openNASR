@@ -82,6 +82,7 @@ const currentExamples = new Map();
 const savedInputs = new Map();
 const savedResults = new Map();
 const selectedAirports = new Map();
+const selectedCenters = new Set();
 const selectedProcedureLayers = new Set();
 
 function element(tag, text, cssClass) {
@@ -156,16 +157,26 @@ function setView(name) {
   byId("query-title").textContent = view.title;
   byId("query-help").textContent = view.help;
   byId("plot-caption").textContent = view.caption;
-  byId("submit").hidden = name === "airspace";
+  byId("submit").hidden = false;
   byId("example").hidden = name === "airspace";
   if (name === "airspace") {
-    const label = element("label", "ARTCC");
+    const label = element("label", "ARTCC search");
     label.htmlFor = "query-artcc";
-    const select = element("select");
-    select.id = label.htmlFor;
-    select.name = "artcc";
-    select.multiple = true;
-    select.size = 5;
+    const search = element("input");
+    search.type = "search";
+    search.id = label.htmlFor;
+    search.name = "artcc";
+    search.placeholder = "Code or name";
+    search.autocomplete = "off";
+    search.value = savedInputs.get(name)?.get(search.name) || "";
+    const tags = element("div", null, "airport-tags");
+    tags.id = "artcc-tags";
+    tags.setAttribute("aria-label", "Selected ARTCCs");
+    tags.hidden = true;
+    const matches = element("div", null, "airport-matches");
+    matches.id = "artcc-matches";
+    matches.setAttribute("aria-label", "ARTCC matches");
+    matches.hidden = true;
     const otherLabel = element("label", "Other Airspace");
     otherLabel.htmlFor = "query-other-airspace";
     const other = element("select");
@@ -178,8 +189,8 @@ function setView(name) {
       .map(([kind, name]) => new Option(name, kind)));
     const previousOther = savedInputs.get(name)?.getAll(other.name) || [];
     for (const option of other.options) option.selected = previousOther.includes(option.value);
-    const hint = element("p", "Use Ctrl or ⌘ to select or clear multiple options. With no center selected, the map shows all ARTCCs.", "empty");
-    byId("fields").replaceChildren(label, select, otherLabel, other, hint);
+    const hint = element("p", "Use Ctrl or ⌘ to select multiple Other Airspace types.", "empty");
+    byId("fields").replaceChildren(label, search, tags, matches, otherLabel, other, hint);
     resetResult();
     loadAirspaceOverview();
     return;
@@ -546,6 +557,10 @@ const boundaryLayers = [
 ];
 
 async function loadAirspaceOverview() {
+  const search = byId("query-artcc");
+  search.oninput = null;
+  byId("artcc-matches").hidden = true;
+  byId("artcc-tags").hidden = true;
   const active = new AbortController();
   request = active;
   const params = new URLSearchParams();
@@ -553,26 +568,62 @@ async function loadAirspaceOverview() {
   try {
     const data = await api(`/v1/airspace/boundaries?${params}`, { signal: active.signal });
     if (active.signal.aborted) return;
-    const select = byId("query-artcc");
-    const previous = select.options.length ? [...select.selectedOptions].map((option) => option.value)
-      : savedInputs.get("airspace")?.getAll("artcc") || [];
-    const names = Object.entries(data.centers).sort(([a], [b]) => a.localeCompare(b));
-    select.replaceChildren(...names.map(([id, name]) => new Option(name
-        ? `${id}: ${name.toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase())}` : id, id)));
-    for (const option of select.options) option.selected = previous.includes(option.value);
+    const tags = byId("artcc-tags");
+    const matches = byId("artcc-matches");
+    const centers = new Map(Object.entries(data.centers).sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, name]) => [id, name
+        ? `${id}: ${name.toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase())}` : id]));
+    for (const id of selectedCenters) if (!centers.has(id)) selectedCenters.delete(id);
+
     const render = () => {
       resetResult();
-      const selected = [...select.selectedOptions];
-      const artcc = selected.map((option) => option.value);
-      const label = selected.length === 1 ? selected[0].textContent : artcc.join(", ");
-      const boundaries = artcc.length ? data.boundaries.filter((boundary) => artcc.includes(boundary.id)) : data.boundaries;
+      const artcc = [...selectedCenters];
+      const label = artcc.length === 1 ? centers.get(artcc[0]) : artcc.join(", ");
+      const boundaries = artcc.length ? data.boundaries.filter((boundary) => selectedCenters.has(boundary.id)) : data.boundaries;
       addAirspaceMap({ cycle: data.cycle, artcc, label, artcc_boundaries: boundaries });
       results.replaceChildren(table("Published ARTCC boundaries", ["Center", "Altitude level"],
         boundaries.map((boundary) => [boundary.id, boundary.level])));
       byId("result-cycle").textContent = `Cycle ${data.cycle}`;
+      tags.replaceChildren();
+      tags.hidden = !artcc.length;
+      for (const id of artcc) {
+        const tag = element("span", centers.get(id), "airport-tag");
+        const remove = element("button", "×");
+        remove.type = "button";
+        remove.setAttribute("aria-label", `Remove ${id}`);
+        remove.addEventListener("click", () => {
+          selectedCenters.delete(id);
+          render();
+          (tags.querySelector("button") || search).focus({ preventScroll: true });
+        });
+        tag.append(remove);
+        tags.append(tag);
+      }
     };
-    select.onchange = render;
+    search.oninput = () => {
+      matches.replaceChildren();
+      matches.hidden = true;
+      const term = search.value.trim().toLowerCase();
+      if (!term) return;
+      for (const [id, label] of centers) {
+        if (selectedCenters.has(id) || !label.toLowerCase().includes(term)) continue;
+        const button = element("button", label);
+        button.type = "button";
+        button.addEventListener("click", () => {
+          selectedCenters.add(id);
+          search.value = "";
+          matches.hidden = true;
+          matches.replaceChildren();
+          render();
+          search.focus({ preventScroll: true });
+        });
+        matches.append(button);
+      }
+      if (!matches.childElementCount) matches.append(element("p", "No ARTCC matches.", "empty"));
+      matches.hidden = false;
+    };
     render();
+    search.oninput();
   } catch (error) {
     if (!active.signal.aborted) setStatus(error.message, true);
   }
@@ -1224,7 +1275,10 @@ function drawPlot() {
 
 async function submit(event) {
   event.preventDefault();
-  if (currentView === "airspace") return;
+  if (currentView === "airspace") {
+    byId("query-artcc").dispatchEvent(new Event("input"));
+    return;
+  }
   request?.abort();
   const activeRequest = new AbortController();
   request = activeRequest;

@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.31]
+
+### Changed
+
+- ARTCC search shows matching centers and removable selection tags.
+
 ## [2.1.30]
 
 ### Fixed
