@@ -175,6 +175,31 @@ class AirspaceIndex:
         regions = (self._regions[index] for index in sorted(self._hits(lat, lon)))
         return sorted(regions, key=lambda r: (r.id, r.level, r.kind))
 
+    def boundaries_at(self, lat: float, lon: float) -> list[dict]:
+        """Return the polygon components that contain the query point."""
+        boundaries = []
+        for wrapped, tree in self._trees.items():
+            if tree is None:
+                continue
+            point = Point(lon + 360 if wrapped and lon < 0 else lon, lat)
+            for hit in tree.query(point, predicate="intersects"):
+                region = self._regions[self._members[wrapped][hit]]
+                rings = [
+                    map_coordinates(ring.coords)
+                    for polygon in _polygonal_parts(tree.geometries[hit])
+                    if polygon.intersects(point)
+                    for ring in (polygon.exterior, *polygon.interiors)
+                ]
+                boundaries.append(
+                    {
+                        "id": region.id,
+                        "level": region.level,
+                        "kind": region.airspace_class or region.kind,
+                        "rings": rings,
+                    }
+                )
+        return boundaries
+
     def artcc_boundaries(self, lat: float, lon: float) -> list[dict]:
         return [
             {

@@ -67,6 +67,7 @@ let plotZoom = 1;
 let plotPan = { x: 0, y: 0 };
 let printing = false;
 let airportCaption = "";
+let airportBoundaries = [];
 let airspaceMap = null;
 let airportProcedureRequest = null;
 const ilsPlotNote = "ILS course wedges are illustrative · 700 ft at the runway end · ±2.5° · 20 NM.";
@@ -193,6 +194,7 @@ function resetResult() {
   plotZoom = 1;
   plotPan = { x: 0, y: 0 };
   airportCaption = "";
+  airportBoundaries = [];
   airspaceMap?.controller.abort();
   airspaceMap = null;
   airportProcedureRequest?.abort();
@@ -380,6 +382,44 @@ function addAirportProcedureLayers(airport, selectedCycle) {
     });
   }
   const messages = [];
+  if (airport.position) {
+    const checkbox = element("input");
+    checkbox.type = "checkbox";
+    const label = element("label", "Airspace");
+    label.prepend(checkbox);
+    controls.append(label);
+    const message = element("p", "", "layer-status");
+    message.setAttribute("role", "status");
+    messages.push(message);
+    let boundaries;
+    checkbox.addEventListener("change", async () => {
+      message.textContent = "";
+      if (!checkbox.checked || boundaries) {
+        airportBoundaries = checkbox.checked ? boundaries : [];
+        drawPlot();
+        return;
+      }
+      checkbox.disabled = true;
+      label.setAttribute("aria-busy", "true");
+      const params = new URLSearchParams({ cycle: selectedCycle,
+        lat: airport.position.lat, lon: airport.position.lon, include_boundaries: true });
+      try {
+        const data = await api(`/v1/airspace/at?${params}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        boundaries = data.boundaries;
+        airportBoundaries = boundaries;
+        if (!boundaries.length) message.textContent = "No published boundaries contain this airport.";
+        drawPlot();
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        checkbox.checked = false;
+        message.textContent = error.message;
+      } finally {
+        checkbox.disabled = false;
+        label.removeAttribute("aria-busy");
+      }
+    });
+  }
   const identifier = encodeURIComponent(airport.icao_id || airport.id);
   for (const [kind, name, color] of airspaceLayers.filter(([kind]) => kind === "arrivals" || kind === "departures")) {
     const checkbox = element("input");
@@ -631,11 +671,14 @@ function drawPlot() {
   const wedges = plotted.filter((branch) => branch.visible && branch.wedge?.length);
   const note = byId("plot-caption");
   if (currentView === "airports" && airportCaption) {
-    const caption = wedges.length ? `${airportCaption} ${ilsPlotNote}` : airportCaption;
+    const types = new Set(airportBoundaries.map(({ kind }) => kind.length === 1 ? `Class ${kind}` : kind));
+    const airspaceNote = types.size ? `Airspace at airport · ${[...types].join(", ")}.` : "";
+    const caption = [airportCaption, wedges.length ? ilsPlotNote : "", airspaceNote].filter(Boolean).join(" ");
     if (note.textContent !== caption) note.textContent = caption;
     canvas.setAttribute("aria-label", note.textContent);
   }
-  const boundaryRings = airspaceMap?.boundaries.flatMap((boundary) => boundary.rings) || [];
+  const boundaries = airspaceMap?.boundaries || airportBoundaries;
+  const boundaryRings = boundaries.flatMap((boundary) => boundary.rings);
   const points = [
     ...plotted.filter((branch) => currentView !== "airports" || branch.visible).flatMap((branch) => branch.points), ...wedges.flatMap((branch) => branch.wedge), ...boundaryRings.flat(),
   ].filter(available);
@@ -691,7 +734,7 @@ function drawPlot() {
   ctx.lineWidth = 2;
   ctx.setLineDash(partialRoute ? [5, 5] : []);
   const visible = new Map();
-  if (airspaceMap) {
+  if (airspaceMap || airportBoundaries.length) {
     const trace = (points) => {
       let previous;
       for (const point of points) {
@@ -711,15 +754,16 @@ function drawPlot() {
       }
     };
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = printing ? "#12685e" : "#76dfca";
-    for (const boundary of airspaceMap.boundaries) {
+    for (const boundary of boundaries) {
+      const color = boundaryLayers.find(([kind]) => kind === boundary.kind)?.[2];
+      ctx.strokeStyle = printing ? (color ? "#524485" : "#12685e") : color || "#76dfca";
       ctx.beginPath();
       for (const ring of boundary.rings) trace(ring);
       ctx.setLineDash(boundary.level === "high" ? [5, 4] : []);
       ctx.stroke();
     }
     ctx.setLineDash([]);
-    for (const layer of airspaceMap.layers.values()) {
+    for (const layer of airspaceMap?.layers.values() || []) {
       if (!layer.selected || !layer.data) continue;
       ctx.strokeStyle = printing ? "#244b6b" : layer.color;
       ctx.lineWidth = 1;

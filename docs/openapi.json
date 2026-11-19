@@ -279,6 +279,20 @@
             "title": "Artcc Boundaries",
             "type": "array"
           },
+          "boundaries": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MatchingBoundary"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundaries"
+          },
           "cycle": {
             "title": "Cycle",
             "type": "string"
@@ -803,6 +817,40 @@
         "title": "Localizer",
         "type": "object"
       },
+      "MatchingBoundary": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "rings": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/Position"
+              },
+              "type": "array"
+            },
+            "title": "Rings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "rings",
+          "kind"
+        ],
+        "title": "MatchingBoundary",
+        "type": "object"
+      },
       "NavaidEntity": {
         "properties": {
           "base": {
@@ -1269,7 +1317,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.15"
+    "version": "0.2.16"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1604,6 +1652,16 @@
               ],
               "description": "Effective date YYYY-MM-DD; default is the cycle in effect today",
               "title": "Cycle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_boundaries",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Boundaries",
+              "type": "boolean"
             }
           }
         ],

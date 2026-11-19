@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.16]
+
+### Added
+
+- Airport maps can show the published airspace boundaries containing the airport.
+
 ## [2.1.15]
 
 ### Changed

@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.15"
+API_VERSION = "0.2.16"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -299,11 +299,16 @@ class AirspaceBoundariesResponse(BaseModel):
     boundaries: list[ArtccBoundary]
 
 
+class MatchingBoundary(ArtccBoundary):
+    kind: str
+
+
 class AirspaceResponse(BaseModel):
     cycle: str
     position: Position
     regions: list[AirspaceRegion]
     artcc_boundaries: list[ArtccBoundary]
+    boundaries: list[MatchingBoundary] | None = None
     not_covered: str
 
 
@@ -679,6 +684,7 @@ def create_app(
         lat: Annotated[float, Query(ge=-90, le=90)],
         lon: Annotated[float, Query(ge=-180, le=180)],
         cycle: CycleParam = None,
+        include_boundaries: bool = False,
     ) -> dict[str, Any]:
         """The FAA regions whose horizontal boundaries contain a point.
 
@@ -696,6 +702,7 @@ def create_app(
             "position": {"lat": lat, "lon": lon},
             "regions": [asdict(region) for region in index.at(lat, lon)],
             "artcc_boundaries": index.artcc_boundaries(lat, lon),
+            "boundaries": index.boundaries_at(lat, lon) if include_boundaries else None,
             "not_covered": index.not_covered,
         }
 
