@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.15]
+
+### Changed
+
+- Double-click zoom centers the plot on the clicked location.
+
 ## [2.1.14]
 
 ### Fixed

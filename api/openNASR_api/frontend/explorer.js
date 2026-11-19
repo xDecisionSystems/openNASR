@@ -955,8 +955,8 @@ canvas.addEventListener("dblclick", (event) => {
   const point = plotPosition(event);
   const x = point.x - width / 2;
   const y = point.y - height / 2;
-  plotPan.x = x + (plotPan.x - x) * scale;
-  plotPan.y = y + (plotPan.y - y) * scale;
+  plotPan.x = (plotPan.x - x) * scale;
+  plotPan.y = (plotPan.y - y) * scale;
   plotZoom = nextZoom;
   drawPlot();
 });
