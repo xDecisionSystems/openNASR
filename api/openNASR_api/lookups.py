@@ -259,6 +259,20 @@ def navaids(query: Callable[..., Any], identifier: str) -> list[dict]:
     ]
 
 
+def search_airways(rows: list[dict[str, str]], text: str) -> list[str]:
+    term = text.strip().upper()
+    if not term:
+        return []
+    matches = set()
+    for row in rows:
+        identifier = row.get("AWY_ID", "").strip().upper()
+        if identifier and identifier[0].isdigit():
+            identifier = row.get("AWY_DESIGNATION", "").strip().upper() + identifier
+        if identifier.startswith(term) and _AIRWAY.fullmatch(identifier):
+            matches.add(identifier)
+    return sorted(matches, key=lambda identifier: (identifier != term, identifier))[:30]
+
+
 def airways(query: Callable[..., Any], identifier: str) -> list[dict]:
     """An airway by designation, e.g. ``J74``; FAA data stores it two ways."""
 

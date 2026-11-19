@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.31"
+API_VERSION = "0.2.32"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -237,6 +237,11 @@ class AirwayEntity(BaseModel):
     base: dict[str, str]
     segments: list[dict[str, str]]
     plot_segments: list[AirwayPlotSegment]
+
+
+class AirwaySearchResponse(BaseModel):
+    cycle: str
+    identifiers: list[str]
 
 
 class AirwaysResponse(BaseModel):
@@ -697,6 +702,33 @@ def create_app(
         """Every navaid record with this identifier (several when a name is shared)."""
 
         return entity("navaids", lookups.navaids, identifier, cycle)
+
+    @app.get(
+        "/v1/airways/search",
+        response_model=AirwaySearchResponse,
+        responses=ERRORS,
+        dependencies=secured,
+        tags=["lookup"],
+    )
+    def airway_search(
+        q: Annotated[str, Query(min_length=1, max_length=80)],
+        cycle: CycleParam = None,
+    ) -> dict[str, Any]:
+        """Find published airway designations by prefix."""
+        try:
+            with store.lookup_nasr(cycle) as (chosen, nasr):
+                frame = nasr.get("AWY_BASE")
+                rows = (
+                    frame.reindex(columns=["AWY_ID", "AWY_DESIGNATION"])
+                    .fillna("")
+                    .to_dict(orient="records")
+                    if frame is not None
+                    else []
+                )
+                identifiers = lookups.search_airways(rows, q)
+        except CycleUnavailableError as error:
+            raise HTTPException(404 if cycle else 503, str(error)) from error
+        return {"cycle": chosen, "identifiers": identifiers}
 
     @app.get(
         "/v1/airways/{identifier}",

@@ -7,6 +7,13 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.32]
+
+### Added
+
+- Routes search supports plotting multiple airways with removable tags.
+- Flight Plan is the last explorer tab.
+
 ## [2.1.31]
 
 ### Changed

@@ -83,6 +83,7 @@ const savedInputs = new Map();
 const savedResults = new Map();
 const selectedAirports = new Map();
 const selectedCenters = new Set();
+const selectedRoutes = new Map();
 const selectedProcedureLayers = new Set();
 
 function element(tag, text, cssClass) {
@@ -144,6 +145,9 @@ function setView(name) {
   if (byId("fields").children.length) savedInputs.set(currentView, new FormData(form));
   request?.abort();
   currentView = name;
+  byId("route-tags").hidden = name !== "routes" || !selectedRoutes.size;
+  byId("route-matches").replaceChildren();
+  byId("route-matches").hidden = true;
   byId("airport-tags").hidden = name !== "airports" || !selectedAirports.size;
   byId("airport-matches").replaceChildren();
   byId("airport-matches").hidden = true;
@@ -221,6 +225,7 @@ function setView(name) {
   pickExample(name);
   resetResult();
   if (name === "airports" && selectedAirports.size) renderSelectedAirports();
+  else if (name === "routes" && selectedRoutes.size) renderSelectedRoutes();
   else if (savedResults.has(name)) showResult(savedResults.get(name));
 }
 
@@ -825,7 +830,78 @@ async function searchAirports(text, active) {
   setStatus(data.airports.length ? "Select an airport to add it." : "No airports match your search.");
 }
 
-function showResult(data) {
+function renderSelectedRoutes(options) {
+  resetResult(options);
+  const tags = byId("route-tags");
+  tags.replaceChildren();
+  tags.hidden = !selectedRoutes.size;
+  const colors = new Map();
+  for (const id of selectedRoutes.keys()) {
+    const color = branchColors[colors.size % branchColors.length];
+    colors.set(id, color);
+    const tag = element("span", id, "airport-tag");
+    const swatch = element("span", null, "branch-color");
+    swatch.style.backgroundColor = color;
+    swatch.setAttribute("aria-hidden", "true");
+    tag.prepend(swatch);
+    const remove = element("button", "×");
+    remove.type = "button";
+    remove.setAttribute("aria-label", `Remove ${id}`);
+    remove.addEventListener("click", () => {
+      selectedRoutes.delete(id);
+      renderSelectedRoutes({ preserveView: true });
+      (tags.querySelector("button") || byId("query-identifier")).focus({ preventScroll: true });
+    });
+    tag.append(remove);
+    tags.append(tag);
+  }
+  for (const match of byId("route-matches").querySelectorAll("button")) {
+    match.disabled = selectedRoutes.has(match.dataset.route) || match.dataset.loading === "true";
+  }
+  if (!selectedRoutes.size) return;
+  const entries = [...selectedRoutes.values()];
+  showResult({ cycle: entries[0].cycle, airways: entries.flatMap((entry) => entry.airways) }, colors);
+}
+
+async function searchRoutes(text, active) {
+  const matches = byId("route-matches");
+  matches.replaceChildren();
+  matches.hidden = true;
+  const selectedCycle = selectedRoutes.values().next().value?.cycle || cycle.value;
+  const params = new URLSearchParams({ q: text });
+  if (selectedCycle) params.set("cycle", selectedCycle);
+  const data = await api(`/v1/airways/search?${params}`, { signal: active.signal });
+  if (active.signal.aborted) return;
+  for (const id of data.identifiers) {
+    const button = element("button", id);
+    button.type = "button";
+    button.dataset.route = id;
+    button.disabled = selectedRoutes.has(id);
+    button.addEventListener("click", async () => {
+      button.dataset.loading = "true";
+      button.disabled = true;
+      try {
+        const selected = await api(`/v1/airways/${encodeURIComponent(id)}?cycle=${data.cycle}`, {
+          signal: active.signal,
+        });
+        if (active.signal.aborted) return;
+        selectedRoutes.set(id, selected);
+        renderSelectedRoutes();
+        byId("query-identifier").focus({ preventScroll: true });
+      } catch (error) {
+        if (!active.signal.aborted) setStatus(error.message, true);
+      } finally {
+        delete button.dataset.loading;
+        button.disabled = selectedRoutes.has(id);
+      }
+    });
+    matches.append(button);
+  }
+  matches.hidden = !data.identifiers.length;
+  setStatus(data.identifiers.length ? "Select a route to add it." : "No routes match your search.");
+}
+
+function showResult(data, routeColors = new Map()) {
   byId("result-cycle").textContent = `Cycle ${data.cycle}`;
   results.replaceChildren();
   if (currentView === "flightplan") {
@@ -850,7 +926,7 @@ function showResult(data) {
         const start = convert(segment.start);
         const end = convert(segment.end);
         const points = segment.gap ? [start, null, end] : [start, end];
-        plotBranches.push({ points, color: "#76dfca", visible: true });
+        plotBranches.push({ points, color: routeColors.get(airway.id) || "#76dfca", visible: true });
         rows.push([segment.sequence, segment.start.name, segment.end?.name,
           segment.gap ? "Published gap" : "",
           [segment.start.issue, segment.end?.issue].filter(Boolean).join("; ")]);
@@ -1287,13 +1363,14 @@ async function submit(event) {
   const values = Object.fromEntries(new FormData(form));
   const params = new URLSearchParams();
   if (cycle.value) params.set("cycle", cycle.value);
-  if (queriedView === "airports") {
+  if (queriedView === "airports" || queriedView === "routes") {
     const text = values.identifier.trim();
     if (!text) return;
     setStatus("Searching…");
     byId("submit").disabled = true;
     try {
-      await searchAirports(text, activeRequest);
+      const search = queriedView === "airports" ? searchAirports : searchRoutes;
+      await search(text, activeRequest);
     } catch (error) {
       if (!activeRequest.signal.aborted) setStatus(error.message, true);
     } finally {
@@ -1308,8 +1385,6 @@ async function submit(event) {
     url = "/v1/route/resolve";
     options = { ...options, method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body) };
-  } else if (currentView === "routes") {
-    url = `/v1/airways/${encodeURIComponent(values.identifier.trim())}?${params}`;
   } else {
     url = `/v1/${currentView}/${encodeURIComponent(values.identifier.trim())}?${params}`;
   }
@@ -1346,8 +1421,9 @@ cycle.addEventListener("change", () => {
   request?.abort();
   savedResults.clear();
   selectedAirports.clear();
+  selectedRoutes.clear();
   selectedProcedureLayers.clear();
-  for (const id of ["airport-tags", "airport-matches"]) {
+  for (const id of ["airport-tags", "airport-matches", "route-tags", "route-matches"]) {
     byId(id).replaceChildren();
     byId(id).hidden = true;
   }
@@ -1369,8 +1445,9 @@ byId("apply-key").addEventListener("click", () => {
   request?.abort();
   savedResults.clear();
   selectedAirports.clear();
+  selectedRoutes.clear();
   selectedProcedureLayers.clear();
-  for (const id of ["airport-tags", "airport-matches"]) {
+  for (const id of ["airport-tags", "airport-matches", "route-tags", "route-matches"]) {
     byId(id).replaceChildren();
     byId(id).hidden = true;
   }

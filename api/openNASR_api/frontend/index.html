@@ -36,10 +36,10 @@
     <div class="tabs" role="tablist" aria-label="Data type">
       <button type="button" role="tab" id="tab-airports" aria-controls="query-panel" aria-selected="true" data-tab="airports">Airports</button>
       <button type="button" role="tab" id="tab-airspace" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="airspace">ARTCC</button>
-      <button type="button" role="tab" id="tab-flightplan" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="flightplan">Flight Plan</button>
       <button type="button" role="tab" id="tab-routes" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="routes">Routes</button>
       <button type="button" role="tab" id="tab-arrivals" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="arrivals">Arrivals</button>
       <button type="button" role="tab" id="tab-departures" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="departures">Departures</button>
+      <button type="button" role="tab" id="tab-flightplan" aria-controls="query-panel" aria-selected="false" tabindex="-1" data-tab="flightplan">Flight Plan</button>
     </div>
 
     <section class="workspace" id="query-panel" role="tabpanel" aria-labelledby="tab-airports">
@@ -53,6 +53,8 @@
         <button class="example" id="example" type="button"></button>
         <div id="airport-tags" class="airport-tags" aria-label="Selected airports" hidden></div>
         <div id="airport-matches" class="airport-matches" aria-label="Airport matches" hidden></div>
+        <div id="route-tags" class="airport-tags" aria-label="Selected routes" hidden></div>
+        <div id="route-matches" class="airport-matches" aria-label="Route matches" hidden></div>
         <div class="status" id="status" role="status" aria-live="polite"></div>
       </section>
 
