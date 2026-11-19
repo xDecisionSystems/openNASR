@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.30]
+
+### Fixed
+
+- Removing an airport keeps the current map center and zoom.
+
 ## [2.1.29]
 
 ### Fixed

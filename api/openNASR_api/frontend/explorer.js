@@ -213,7 +213,7 @@ function setView(name) {
   else if (savedResults.has(name)) showResult(savedResults.get(name));
 }
 
-function resetResult() {
+function resetResult({ preserveView = false } = {}) {
   setStatus("");
   byId("submit").disabled = false;
   results.replaceChildren(element("p", "Results will appear here after a query.", "empty"));
@@ -222,9 +222,11 @@ function resetResult() {
   plotBranches = [];
   partialRoute = false;
   setAreaSelection(false);
-  plotZoom = 1;
-  plotFit = null;
-  plotPan = { x: 0, y: 0 };
+  if (!preserveView) {
+    plotZoom = 1;
+    plotFit = null;
+    plotPan = { x: 0, y: 0 };
+  }
   airportCaption = "";
   airportBoundaries = [];
   clearTimeout(airportViewport?.timer);
@@ -677,8 +679,8 @@ function addAirspaceMap(data) {
   loadOtherAirspace();
 }
 
-function renderSelectedAirports() {
-  resetResult();
+function renderSelectedAirports(options) {
+  resetResult(options);
   const tags = byId("airport-tags");
   tags.replaceChildren();
   tags.hidden = selectedAirports.size === 0;
@@ -689,8 +691,8 @@ function renderSelectedAirports() {
     remove.setAttribute("aria-label", `Remove ${id}`);
     remove.addEventListener("click", () => {
       selectedAirports.delete(id);
-      renderSelectedAirports();
-      (tags.querySelector("button") || byId("query-identifier")).focus();
+      renderSelectedAirports({ preserveView: true });
+      (tags.querySelector("button") || byId("query-identifier")).focus({ preventScroll: true });
     });
     tag.append(remove);
     tags.append(tag);
