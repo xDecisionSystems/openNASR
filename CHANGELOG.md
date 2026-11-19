@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.24]
+
+### Changed
+
+- ARTCC fix and navaid overlays draw FAA chart symbols by feature type.
+
 ## [2.1.23]
 
 ### Added

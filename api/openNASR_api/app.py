@@ -31,7 +31,7 @@ from .limits import RateLimiter
 from .map_layers import LayerName
 from .store import CycleStore, CycleUnavailableError
 
-API_VERSION = "0.2.23"
+API_VERSION = "0.2.24"
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 ACCESS_LOG = logging.getLogger("openNASR_api.access")
@@ -332,6 +332,7 @@ class AirspaceResponse(BaseModel):
 
 class AirportMapPoint(Position):
     name: str
+    symbol: str | None = None
 
 
 class AirspaceLayerResponse(BaseModel):
@@ -810,6 +811,7 @@ def create_app(
     @app.get(
         "/v1/airspace/layer",
         response_model=AirspaceLayerResponse,
+        response_model_exclude_none=True,
         responses=ERRORS,
         dependencies=secured,
         tags=["lookup"],

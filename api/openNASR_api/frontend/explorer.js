@@ -862,6 +862,82 @@ function updateBoundaryViewport(viewport, west, south, east, north, kinds = []) 
   }, 220);
 }
 
+function drawNavigationSymbol(ctx, x, y, symbol, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.2;
+  const polygon = (points, filled = false) => {
+    ctx.beginPath();
+    ctx.moveTo(...points[0]);
+    for (const point of points.slice(1)) ctx.lineTo(...point);
+    ctx.closePath();
+    if (filled) ctx.fill();
+    else ctx.stroke();
+  };
+  const hexagon = [[-5, 0], [-2.5, -4.3], [2.5, -4.3], [5, 0], [2.5, 4.3], [-2.5, 4.3]];
+  const tacan = [[-5, -2], [-3.6, -4.4], [0, -3.4], [3.6, -4.4], [5, -2],
+    [2.4, 0.5], [1.5, 4.5], [-1.5, 4.5], [-2.4, 0.5]];
+  const square = () => ctx.strokeRect(-5, -5, 10, 10);
+  const circle = (radius) => {
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  };
+  const compulsory = symbol.endsWith("-COMPULSORY");
+  switch (symbol.replace(/-COMPULSORY$/, "")) {
+    case "FIX":
+      polygon([[0, -4.5], [4.5, 3.5], [-4.5, 3.5]], compulsory);
+      break;
+    case "WAYPOINT":
+      polygon([[0, -5], [1.6, -1.6], [5, 0], [1.6, 1.6],
+        [0, 5], [-1.6, 1.6], [-5, 0], [-1.6, -1.6]], compulsory);
+      break;
+    case "CNF":
+      ctx.beginPath();
+      ctx.moveTo(-3, -3); ctx.lineTo(3, 3);
+      ctx.moveTo(3, -3); ctx.lineTo(-3, 3);
+      ctx.stroke();
+      break;
+    case "VOR/DME":
+      square();
+      polygon(hexagon);
+      break;
+    case "VOR":
+      polygon(hexagon);
+      break;
+    case "VORTAC":
+      polygon(tacan);
+      polygon(hexagon.map(([px, py]) => [px * .43, py * .43]));
+      break;
+    case "TACAN":
+      polygon(tacan);
+      break;
+    case "DME":
+      square();
+      break;
+    case "NDB":
+    case "NDB/DME":
+    case "MARINE NDB":
+      if (symbol === "NDB/DME") square();
+      circle(1.3);
+      ctx.setLineDash([.7, 1.6]);
+      circle(3.2);
+      circle(6);
+      break;
+    default:
+      if (symbol === "FAN MARKER") {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 6, 3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        circle(2);
+      }
+  }
+  ctx.restore();
+}
+
 function drawPlot() {
   const rect = canvas.getBoundingClientRect();
   const pixelRatio = window.devicePixelRatio || 1;
@@ -993,7 +1069,7 @@ function drawPlot() {
       for (const line of layer.data.lines) trace(line);
       ctx.stroke();
       for (const point of layer.data.points) {
-        visible.set(JSON.stringify([point.name, point.lat, point.lon]),
+        visible.set(JSON.stringify([point.name, point.lat, point.lon, point.symbol]),
           { ...project(point), color: ctx.strokeStyle, kind: "map-airport" });
       }
     }
@@ -1058,6 +1134,11 @@ function drawPlot() {
       ctx.strokeStyle = point.color;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(x - 5, y - 5, 10, 10);
+      return;
+    }
+    if (point.symbol) {
+      if (x < -6 || x > width + 6 || y < -6 || y > height + 6) return;
+      drawNavigationSymbol(ctx, x, y, point.symbol, point.color);
       return;
     }
     ctx.fillStyle = point.kind === "map-airport" ? point.color : printing ? "#12534f" : "#b8f6e7";

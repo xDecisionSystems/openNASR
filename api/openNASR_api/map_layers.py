@@ -30,6 +30,7 @@ LayerName = Literal[
     "other-navaids",
 ]
 Coordinate = tuple[float, float]
+MapFeature = tuple[str, BaseGeometry] | tuple[str, Point, str]
 _WEST = box(-180, -90, 180, 90)
 _EAST = box(180, -90, 360, 90)
 
@@ -76,18 +77,23 @@ def _procedure_legs(
                 previous = current
 
 
-def _point_features(nasr: NASR, layer: LayerName) -> Iterator[tuple[str, Point]]:
+def _point_features(nasr: NASR, layer: LayerName) -> Iterator[MapFeature]:
     table = {"airports": "APT_BASE", "fixes": "FIX_BASE"}.get(layer, "NAV_BASE")
     frame = nasr.get(table)
     if frame is None:
         return
     for row in frame.fillna("").to_dict(orient="records"):
+        symbol = ""
         if table == "APT_BASE":
             if row.get("SITE_TYPE_CODE") != "A":
                 continue
             name = row.get("ICAO_ID") or row.get("ARPT_ID", "")
         elif table == "FIX_BASE":
             name = row.get("FIX_ID", "")
+            use = row.get("FIX_USE_CODE", "").strip().upper()
+            symbol = {"WP": "WAYPOINT", "MW": "WAYPOINT", "CN": "CNF"}.get(use, "FIX")
+            if symbol != "CNF" and row.get("COMPULSORY", "").strip():
+                symbol += "-COMPULSORY"
         else:
             nav_type = row.get("NAV_TYPE", "").strip().upper()
             if not nav_type:
@@ -101,17 +107,19 @@ def _point_features(nasr: NASR, layer: LayerName) -> Iterator[tuple[str, Point]]
             if layer != group:
                 continue
             name = row.get("NAV_ID", "")
+            symbol = nav_type
         point = _survey_position(row)
         if point:
-            yield name, Point(point["lon"], point["lat"])
+            geometry = Point(point["lon"], point["lat"])
+            yield (name, geometry, symbol) if symbol else (name, geometry)
 
 
 class MapLayer:
     """Spatial index over one cycle's airport points or published route legs."""
 
-    def __init__(self, features: Iterable[tuple[str, BaseGeometry]]) -> None:
+    def __init__(self, features: Iterable[MapFeature]) -> None:
         self._features = list(features)
-        self._tree = STRtree([geometry for _, geometry in self._features])
+        self._tree = STRtree([feature[1] for feature in self._features])
 
     @classmethod
     def from_nasr(
@@ -146,9 +154,12 @@ class MapLayer:
         points = []
         lines: list[list[dict[str, float]]] = []
         for hit in sorted(self._tree.query(extent, predicate="intersects")):
-            name, feature = self._features[hit]
+            name, feature, *symbols = self._features[hit]
             if isinstance(feature, Point):
-                points.append({"name": name, "lat": feature.y, "lon": feature.x})
+                point = {"name": name, "lat": feature.y, "lon": feature.x}
+                if symbols:
+                    point["symbol"] = symbols[0]
+                points.append(point)
             else:
                 lines.extend(
                     map_coordinates(line.coords)
