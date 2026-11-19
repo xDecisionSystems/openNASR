@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.29]
+
+### Fixed
+
+- Airport procedure overlays stay enabled as airports are added or removed.
+
 ## [2.1.28]
 
 ### Changed

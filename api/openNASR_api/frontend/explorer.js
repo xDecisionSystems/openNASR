@@ -82,6 +82,7 @@ const currentExamples = new Map();
 const savedInputs = new Map();
 const savedResults = new Map();
 const selectedAirports = new Map();
+const selectedProcedureLayers = new Set();
 
 function element(tag, text, cssClass) {
   const item = document.createElement(tag);
@@ -482,44 +483,53 @@ function addAirportProcedureLayers(airports, selectedCycle) {
     label.prepend(checkbox, swatch);
     const message = element("p", "", "layer-status");
     message.setAttribute("role", "status");
-    let branches = null;
+    const branches = [];
+    const loaded = new Set();
     let loading = false;
-    checkbox.addEventListener("change", async () => {
-      if (branches) {
-        for (const branch of branches) branch.visible = checkbox.checked;
-        drawPlot();
-        return;
-      }
-      if (!checkbox.checked || loading) return;
+    const update = async () => {
+      if (checkbox.checked) selectedProcedureLayers.add(kind);
+      else selectedProcedureLayers.delete(kind);
+      for (const branch of branches) branch.visible = checkbox.checked;
+      drawPlot();
+      if (!checkbox.checked || loading || loaded.size === airports.length) return;
       loading = true;
       message.textContent = "";
       label.setAttribute("aria-busy", "true");
       try {
         const params = new URLSearchParams({ cycle: selectedCycle });
-        const responses = await Promise.all(airports.map((airport) => {
-          const identifier = encodeURIComponent(airport.icao_id || airport.id);
-          return api(`/v1/airports/${identifier}/procedures/${kind}?${params}`, { signal: controller.signal });
-        }));
+        const pending = airports.map((airport) => airport.icao_id || airport.id)
+          .filter((id) => !loaded.has(id));
+        const responses = await Promise.allSettled(pending.map((id) =>
+          api(`/v1/airports/${encodeURIComponent(id)}/procedures/${kind}?${params}`, { signal: controller.signal })));
         if (controller.signal.aborted) return;
-        branches = responses.flatMap((data) => data.branches).map((branch) => ({
-          kind: "airport-procedure", color, visible: checkbox.checked,
-          points: branch.waypoints.map((waypoint) => waypoint.position
-            ? { ...waypoint.position, name: waypoint.name } : null),
-        }));
-        if (!branches.some((branch) => branch.points.some(Boolean))) {
-          message.textContent = `No plottable ${kind} for this airport.`;
+        const failed = [];
+        for (const [index, response] of responses.entries()) {
+          const id = pending[index];
+          if (response.status === "rejected") {
+            failed.push(id);
+            continue;
+          }
+          loaded.add(id);
+          for (const branch of response.value.branches) {
+            const points = branch.waypoints.map((waypoint) => waypoint.position
+              ? { ...waypoint.position, name: waypoint.name } : null);
+            if (!points.some(Boolean)) continue;
+            const plotted = { kind: "airport-procedure", color, visible: checkbox.checked, points };
+            branches.push(plotted);
+            plotBranches.push(plotted);
+          }
         }
-        plotBranches.push(...branches);
+        if (failed.length) message.textContent = `Could not load ${kind} for ${failed.join(", ")}.`;
+        else if (!branches.length) message.textContent = `No plottable ${kind} for the selected airports.`;
         drawPlot();
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        checkbox.checked = false;
-        message.textContent = error.message;
       } finally {
         loading = false;
         label.removeAttribute("aria-busy");
       }
-    });
+    };
+    checkbox.checked = selectedProcedureLayers.has(kind);
+    checkbox.addEventListener("change", update);
+    if (checkbox.checked) update();
     controls.append(label);
     messages.push(message);
   }
@@ -1280,6 +1290,7 @@ cycle.addEventListener("change", () => {
   request?.abort();
   savedResults.clear();
   selectedAirports.clear();
+  selectedProcedureLayers.clear();
   for (const id of ["airport-tags", "airport-matches"]) {
     byId(id).replaceChildren();
     byId(id).hidden = true;
@@ -1302,6 +1313,7 @@ byId("apply-key").addEventListener("click", () => {
   request?.abort();
   savedResults.clear();
   selectedAirports.clear();
+  selectedProcedureLayers.clear();
   for (const id of ["airport-tags", "airport-matches"]) {
     byId(id).replaceChildren();
     byId(id).hidden = true;
