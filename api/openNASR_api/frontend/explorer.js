@@ -236,9 +236,6 @@ function resetResult() {
   const airportLayers = byId("airport-procedure-layers");
   airportLayers.hidden = true;
   airportLayers.replaceChildren();
-  const procedures = currentView === "arrivals" || currentView === "departures";
-  canvas.closest(".plot-card").classList.toggle("procedure-plot", procedures);
-  canvas.closest(".plot-card").classList.toggle("airspace-plot", currentView === "airspace");
   byId("plot-title").textContent = {
     airports: "Airport layout", airspace: "ARTCC boundaries", arrivals: "Procedure branches", departures: "Procedure branches",
   }[currentView] || "Coordinate plot";

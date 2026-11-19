@@ -7,6 +7,12 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.28]
+
+### Changed
+
+- Maps use a taller, near-square layout across the explorer.
+
 ## [2.1.27]
 
 ### Changed
