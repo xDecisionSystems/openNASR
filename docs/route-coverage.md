@@ -23,4 +23,6 @@ the 2026-10-29 cycle and a 46,580-route pool (70.5% usable; see REPLAN.md).
 | FAA lat/lon point with slash | `2706N/09216W` | supported (2.1.34) | Decoded like `2706N09216W`; FAA SWIM (ERAM) writes Gulf of Mexico points this way. |
 | Fix-radial-distance | `MOL057057`, `BAIRN170010` | supported (2.1.34) | Base fix, navaid or airport; magnetic radial converted to true with the magnetic variation of the nearest navaid or airport in the cycle; distance in NM along a great circle. Point `kind` `radial_distance`. |
 | ERAM `./.` separator | `KORD./.OBK131026..SEWTO` | supported (2.1.34) | Read as a plain separator (FAA SWIM SFDPS amended routes). |
+| STAR joined at a fix on it | `SCHUL.OZZZI2` | supported (2.1.35) | ERAM names the join fix and the STAR; the STAR is flown from the fix (on a transition or the body), then its body. Several transitions through the fix with different paths give `AmbiguousRecordError`. |
+| ERAM unknown portion | `XXX` | partial (2.1.35) | Joined directly to the next point with an `unknown_route_portion` warning; the route is returned but not `complete`. |
 | Oceanic tracks (NAT), SID/STAR with runway | | out of scope | Not recognized; reported as an unknown identifier. |

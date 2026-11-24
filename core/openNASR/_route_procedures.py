@@ -500,7 +500,105 @@ def _procedure_path(
             procedure_index=procedure_index,
         )
         return transition_points + body_points
+    if "." in token:
+        return _star_mid_join(
+            tables, token, resolver=resolver, procedure_index=procedure_index
+        )
     return None
+
+
+def _star_mid_join(
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    resolver: _WaypointResolver | None,
+    procedure_index: _ProcedureIndex,
+) -> tuple[_Waypoint, ...] | None:
+    """Expand ``FIX.STAR`` where FIX lies inside a STAR transition or body.
+
+    ERAM amended routes (FAA SWIM SFDPS) join an arrival at the fix the
+    aircraft was cleared to, which is often not the first fix of a published
+    transition (``SCHUL.OZZZI2``: SCHUL is the third fix of the FLASK
+    transition). The path is that transition from the fix onward, then the
+    body; a fix on the body itself starts the body there. Several STARs or
+    transitions with different remaining paths are ambiguous.
+    """
+
+    point, _, name = token.partition(".")
+    if not point or not name or "." in name:
+        return None
+    keys = procedure_index.narrow_stars(
+        set(procedure_index.stars_joined_at(point, name))
+    )
+    if not keys:
+        return None
+    if len(keys) != 1:
+        raise AmbiguousRecordError(
+            entity_type="StarProcedure", identifier=token, candidates=tuple(keys)
+        )
+    code, artcc = next(iter(keys))
+    point = _text(point)
+    paths: list[tuple[_Waypoint, ...]] = []
+    transitions = procedure_index.star_transitions(code, artcc)
+    body = procedure_index.star_body(code, artcc)
+    if transitions is not None and not transitions.empty:
+        column = (
+            "TRANSITION_COMPUTER_CODE"
+            if "TRANSITION_COMPUTER_CODE" in transitions
+            else "ROUTE_NAME"
+        )
+        for _, rows in transitions.groupby(transitions[column].map(_text), sort=False):
+            points = _route_rows_points(tables, rows, resolver=resolver)
+            ids = [p.identifier for p in points]
+            if point not in ids:
+                continue
+            remaining = points[ids.index(point) :]
+            body_points = (
+                _select_procedure_body(
+                    tables,
+                    body,
+                    connection_token=points[-1].identifier,
+                    reverse=False,
+                    connection_at_start=True,
+                    common_at_start=True,
+                    resolver=resolver,
+                    entity_type="StarProcedure",
+                    identifier=token,
+                    procedure_index=procedure_index,
+                )
+                if body is not None and not body.empty
+                else ()
+            )
+            path = remaining + tuple(
+                p for i, p in enumerate(body_points) if i or p != remaining[-1]
+            )
+            if path not in paths:
+                paths.append(path)
+    if not paths and body is not None and not body.empty:
+        body_points = _select_procedure_body(
+            tables,
+            body,
+            connection_token=point,
+            reverse=False,
+            connection_at_start=True,
+            common_at_start=True,
+            resolver=resolver,
+            entity_type="StarProcedure",
+            identifier=token,
+            procedure_index=procedure_index,
+        )
+        ids = [p.identifier for p in body_points]
+        if point in ids:
+            paths.append(body_points[ids.index(point) :])
+    if not paths:
+        return None
+    if len(paths) > 1:
+        raise AmbiguousRecordError(
+            entity_type="StarProcedure",
+            identifier=token,
+            candidates=tuple(tuple(p.identifier for p in path) for path in paths),
+        )
+    return paths[0]
 
 
 def _is_departure_procedure(
@@ -685,6 +783,10 @@ def _is_published_dotted_procedure(
     ):
         if matches is not None and not matches.empty:
             return True
+    point, _, name = token.partition(".")
+    if point and name and procedure_index.stars_joined_at(point, name):
+        # FIX.STAR joining an arrival inside a transition (ERAM routes).
+        return True
     first_component = token.split(".", 1)[0]
     star_matches = procedure_index.star_base(token)
     if star_matches is not None and not star_matches.empty:

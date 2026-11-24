@@ -7,6 +7,20 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.35]
+
+### Added
+
+- More FAA SWIM (ERAM) route text resolves:
+  - a STAR joined at a fix partway along it (`SCHUL.OZZZI2`, where the STAR's
+    code is `OZZZI.OZZZI2` and SCHUL lies on one of its transitions or its
+    body): the STAR is flown from that fix on, then its body; if the fix lies
+    on several transitions with different paths, the usual
+    `AmbiguousRecordError` diagnostic is reported;
+  - the ERAM unknown-portion placeholder `XXX` is joined directly to the next
+    point, with an `unknown_route_portion` warning; the rest of the route is
+    still returned (the result is not `complete`).
+
 ## [2.1.34]
 
 ### Added

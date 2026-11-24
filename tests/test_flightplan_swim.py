@@ -137,3 +137,111 @@ def test_unknown_radial_distance_base_is_still_an_unknown_waypoint(tables):
     assert not result.complete
     assert result.diagnostics[-1].code == "RecordNotFoundError"
     assert result.diagnostics[-1].token == "ZZZ090020"
+
+
+@pytest.fixture
+def star_tables(tables):
+    """A STAR like OZZZI.OZZZI2: transition FLASK -> MIDDL -> SCHUL -> OZZZI,
+    body OZZZI -> HAARY -> KATL."""
+
+    fixes = [
+        ("FLASK", "35.5", "-82.0"),
+        ("MIDDL", "34.9", "-83.0"),
+        ("SCHUL", "34.4", "-83.6"),
+        ("OZZZI", "34.0", "-84.0"),
+        ("HAARY", "33.8", "-84.2"),
+    ]
+    tables["FIX_BASE"] = pd.concat(
+        [
+            tables["FIX_BASE"],
+            pd.DataFrame(
+                [
+                    {"FIX_ID": f, "LAT_DECIMAL": a, "LONG_DECIMAL": o}
+                    for f, a, o in fixes
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    tables["APT_BASE"] = pd.concat(
+        [
+            tables["APT_BASE"],
+            pd.DataFrame(
+                [
+                    {
+                        "ARPT_ID": "ATL",
+                        "ICAO_ID": "KATL",
+                        "LAT_DECIMAL": "33.64",
+                        "LONG_DECIMAL": "-84.43",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    code = "OZZZI.OZZZI2"
+
+    def row(portion, transition, seq, point):
+        return {
+            "STAR_COMPUTER_CODE": code,
+            "ARTCC": "ZTL",
+            "ROUTE_PORTION_TYPE": portion,
+            "TRANSITION_COMPUTER_CODE": transition,
+            "BODY_SEQ": "1",
+            "POINT_SEQ": str(seq),
+            "POINT": point,
+        }
+
+    tables["STAR_BASE"] = pd.DataFrame([{"STAR_COMPUTER_CODE": code, "ARTCC": "ZTL"}])
+    tables["STAR_RTE"] = pd.DataFrame(
+        [
+            row("TRANSITION", "FLASK.OZZZI2", 10, "FLASK"),
+            row("TRANSITION", "FLASK.OZZZI2", 20, "MIDDL"),
+            row("TRANSITION", "FLASK.OZZZI2", 30, "SCHUL"),
+            row("TRANSITION", "FLASK.OZZZI2", 40, "OZZZI"),
+            row("BODY", "", 10, "OZZZI"),
+            row("BODY", "", 20, "HAARY"),
+            row("BODY", "", 30, "KATL"),
+        ]
+    )
+    for table in ("DP_BASE", "DP_RTE"):
+        tables[table] = pd.DataFrame(
+            columns=["DP_NAME", "ARTCC", "DP_COMPUTER_CODE", "TRANSITION_COMPUTER_CODE"]
+        )
+    return tables
+
+
+def test_star_joined_inside_a_transition(star_tables):
+    result = RouteResolver(star_tables).resolve("KORD./.SEWTO..SCHUL.OZZZI2.KATL/2321")
+
+    assert result.complete, result.diagnostics
+    assert [p.name for p in result.waypoints] == [
+        "KORD",
+        "SEWTO",
+        "SCHUL",
+        "OZZZI",
+        "HAARY",
+        "KATL",
+    ]
+    assert {p.via for p in result.waypoints[2:5]} == {"SCHUL.OZZZI2"}
+
+
+def test_star_joined_on_its_body(star_tables):
+    result = RouteResolver(star_tables).resolve("KORD..SEWTO..HAARY.OZZZI2.KATL")
+
+    assert result.complete, result.diagnostics
+    assert [p.name for p in result.waypoints] == ["KORD", "SEWTO", "HAARY", "KATL"]
+
+
+def test_fix_not_on_the_star_is_still_not_found(star_tables):
+    result = RouteResolver(star_tables).resolve("KORD..SEWTO.OZZZI2.KATL")
+    assert not result.complete
+
+
+def test_eram_unknown_portion_is_joined_directly(tables):
+    result = RouteResolver(tables).resolve("KORD..SEWTO.XXX..KSDF")
+
+    assert not result.complete
+    assert [p.name for p in result.waypoints] == ["KORD", "SEWTO", "KSDF"]
+    unknown = [d for d in result.diagnostics if d.code == "unknown_route_portion"]
+    assert [(d.token, d.position) for d in unknown] == [("XXX", 12)]

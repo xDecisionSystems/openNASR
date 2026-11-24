@@ -73,6 +73,20 @@ class _ProcedureIndex:
     def narrow_stars(self, keys: set[tuple[str, ...]]) -> set[tuple[str, ...]]:
         return _narrow_to_route_airports(keys, self._served_stars)
 
+    def stars_joined_at(self, point: str, name: str) -> set[tuple[str, str]]:
+        """STARs called ``name`` (short name) that contain ``point``."""
+
+        return {
+            key
+            for key in self._stars_by_name.get(_text(name), set())
+            if _text(point) in self._star_points.get(key, frozenset())
+        }
+
+    def star_transitions(self, code: object, artcc: object) -> DataFrame | None:
+        return self._matching_composite(
+            self._star_routes, self._star_portions, (code, artcc, "TRANSITION")
+        )
+
     def __init__(self, tables: Mapping[str, DataFrame]) -> None:
         self._served_departures = self._served_airports(
             tables.get("DP_APT"), ("DP_NAME", "ARTCC", "DP_COMPUTER_CODE")
@@ -122,6 +136,30 @@ class _ProcedureIndex:
             self._star_routes,
             ("STAR_COMPUTER_CODE", "ARTCC", "TRANSITION_COMPUTER_CODE"),
         )
+        self._star_portions = self._composite_positions(
+            self._star_routes,
+            ("STAR_COMPUTER_CODE", "ARTCC", "ROUTE_PORTION_TYPE"),
+        )
+        # STARs by their short name (``OZZZI2`` for code ``OZZZI.OZZZI2``) and
+        # the points each one contains, for routes that join a STAR at a fix
+        # inside one of its transitions or its body (FAA SWIM / ERAM amended
+        # routes, for example ``SCHUL.OZZZI2``).
+        self._stars_by_name: dict[str, set[tuple[str, str]]] = {}
+        self._star_points: dict[tuple[str, str], frozenset[str]] = {}
+        routes = self._star_routes
+        if routes is not None and all(
+            column in routes for column in ("STAR_COMPUTER_CODE", "ARTCC", "POINT")
+        ):
+            points: dict[tuple[str, str], set[str]] = {}
+            for code, artcc, point in zip(
+                routes["STAR_COMPUTER_CODE"].map(_text).to_numpy(),
+                routes["ARTCC"].map(_text).to_numpy(),
+                routes["POINT"].map(_text).to_numpy(),
+            ):
+                key = (code, artcc)
+                self._stars_by_name.setdefault(code.rsplit(".", 1)[-1], set()).add(key)
+                points.setdefault(key, set()).add(point)
+            self._star_points = {k: frozenset(v) for k, v in points.items()}
 
     @staticmethod
     def _positions(frame: DataFrame | None, column: str) -> dict[str, ndarray] | None:

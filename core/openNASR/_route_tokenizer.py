@@ -82,6 +82,30 @@ def _note_ignored(position: int, group: str, *, after: str | None = None) -> Non
     )
 
 
+# ERAM writes XXX for a part of the route it does not know.
+_UNKNOWN_PORTION = "XXX"
+
+
+def _note_unknown_portion(position: int) -> None:
+    """Report an ERAM unknown route portion, drawn as a direct connection."""
+
+    diagnostics = _DIAGNOSTICS.get()
+    if diagnostics is None:
+        return
+    diagnostics.append(
+        RouteDiagnostic(
+            code="unknown_route_portion",
+            message=(
+                "XXX marks a part of the route that is not known (ERAM); "
+                "the points on either side are joined directly."
+            ),
+            token=_UNKNOWN_PORTION,
+            position=position,
+            severity="warning",
+        )
+    )
+
+
 def _tokenize_flight_plan(
     tables: Mapping[str, DataFrame],
     flight_plan: str,
@@ -119,10 +143,12 @@ def _tokenize_flight_plan(
         while index < len(components):
             component = _text(components[index])
             position = field_match.start() + component_offset
-            if not component:
+            if not component or component == _UNKNOWN_PORTION:
+                if component == _UNKNOWN_PORTION:
+                    _note_unknown_portion(position)
                 if not normalized or normalized[-1].value != _DIRECT:
                     normalized.append(_RouteToken(_DIRECT, position))
-                component_offset += 1
+                component_offset += len(component) + 1
                 index += 1
                 continue
             combined = (
