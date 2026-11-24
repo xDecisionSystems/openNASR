@@ -34,6 +34,7 @@ from .exceptions import (
     AmbiguousRecordError,
     ConfigurationError,
     OpenNASRError,
+    RecordNotFoundError,
     UnsupportedRouteContentError,
 )
 from .icaomessage import IcaoFlightPlan, parse_icao_flight_plan
@@ -446,9 +447,25 @@ class RouteResolver:
         """
 
         collected: list[RouteDiagnostic] = []
+        skipped: list[RouteDiagnostic] = []
         reset = _DIAGNOSTICS.set(collected)
+        text = flight_plan
         try:
-            waypoints = self._points(flight_plan)
+            while True:
+                try:
+                    waypoints = self._points(text)
+                    break
+                except RecordNotFoundError as error:
+                    # An identifier this cycle does not know (a foreign navaid,
+                    # a private heliport, an ERAM-only name) is skipped: the
+                    # points on either side are joined directly and the route
+                    # is reported incomplete, instead of losing all of it.
+                    retry = _skip_unknown_identifier(text, error)
+                    if retry is None or len(skipped) >= _MAX_SKIPPED_IDENTIFIERS:
+                        raise
+                    skipped.append(_skipped_diagnostic(error))
+                    collected.clear()  # the next attempt reports again
+                    text = retry
         except OpenNASRError as error:
             if isinstance(error, ConfigurationError):
                 raise
@@ -456,7 +473,11 @@ class RouteResolver:
                 route=flight_plan,
                 cycle=self._cycle,
                 points=(),
-                diagnostics=(*collected, _error_diagnostic(error)),
+                diagnostics=(
+                    *skipped,
+                    *_filed_unknown_portions(collected, flight_plan),
+                    _error_diagnostic(error),
+                ),
             )
         except ValueError as error:
             return RouteResult(
@@ -464,12 +485,14 @@ class RouteResolver:
                 cycle=self._cycle,
                 points=(),
                 diagnostics=(
+                    *skipped,
                     *collected,
                     RouteDiagnostic(code="MalformedRoute", message=str(error)),
                 ),
             )
         finally:
             _DIAGNOSTICS.reset(reset)
+        collected = [*skipped, *_filed_unknown_portions(collected, flight_plan)]
         unique = {
             (item.code, item.token, repr(item.detail)): item for item in collected
         }
@@ -480,6 +503,62 @@ class RouteResolver:
             diagnostics=tuple(unique.values()),
             waypoints=waypoints,
         )
+
+
+_MAX_SKIPPED_IDENTIFIERS = 5
+_UNKNOWN_PORTION_TEXT = "XXX"
+
+
+def _skip_unknown_identifier(text: str, error: RecordNotFoundError) -> str | None:
+    """``text`` with the unknown identifier replaced by an unknown portion.
+
+    The replacement keeps every character offset (``XXX`` padded with
+    spaces), so later diagnostics still point into the route as filed.
+    """
+
+    token = getattr(error, "token", None)
+    position = getattr(error, "position", None)
+    if not token or position is None or len(token) < len(_UNKNOWN_PORTION_TEXT):
+        return None
+    end = position + len(token)
+    if text[position:end].upper() != token.upper():
+        return None
+    if (position and text[position - 1].isalnum()) or (
+        end < len(text) and text[end].isalnum()
+    ):
+        return None  # part of a longer identifier
+    replacement = _UNKNOWN_PORTION_TEXT.ljust(len(token))
+    return text[:position] + replacement + text[position + len(token) :]
+
+
+def _filed_unknown_portions(
+    diagnostics: list[RouteDiagnostic], flight_plan: str
+) -> list[RouteDiagnostic]:
+    """Drop ``XXX`` notes for identifiers the resolver itself skipped."""
+
+    def filed(item: RouteDiagnostic) -> bool:
+        start = item.position or 0
+        return (
+            item.code != "unknown_route_portion"
+            or flight_plan[start : start + len(_UNKNOWN_PORTION_TEXT)].upper()
+            == _UNKNOWN_PORTION_TEXT
+        )
+
+    return [item for item in diagnostics if filed(item)]
+
+
+def _skipped_diagnostic(error: RecordNotFoundError) -> RouteDiagnostic:
+    diagnostic = _error_diagnostic(error)
+    return RouteDiagnostic(
+        code=diagnostic.code,
+        message=(
+            f"{diagnostic.message}; it was skipped and the points on either side "
+            "are joined directly"
+        ),
+        token=diagnostic.token,
+        position=diagnostic.position,
+        detail={**diagnostic.detail, "skipped": True},
+    )
 
 
 def _candidate(value: object) -> object:

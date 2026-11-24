@@ -504,7 +504,65 @@ def _procedure_path(
         return _star_mid_join(
             tables, token, resolver=resolver, procedure_index=procedure_index
         )
-    return None
+    return _star_by_short_name(
+        tables,
+        token,
+        resolver=resolver,
+        procedure_index=procedure_index,
+        preceding_token=preceding_token,
+    )
+
+
+def _star_by_short_name(
+    tables: Mapping[str, DataFrame],
+    token: str,
+    *,
+    resolver: _WaypointResolver | None,
+    procedure_index: _ProcedureIndex,
+    preceding_token: str | None,
+) -> tuple[_Waypoint, ...] | None:
+    """Expand a STAR filed by its short name when its code is ``ENTRY.NAME``.
+
+    ERAM amended routes (FAA SWIM SFDPS) may file ``..ROKNN4.CGF`` for the
+    STAR whose computer code is ``ROKNN.ROKNN4``, often after an unknown
+    portion (``XXX``). If the preceding point lies on the STAR, the STAR is
+    joined there (as ``FIX.NAME``); otherwise it is flown from its body.
+    """
+
+    keys = procedure_index.narrow_stars(procedure_index.stars_named(token))
+    if not keys:
+        return None
+    if len(keys) != 1:
+        raise AmbiguousRecordError(
+            entity_type="StarProcedure", identifier=token, candidates=tuple(keys)
+        )
+    code, artcc = next(iter(keys))
+    if preceding_token and procedure_index.stars_joined_at(preceding_token, token):
+        joined = _star_mid_join(
+            tables,
+            f"{preceding_token}.{token}",
+            resolver=resolver,
+            procedure_index=procedure_index,
+        )
+        if joined:
+            return (
+                joined[1:] if joined[0].identifier == _text(preceding_token) else joined
+            )
+    body = procedure_index.star_body(code, artcc)
+    if body is None or body.empty:
+        return None
+    return _select_procedure_body(
+        tables,
+        body,
+        connection_token=None,
+        reverse=False,
+        connection_at_start=True,
+        common_at_start=True,
+        resolver=resolver,
+        entity_type="StarProcedure",
+        identifier=token,
+        procedure_index=procedure_index,
+    )
 
 
 def _star_mid_join(

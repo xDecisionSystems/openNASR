@@ -82,6 +82,11 @@ class _ProcedureIndex:
             if _text(point) in self._star_points.get(key, frozenset())
         }
 
+    def stars_named(self, name: str) -> set[tuple[str, ...]]:
+        """STARs whose short name is ``name`` (``ROKNN4`` for ``ROKNN.ROKNN4``)."""
+
+        return {tuple(key) for key in self._stars_by_name.get(_text(name), set())}
+
     def star_transitions(self, code: object, artcc: object) -> DataFrame | None:
         return self._matching_composite(
             self._star_routes, self._star_portions, (code, artcc, "TRANSITION")

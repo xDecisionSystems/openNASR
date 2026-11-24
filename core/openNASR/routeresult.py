@@ -45,8 +45,10 @@ class RouteResult:
 
     ``complete`` is ``True`` only when every part of the route was resolved
     exactly. A route with a warning diagnostic is never complete: its ``points``
-    hold what could be resolved without guessing (empty when resolution
-    stopped). Diagnostics of severity ``"info"`` do not affect completeness.
+    hold what could be resolved (empty when resolution stopped). An
+    identifier the cycle does not know is skipped, its neighbours joined
+    directly, and reported with ``detail`` ``{"skipped": True}``.
+    Diagnostics of severity ``"info"`` do not affect completeness.
     """
 
     route: str

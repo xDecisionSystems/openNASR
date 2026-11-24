@@ -233,9 +233,69 @@ def test_star_joined_on_its_body(star_tables):
     assert [p.name for p in result.waypoints] == ["KORD", "SEWTO", "HAARY", "KATL"]
 
 
-def test_fix_not_on_the_star_is_still_not_found(star_tables):
+def test_star_by_short_name_after_a_fix_not_on_it(star_tables):
+    # ERAM files ``..ROKNN4.CGF`` for the STAR coded ROKNN.ROKNN4; from a fix
+    # that is not on it the STAR is flown from its body.
     result = RouteResolver(star_tables).resolve("KORD..SEWTO.OZZZI2.KATL")
+
+    assert result.complete, result.diagnostics
+    assert [p.name for p in result.waypoints] == [
+        "KORD",
+        "SEWTO",
+        "OZZZI",
+        "HAARY",
+        "KATL",
+    ]
+
+
+def test_star_by_short_name_after_a_fix_on_a_transition(star_tables):
+    result = RouteResolver(star_tables).resolve("KORD..MIDDL..OZZZI2.KATL")
+
+    assert result.complete, result.diagnostics
+    assert [p.name for p in result.waypoints] == [
+        "KORD",
+        "MIDDL",
+        "SCHUL",
+        "OZZZI",
+        "HAARY",
+        "KATL",
+    ]
+
+
+def test_star_by_short_name_after_an_unknown_portion(star_tables):
+    result = RouteResolver(star_tables).resolve("KORD..SEWTO.XXX..OZZZI2.KATL")
+
+    assert [d.code for d in result.diagnostics] == ["unknown_route_portion"]
+    assert [p.name for p in result.waypoints] == [
+        "KORD",
+        "SEWTO",
+        "OZZZI",
+        "HAARY",
+        "KATL",
+    ]
+
+
+def test_unknown_identifiers_are_skipped_not_fatal(tables):
+    result = RouteResolver(tables).resolve("KORD./.ZWE280024..SEWTO..NOSUCH..KSDF")
+
     assert not result.complete
+    assert [p.name for p in result.waypoints] == ["KORD", "SEWTO", "KSDF"]
+    skipped = [(d.code, d.token, d.position, d.detail) for d in result.diagnostics]
+    assert skipped == [
+        ("RecordNotFoundError", "ZWE280024", 7, {"skipped": True}),
+        ("RecordNotFoundError", "NOSUCH", 25, {"skipped": True}),
+    ]
+
+
+def test_an_unknown_identifier_inside_a_longer_one_is_not_rewritten(tables):
+    from openNASR._route_resolver import _skip_unknown_identifier
+
+    class Error:
+        token = "ZWE"
+        position = 0
+
+    assert _skip_unknown_identifier("ZWEX..KSDF", Error()) is None
+    assert _skip_unknown_identifier("ZWE..KSDF", Error()) == "XXX..KSDF"
 
 
 def test_eram_unknown_portion_is_joined_directly(tables):

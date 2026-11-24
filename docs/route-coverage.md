@@ -13,12 +13,12 @@ the 2026-10-29 cycle and a 46,580-route pool (70.5% usable; see REPLAN.md).
 | Airway | `J74`, `V32`, `Q812` | supported | Expanded between the filed entry and exit points, forward or reverse. |
 | SID / STAR by computer code | `SLC4.TCH`, `AMYLU.AMYLU3` | supported | Dotted codes are kept as one token. |
 | SID / STAR transition | `LARGO3.GUP`, `VIEWS.DEHAN3` | supported | Body and transition in flight order; shared names narrowed by the route's end airports. |
-| Bare SID / STAR name | `SHARED3` | supported | Resolved from the neighbouring route text. |
+| Bare SID / STAR name | `SHARED3`, `ROKNN4` | supported | Resolved from the neighbouring route text. A STAR whose code is `ENTRY.NAME` (`ROKNN.ROKNN4`) is also found by its short name (2.1.36): joined at the preceding fix when that fix is on it, otherwise flown from its body. |
 | Runway- or configuration-dependent branches | `GRNCH5`, `MONTN2.SEA` | partial | Only the portion common to all branches is included; `procedure_branches` warning lists the split and each branch. |
 | Departure with no published points | `SLC4.TCH` | supported | Ends at the fix named by the computer code suffix; `procedure_geometry_unpublished` info note. |
 | Speed / level group, `/` suffix | `/N0450F350`, `/0354` | supported | Ignored (not geometry). |
 | Two identifiers, same name | `ZFP` (NDB and VOR/DME) | diagnostic | `AmbiguousRecordError`; the resolver does not pick one. The diagnostic's `detail.candidates` lists every candidate with name, kind, type (for navaids) and lat/lon so the caller can choose (owner decision, 2026-11-18). |
-| Identifier not in this cycle | `CHSLY7` | diagnostic | `RecordNotFoundError`; routes filed against another cycle. |
+| Identifier not in this cycle | `CHSLY7`, `ZWE280024` | partial (2.1.36) | `RecordNotFoundError` with `detail.skipped` true: the identifier is skipped and its neighbours are joined directly, so the rest of the route is still returned (not `complete`). Up to five per route; before 2.1.36 the route came back without points. |
 | Foreign airport, FIR airway, border point | `CYUL`, `UL6` | out of scope | `UnsupportedRouteContentError`. |
 | FAA lat/lon point with slash | `2706N/09216W` | supported (2.1.34) | Decoded like `2706N09216W`; FAA SWIM (ERAM) writes Gulf of Mexico points this way. |
 | Fix-radial-distance | `MOL057057`, `BAIRN170010` | supported (2.1.34) | Base fix, navaid or airport; magnetic radial converted to true with the magnetic variation of the nearest navaid or airport in the cycle; distance in NM along a great circle. Point `kind` `radial_distance`. |

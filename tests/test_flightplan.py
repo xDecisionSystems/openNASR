@@ -1876,10 +1876,12 @@ def test_resolve_flags_a_runway_dependent_arrival_as_incomplete(tables):
 def test_resolve_reports_failures_as_diagnostics_not_exceptions(tables):
     resolver = RouteResolver(tables)
 
+    # An unknown identifier is skipped (2.1.36): the rest of the route is kept.
     unknown = resolver.resolve("KAAA UNKNOWN")
-    assert not unknown.complete and unknown.points == ()
+    assert not unknown.complete and [p.name for p in unknown.waypoints] == ["KAAA"]
     assert unknown.diagnostics[0].code == "RecordNotFoundError"
     assert unknown.diagnostics[0].token == "UNKNOWN"
+    assert unknown.diagnostics[0].detail == {"skipped": True}
 
     assert resolver.resolve("").diagnostics[0].code == "MalformedRoute"
     foreign = resolver.resolve("KAAA EGLL KBBB")

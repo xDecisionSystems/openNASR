@@ -93,10 +93,12 @@ def test_unresolvable_routes_are_a_200_with_diagnostics_never_a_500(client):
 
     data = response.json()
     assert response.status_code == 200
-    assert data["complete"] is False and data["points"] == []
-    assert data["geojson"]["geometry"] is None
+    # The unknown fix is skipped and the rest of the route is still drawn.
+    assert data["complete"] is False
+    assert [point["name"] for point in data["points"]] == ["BWI", "DCA"]
     assert data["diagnostics"][0]["code"] == "RecordNotFoundError"
     assert data["diagnostics"][0]["token"] == "NOSUCHFIX"
+    assert data["diagnostics"][0]["detail"] == {"skipped": True}
 
 
 def test_input_errors_are_422_and_an_unknown_cycle_is_404(client):

@@ -7,6 +7,24 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.36]
+
+### Changed
+
+- An identifier the cycle does not know (a foreign navaid such as `ZWE` in
+  `ZWE280024`, a private heliport, an unpublished airway) no longer empties
+  the whole route: it is skipped, the points on either side are joined
+  directly, and the `RecordNotFoundError` diagnostic carries
+  `detail: {"skipped": true}`. The result is still not `complete`. At most
+  five identifiers are skipped per route; ambiguous identifiers still stop
+  resolution so the caller can choose.
+
+### Added
+
+- A STAR whose computer code is `ENTRY.NAME` (`ROKNN.ROKNN4`) is found by its
+  short name (`..ROKNN4.CGF`, as ERAM files it in FAA SWIM routes): joined at
+  the preceding fix when that fix lies on it, otherwise flown from its body.
+
 ## [2.1.35]
 
 ### Added
