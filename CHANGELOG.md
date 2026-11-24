@@ -7,6 +7,21 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.34]
+
+### Added
+
+- Route text from FAA SWIM (ERAM SFDPS flight plans) resolves:
+  - the ERAM `./.` separator (`KORD./.OBK131026..SEWTO..KSDF/2218`) is read
+    as a plain separator instead of hiding the rest of the route as a
+    speed/level group;
+  - fix-radial-distance points (`MOL057057`, `BAIRN170010`: base fix, navaid
+    or airport, magnetic radial, distance in NM) are computed from the base
+    with the magnetic variation NASR records for the nearest navaid or
+    airport; they come back with `kind` `radial_distance`;
+  - slashed lat/lon points (`2706N/09216W`) decode like `2706N09216W`.
+- Diagnostics keep pointing at the characters of the route as filed.
+
 ## [2.1.33]
 
 ### Added

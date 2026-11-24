@@ -9,10 +9,12 @@ from dataclasses import dataclass, field
 class RoutePoint:
     """One resolved point and where it came from.
 
-    ``kind`` is the NASR record type (``airport``, ``fix``, ``navaid``) or
-    ``latlon`` for a coordinate filed in the route. ``via`` is the airway or
-    procedure token that produced the point (``None`` for a point filed
-    directly), and ``segment`` places it in the flight.
+    ``kind`` is the NASR record type (``airport``, ``fix``, ``navaid``),
+    ``latlon`` for a coordinate filed in the route, or ``radial_distance``
+    for a fix-radial-distance point (``MOL057057``) computed from its base.
+    ``via`` is the airway or procedure token that produced the point
+    (``None`` for a point filed directly), and ``segment`` places it in the
+    flight.
     """
 
     lat: float

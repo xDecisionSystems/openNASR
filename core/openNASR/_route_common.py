@@ -49,7 +49,31 @@ _SPEED_LEVEL = re.compile(r"[NKM]\d{3,4}(?:[FSAM]\d{3,4}|VFR)$")
 _EXTERNAL_AIRWAY = re.compile(r"(?:U[A-Z]?\d+[A-Z0-9]*|RTE\d+)$")
 
 
-_RADIAL_DISTANCE = re.compile(r"[A-Z]{3}\d{6}$")
+# Fix-radial-distance: a fix, navaid or airport followed by a three-digit
+# magnetic radial and a three-digit distance in NM (``MOL057057``,
+# ``BAIRN170010``), as ERAM writes them in amended routes.
+_RADIAL_DISTANCE = re.compile(
+    r"(?P<base>[A-Z]{2,5})(?P<radial>\d{3})(?P<distance>\d{3})$"
+)
+
+
+# NAS route text as published by FAA SWIM (ERAM): ``./.`` marks a route that
+# continues from a cleared point and is geometrically a plain separator;
+# lat/lon points carry a slash between latitude and longitude.
+_ERAM_SEPARATOR = re.compile(r"\./\.")
+_NAS_SLASHED_LATLON = re.compile(r"(?<![A-Z0-9])(\d{4}[NS])/(\d{5}[EW])(?![A-Z0-9])")
+
+
+def _normalize_nas_route(text: str) -> str:
+    """Rewrite ERAM route syntax into the resolver's syntax, keeping offsets.
+
+    ``./.`` becomes ``. .`` and ``2706N/09216W`` becomes ``2706N09216W `` so
+    every character keeps its position and diagnostics still point into the
+    route text as filed.
+    """
+
+    text = _ERAM_SEPARATOR.sub(". .", text)
+    return _NAS_SLASHED_LATLON.sub(lambda m: m.group(1) + m.group(2) + " ", text)
 
 
 _FOREIGN_ICAO_PREFIX = re.compile(r"(?:C[FGKLMNPSY]|E[A-Z]|MM|TJ)[A-Z]{2}$")

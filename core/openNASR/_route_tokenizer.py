@@ -16,9 +16,9 @@ from ._route_common import (
     _EXTERNAL_AIRWAY,
     _FOREIGN_ICAO_PREFIX,
     _OCEANIC_COORDINATE,
-    _RADIAL_DISTANCE,
     _SPEED_LEVEL,
     _RouteToken,
+    _normalize_nas_route,
     _text,
 )
 from ._route_procedure_index import _ProcedureIndex
@@ -40,14 +40,15 @@ def _recognized_unsupported_content(
     """Return the first recognized non-domestic component, without parsing it."""
 
     candidates: list[tuple[int, str, str]] = []
-    for match in _OCEANIC_COORDINATE.finditer(flight_plan.upper()):
+    flight_plan = _normalize_nas_route(flight_plan.upper())
+    # Slashed lat/lon points are normalized above; anything left in that
+    # shape is not a valid coordinate.
+    for match in _OCEANIC_COORDINATE.finditer(flight_plan):
         candidates.append((match.start(), match.group(), "oceanic_coordinate"))
-    for match in re.finditer(r"[A-Z0-9]+", flight_plan.upper()):
+    for match in re.finditer(r"[A-Z0-9]+", flight_plan):
         token = match.group()
         if _EXTERNAL_AIRWAY.fullmatch(token):
             candidates.append((match.start(), token, "external_route"))
-        elif _RADIAL_DISTANCE.fullmatch(token):
-            candidates.append((match.start(), token, "radial_distance"))
         elif _FOREIGN_ICAO_PREFIX.fullmatch(token):
             try:
                 resolver.resolve(token)
@@ -95,12 +96,14 @@ def _tokenize_flight_plan(
     so adjacent components are retained as one token only when they identify
     a published procedure transition or exact DP computer code in the
     selected NASR cycle. A trailing ``/`` field (for example ``KMSP/0354``)
-    is speed/altitude information, not geometry.
+    is speed/altitude information, not geometry. ERAM route text from FAA
+    SWIM (``KORD./.OBK131026..FWA..KSDF/2218``, ``2706N/09216W``) is
+    normalized first (see :func:`_normalize_nas_route`).
     """
 
     procedure_index = procedure_index or _ProcedureIndex(tables)
     normalized: list[_RouteToken] = []
-    for field_match in re.finditer(r"\S+", flight_plan.upper()):
+    for field_match in re.finditer(r"\S+", _normalize_nas_route(flight_plan.upper())):
         group = field_match.group()
         field, slash, suffix = group.partition("/")
         if slash and suffix:

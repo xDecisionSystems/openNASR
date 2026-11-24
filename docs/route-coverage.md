@@ -20,6 +20,7 @@ the 2026-10-29 cycle and a 46,580-route pool (70.5% usable; see REPLAN.md).
 | Two identifiers, same name | `ZFP` (NDB and VOR/DME) | diagnostic | `AmbiguousRecordError`; the resolver does not pick one. The diagnostic's `detail.candidates` lists every candidate with name, kind, type (for navaids) and lat/lon so the caller can choose (owner decision, 2026-11-18). |
 | Identifier not in this cycle | `CHSLY7` | diagnostic | `RecordNotFoundError`; routes filed against another cycle. |
 | Foreign airport, FIR airway, border point | `CYUL`, `UL6` | out of scope | `UnsupportedRouteContentError`. |
-| FAA oceanic coordinate | `4300N/05000W` | out of scope | `UnsupportedRouteContentError`. |
-| Radial/distance | `ABQ090020` | out of scope | `UnsupportedRouteContentError`. |
+| FAA lat/lon point with slash | `2706N/09216W` | supported (2.1.34) | Decoded like `2706N09216W`; FAA SWIM (ERAM) writes Gulf of Mexico points this way. |
+| Fix-radial-distance | `MOL057057`, `BAIRN170010` | supported (2.1.34) | Base fix, navaid or airport; magnetic radial converted to true with the magnetic variation of the nearest navaid or airport in the cycle; distance in NM along a great circle. Point `kind` `radial_distance`. |
+| ERAM `./.` separator | `KORD./.OBK131026..SEWTO` | supported (2.1.34) | Read as a plain separator (FAA SWIM SFDPS amended routes). |
 | Oceanic tracks (NAT), SID/STAR with runway | | out of scope | Not recognized; reported as an unknown identifier. |

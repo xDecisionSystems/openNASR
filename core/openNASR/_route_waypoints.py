@@ -5,6 +5,7 @@ Private to :mod:`openNASR.flightplan`; import from there.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 
 from pandas import DataFrame
@@ -12,6 +13,7 @@ from pandas import DataFrame
 from ._route_common import (
     _KIND_BY_TABLE,
     _LATLON_WAYPOINT,
+    _RADIAL_DISTANCE,
     _WAYPOINT_TABLES,
     _coordinates,
     _text,
@@ -28,6 +30,7 @@ class _WaypointResolver:
 
     def __init__(self, tables: Mapping[str, DataFrame]) -> None:
         self._candidates: dict[str, dict[str, list[_Waypoint]]] = {}
+        self._variations = _magnetic_variations(tables)
         for table, columns in _WAYPOINT_TABLES:
             frame = tables.get(table)
             if frame is None:
@@ -109,6 +112,9 @@ class _WaypointResolver:
             decoded = _latlon_waypoint(identifier)
             if decoded is not None:
                 return decoded
+            offset = self._radial_distance(identifier)
+            if offset is not None:
+                return offset
             raise RecordNotFoundError(
                 entity_type="Flight-plan waypoint", identifier=identifier
             )
@@ -119,6 +125,106 @@ class _WaypointResolver:
                 candidates=unique,
             )
         return unique[0]
+
+    def _radial_distance(self, identifier: str) -> _Waypoint | None:
+        """Decode a fix-radial-distance point (``MOL057057``), or None.
+
+        The base is looked up like any route point (navaid first). The radial
+        is magnetic, so it is turned into a true bearing with the magnetic
+        variation NASR records for the nearest navaid or airport (the base
+        itself when it is one); the distance is in nautical miles along a
+        great circle on a spherical Earth.
+        """
+
+        match = _RADIAL_DISTANCE.match(identifier)
+        if match is None:
+            return None
+        radial, distance = int(match["radial"]), int(match["distance"])
+        if radial > 360:
+            return None
+        try:
+            base = self.resolve(
+                match["base"], preferred_tables=("NAV_BASE", "FIX_BASE", "APT_BASE")
+            )
+        except RecordNotFoundError:
+            return None
+        bearing = math.radians(
+            (radial + _nearest_variation(self._variations, base)) % 360
+        )
+        latitude, longitude = _destination(
+            base.latitude, base.longitude, bearing, distance / _EARTH_RADIUS_NM
+        )
+        return _Waypoint(identifier, latitude, longitude, kind="radial_distance")
+
+
+# Mean Earth radius in nautical miles (1 NM = 1852 m, R = 6371.0088 km).
+_EARTH_RADIUS_NM = 6371008.8 / 1852
+
+
+def _destination(
+    latitude: float, longitude: float, bearing: float, angle: float
+) -> tuple[float, float]:
+    """Great-circle destination from a point, a true bearing and an angle."""
+
+    phi1, lam1 = math.radians(latitude), math.radians(longitude)
+    phi2 = math.asin(
+        math.sin(phi1) * math.cos(angle)
+        + math.cos(phi1) * math.sin(angle) * math.cos(bearing)
+    )
+    lam2 = lam1 + math.atan2(
+        math.sin(bearing) * math.sin(angle) * math.cos(phi1),
+        math.cos(angle) - math.sin(phi1) * math.sin(phi2),
+    )
+    return math.degrees(phi2), (math.degrees(lam2) + 540) % 360 - 180
+
+
+def _magnetic_variations(
+    tables: Mapping[str, DataFrame],
+) -> tuple[tuple[float, float, float], ...]:
+    """(lat, lon, east-positive variation) of every navaid and airport with one."""
+
+    points: list[tuple[float, float, float]] = []
+    for table, hemisphere_column in (
+        ("NAV_BASE", "MAG_VARN_HEMIS"),
+        ("APT_BASE", "MAG_HEMIS"),
+    ):
+        frame = tables.get(table)
+        if frame is None or not {
+            "MAG_VARN",
+            hemisphere_column,
+            "LAT_DECIMAL",
+            "LONG_DECIMAL",
+        } <= set(frame.columns):
+            continue
+        for latitude, longitude, value, hemisphere in frame[
+            ["LAT_DECIMAL", "LONG_DECIMAL", "MAG_VARN", hemisphere_column]
+        ].to_numpy(dtype=object):
+            try:
+                variation = float(str(value))
+                point = float(str(latitude)), float(str(longitude))
+            except ValueError:
+                continue
+            if math.isnan(variation) or any(math.isnan(c) for c in point):
+                continue
+            sign = -1.0 if _text(hemisphere) == "W" else 1.0
+            points.append((point[0], point[1], sign * variation))
+    return tuple(points)
+
+
+def _nearest_variation(
+    variations: tuple[tuple[float, float, float], ...], point: _Waypoint
+) -> float:
+    """East-positive magnetic variation at the nearest recorded place (0 if none)."""
+
+    best, best_distance = 0.0, math.inf
+    cos_lat = math.cos(math.radians(point.latitude))
+    for latitude, longitude, variation in variations:
+        distance = (latitude - point.latitude) ** 2 + (
+            (longitude - point.longitude) * cos_lat
+        ) ** 2
+        if distance < best_distance:
+            best, best_distance = variation, distance
+    return best
 
 
 def _latlon_waypoint(identifier: str) -> _Waypoint | None:

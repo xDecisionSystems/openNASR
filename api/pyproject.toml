@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openNASR-api"
-version = "0.2.33"
+version = "0.2.34"
 description = "Read-only HTTP API for openNASR: resolve flight-plan routes to lat/lon"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later" }
 dependencies = [
-  "openNASR>=2.1.2",
+  "openNASR>=2.1.34",
   "openNASR-contract[s3]>=0.2",
   "fastapi>=0.110",
   "uvicorn>=0.29",

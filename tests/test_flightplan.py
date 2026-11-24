@@ -477,8 +477,6 @@ def test_flight_plan_errors_include_compact_route_diagnostics(tables):
     [
         ("EGLL", "foreign_airport"),
         ("UL207", "external_route"),
-        ("4500N/05000W", "oceanic_coordinate"),
-        ("GFS138045", "radial_distance"),
     ],
 )
 def test_flight_plan_rejects_recognized_unsupported_route_content(
@@ -1884,8 +1882,11 @@ def test_resolve_reports_failures_as_diagnostics_not_exceptions(tables):
     assert unknown.diagnostics[0].token == "UNKNOWN"
 
     assert resolver.resolve("").diagnostics[0].code == "MalformedRoute"
-    oceanic = resolver.resolve("KAAA 4300N/05000W KBBB")
-    assert oceanic.diagnostics[0].code == "UnsupportedRouteContentError"
+    foreign = resolver.resolve("KAAA EGLL KBBB")
+    assert foreign.diagnostics[0].code == "UnsupportedRouteContentError"
+    # FAA lat/lon points with a slash resolve since 2.1.34 (FAA SWIM routes).
+    slashed = resolver.resolve("KAAA 4300N/05000W KBBB")
+    assert slashed.complete and slashed.points[1] == (43.0, -50.0)
 
 
 def test_path_still_returns_the_shared_portion_without_diagnostics(tables):

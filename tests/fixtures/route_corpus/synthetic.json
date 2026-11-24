@@ -251,8 +251,12 @@
    "id": "latlon_oceanic_slash_form",
    "route": "KAAA 4300N/05000W KBBB",
    "expect": {
-    "status": "error",
-    "error": "UnsupportedRouteContentError"
+    "status": "ok",
+    "points": [
+     [38.0, -77.0],
+     [43.0, -50.0],
+     [35.0, -80.0]
+    ]
    }
   }
  ]

@@ -1211,7 +1211,7 @@
       "Point": {
         "properties": {
           "kind": {
-            "description": "airport | fix | navaid | latlon | interpolated",
+            "description": "airport | fix | navaid | latlon | radial_distance | interpolated",
             "title": "Kind",
             "type": "string"
           },
@@ -1602,7 +1602,7 @@
   "info": {
     "description": "Resolve FAA flight-plan routes to latitude/longitude paths using FAA NASR data, and look up airports, fixes, navaids and airways. Every response names the NASR cycle it used. Partial results are normal: check `complete` and `diagnostics`.",
     "title": "openNASR API",
-    "version": "0.2.33"
+    "version": "0.2.34"
   },
   "openapi": "3.1.0",
   "paths": {
