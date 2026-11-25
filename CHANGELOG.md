@@ -7,6 +7,15 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.38]
+
+### Changed
+
+- Up to 25 unknown identifiers are skipped per route (was 5). Oceanic and
+  foreign routes routinely name many points outside NASR: QFA16
+  (KLAX to YBBN) ends with six Australian names in a row and came back
+  with no points at all.
+
 ## [2.1.37]
 
 ### Fixed

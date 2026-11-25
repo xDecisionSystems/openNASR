@@ -379,3 +379,16 @@ def test_eram_route_uses_the_destinations_star_body(star_tables, route, expected
 
     assert result.complete, result.diagnostics
     assert [p.name for p in result.waypoints] == expected
+
+
+def test_many_unknown_identifiers_at_the_end_are_all_skipped(tables):
+    # QFA16 (FAA SWIM, 2026-11-25): an oceanic route ending in six names
+    # outside NASR. Before 2.1.38 the sixth stopped resolution and the
+    # route came back empty.
+    route = "KORD..SEWTO..2706N/09216W..MEPEM.Q144.ATROP.H224.TEBOT..YBBN/1349"
+    result = RouteResolver(tables).resolve(route)
+
+    assert not result.complete
+    assert [p.name for p in result.waypoints] == ["KORD", "SEWTO", "2706N09216W"]
+    skipped = [d.token for d in result.diagnostics if d.detail == {"skipped": True}]
+    assert skipped == ["MEPEM", "Q144", "ATROP", "H224", "TEBOT", "YBBN"]

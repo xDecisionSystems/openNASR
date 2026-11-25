@@ -517,7 +517,9 @@ class RouteResolver:
         )
 
 
-_MAX_SKIPPED_IDENTIFIERS = 5
+# Oceanic and foreign routes routinely name many points outside NASR (QFA16
+# KLAX-YBBN ends with six Australian names in a row), so the limit is generous.
+_MAX_SKIPPED_IDENTIFIERS = 25
 
 
 def _skip_unknown_identifier(text: str, error: RecordNotFoundError) -> str | None:
