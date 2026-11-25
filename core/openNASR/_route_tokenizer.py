@@ -84,10 +84,13 @@ def _note_ignored(position: int, group: str, *, after: str | None = None) -> Non
 
 # ERAM writes XXX for a part of the route it does not know.
 _UNKNOWN_PORTION = "XXX"
+# Written by the resolver in place of an identifier it skipped (not found in
+# the cycle); read as a direct connection, without a diagnostic of its own.
+_SKIPPED_IDENTIFIER = "~"
 
 
 def _note_unknown_portion(position: int) -> None:
-    """Report an ERAM unknown route portion, drawn as a direct connection."""
+    """Report an ERAM unknown route portion; the route stops before it."""
 
     diagnostics = _DIAGNOSTICS.get()
     if diagnostics is None:
@@ -97,7 +100,7 @@ def _note_unknown_portion(position: int) -> None:
             code="unknown_route_portion",
             message=(
                 "XXX marks a part of the route that is not known (ERAM); "
-                "the points on either side are joined directly."
+                "the route is shown up to the last point before it."
             ),
             token=_UNKNOWN_PORTION,
             position=position,
@@ -143,9 +146,14 @@ def _tokenize_flight_plan(
         while index < len(components):
             component = _text(components[index])
             position = field_match.start() + component_offset
-            if not component or component == _UNKNOWN_PORTION:
-                if component == _UNKNOWN_PORTION:
-                    _note_unknown_portion(position)
+            if component == _UNKNOWN_PORTION:
+                # Nothing after an unknown portion is placed: where the
+                # flight rejoins the filed route is not known.
+                _note_unknown_portion(position)
+                while normalized and normalized[-1].value == _DIRECT:
+                    normalized.pop()
+                return tuple(normalized)
+            if not component or component == _SKIPPED_IDENTIFIER:
                 if not normalized or normalized[-1].value != _DIRECT:
                     normalized.append(_RouteToken(_DIRECT, position))
                 component_offset += len(component) + 1

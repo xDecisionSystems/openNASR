@@ -18,6 +18,12 @@ and versions follow Semantic Versioning.
   `detail: {"skipped": true}`. The result is still not `complete`. At most
   five identifiers are skipped per route; ambiguous identifiers still stop
   resolution so the caller can choose.
+- The ERAM unknown-portion mark `XXX` now ends the route: points are returned
+  up to the last one before it, with the `unknown_route_portion` warning at
+  its position, and nothing after it is placed, because where the flight
+  rejoins its route is not known (2.1.35 joined the points on either side
+  directly). A route that starts with `XXX` has no points and no
+  `MalformedRoute` diagnostic.
 
 ### Added
 

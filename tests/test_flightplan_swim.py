@@ -262,16 +262,15 @@ def test_star_by_short_name_after_a_fix_on_a_transition(star_tables):
     ]
 
 
-def test_star_by_short_name_after_an_unknown_portion(star_tables):
+def test_route_stops_before_an_unknown_portion(star_tables):
+    # ``DRUGA.XXX..ROKNN4``: where the flight rejoins the arrival is not
+    # known, so nothing after the last known point is placed.
     result = RouteResolver(star_tables).resolve("KORD..SEWTO.XXX..OZZZI2.KATL")
 
-    assert [d.code for d in result.diagnostics] == ["unknown_route_portion"]
-    assert [p.name for p in result.waypoints] == [
-        "KORD",
-        "SEWTO",
-        "OZZZI",
-        "HAARY",
-        "KATL",
+    assert not result.complete
+    assert [p.name for p in result.waypoints] == ["KORD", "SEWTO"]
+    assert [(d.code, d.token, d.position) for d in result.diagnostics] == [
+        ("unknown_route_portion", "XXX", 12)
     ]
 
 
@@ -295,13 +294,20 @@ def test_an_unknown_identifier_inside_a_longer_one_is_not_rewritten(tables):
         position = 0
 
     assert _skip_unknown_identifier("ZWEX..KSDF", Error()) is None
-    assert _skip_unknown_identifier("ZWE..KSDF", Error()) == "XXX..KSDF"
+    assert _skip_unknown_identifier("ZWE..KSDF", Error()) == "~  ..KSDF"
 
 
-def test_eram_unknown_portion_is_joined_directly(tables):
+def test_eram_unknown_portion_ends_the_drawn_route(tables):
     result = RouteResolver(tables).resolve("KORD..SEWTO.XXX..KSDF")
 
     assert not result.complete
-    assert [p.name for p in result.waypoints] == ["KORD", "SEWTO", "KSDF"]
+    assert [p.name for p in result.waypoints] == ["KORD", "SEWTO"]
     unknown = [d for d in result.diagnostics if d.code == "unknown_route_portion"]
     assert [(d.token, d.position) for d in unknown] == [("XXX", 12)]
+
+
+def test_a_route_that_starts_with_an_unknown_portion_has_no_points(tables):
+    result = RouteResolver(tables).resolve("XXX..KSDF")
+
+    assert result.points == ()
+    assert [d.code for d in result.diagnostics] == ["unknown_route_portion"]

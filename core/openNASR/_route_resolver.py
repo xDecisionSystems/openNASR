@@ -28,7 +28,11 @@ from ._route_procedures import (
     _procedure_path,
     _route_end_airports,
 )
-from ._route_tokenizer import _recognized_unsupported_content, _tokenize_flight_plan
+from ._route_tokenizer import (
+    _SKIPPED_IDENTIFIER,
+    _recognized_unsupported_content,
+    _tokenize_flight_plan,
+)
 from ._route_waypoints import _waypoint, _WaypointResolver
 from .exceptions import (
     AmbiguousRecordError,
@@ -475,11 +479,12 @@ class RouteResolver:
                 points=(),
                 diagnostics=(
                     *skipped,
-                    *_filed_unknown_portions(collected, flight_plan),
+                    *collected,
                     _error_diagnostic(error),
                 ),
             )
         except ValueError as error:
+            stopped = any(item.code == "unknown_route_portion" for item in collected)
             return RouteResult(
                 route=flight_plan,
                 cycle=self._cycle,
@@ -487,12 +492,19 @@ class RouteResolver:
                 diagnostics=(
                     *skipped,
                     *collected,
-                    RouteDiagnostic(code="MalformedRoute", message=str(error)),
+                    # Nothing before a leading XXX: the gap is the explanation.
+                    *(
+                        ()
+                        if stopped
+                        else (
+                            RouteDiagnostic(code="MalformedRoute", message=str(error)),
+                        )
+                    ),
                 ),
             )
         finally:
             _DIAGNOSTICS.reset(reset)
-        collected = [*skipped, *_filed_unknown_portions(collected, flight_plan)]
+        collected = [*skipped, *collected]
         unique = {
             (item.code, item.token, repr(item.detail)): item for item in collected
         }
@@ -506,19 +518,18 @@ class RouteResolver:
 
 
 _MAX_SKIPPED_IDENTIFIERS = 5
-_UNKNOWN_PORTION_TEXT = "XXX"
 
 
 def _skip_unknown_identifier(text: str, error: RecordNotFoundError) -> str | None:
-    """``text`` with the unknown identifier replaced by an unknown portion.
+    """``text`` with the unknown identifier replaced by a skip marker.
 
-    The replacement keeps every character offset (``XXX`` padded with
+    The replacement keeps every character offset (the marker padded with
     spaces), so later diagnostics still point into the route as filed.
     """
 
     token = getattr(error, "token", None)
     position = getattr(error, "position", None)
-    if not token or position is None or len(token) < len(_UNKNOWN_PORTION_TEXT):
+    if not token or position is None:
         return None
     end = position + len(token)
     if text[position:end].upper() != token.upper():
@@ -527,24 +538,8 @@ def _skip_unknown_identifier(text: str, error: RecordNotFoundError) -> str | Non
         end < len(text) and text[end].isalnum()
     ):
         return None  # part of a longer identifier
-    replacement = _UNKNOWN_PORTION_TEXT.ljust(len(token))
+    replacement = _SKIPPED_IDENTIFIER.ljust(len(token))
     return text[:position] + replacement + text[position + len(token) :]
-
-
-def _filed_unknown_portions(
-    diagnostics: list[RouteDiagnostic], flight_plan: str
-) -> list[RouteDiagnostic]:
-    """Drop ``XXX`` notes for identifiers the resolver itself skipped."""
-
-    def filed(item: RouteDiagnostic) -> bool:
-        start = item.position or 0
-        return (
-            item.code != "unknown_route_portion"
-            or flight_plan[start : start + len(_UNKNOWN_PORTION_TEXT)].upper()
-            == _UNKNOWN_PORTION_TEXT
-        )
-
-    return [item for item in diagnostics if filed(item)]
 
 
 def _skipped_diagnostic(error: RecordNotFoundError) -> RouteDiagnostic:
