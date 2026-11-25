@@ -311,3 +311,71 @@ def test_a_route_that_starts_with_an_unknown_portion_has_no_points(tables):
 
     assert result.points == ()
     assert [d.code for d in result.diagnostics] == ["unknown_route_portion"]
+
+
+def _two_airport_star(star_tables):
+    """OZZZI2 with one body for KATL and another for KSDF (as ROKNN4 has one
+    body for CGF and five runway-dependent ones for CLE)."""
+
+    def body(name, seq, point):
+        return {
+            "STAR_COMPUTER_CODE": "OZZZI.OZZZI2",
+            "ARTCC": "ZTL",
+            "ROUTE_PORTION_TYPE": "BODY",
+            "TRANSITION_COMPUTER_CODE": "",
+            "ROUTE_NAME": name,
+            "BODY_SEQ": "1",
+            "POINT_SEQ": str(seq),
+            "POINT": point,
+        }
+
+    routes = star_tables["STAR_RTE"]
+    transitions = routes[routes["ROUTE_PORTION_TYPE"].eq("TRANSITION")].assign(
+        ROUTE_NAME="FLASK.OZZZI2"
+    )
+    star_tables["STAR_RTE"] = pd.concat(
+        [
+            transitions,
+            pd.DataFrame(
+                [
+                    body("OZZZI-ATL", 10, "OZZZI"),
+                    body("OZZZI-ATL", 20, "HAARY"),
+                    body("OZZZI-ATL", 30, "KATL"),
+                    body("OZZZI-SDF", 10, "OZZZI"),
+                    body("OZZZI-SDF", 20, "SEWTO"),
+                    body("OZZZI-SDF", 30, "KSDF"),
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    star_tables["STAR_APT"] = pd.DataFrame(
+        [
+            {
+                "STAR_COMPUTER_CODE": "OZZZI.OZZZI2",
+                "ARTCC": "ZTL",
+                "BODY_NAME": name,
+                "ARPT_ID": airport,
+            }
+            for name, airport in (("OZZZI-ATL", "ATL"), ("OZZZI-SDF", "SDF"))
+        ]
+    )
+    return star_tables
+
+
+@pytest.mark.parametrize(
+    ("route", "expected"),
+    [
+        (
+            "KORD./.SCHUL.OZZZI2.KATL/2321",
+            ["KORD", "SCHUL", "OZZZI", "HAARY", "KATL"],
+        ),
+        ("KORD./.SCHUL.OZZZI2.KSDF", ["KORD", "SCHUL", "OZZZI", "SEWTO", "KSDF"]),
+    ],
+)
+def test_eram_route_uses_the_destinations_star_body(star_tables, route, expected):
+    # ``./.`` once hid the destination, so the body was never narrowed to it.
+    result = RouteResolver(_two_airport_star(star_tables)).resolve(route)
+
+    assert result.complete, result.diagnostics
+    assert [p.name for p in result.waypoints] == expected

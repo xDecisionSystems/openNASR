@@ -7,6 +7,19 @@ and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [2.1.37]
+
+### Fixed
+
+- FAA SWIM (ERAM) routes now narrow SID/STAR branches to the route's end
+  airports, as other routes always did. Finding the destination stripped
+  everything after the first `/`, which in `1M5./.BNA020047..ROKNN4.CGF` is
+  the ERAM `./.` separator, so only the origin was kept. A STAR with one body
+  for the destination (ROKNN4 into CGF: ROKNN DEVOH MICKJ) now follows it and
+  the route is complete; airports whose arrival really depends on the runway
+  (TORGY4 into MSP) still get the common portion and a `procedure_branches`
+  warning.
+
 ## [2.1.36]
 
 ### Changed

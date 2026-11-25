@@ -14,6 +14,7 @@ from pandas import DataFrame
 from ._route_airways import _airway_vertices, _AirwayIndex, _is_published_airway
 from ._route_common import (
     _AIRWAY,
+    _normalize_nas_route,
     _DIAGNOSTICS,
     _DIRECT,
     _ProcedureAirwayJoin,
@@ -33,7 +34,11 @@ from .routeresult import RouteDiagnostic
 
 
 def _route_end_airports(flight_plan: str) -> frozenset[str]:
-    tokens = re.findall(r"[A-Z0-9]+", re.sub(r"/\S*", "", flight_plan.upper()))
+    # ERAM text is normalized first: in ``KORD./.OBK..KSDF/2218`` the ``/`` of
+    # ``./.`` is not the start of a speed/time suffix, and stripping from it
+    # lost the destination (so STAR branches were never narrowed to it).
+    text = _normalize_nas_route(flight_plan.upper())
+    tokens = re.findall(r"[A-Z0-9]+", re.sub(r"/\S*", "", text))
     ends: set[str] = set()
     for token in (tokens[0], tokens[-1]) if tokens else ():
         ends.add(token)
